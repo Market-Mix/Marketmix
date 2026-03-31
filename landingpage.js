@@ -577,42 +577,56 @@
     document.head.appendChild(style);
   
   // ===== NAVBAR TOGGLE SCRIPT =====
-  (function(){
-    const toggle = document.querySelector('.mm-toggle');
-    const menu = document.getElementById('mm-menu');
-    const searchBtn = document.getElementById('mm-search-btn');
-    const searchInput = document.getElementById('mm-search');
+  (function () {
+  const toggle   = document.getElementById('mm-toggle');
+  const mobileNav = document.getElementById('mm-mobile-nav');
+  const userWrap  = document.querySelector('.mm-user-wrap');
+  const userBtn   = document.getElementById('mm-user-btn');
 
-    if(toggle && menu){
-      toggle.addEventListener('click', () => {
-        const isOpen = menu.classList.toggle('open');
-        toggle.setAttribute('aria-expanded', String(isOpen));
-        menu.setAttribute('aria-hidden', String(!isOpen));
-      });
+  // Hamburger open / close
+  function setMenu(open) {
+    toggle.classList.toggle('open', open);
+    mobileNav.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    mobileNav.setAttribute('aria-hidden', String(!open));
+  }
 
-      // Close menu on Escape
-      document.addEventListener('keydown', (e) => {
-        if(e.key === 'Escape' && menu.classList.contains('open')){
-          menu.classList.remove('open');
-          toggle.setAttribute('aria-expanded', 'false');
-          menu.setAttribute('aria-hidden', 'true');
-        }
-      });
+  if (toggle && mobileNav) {
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMenu(!mobileNav.classList.contains('open'));
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setMenu(false);
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.mm-navbar') && !e.target.closest('.mm-mobile-nav')) {
+        setMenu(false);
+      }
+    });
+  }
 
-      // Close when clicking outside (mobile)
-      document.addEventListener('click', (e) => {
-        if(menu.classList.contains('open') && !e.target.closest('.mm-menu') && !e.target.closest('.mm-toggle')){
-          menu.classList.remove('open');
-          toggle.setAttribute('aria-expanded', 'false');
-          menu.setAttribute('aria-hidden', 'true');
-        }
-      });
-    }
-
-    if(searchBtn && searchInput){
-      searchBtn.addEventListener('click', () => searchInput.focus());
-    }
-  })();
+  // Desktop account dropdown (click toggle for accessibility)
+  if (userBtn && userWrap) {
+    userBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = userWrap.classList.toggle('open');
+      userBtn.setAttribute('aria-expanded', String(isOpen));
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.mm-user-wrap')) {
+        userWrap.classList.remove('open');
+        userBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        userWrap.classList.remove('open');
+        userBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+})();
 
   // ===== PRODUCT CARD NAVIGATION (NOW HANDLED BY attachProductCardListeners AND attachYouLikeCardListeners) =====
   // This is now handled by the helper functions that attach listeners after products are loaded

@@ -11,67 +11,110 @@
 <body>
   <div class="page-shell">
     <nav class="mm-navbar" role="navigation" aria-label="Main Navigation">
-      <div class="mm-inner">
-        <a href="#" class="mm-brand" aria-label="MarketMix home">
-          <span class="mm-logo">MarketMix</span> <span class="mm-sub muted">Buy • Sell</span>
-         
-        </a>
+  <div class="mm-inner">
 
-         <a href="./buyers/cart.html" class="mm-icon" aria-label="Cart">
-          <span class="icon-wrap">
-            <i class="fas fa-shopping-cart"></i>
-            <span class="mm-count" id="mm-cart-count">0</span>
-          </span>
-        </a>
-        <button class="mm-toggle" aria-controls="mm-menu" aria-expanded="false" aria-label="Open menu">
-          <span class="hamburger"></span>
-        </button>
+    <!-- Brand -->
+    <a href="#" class="mm-brand" aria-label="MarketMix home">
+      <span class="mm-logo">MarketMix</span>
+      <span class="mm-sub">Buy • Sell • Discover</span>
+    </a>
 
-        <form id="mm-search-form" class="mm-search-wrap" role="search" aria-label="Site search" action="index-search-results.html" method="get">
-          <input id="mm-search" name="q" type="search" placeholder="Search products, categories..." aria-label="Search" />
-          <button id="mm-search-btn" type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
-        </form>
-
-        <div id="mm-menu" class="mm-menu" aria-hidden="true">
-          <ul class="mm-links" role="menubar">
-            <li role="none"><a role="menuitem" href="#">Home</a></li>
-            <li role="none"><a role="menuitem" href="./sellers/signup-sellers.html">Sell on MarketMix</a></li>
-            <li role="none"><a role="menuitem" href="./buyers/contact.html">Contact</a></li>
-          </ul>
-
- <div class="mm-icons">
-    <!-- User account dropdown: hover or click to open -->
-    <div class="user-dropdown">
-      <button class="mm-icon icon-btn" aria-haspopup="true" aria-expanded="false" aria-label="Account">
-        <i class="fas fa-user"></i>
+    <!-- Desktop Search (hidden on mobile) -->
+    <form id="mm-search-form" class="mm-search-wrap" role="search" action="index-search-results.html" method="get">
+      <input id="mm-search" name="q" type="search" placeholder="Search products, brands, categories..." aria-label="Search" autocomplete="off" />
+      <button id="mm-search-btn" type="submit" aria-label="Search">
+        <i class="fas fa-search"></i>
       </button>
-      <div class="menu" role="menu" aria-hidden="true">
-        <a href="./buyers/login for buyers.html" class="menu-item" role="menuitem">Login as Buyer</a>
-        <a href="./sellers/sellers login.html" class="menu-item" role="menuitem">Login as Seller</a>
-        <div class="menu-sep" aria-hidden="true"></div>
-        <a href="./buyers/signup-buyers.html" class="menu-item" role="menuitem">Signup as Buyer</a>
-        <a href="./sellers/signup-sellers.html" class="menu-item" role="menuitem">Signup as Seller</a>
-      </div>
-    </div>
+    </form>
 
+    <!-- Desktop Nav Links -->
+    <nav class="mm-nav-links" aria-label="Site links">
+      <a href="#">Home</a>
+      <a href="./buyers/contact.html">Deals</a>
+      <a href="./buyers/contact.html">Contact</a>
+    </nav>
+
+    <!-- Desktop Actions -->
+    <div class="mm-actions">
+
+      <!-- Cart -->
+      <a href="./buyers/cart.html" class="mm-cart-btn" aria-label="Cart">
+        <i class="fas fa-shopping-bag"></i>
+        <span class="mm-count" id="mm-cart-count">0</span>
+      </a>
+
+      <!-- Account dropdown -->
+      <div class="mm-user-wrap">
+        <button class="mm-user-btn" aria-haspopup="true" aria-expanded="false" id="mm-user-btn">
+          <i class="fas fa-user"></i>
+          Account
+          <i class="fas fa-chevron-down mm-chevron"></i>
+        </button>
+        <div class="mm-dropdown" id="mm-user-dropdown" role="menu" aria-hidden="true">
+          <div class="mm-dropdown-section">
+            <div class="mm-dropdown-label">Buyer</div>
+            <a href="./buyers/login for buyers.html" role="menuitem">Login as Buyer</a>
+            <a href="./buyers/signup-buyers.html" role="menuitem">Sign up as Buyer</a>
           </div>
-
-
-          <div class="mm-menu-bottom">
-            <a href="./buyers/signup-buyers.html" class="btn btn-shop">Shop</a>
-            <a href="./sellers/signup-sellers.html" class="btn btn-sell">Sell</a>
+          <div class="mm-dropdown-sep"></div>
+          <div class="mm-dropdown-section">
+            <div class="mm-dropdown-label">Seller</div>
+            <a href="./sellers/sellers login.html" role="menuitem">Login as Seller</a>
+            <a href="./sellers/signup-sellers.html" role="menuitem">Sign up as Seller</a>
           </div>
         </div>
       </div>
-    </nav>
 
-    <!-- MOBILE SEARCH BAR (shows only on small screens) -->
-    <div class="mm-search-mobile" role="search" aria-label="Mobile site search">
-      <form id="mm-search-mobile-form" class="mm-search-mobile-wrap" action="index-search-results.html" method="get">
-        <input id="mm-search-mobile-input" name="q" type="search" placeholder="Search products, categories..." aria-label="Search" />
-        <button id="mm-search-mobile-btn" type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
-      </form>
+      <!-- Sell CTA -->
+      <a href="./sellers/signup-sellers.html" class="mm-sell-cta">
+        <i class="fas fa-store"></i> Start Selling
+      </a>
+
+      <!-- Hamburger (mobile only) -->
+      <button class="mm-toggle" id="mm-toggle" aria-controls="mm-mobile-nav" aria-expanded="false" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
+
+  </div>
+</nav>
+
+<!-- Mobile slide-down menu -->
+<div class="mm-mobile-nav" id="mm-mobile-nav" aria-hidden="true">
+  <div class="mm-mobile-inner">
+
+    <!-- Mobile Search -->
+    <form class="mm-mobile-search" action="index-search-results.html" method="get" role="search">
+      <input name="q" type="search" placeholder="Search products, categories..." aria-label="Search" />
+      <button type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
+    </form>
+
+    <!-- Nav Links -->
+    <div class="mm-mobile-links">
+      <a href="#"><i class="fas fa-home"></i> Home</a>
+      <a href="./sellers/signup-sellers.html"><i class="fas fa-store"></i> Sell on MarketMix</a>
+      <a href="./buyers/contact.html"><i class="fas fa-envelope"></i> Contact</a>
+      <a href="./buyers/help center.html"><i class="fas fa-circle-question"></i> Help Center</a>
+    </div>
+
+    <div class="mm-mobile-sep"></div>
+    <div class="mm-mobile-section-label">Account</div>
+
+    <div class="mm-mobile-links">
+      <a href="./buyers/login for buyers.html"><i class="fas fa-user"></i> Login as Buyer</a>
+      <a href="./sellers/sellers login.html"><i class="fas fa-user-tie"></i> Login as Seller</a>
+      <a href="./buyers/signup-buyers.html"><i class="fas fa-user-plus"></i> Sign up as Buyer</a>
+      <a href="./sellers/signup-sellers.html"><i class="fas fa-user-plus"></i> Sign up as Seller</a>
+    </div>
+
+    <!-- CTA Row -->
+    <div class="mm-mobile-cta-row">
+      <a href="./buyers/signup-buyers.html" class="mm-cta-shop"><i class="fas fa-bag-shopping"></i> Shop Now</a>
+      <a href="./sellers/signup-sellers.html" class="mm-cta-sell"><i class="fas fa-store"></i> Start Selling</a>
+    </div>
+
+  </div>
+</div>
 
     <!-- HERO -->
     <header class="hero section" aria-label="Hero section">
