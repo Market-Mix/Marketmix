@@ -516,18 +516,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) {
         showToast(data.message || 'Failed to save. Please try again.', 'error');
         saveBtn.disabled    = false;
-        saveBtn.textContent = 'Save & Continue to Dashboard';
+        saveBtn.textContent = 'Save & Continue to verify KYC';
         return;
       }
 
-      showToast('Store setup completed! 🎉', 'success');
-      setTimeout(() => { window.location.href = 'sellers layout.html'; }, 2000);
+      showToast('Store setup completed! 🎉 Redirecting to KYC verification...', 'success');
+      setTimeout(() => { window.location.href = 'kyc-verification.html'; }, 2000);
 
     } catch (err) {
       console.error('Save store error:', err);
       showToast('Network error. Please check your connection.', 'error');
       saveBtn.disabled    = false;
-      saveBtn.textContent = 'Save & Continue to Dashboard';
+      saveBtn.textContent = 'Save & Continue to verify KYC';
     }
   });
 
