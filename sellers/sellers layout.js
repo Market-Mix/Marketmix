@@ -59,7 +59,9 @@
       const allProfileIcons = document.querySelectorAll('.profile-icon');
       console.log("Total .profile-icon elements in DOM:", allProfileIcons.length);
       allProfileIcons.forEach((el, idx) => {
-        console.log(`  [${idx}] src="${el.src}" bg-image="${el.style.backgroundImage}"`);
+        console.log(`  [${idx}] id="${el.id}" src="${el.src}" bg-image="${el.style.backgroundImage}"`);
+        console.log(`       parent class: "${el.parentElement.className}"`);
+        console.log(`       visible: ${el.offsetHeight > 0 ? 'YES' : 'NO'}`);
       });
       
       // Guard: at least one element must exist
@@ -134,6 +136,25 @@
         });
         
         console.log("Store logo loaded successfully on all images");
+        
+        // VERIFY both images have the same src
+        setTimeout(() => {
+          const verify1 = document.getElementById("sellerProfileImage")?.src;
+          const verify2 = document.getElementById("sellerProfileImageMobile")?.src;
+          console.log("VERIFICATION after 500ms:");
+          console.log("  Desktop src match:", verify1 === storeLogoUrl ? "✓ YES" : "✗ NO");
+          console.log("  Mobile src match:", verify2 === storeLogoUrl ? "✓ YES" : "✗ NO");
+          console.log("  Both match each other:", verify1 === verify2 ? "✓ YES" : "✗ NO");
+          if (verify1 !== storeLogoUrl || verify2 !== storeLogoUrl) {
+            console.error("ERROR: Images were changed! Re-applying...");
+            if (document.getElementById("sellerProfileImage")) {
+              document.getElementById("sellerProfileImage").src = storeLogoUrl;
+            }
+            if (document.getElementById("sellerProfileImageMobile")) {
+              document.getElementById("sellerProfileImageMobile").src = storeLogoUrl;
+            }
+          }
+        }, 500);
       } else {
         // No store_logo_url → clear both images
         if (profileImg) {
@@ -171,6 +192,25 @@
       
       setErrorHandler(profileImg, "Desktop");
       setErrorHandler(profileImgMobile, "Mobile");
+      
+      // WATCH for changes to mobile image (in case something overwrites it)
+      if (profileImgMobile) {
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+              const newSrc = profileImgMobile.getAttribute('src');
+              console.warn("⚠️ MOBILE IMAGE SRC CHANGED TO:", newSrc);
+              if (newSrc !== storeLogoUrl) {
+                console.warn("RESETTING MOBILE IMAGE SRC back to logo!");
+                profileImgMobile.src = storeLogoUrl;
+              }
+            }
+          });
+        });
+        
+        observer.observe(profileImgMobile, { attributes: true, attributeFilter: ['src'] });
+        console.log("✓ MutationObserver set on mobile image");
+      }
       
     } catch (error) {
       console.error("ERROR loading seller profile image:", error);
