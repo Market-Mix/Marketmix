@@ -111,67 +111,57 @@
 
       // Set BOTH images to the SAME value
       if (storeLogoUrl && storeLogoUrl.trim() !== '') {
-        // Force image reload by clearing src first, then setting new src
-        const setImageWithReload = (img, label) => {
-          if (img) {
-            // Clear old src to force browser to refresh
-            img.src = "";
-            // Small delay to ensure browser clears the old src
-            setTimeout(() => {
-              img.src = storeLogoUrl;
-              img.style.backgroundImage = "none";
-              img.removeAttribute('data-src'); // Remove any custom data attrs
-              console.log(`✓ ${label} image reloaded with new src`);
-            }, 10);
-          }
+        // Force complete DOM refresh by cloning and replacing image elements
+        const replaceImageFresh = (oldImg, imageId) => {
+          if (!oldImg) return;
+          
+          // Create a completely new image element
+          const newImg = document.createElement('img');
+          newImg.id = imageId;
+          newImg.className = oldImg.className;
+          newImg.alt = "Store Logo";
+          newImg.src = storeLogoUrl;
+          newImg.setAttribute('loading', 'eager');
+          newImg.setAttribute('onclick', 'toggleProfileDropdown()');
+          
+          // Copy other attributes
+          oldImg.getAttributeNames().forEach(attr => {
+            if (attr !== 'id' && attr !== 'src' && attr !== 'class' && attr !== 'alt') {
+              newImg.setAttribute(attr, oldImg.getAttribute(attr));
+            }
+          });
+          
+          // Apply inline styles to ensure rendering
+          newImg.style.backgroundImage = "none";
+          newImg.style.visibility = "visible";
+          newImg.style.opacity = "1";
+          newImg.style.display = "block";
+          
+          // Replace in DOM
+          oldImg.parentNode.replaceChild(newImg, oldImg);
+          console.log(`✓ ${imageId} replaced with fresh element and src set`);
+          
+          return newImg;
         };
         
         if (profileImg) {
-          setImageWithReload(profileImg, "Desktop");
-          console.log("  Desktop src attr:", profileImg.getAttribute('src').substring(0, 50) + "...");
+          replaceImageFresh(profileImg, "sellerProfileImage");
         }
         if (profileImgMobile) {
-          setImageWithReload(profileImgMobile, "Mobile");
-          console.log("  Mobile src attr:", profileImgMobile.getAttribute('src').substring(0, 50) + "...");
+          replaceImageFresh(profileImgMobile, "sellerProfileImageMobile");
         }
         
-        // Also clear background-image on ALL profile-icon elements as safety measure
-        document.querySelectorAll('.profile-icon').forEach((el) => {
-          if (el.id === "sellerProfileImage" || el.id === "sellerProfileImageMobile") {
-            return; // Already handled
-          }
-          el.src = "";
-          setTimeout(() => {
-            el.src = storeLogoUrl;
-            el.style.backgroundImage = "none";
-          }, 10);
-        });
+        console.log("Store logo loaded successfully with fresh DOM elements");
         
-        console.log("Store logo loaded successfully on all images");
-        
-        // VERIFY both images have the same src
+        // VERIFY both images have the correct src
         setTimeout(() => {
           const verify1 = document.getElementById("sellerProfileImage")?.src;
           const verify2 = document.getElementById("sellerProfileImageMobile")?.src;
-          const computed1 = window.getComputedStyle(document.getElementById("sellerProfileImage"));
-          const computed2 = window.getComputedStyle(document.getElementById("sellerProfileImageMobile"));
           
           console.log("VERIFICATION after 500ms:");
           console.log("  Desktop src match:", verify1 === storeLogoUrl ? "✓ YES" : "✗ NO");
           console.log("  Mobile src match:", verify2 === storeLogoUrl ? "✓ YES" : "✗ NO");
           console.log("  Both match each other:", verify1 === verify2 ? "✓ YES" : "✗ NO");
-          console.log("  Desktop computed bg-image:", computed1.backgroundImage);
-          console.log("  Mobile computed bg-image:", computed2.backgroundImage);
-          
-          if (verify1 !== storeLogoUrl || verify2 !== storeLogoUrl) {
-            console.error("ERROR: Images were changed! Re-applying...");
-            if (document.getElementById("sellerProfileImage")) {
-              document.getElementById("sellerProfileImage").src = storeLogoUrl;
-            }
-            if (document.getElementById("sellerProfileImageMobile")) {
-              document.getElementById("sellerProfileImageMobile").src = storeLogoUrl;
-            }
-          }
         }, 500);
       } else {
         // No store_logo_url → clear both images
@@ -198,37 +188,19 @@
         console.log("No store logo found, all images cleared");
       }
 
-      // Error handling: if image fails to load, clear it
-      const setErrorHandler = (img, label) => {
+      // Setup load handlers to verify when images load successfully
+      const setupLoadHandler = (img, label) => {
         if (img) {
-          img.onerror = () => {
-            console.warn(`${label} image failed to load, clearing it`);
-            img.src = "";
+          img.onload = () => {
+            console.log(`✓ ${label} image loaded successfully`);
           };
+          // Don't use onerror for DataURLs - they may trigger error event even when valid
+          // DataURLs are already in memory so no network error is possible
         }
       };
       
-      setErrorHandler(profileImg, "Desktop");
-      setErrorHandler(profileImgMobile, "Mobile");
-      
-      // WATCH for changes to mobile image (in case something overwrites it)
-      if (profileImgMobile) {
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-              const newSrc = profileImgMobile.getAttribute('src');
-              console.warn("⚠️ MOBILE IMAGE SRC CHANGED TO:", newSrc);
-              if (newSrc !== storeLogoUrl) {
-                console.warn("RESETTING MOBILE IMAGE SRC back to logo!");
-                profileImgMobile.src = storeLogoUrl;
-              }
-            }
-          });
-        });
-        
-        observer.observe(profileImgMobile, { attributes: true, attributeFilter: ['src'] });
-        console.log("✓ MutationObserver set on mobile image");
-      }
+      setupLoadHandler(profileImg, "Desktop");
+      setupLoadHandler(profileImgMobile, "Mobile");
       
     } catch (error) {
       console.error("ERROR loading seller profile image:", error);
