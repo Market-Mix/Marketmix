@@ -6,6 +6,25 @@
   // Open Offcanvas Menu
   toggler.addEventListener("click", function () {
     offcanvasMenu.classList.add("show");
+    
+    // FIX: Refresh mobile profile image when offcanvas becomes visible
+    // This ensures the image renders properly after the container is visible
+    setTimeout(() => {
+      const mobileProfileImg = document.getElementById("sellerProfileImageMobile");
+      if (mobileProfileImg && mobileProfileImg.src) {
+        // Force re-render by touching the src
+        const currentSrc = mobileProfileImg.src;
+        mobileProfileImg.style.opacity = "0.99"; // Trigger repaint
+        setTimeout(() => {
+          mobileProfileImg.style.opacity = "1";
+          // Force image refresh if it hasn't loaded properly
+          if (!mobileProfileImg.naturalHeight || mobileProfileImg.naturalHeight === 0) {
+            mobileProfileImg.src = currentSrc; // Reload the image
+            console.log("✓ Mobile profile image refreshed for visibility");
+          }
+        }, 10);
+      }
+    }, 50);
   });
 
   // Close Offcanvas Menu
@@ -163,6 +182,23 @@
         if (img) {
           img.onload = () => {
             console.log(`✓ ${label} image loaded successfully`);
+            // Force re-render after image loads
+            img.style.display = "none";
+            setTimeout(() => {
+              img.style.display = "block";
+            }, 0);
+          };
+          
+          // Handle image load errors
+          img.onerror = () => {
+            console.error(`✗ ${label} image failed to load. Attempting retry...`);
+            // Retry after 1 second
+            setTimeout(() => {
+              if (img.src && img.src !== storeLogoUrl) {
+                img.src = storeLogoUrl;
+                console.log(`↻ ${label} image retry initiated`);
+              }
+            }, 1000);
           };
         }
       };
