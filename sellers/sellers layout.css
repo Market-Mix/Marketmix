@@ -296,8 +296,8 @@ body {
 
 
 .profile-icon img {
-  width: 50px;
-  height: 45px;
+  width: 55px;
+  height: 55px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -307,13 +307,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 50px;
-  min-height: 45px;
+  min-width: 55px;
+  min-height: 55px;
 }
 
 .profile-icon {
-  width: 50px;
-  height: 45px;
+  width: 55px;
+  height: 55px;
   border-radius: 50%;
   cursor: pointer;
   display: block !important;
@@ -323,7 +323,7 @@ body {
   z-index: 100 !important;
   position: relative !important;
   flex-shrink: 0;
-  border: 1px solid #dadce0;
+  border: 2px solid #dadce0;
 }
 
 /* Dropdown Menu */
@@ -392,8 +392,8 @@ body {
 
 .offcanvas-body .profile-icon {
   display: block !important;
-  width: 50px !important;
-  height: 45px !important;
+  width: 55px !important;
+  height: 55px !important;
   background: #e8eaed !important;
   background-image: none !important;
   object-fit: cover;
@@ -403,7 +403,7 @@ body {
   visibility: visible !important;
   z-index: 101 !important;
   flex-shrink: 0;
-  border: 1px solid #dadce0;
+  border: 2px solid #dadce0;
 }
 
 
