@@ -278,15 +278,22 @@ body {
   position: relative;
   z-index: 50;
   margin: 1rem 0;
+  width: 100%;
 }
 
 .offcanvas-body .profile-icon {
   display: block !important;
-  width: 50px;
-  height: 45px;
+  width: 50px !important;
+  height: 45px !important;
   background: none !important;
   background-image: none !important;
   object-fit: cover;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 101 !important;
+  flex-shrink: 0;
 }
 
 
