@@ -340,17 +340,29 @@
 
       if (typeof supabase !== 'undefined') {
         try {
+          console.log("🔍 Querying seller_profiles table for user:", userId);
           const { data: profile, error } = await supabase
             .from("seller_profiles")
             .select("*")
             .eq("id", userId)
             .single();
           
+          console.log("📊 Query returned:", { profile, error });
+          
           if (error) {
-            console.error("❌ Error fetching seller profile:", error.message);
+            console.error("❌ Error fetching seller profile:", error.message, error);
+          } else if (!profile) {
+            console.error("❌ No profile data returned (null)");
           } else {
             sellerProfile = profile;
-            console.log("✓ Seller profile fetched - FULL DATA:", profile);
+            console.log("✓ Seller profile fetched - FULL DATA:", JSON.stringify(profile, null, 2));
+            
+            // Log every single field
+            console.log("📋 ALL FIELDS IN PROFILE:");
+            Object.keys(profile).forEach(key => {
+              console.log(`  ${key}: ${profile[key]}`);
+            });
+            
             console.log("✓ Store setup fields:", {
               store_name: sellerProfile?.store_name,
               store_logo_url: sellerProfile?.store_logo_url,
@@ -364,24 +376,27 @@
             });
           }
         } catch (err) {
-          console.error("❌ Exception fetching seller profile:", err.message);
+          console.error("❌ Exception fetching seller profile:", err.message, err);
         }
 
         // Fetch product count
         try {
+          console.log("🔍 Querying products table for seller:", userId);
           const { count, error } = await supabase
             .from("products")
             .select("id", { count: "exact", head: true })
             .eq("seller_id", userId);
           
+          console.log("📊 Products query returned:", { count, error });
+          
           if (error) {
-            console.error("❌ Error fetching product count:", error.message);
+            console.error("❌ Error fetching product count:", error.message, error);
           } else {
             productCount = count || 0;
             console.log("✓ Product count:", productCount);
           }
         } catch (err) {
-          console.error("❌ Exception fetching product count:", err.message);
+          console.error("❌ Exception fetching product count:", err.message, err);
         }
       }
 
