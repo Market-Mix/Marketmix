@@ -347,19 +347,24 @@
             .single();
           
           if (error) {
-            console.log("Could not fetch seller profile:", error.message);
+            console.error("❌ Error fetching seller profile:", error.message);
           } else {
             sellerProfile = profile;
-            console.log("✓ Seller profile fetched:", {
+            console.log("✓ Seller profile fetched - FULL DATA:", profile);
+            console.log("✓ Store setup fields:", {
               store_name: sellerProfile?.store_name,
               store_logo_url: sellerProfile?.store_logo_url,
-              business_address: sellerProfile?.business_address,
-              kyc_document_urls: sellerProfile?.kyc_document_urls,
+              business_address: sellerProfile?.business_address
+            });
+            console.log("✓ KYC field:", {
+              kyc_document_urls: sellerProfile?.kyc_document_urls
+            });
+            console.log("✓ Sales field:", {
               total_sales: sellerProfile?.total_sales
             });
           }
         } catch (err) {
-          console.log("Could not fetch seller profile:", err.message);
+          console.error("❌ Exception fetching seller profile:", err.message);
         }
 
         // Fetch product count
@@ -370,13 +375,13 @@
             .eq("seller_id", userId);
           
           if (error) {
-            console.log("Could not fetch product count:", error.message);
+            console.error("❌ Error fetching product count:", error.message);
           } else {
             productCount = count || 0;
             console.log("✓ Product count:", productCount);
           }
         } catch (err) {
-          console.log("Could not fetch product count:", err.message);
+          console.error("❌ Exception fetching product count:", err.message);
         }
       }
 
