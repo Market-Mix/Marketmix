@@ -104,18 +104,24 @@
   // Update progress tracker
   updateProgressTracker();
 
-  // Refresh progress tracker every 15 seconds
+  // Refresh progress tracker every 5 seconds (more responsive)
   setInterval(() => {
-    console.log("Auto-refreshing progress tracker...");
+    console.log("🔄 Auto-refreshing progress tracker (5s interval)...");
     updateProgressTracker();
-  }, 15000);
+  }, 5000);
 
   // Refresh progress tracker when page becomes visible (user switches back to tab)
   document.addEventListener("visibilitychange", function() {
     if (document.visibilityState === "visible") {
-      console.log("Page became visible - refreshing progress tracker...");
+      console.log("👁️ Page became visible - refreshing progress tracker...");
       updateProgressTracker();
     }
+  });
+
+  // Refresh progress tracker when window gets focus (user returns to window)
+  window.addEventListener("focus", function() {
+    console.log("🪟 Window focused - refreshing progress tracker...");
+    updateProgressTracker();
   });
 
   });
@@ -338,50 +344,80 @@
       // Fetch seller profile
       let sellerProfile = null;
 
+      console.log("🔍 Supabase available?", typeof supabase !== 'undefined');
+
       if (typeof supabase !== 'undefined') {
         try {
-          console.log("🔍 Querying seller_profiles table for user:", userId);
+          console.log("🔍 Using Supabase - Querying seller_profiles table for user:", userId);
           const { data: profile, error } = await supabase
             .from("seller_profiles")
             .select("*")
             .eq("id", userId)
             .single();
           
-          console.log("📊 Query returned:", { profile, error });
+          console.log("📊 Supabase Query returned:", { profile, error });
           
           if (error) {
-            console.error("❌ Error fetching seller profile:", error.message, error);
+            console.error("❌ Supabase Error fetching seller profile:", error.message, error);
           } else if (!profile) {
-            console.error("❌ No profile data returned (null)");
+            console.error("❌ Supabase returned null profile");
           } else {
             sellerProfile = profile;
-            console.log("✓ Seller profile fetched - FULL DATA:", JSON.stringify(profile, null, 2));
+            console.log("✓ Seller profile fetched from Supabase - FULL DATA:", JSON.stringify(profile, null, 2));
             
             // Log every single field
             console.log("📋 ALL FIELDS IN PROFILE:");
             Object.keys(profile).forEach(key => {
               console.log(`  ${key}: ${profile[key]}`);
             });
-            
-            console.log("✓ Store setup fields:", {
-              store_name: sellerProfile?.store_name,
-              store_logo_url: sellerProfile?.store_logo_url,
-              business_address: sellerProfile?.business_address
-            });
-            console.log("✓ KYC field:", {
-              kyc_document_urls: sellerProfile?.kyc_document_urls
-            });
-            console.log("✓ Sales field:", {
-              total_sales: sellerProfile?.total_sales
-            });
           }
         } catch (err) {
-          console.error("❌ Exception fetching seller profile:", err.message, err);
+          console.error("❌ Exception with Supabase:", err.message, err);
         }
-
-        // Fetch product count
+      } else {
+        // Fallback: Use the same API endpoint that works for the logo
         try {
-          console.log("🔍 Querying products table for seller:", userId);
+          console.log("⚠️ Supabase not available - Using API fallback for seller profile");
+          const token = localStorage.getItem('token');
+          const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
+            ? CONFIG.API_BASE_URL 
+            : 'https://marketmix-backend.onrender.com/api';
+
+          const response = await fetch(`${apiUrl}/seller/profile`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            console.error("❌ API Error:", response.status);
+          } else {
+            const data = await response.json();
+            console.log("📊 API Response:", data);
+            
+            if (data?.data?.seller?.profile) {
+              sellerProfile = {
+                store_name: data.data.seller.profile.storeName,
+                store_logo_url: data.data.seller.profile.storeLogo,
+                business_address: data.data.seller.profile.businessAddress,
+                kyc_document_urls: data.data.seller.profile.kycDocuments,
+                total_sales: data.data.seller.profile.totalSales || 0
+              };
+              
+              console.log("✓ Seller profile fetched from API - DATA:", sellerProfile);
+            }
+          }
+        } catch (err) {
+          console.error("❌ Exception with API fallback:", err.message);
+        }
+      }
+
+      // Fetch product count
+      if (typeof supabase !== 'undefined') {
+        try {
+          console.log("🔍 Using Supabase - Querying products table for seller:", userId);
           const { count, error } = await supabase
             .from("products")
             .select("id", { count: "exact", head: true })
@@ -393,11 +429,13 @@
             console.error("❌ Error fetching product count:", error.message, error);
           } else {
             productCount = count || 0;
-            console.log("✓ Product count:", productCount);
+            console.log("✓ Product count from Supabase:", productCount);
           }
         } catch (err) {
           console.error("❌ Exception fetching product count:", err.message, err);
         }
+      } else {
+        console.log("⚠️ Supabase not available - product count check skipped");
       }
 
       // Check conditions
