@@ -395,15 +395,22 @@
             console.error("❌ API Error:", response.status);
           } else {
             const data = await response.json();
-            console.log("📊 API Response:", data);
+            console.log("📊 API Response - FULL STRUCTURE:", JSON.stringify(data, null, 2));
+            
+            // Log the nested data structure
+            if (data?.data?.seller) {
+              console.log("📋 data.data.seller fields:", Object.keys(data.data.seller));
+              console.log("📋 data.data.seller.profile fields:", data.data.seller.profile ? Object.keys(data.data.seller.profile) : "NULL");
+              console.log("📋 Full data.data.seller object:", JSON.stringify(data.data.seller, null, 2));
+            }
             
             if (data?.data?.seller?.profile) {
               sellerProfile = {
-                store_name: data.data.seller.profile.storeName,
-                store_logo_url: data.data.seller.profile.storeLogo,
-                business_address: data.data.seller.profile.businessAddress,
-                kyc_document_urls: data.data.seller.profile.kycDocuments,
-                total_sales: data.data.seller.profile.totalSales || 0
+                store_name: data.data.seller.profile.storeName || data.data.seller.profile.store_name || data.data.seller.businessName,
+                store_logo_url: data.data.seller.profile.storeLogo || data.data.seller.profile.store_logo_url,
+                business_address: data.data.seller.profile.businessAddress || data.data.seller.profile.business_address,
+                kyc_document_urls: data.data.seller.profile.kycDocuments || data.data.seller.profile.kyc_document_urls,
+                total_sales: data.data.seller.profile.totalSales || data.data.seller.total_sales || 0
               };
               
               console.log("✓ Seller profile fetched from API - DATA:", sellerProfile);
