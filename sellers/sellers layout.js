@@ -282,6 +282,10 @@
       let progress = 20;
       let messageHTML = '<a href="sellers setting.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
       let backgroundColor = "#ef4444"; // red
+      let storeSetupCompleted = false;
+      let kycCompleted = false;
+      let productCount = 0;
+      let totalSales = 0;
 
       // Get authenticated user
       let userId = null;
@@ -289,6 +293,7 @@
         try {
           const { data: { user } } = await supabase.auth.getUser();
           userId = user?.id;
+          console.log("✓ Got user ID from Supabase:", userId);
         } catch (err) {
           console.log("Could not get Supabase user:", err.message);
         }
@@ -301,6 +306,7 @@
           try {
             const localUser = JSON.parse(localUserStr);
             userId = localUser?.id;
+            console.log("✓ Got user ID from localStorage:", userId);
           } catch (err) {
             console.log("Could not parse localStorage user:", err.message);
           }
@@ -308,81 +314,110 @@
       }
 
       if (!userId) {
-        console.warn("No user ID found");
+        console.warn("No user ID found - keeping default progress");
+        progressBar.style.width = progress + "%";
+        progressBar.style.backgroundColor = backgroundColor;
+        progressText.innerHTML = messageHTML;
         return;
       }
 
       // Fetch seller profile
       let sellerProfile = null;
-      let productCount = 0;
 
       if (typeof supabase !== 'undefined') {
         try {
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from("seller_profiles")
             .select("*")
             .eq("id", userId)
             .single();
           
-          sellerProfile = profile;
+          if (error) {
+            console.log("Could not fetch seller profile:", error.message);
+          } else {
+            sellerProfile = profile;
+            console.log("✓ Seller profile fetched:", {
+              store_name: sellerProfile?.store_name,
+              store_logo_url: sellerProfile?.store_logo_url,
+              business_address: sellerProfile?.business_address,
+              kyc_document_urls: sellerProfile?.kyc_document_urls,
+              total_sales: sellerProfile?.total_sales
+            });
+          }
         } catch (err) {
           console.log("Could not fetch seller profile:", err.message);
         }
 
         // Fetch product count
         try {
-          const { count } = await supabase
+          const { count, error } = await supabase
             .from("products")
             .select("id", { count: "exact", head: true })
             .eq("seller_id", userId);
           
-          productCount = count || 0;
+          if (error) {
+            console.log("Could not fetch product count:", error.message);
+          } else {
+            productCount = count || 0;
+            console.log("✓ Product count:", productCount);
+          }
         } catch (err) {
           console.log("Could not fetch product count:", err.message);
         }
       }
 
-      // Check store setup completion
-      const storeSetupCompleted = 
-        sellerProfile?.store_name && 
-        sellerProfile?.store_logo_url && 
-        sellerProfile?.business_address;
+      // Check conditions
+      storeSetupCompleted = 
+        !!(sellerProfile?.store_name && 
+           sellerProfile?.store_logo_url && 
+           sellerProfile?.business_address);
+      
+      kycCompleted = !!(sellerProfile?.kyc_document_urls);
+      totalSales = sellerProfile?.total_sales || 0;
 
-      // Check KYC completion
-      const kycCompleted = sellerProfile?.kyc_document_urls !== null;
+      console.log("Checking conditions:", {
+        storeSetupCompleted,
+        kycCompleted,
+        productCount,
+        totalSales
+      });
 
-      // Get sales count
-      const totalSales = sellerProfile?.total_sales || 0;
-
-      // Determine progress level with HTML links
-      if (storeSetupCompleted) {
+      // Determine progress level - check in order
+      if (!storeSetupCompleted) {
+        progress = 20;
+        messageHTML = '<a href="sellers setting.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
+        backgroundColor = "#ef4444"; // red
+        console.log("Stage 1: Store setup needed");
+      } 
+      else if (!kycCompleted) {
         progress = 40;
         messageHTML = '<a href="kyc-verification.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete KYC HERE</a>';
         backgroundColor = "#f97316"; // orange
+        console.log("Stage 2: KYC needed");
       }
-
-      if (kycCompleted) {
+      else if (productCount < 1) {
         progress = 60;
         messageHTML = '<a href="sellers product.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Add your first product HERE</a>';
         backgroundColor = "#eab308"; // yellow
+        console.log("Stage 3: First product needed");
       }
-
-      if (productCount >= 1) {
+      else if (totalSales < 1) {
         progress = 75;
         messageHTML = 'Make your first sale';
         backgroundColor = "#86efac"; // lightgreen
+        console.log("Stage 4: First sale needed");
       }
-
-      if (totalSales >= 1) {
+      else if (totalSales < 10) {
         progress = 90;
         messageHTML = 'Reach 10 sales';
         backgroundColor = "#22c55e"; // green
+        console.log("Stage 5: Need 10 sales");
       }
-
-      if (totalSales >= 10) {
+      else {
         progress = 100;
         messageHTML = 'Verified Seller ✓';
         backgroundColor = "#3b82f6"; // blue
+        console.log("Stage 6: Verified seller");
       }
 
       // Update progress bar
@@ -392,13 +427,10 @@
       // Update progress text with HTML
       progressText.innerHTML = messageHTML;
 
-      console.log("Progress updated:", { 
-        progress, 
-        message: messageHTML, 
-        storeSetupCompleted, 
-        kycCompleted, 
-        productCount, 
-        totalSales 
+      console.log("✓ Progress tracker updated:", { 
+        progress,
+        stage: messageHTML,
+        color: backgroundColor
       });
 
     } catch (error) {
@@ -528,31 +560,6 @@ setInterval(() => {
   tipIndex = (tipIndex + 1) % tips.length;
   tipText.textContent = tips[tipIndex];
 }, 3000);
-
-// Progress Tracker Demo - You can customize the steps here
-const progressBar = document.getElementById('progressBar');
-const progressText = document.getElementById('progress-text');
-
-// Simulate progress steps for demo (you can tie this to real data later)
-let progressSteps = [
-  { text: "Profile setup: 40%", percent: 40 },
-  { text: "First product added: 60%", percent: 60 },
-  { text: "First sale made: 80%", percent: 80 },
-  { text: "100+ sales milestone: 100%", percent: 100 },
-];
-
-let currentStep = 0;
-
-function updateProgress() {
-  let step = progressSteps[currentStep];
-  progressBar.style.width = step.percent + '%';
-  progressText.textContent = step.text;
-  currentStep = (currentStep + 1) % progressSteps.length;
-}
-
-// Update progress every 8 seconds for demo
-updateProgress();
-setInterval(updateProgress, 8000);
 
 
 
