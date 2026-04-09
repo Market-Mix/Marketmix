@@ -503,6 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
           businessAddress:  addressInput.value.trim(),
           website:          websiteInput.value.trim(),
           category:         selectedCategory,
+          storeLogoUrl:     logoPreview.src || null,
           facebook:  document.getElementById('social-facebook').value.trim(),
           twitter:   document.getElementById('social-x').value.trim(),
           tiktok:    document.getElementById('social-tiktok').value.trim(),

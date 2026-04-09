@@ -86,7 +86,7 @@
       }
 
       const data = await response.json();
-      const storeLogoUrl = data?.data?.seller?.profile?.storeLogo;
+      const storeLogoUrl = data?.seller?.profile?.storeLogo;
 
       if (storeLogoUrl && storeLogoUrl.trim() !== '') {
         // Seller has store_logo_url → display it
