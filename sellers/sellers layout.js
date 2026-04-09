@@ -55,6 +55,13 @@
       console.log("Desktop image element found:", !!profileImg);
       console.log("Mobile image element found:", !!profileImgMobile);
       
+      // DEBUG: Check for ALL profile-icon elements
+      const allProfileIcons = document.querySelectorAll('.profile-icon');
+      console.log("Total .profile-icon elements in DOM:", allProfileIcons.length);
+      allProfileIcons.forEach((el, idx) => {
+        console.log(`  [${idx}] src="${el.src}" bg-image="${el.style.backgroundImage}"`);
+      });
+      
       // Guard: at least one element must exist
       if (!profileImg && !profileImgMobile) {
         console.error("ERROR: Profile image elements not found in DOM");
@@ -105,24 +112,51 @@
         // Seller has store_logo_url → display it on both
         if (profileImg) {
           profileImg.src = storeLogoUrl;
-          console.log("✓ Desktop image src updated");
+          profileImg.style.backgroundImage = "none";  // Clear any background-image CSS
+          console.log("✓ Desktop image src updated, bg-image cleared");
+          console.log("  Desktop src attr:", profileImg.getAttribute('src').substring(0, 50) + "...");
         }
         if (profileImgMobile) {
           profileImgMobile.src = storeLogoUrl;
-          console.log("✓ Mobile image src updated");
+          profileImgMobile.style.backgroundImage = "none";  // Clear any background-image CSS
+          console.log("✓ Mobile image src updated, bg-image cleared");
+          console.log("  Mobile src attr:", profileImgMobile.getAttribute('src').substring(0, 50) + "...");
         }
-        console.log("Store logo loaded successfully on both images");
+        
+        // Also clear background-image on ALL profile-icon elements as safety measure
+        document.querySelectorAll('.profile-icon').forEach((el) => {
+          if (el.id === "sellerProfileImage" || el.id === "sellerProfileImageMobile") {
+            return; // Already handled
+          }
+          el.style.backgroundImage = "none";
+          el.src = storeLogoUrl;
+          console.log("  Other .profile-icon also updated");
+        });
+        
+        console.log("Store logo loaded successfully on all images");
       } else {
         // No store_logo_url → clear both images
         if (profileImg) {
           profileImg.src = "";
+          profileImg.style.backgroundImage = "none";
           console.log("✓ Desktop image cleared");
         }
         if (profileImgMobile) {
           profileImgMobile.src = "";
+          profileImgMobile.style.backgroundImage = "none";
           console.log("✓ Mobile image cleared");
         }
-        console.log("No store logo found, both images cleared");
+        
+        // Also clear all other profile-icon elements
+        document.querySelectorAll('.profile-icon').forEach((el) => {
+          if (el.id === "sellerProfileImage" || el.id === "sellerProfileImageMobile") {
+            return;
+          }
+          el.src = "";
+          el.style.backgroundImage = "none";
+        });
+        
+        console.log("No store logo found, all images cleared");
       }
 
       // Error handling: if image fails to load, clear it
