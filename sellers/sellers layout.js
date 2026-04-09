@@ -59,11 +59,11 @@
       // Get token from localStorage
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log("No auth token found, keeping default image");
+        console.log("No auth token found, keeping empty image");
         return;
       }
 
-      console.log("Fetching seller profile...");
+      console.log("Fetching seller profile for store logo...");
       
       // Fetch seller profile from API
       const response = await fetch(`${CONFIG.API_BASE_URL}/seller/profile`, {
@@ -78,20 +78,26 @@
       }
 
       const data = await response.json();
-      const avatarUrl = data.data?.seller?.avatarUrl;
+      const storeLogoUrl = data.data?.seller?.profile?.storeLogo;
 
-      if (avatarUrl) {
-        // Seller has avatar_url → display it
-        profileImg.src = avatarUrl;
-        console.log("Loaded avatar:", avatarUrl);
+      if (storeLogoUrl && storeLogoUrl.trim() !== '') {
+        // Seller has store_logo_url → display it
+        profileImg.src = storeLogoUrl;
+        console.log("Store logo:", storeLogoUrl);
       } else {
-        // No avatar_url → show default placeholder (SVG circle with user icon)
-        profileImg.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23e0e0e0'/%3E%3Ccircle cx='50' cy='30' r='15' fill='%23999' /%3E%3Cpath d='M 30 70 Q 30 55 50 55 Q 70 55 70 70 Q 70 80 50 80 Q 30 80 30 70' fill='%23999'/%3E%3C/svg%3E";
-        console.log("No avatar URL found, using default placeholder");
+        // No store_logo_url → show empty or default placeholder (SVG store icon)
+        profileImg.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='30' width='80' height='60' fill='%23e0e0e0' stroke='%23999' stroke-width='2'/%3E%3Crect x='20' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Crect x='40' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Crect x='60' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Cline x1='45' y1='65' x2='55' y2='65' stroke='%23999' stroke-width='2'/%3E%3C/svg%3E";
+        console.log("No store logo found, using default store placeholder");
       }
+
+      // Error handling: if image fails to load, use default placeholder
+      profileImg.onerror = () => {
+        profileImg.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='30' width='80' height='60' fill='%23e0e0e0' stroke='%23999' stroke-width='2'/%3E%3Crect x='20' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Crect x='40' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Crect x='60' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Cline x1='45' y1='65' x2='55' y2='65' stroke='%23999' stroke-width='2'/%3E%3C/svg%3E";
+        console.log("Store logo failed to load, using default placeholder");
+      };
     } catch (error) {
       console.error("Error loading seller profile image:", error);
-      // Keep the default image on error
+      // Keep the empty image on error
     }
   }
 
