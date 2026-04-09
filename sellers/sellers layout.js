@@ -405,15 +405,31 @@
             }
             
             if (data?.data?.seller?.profile) {
+              const profile = data.data.seller.profile;
               sellerProfile = {
-                store_name: data.data.seller.profile.storeName || data.data.seller.profile.store_name || data.data.seller.businessName,
-                store_logo_url: data.data.seller.profile.storeLogo || data.data.seller.profile.store_logo_url,
-                business_address: data.data.seller.profile.businessAddress || data.data.seller.profile.business_address,
-                kyc_document_urls: data.data.seller.profile.kycDocuments || data.data.seller.profile.kyc_document_urls,
-                total_sales: data.data.seller.profile.totalSales || data.data.seller.total_sales || 0
+                store_name: profile.businessName || profile.storeName || profile.store_name,
+                store_logo_url: profile.storeLogo || profile.store_logo_url,
+                business_address: profile.businessAddress || profile.business_address,
+                kyc_document_urls: profile.kycDocumentUrls || profile.kyc_document_urls,
+                kyc_verified: profile.isVerified || false,
+                total_sales: profile.totalSales || data.data.seller.totalSales || 0,
+                product_count: data.data.seller.productCount || 0
               };
               
-              console.log("✓ Seller profile fetched from API - DATA:", sellerProfile);
+              console.log("✓ Seller profile fetched from API - RAW DATA:", {
+                businessName: profile.businessName,
+                businessAddress: profile.businessAddress,
+                storeLogo: profile.storeLogo,
+                kycDocumentUrls: profile.kycDocumentUrls,
+                isVerified: profile.isVerified,
+                totalSales: profile.totalSales,
+                productCount: data.data.seller.productCount
+              });
+              console.log("✓ MAPPED DATA:", sellerProfile);
+              
+              // Also update productCount variable from API
+              productCount = data.data.seller.productCount || 0;
+              console.log("✓ Product count from API:", productCount);
             }
           }
         } catch (err) {
@@ -451,12 +467,19 @@
            sellerProfile?.store_logo_url && 
            sellerProfile?.business_address);
       
-      kycCompleted = !!(sellerProfile?.kyc_document_urls);
+      // KYC is complete if seller is verified OR if kycDocumentUrls has been filled with data
+      kycCompleted = sellerProfile?.kyc_verified || 
+        (sellerProfile?.kyc_document_urls && 
+         (sellerProfile.kyc_document_urls.category || 
+          (sellerProfile.kyc_document_urls.social_links && Object.values(sellerProfile.kyc_document_urls.social_links).some(v => v))));
+      
       totalSales = sellerProfile?.total_sales || 0;
 
       console.log("Checking conditions:", {
         storeSetupCompleted,
         kycCompleted,
+        kyc_verified: sellerProfile?.kyc_verified,
+        kycDocumentUrls: sellerProfile?.kyc_document_urls,
         productCount,
         totalSales
       });
