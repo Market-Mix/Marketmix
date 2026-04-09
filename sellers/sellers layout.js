@@ -280,7 +280,7 @@
       }
 
       let progress = 20;
-      let messageHTML = '<a href="sellers setting.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
+      let messageHTML = '<a href="setup-store.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
       let backgroundColor = "#ef4444"; // red
       let storeSetupCompleted = false;
       let kycCompleted = false;
