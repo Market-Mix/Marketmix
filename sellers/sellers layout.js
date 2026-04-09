@@ -6,25 +6,6 @@
   // Open Offcanvas Menu
   toggler.addEventListener("click", function () {
     offcanvasMenu.classList.add("show");
-    
-    // FIX: Refresh mobile profile image when offcanvas becomes visible
-    // This ensures the image renders properly after the container is visible
-    setTimeout(() => {
-      const mobileProfileImg = document.getElementById("sellerProfileImageMobile");
-      if (mobileProfileImg && mobileProfileImg.src) {
-        // Force re-render by touching the src
-        const currentSrc = mobileProfileImg.src;
-        mobileProfileImg.style.opacity = "0.99"; // Trigger repaint
-        setTimeout(() => {
-          mobileProfileImg.style.opacity = "1";
-          // Force image refresh if it hasn't loaded properly
-          if (!mobileProfileImg.naturalHeight || mobileProfileImg.naturalHeight === 0) {
-            mobileProfileImg.src = currentSrc; // Reload the image
-            console.log("✓ Mobile profile image refreshed for visibility");
-          }
-        }, 10);
-      }
-    }, 50);
   });
 
   // Close Offcanvas Menu
@@ -110,31 +91,13 @@
   async function loadSellerProfileImage() {
     try {
       const profileImg = document.getElementById("sellerProfileImage");
-      const profileImgMobile = document.getElementById("sellerProfileImageMobile");
       
       console.log("=== LOADING SELLER PROFILE IMAGE ===");
       console.log("Desktop image element found:", !!profileImg);
-      console.log("Mobile image element found:", !!profileImgMobile);
       
-      // DEBUG: Check for ALL profile-icon elements
-      const allProfileIcons = document.querySelectorAll('.profile-icon');
-      console.log("Total .profile-icon elements in DOM:", allProfileIcons.length);
-      allProfileIcons.forEach((el, idx) => {
-        const parent = el.parentElement;
-        const parentComputed = window.getComputedStyle(parent);
-        const elComputed = window.getComputedStyle(el);
-        
-        console.log(`  [${idx}] id="${el.id}" src="${el.src}"`);
-        console.log(`       offsetWidth: ${el.offsetWidth}, offsetHeight: ${el.offsetHeight}`);
-        console.log(`       display: ${elComputed.display}, visibility: ${elComputed.visibility}`);
-        console.log(`       parent: ${parent.tagName} class="${parent.className}"`);
-        console.log(`       parent offsetWidth: ${parent.offsetWidth}, offsetHeight: ${parent.offsetHeight}`);
-        console.log(`       parent display: ${parentComputed.display}, visible: ${el.offsetHeight > 0 ? 'YES' : 'NO'}`);
-      });
-      
-      // Guard: at least one element must exist
-      if (!profileImg && !profileImgMobile) {
-        console.error("ERROR: Profile image elements not found in DOM");
+      // Guard: element must exist
+      if (!profileImg) {
+        console.error("ERROR: Desktop profile image element not found in DOM");
         return;
       }
 
@@ -171,82 +134,40 @@
 
       console.log("Store logo URL extracted:", storeLogoUrl ? storeLogoUrl.substring(0, 50) + "..." : "NULL/EMPTY");
 
-      // Set BOTH images to the SAME value
+      // Set desktop image
       if (storeLogoUrl && storeLogoUrl.trim() !== '') {
-        // Simple direct approach - don't replace element, just update src
-        const setImageSrc = (img, label) => {
-          if (img) {
-            img.src = storeLogoUrl;
-            img.style.backgroundImage = "none";
-            
-            const computed = window.getComputedStyle(img);
-            console.log(`${label} image src updated. Computed display: ${computed.display}, opacity: ${computed.opacity}`);
-          }
-        };
+        profileImg.src = storeLogoUrl;
+        profileImg.style.backgroundImage = "none";
         
-        if (profileImg) {
-          setImageSrc(profileImg, "Desktop");
-        }
-        if (profileImgMobile) {
-          setImageSrc(profileImgMobile, "Mobile");
-        }
+        const computed = window.getComputedStyle(profileImg);
+        console.log(`✓ Desktop image src updated. Display: ${computed.display}, Opacity: ${computed.opacity}`);
         
-        console.log("Store logo set on both images");
-        
-        // VERIFY both images
-        setTimeout(() => {
-          const verify1 = document.getElementById("sellerProfileImage")?.src;
-          const verify2 = document.getElementById("sellerProfileImageMobile")?.src;
-          
-          const mobileEl = document.getElementById("sellerProfileImageMobile");
-          const mobileParent = mobileEl?.parentElement;
-          const mobileComputed = window.getComputedStyle(mobileEl);
-          const parentComputed = window.getComputedStyle(mobileParent);
-          
-          console.log("VERIFICATION after 500ms:");
-          console.log("  Desktop src match:", verify1 === storeLogoUrl ? "✓ YES" : "✗ NO");
-          console.log("  Mobile src match:", verify2 === storeLogoUrl ? "✓ YES" : "✗ NO");
-          console.log("  Both match each other:", verify1 === verify2 ? "✓ YES" : "✗ NO");
-          console.log("  Mobile element width:", mobileEl?.offsetWidth, "height:", mobileEl?.offsetHeight);
-          console.log("  Mobile computed display:", mobileComputed.display, "opacity:", mobileComputed.opacity);
-          console.log("  Mobile parent size - width:", mobileParent?.offsetWidth, "height:", mobileParent?.offsetHeight);
-          console.log("  Mobile parent display:", parentComputed.display);
-        }, 500);
-      } else {
-        // No store_logo_url → clear both images
-        if (profileImg) profileImg.src = "";
-        if (profileImgMobile) profileImgMobile.src = "";
-        console.log("No store logo found, images cleared");
-      }
-      
-      // Setup load handlers
-      const setupLoadHandler = (img, label) => {
-        if (img) {
-          img.onload = () => {
-            console.log(`✓ ${label} image loaded successfully`);
+        // Setup load handler
+        profileImg.onload = () => {
+          console.log(`✓ Desktop image loaded successfully`);
             // Force re-render after image loads
-            img.style.display = "none";
+            profileImg.style.opacity = "0.99";
             setTimeout(() => {
-              img.style.display = "block";
-            }, 0);
+              profileImg.style.opacity = "1";
+            }, 10);
           };
           
           // Handle image load errors
-          img.onerror = () => {
-            console.error(`✗ ${label} image failed to load. Attempting retry...`);
+          profileImg.onerror = () => {
+            console.error(`✗ Desktop image failed to load. Attempting retry...`);
             // Retry after 1 second
             setTimeout(() => {
-              if (img.src && img.src !== storeLogoUrl) {
-                img.src = storeLogoUrl;
-                console.log(`↻ ${label} image retry initiated`);
+              if (profileImg.src && profileImg.src !== storeLogoUrl) {
+                profileImg.src = storeLogoUrl;
+                console.log(`↻ Desktop image retry initiated`);
               }
             }, 1000);
           };
-        }
-      };
-      
-      setupLoadHandler(profileImg, "Desktop");
-      setupLoadHandler(profileImgMobile, "Mobile");
+      } else {
+        // No store logo found
+        profileImg.src = "";
+        console.log("No store logo found, image cleared");
+      }
       
     } catch (error) {
       console.error("ERROR loading seller profile image:", error);
