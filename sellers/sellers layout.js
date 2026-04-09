@@ -104,6 +104,20 @@
   // Update progress tracker
   updateProgressTracker();
 
+  // Refresh progress tracker every 15 seconds
+  setInterval(() => {
+    console.log("Auto-refreshing progress tracker...");
+    updateProgressTracker();
+  }, 15000);
+
+  // Refresh progress tracker when page becomes visible (user switches back to tab)
+  document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState === "visible") {
+      console.log("Page became visible - refreshing progress tracker...");
+      updateProgressTracker();
+    }
+  });
+
   });
 
  function toggleProfileDropdown() {
