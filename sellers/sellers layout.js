@@ -51,9 +51,13 @@
       const profileImg = document.getElementById("sellerProfileImage");
       const profileImgMobile = document.getElementById("sellerProfileImageMobile");
       
+      console.log("=== LOADING SELLER PROFILE IMAGE ===");
+      console.log("Desktop image element found:", !!profileImg);
+      console.log("Mobile image element found:", !!profileImgMobile);
+      
       // Guard: at least one element must exist
       if (!profileImg && !profileImgMobile) {
-        console.log("Profile image elements not found");
+        console.error("ERROR: Profile image elements not found in DOM");
         return;
       }
 
@@ -63,6 +67,9 @@
       const token = localStorage.getItem('token');
       if (!token) {
         console.log("No auth token found");
+        // Clear both images
+        if (profileImg) profileImg.src = "";
+        if (profileImgMobile) profileImgMobile.src = "";
         return;
       }
 
@@ -81,39 +88,63 @@
 
       if (!response.ok) {
         console.warn(`Failed to fetch seller profile: ${response.status}`);
-        // Neither show placeholder nor set empty - leave as is
+        // Clear both images on error
+        if (profileImg) profileImg.src = "";
+        if (profileImgMobile) profileImgMobile.src = "";
         return;
       }
 
       const data = await response.json();
-      console.log("Seller profile response:", data);
+      console.log("Seller profile API response:", data);
       const storeLogoUrl = data?.data?.seller?.profile?.storeLogo;
 
+      console.log("Store logo URL extracted:", storeLogoUrl ? storeLogoUrl.substring(0, 50) + "..." : "NULL/EMPTY");
+
+      // Set BOTH images to the SAME value
       if (storeLogoUrl && storeLogoUrl.trim() !== '') {
-        // Seller has store_logo_url → display it
-        if (profileImg) profileImg.src = storeLogoUrl;
-        if (profileImgMobile) profileImgMobile.src = storeLogoUrl;
-        console.log("Store logo loaded:", storeLogoUrl);
+        // Seller has store_logo_url → display it on both
+        if (profileImg) {
+          profileImg.src = storeLogoUrl;
+          console.log("✓ Desktop image src updated");
+        }
+        if (profileImgMobile) {
+          profileImgMobile.src = storeLogoUrl;
+          console.log("✓ Mobile image src updated");
+        }
+        console.log("Store logo loaded successfully on both images");
       } else {
-        // No store_logo_url → keep images empty (no placeholder)
-        console.log("No store logo found, keeping images empty");
+        // No store_logo_url → clear both images
+        if (profileImg) {
+          profileImg.src = "";
+          console.log("✓ Desktop image cleared");
+        }
+        if (profileImgMobile) {
+          profileImgMobile.src = "";
+          console.log("✓ Mobile image cleared");
+        }
+        console.log("No store logo found, both images cleared");
       }
 
-      // Error handling: if image fails to load, just leave it empty
-      const setErrorHandler = (img) => {
+      // Error handling: if image fails to load, clear it
+      const setErrorHandler = (img, label) => {
         if (img) {
           img.onerror = () => {
-            // Don't set a placeholder, keep empty
-            console.log("Store logo failed to load, keeping image empty");
+            console.warn(`${label} image failed to load, clearing it`);
+            img.src = "";
           };
         }
       };
       
-      setErrorHandler(profileImg);
-      setErrorHandler(profileImgMobile);
+      setErrorHandler(profileImg, "Desktop");
+      setErrorHandler(profileImgMobile, "Mobile");
+      
     } catch (error) {
-      console.error("Error loading seller profile image:", error);
-      // Do nothing on error - leave images empty
+      console.error("ERROR loading seller profile image:", error);
+      // Clear both images on error
+      const profileImg = document.getElementById("sellerProfileImage");
+      const profileImgMobile = document.getElementById("sellerProfileImageMobile");
+      if (profileImg) profileImg.src = "";
+      if (profileImgMobile) profileImgMobile.src = "";
     }
   }
 
