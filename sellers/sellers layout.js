@@ -98,6 +98,9 @@
   // Load seller profile image
   loadSellerProfileImage();
 
+  // Update welcome text with seller name
+  updateWelcomeText();
+
   });
 
  function toggleProfileDropdown() {
@@ -189,6 +192,76 @@
       
     } catch (error) {
       console.error("ERROR loading seller profile image:", error);
+    }
+  }
+
+  // ===== UPDATE WELCOME TEXT WITH SELLER NAME =====
+  async function updateWelcomeText() {
+    try {
+      const welcomeTextElement = document.getElementById("welcomeText");
+      if (!welcomeTextElement) {
+        console.warn("Welcome text element not found");
+        return;
+      }
+
+      let displayName = "Seller";
+      
+      // Try to get Supabase user
+      let user = null;
+      if (typeof supabase !== 'undefined') {
+        try {
+          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+          user = supabaseUser;
+        } catch (err) {
+          console.log("Could not get Supabase user:", err.message);
+        }
+      }
+
+      // Fallback to localStorage if Supabase fails
+      if (!user) {
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          try {
+            user = JSON.parse(localUserStr);
+          } catch (err) {
+            console.log("Could not parse localStorage user:", err.message);
+          }
+        }
+      }
+
+      // Determine display name with priority
+      if (user?.user_metadata?.firstName) {
+        displayName = user.user_metadata.firstName;
+        console.log("Using firstName from user metadata:", displayName);
+      } else if (user?.firstName) {
+        displayName = user.firstName;
+        console.log("Using firstName from user object:", displayName);
+      } else if (user?.id) {
+        // Try to fetch businessName from seller_profiles
+        try {
+          if (typeof supabase !== 'undefined') {
+            const { data: sellerProfile } = await supabase
+              .from("seller_profiles")
+              .select("businessName")
+              .eq("id", user.id)
+              .single();
+            
+            if (sellerProfile?.businessName) {
+              displayName = sellerProfile.businessName;
+              console.log("Using businessName from seller_profiles:", displayName);
+            }
+          }
+        } catch (err) {
+          console.log("Could not fetch seller profile:", err.message);
+        }
+      }
+
+      // Update the welcome text
+      welcomeTextElement.textContent = `Welcome, ${displayName}!`;
+      console.log("Welcome text updated to:", displayName);
+      
+    } catch (error) {
+      console.error("ERROR updating welcome text:", error);
     }
   }
 
