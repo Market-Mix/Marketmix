@@ -209,6 +209,12 @@ body {
   height: 45px;
   border-radius: 50%;
   cursor: pointer;
+  display: block !important;
+  background: none !important;
+  background-image: none !important;
+  object-fit: cover;
+  z-index: 50;
+  position: relative;
 }
 
 /* Dropdown Menu */
@@ -262,6 +268,25 @@ body {
   gap: 15px; /* Space between buttons */
   justify-content: center; /* Centering the buttons */
   margin-top: 20px;
+}
+
+/* Ensure profile container in offcanvas is visible and properly styled */
+.offcanvas-body .profile-container {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 50;
+  margin: 1rem 0;
+}
+
+.offcanvas-body .profile-icon {
+  display: block !important;
+  width: 50px;
+  height: 45px;
+  background: none !important;
+  background-image: none !important;
+  object-fit: cover;
 }
 
 
