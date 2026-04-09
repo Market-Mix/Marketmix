@@ -51,6 +51,48 @@
     });
   });
 
+  // ========== MOBILE LOGO TOGGLE FUNCTIONALITY ==========
+  const mobileLogoToggle = document.getElementById("mobileLogoToggle");
+  const mobileLogoPanel = document.getElementById("mobileLogoPanel");
+  const mobileLogoPanelClose = document.getElementById("mobileLogoPanelClose");
+
+  // Open Mobile Logo Panel
+  if (mobileLogoToggle) {
+    mobileLogoToggle.addEventListener("click", function () {
+      mobileLogoPanel.classList.add("show");
+    });
+  }
+
+  // Close Mobile Logo Panel
+  if (mobileLogoPanelClose) {
+    mobileLogoPanelClose.addEventListener("click", function () {
+      mobileLogoPanel.classList.remove("show");
+    });
+  }
+
+  // Close Mobile Logo Panel when clicking outside
+  document.addEventListener("click", function (event) {
+    if (mobileLogoPanel && !mobileLogoPanel.contains(event.target) && !mobileLogoToggle.contains(event.target)) {
+      mobileLogoPanel.classList.remove("show");
+    }
+  });
+
+  // Close Mobile Logo Panel when clicking any menu link
+  if (mobileLogoPanel) {
+    document.querySelectorAll('.mobile-logo-nav-links a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileLogoPanel.classList.remove('show');
+      });
+    });
+  }
+
+  // Prevent closing when clicking inside the panel
+  if (mobileLogoPanel) {
+    mobileLogoPanel.addEventListener("click", function (event) {
+      event.stopPropagation();
+    });
+  }
+
   // Initialize product badge if available
   initializeProductBadge();
 

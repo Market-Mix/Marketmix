@@ -15,7 +15,10 @@
     <div class="nav-container">
       <a href="#" class="brand-logo">MarketMix</a>
       <button class="navbar-toggler" id="navbar-toggler" type="button" aria-label="Toggle navigation">
-<img src="" class="navbar-toggler-icon" alt="">
+        <img src="" class="navbar-toggler-icon" alt="">
+      </button>
+      <button class="mobile-logo-toggle" id="mobileLogoToggle" aria-label="Toggle profile menu" title="Menu">
+        <i class="fas fa-bars"></i>
       </button>
       <div class="nav-large">
         <ul class="nav-list">
@@ -72,17 +75,26 @@
       <div class="nav-actions">
      
       </div>
-      
-        <div class="icon-container">
-          <div class="profile-container">
-            <img id="sellerProfileImageMobile" src="" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()">
-            <div class="profile-dropdown" id="profileDropdownMobile">
-              <a href="#">Help & Support</a>
-              <a href="#">Logout</a>
-            </div>
-          </div>
-        </div>
-      </div>
+    </div>
+  </div>
+  
+  <!-- Mobile Logo Slide-out Panel -->
+  <div class="mobile-logo-panel" id="mobileLogoPanel">
+    <div class="mobile-logo-panel-header">
+      <button class="mobile-logo-panel-close" id="mobileLogoPanelClose">&times;</button>
+    </div>
+    <div class="mobile-logo-panel-content">
+      <ul class="mobile-logo-nav-links">
+        <li><a href="sellers layout.html">Dashboard</a></li>
+        <li><a href="sellers product.html">My Products</a></li>
+        <li><a href="sellers order.html">Orders</a></li>
+        <li><a href="sellers returns.html">Returns & Refunds</a></li>
+        <li><a href="sellers earning.html">Earnings</a></li>
+        <li><a href="sellers setting.html">Shop Settings</a></li>
+        <hr style="margin: 1rem 0; border: none; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+        <li><a href="#">Help & Support</a></li>
+        <li><a href="#">Logout</a></li>
+      </ul>
     </div>
   </div>
 
