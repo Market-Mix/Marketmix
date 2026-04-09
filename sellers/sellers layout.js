@@ -280,7 +280,7 @@
       }
 
       let progress = 20;
-      let message = "Complete your store setup";
+      let messageHTML = '<a href="sellers setting.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
       let backgroundColor = "#ef4444"; // red
 
       // Get authenticated user
@@ -354,34 +354,34 @@
       // Get sales count
       const totalSales = sellerProfile?.total_sales || 0;
 
-      // Determine progress level
+      // Determine progress level with HTML links
       if (storeSetupCompleted) {
         progress = 40;
-        message = "Complete your KYC";
+        messageHTML = '<a href="kyc-verification.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete KYC HERE</a>';
         backgroundColor = "#f97316"; // orange
       }
 
       if (kycCompleted) {
         progress = 60;
-        message = "Add your first product";
+        messageHTML = '<a href="sellers product.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Add your first product HERE</a>';
         backgroundColor = "#eab308"; // yellow
       }
 
       if (productCount >= 1) {
         progress = 75;
-        message = "Make your first sale";
+        messageHTML = 'Make your first sale';
         backgroundColor = "#86efac"; // lightgreen
       }
 
       if (totalSales >= 1) {
         progress = 90;
-        message = "Reach 10 sales";
+        messageHTML = 'Reach 10 sales';
         backgroundColor = "#22c55e"; // green
       }
 
       if (totalSales >= 10) {
         progress = 100;
-        message = "Verified Seller ✓";
+        messageHTML = 'Verified Seller ✓';
         backgroundColor = "#3b82f6"; // blue
       }
 
@@ -389,12 +389,12 @@
       progressBar.style.width = progress + "%";
       progressBar.style.backgroundColor = backgroundColor;
 
-      // Update progress text with percentage
-      progressText.textContent = `${message}: ${progress}%`;
+      // Update progress text with HTML
+      progressText.innerHTML = messageHTML;
 
       console.log("Progress updated:", { 
         progress, 
-        message, 
+        message: messageHTML, 
         storeSetupCompleted, 
         kycCompleted, 
         productCount, 
