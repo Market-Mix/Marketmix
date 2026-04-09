@@ -467,11 +467,12 @@
            sellerProfile?.store_logo_url && 
            sellerProfile?.business_address);
       
-      // KYC is complete if seller is verified OR if kycDocumentUrls has been filled with data
-      kycCompleted = sellerProfile?.kyc_verified || 
-        (sellerProfile?.kyc_document_urls && 
-         (sellerProfile.kyc_document_urls.category || 
-          (sellerProfile.kyc_document_urls.social_links && Object.values(sellerProfile.kyc_document_urls.social_links).some(v => v))));
+      // KYC is only complete if verified AND has submitted meaningful KYC data (website or at least one social link filled)
+      const hasKycData = sellerProfile?.kyc_document_urls && (
+        sellerProfile.kyc_document_urls.website || 
+        (sellerProfile.kyc_document_urls.social_links && Object.values(sellerProfile.kyc_document_urls.social_links).some(v => v))
+      );
+      kycCompleted = sellerProfile?.kyc_verified && hasKycData;
       
       totalSales = sellerProfile?.total_sales || 0;
 
