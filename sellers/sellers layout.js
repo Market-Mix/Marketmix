@@ -101,6 +101,9 @@
   // Update welcome text with seller name
   updateWelcomeText();
 
+  // Update progress tracker
+  updateProgressTracker();
+
   });
 
  function toggleProfileDropdown() {
@@ -262,6 +265,144 @@
       
     } catch (error) {
       console.error("ERROR updating welcome text:", error);
+    }
+  }
+
+  // ===== UPDATE PROGRESS TRACKER =====
+  async function updateProgressTracker() {
+    try {
+      const progressBar = document.getElementById("progressBar");
+      const progressText = document.getElementById("progress-text");
+
+      if (!progressBar || !progressText) {
+        console.warn("Progress tracker elements not found");
+        return;
+      }
+
+      let progress = 20;
+      let message = "Complete your store setup";
+      let backgroundColor = "#ef4444"; // red
+
+      // Get authenticated user
+      let userId = null;
+      if (typeof supabase !== 'undefined') {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          userId = user?.id;
+        } catch (err) {
+          console.log("Could not get Supabase user:", err.message);
+        }
+      }
+
+      // Fallback to localStorage
+      if (!userId) {
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          try {
+            const localUser = JSON.parse(localUserStr);
+            userId = localUser?.id;
+          } catch (err) {
+            console.log("Could not parse localStorage user:", err.message);
+          }
+        }
+      }
+
+      if (!userId) {
+        console.warn("No user ID found");
+        return;
+      }
+
+      // Fetch seller profile
+      let sellerProfile = null;
+      let productCount = 0;
+
+      if (typeof supabase !== 'undefined') {
+        try {
+          const { data: profile } = await supabase
+            .from("seller_profiles")
+            .select("*")
+            .eq("id", userId)
+            .single();
+          
+          sellerProfile = profile;
+        } catch (err) {
+          console.log("Could not fetch seller profile:", err.message);
+        }
+
+        // Fetch product count
+        try {
+          const { count } = await supabase
+            .from("products")
+            .select("id", { count: "exact", head: true })
+            .eq("seller_id", userId);
+          
+          productCount = count || 0;
+        } catch (err) {
+          console.log("Could not fetch product count:", err.message);
+        }
+      }
+
+      // Check store setup completion
+      const storeSetupCompleted = 
+        sellerProfile?.store_name && 
+        sellerProfile?.store_logo_url && 
+        sellerProfile?.business_address;
+
+      // Check KYC completion
+      const kycCompleted = sellerProfile?.kyc_document_urls !== null;
+
+      // Get sales count
+      const totalSales = sellerProfile?.total_sales || 0;
+
+      // Determine progress level
+      if (storeSetupCompleted) {
+        progress = 40;
+        message = "Complete your KYC";
+        backgroundColor = "#f97316"; // orange
+      }
+
+      if (kycCompleted) {
+        progress = 60;
+        message = "Add your first product";
+        backgroundColor = "#eab308"; // yellow
+      }
+
+      if (productCount >= 1) {
+        progress = 75;
+        message = "Make your first sale";
+        backgroundColor = "#86efac"; // lightgreen
+      }
+
+      if (totalSales >= 1) {
+        progress = 90;
+        message = "Reach 10 sales";
+        backgroundColor = "#22c55e"; // green
+      }
+
+      if (totalSales >= 10) {
+        progress = 100;
+        message = "Verified Seller ✓";
+        backgroundColor = "#3b82f6"; // blue
+      }
+
+      // Update progress bar
+      progressBar.style.width = progress + "%";
+      progressBar.style.backgroundColor = backgroundColor;
+
+      // Update progress text with percentage
+      progressText.textContent = `${message}: ${progress}%`;
+
+      console.log("Progress updated:", { 
+        progress, 
+        message, 
+        storeSetupCompleted, 
+        kycCompleted, 
+        productCount, 
+        totalSales 
+      });
+
+    } catch (error) {
+      console.error("ERROR updating progress tracker:", error);
     }
   }
 
