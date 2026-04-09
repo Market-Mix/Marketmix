@@ -37,31 +37,49 @@
   const mobileLogoPanel = document.getElementById("mobileLogoPanel");
   const mobileLogoPanelClose = document.getElementById("mobileLogoPanelClose");
 
+  console.log("Mobile Logo Toggle elements found:", { 
+    toggle: !!mobileLogoToggle, 
+    panel: !!mobileLogoPanel, 
+    close: !!mobileLogoPanelClose 
+  });
+
   // Open Mobile Logo Panel
-  if (mobileLogoToggle) {
-    mobileLogoToggle.addEventListener("click", function () {
+  if (mobileLogoToggle && mobileLogoPanel) {
+    mobileLogoToggle.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("Mobile logo toggle clicked!");
       mobileLogoPanel.classList.add("show");
     });
   }
 
   // Close Mobile Logo Panel
-  if (mobileLogoPanelClose) {
-    mobileLogoPanelClose.addEventListener("click", function () {
+  if (mobileLogoPanelClose && mobileLogoPanel) {
+    mobileLogoPanelClose.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("Mobile logo panel close clicked!");
       mobileLogoPanel.classList.remove("show");
     });
   }
 
   // Close Mobile Logo Panel when clicking outside
   document.addEventListener("click", function (event) {
-    if (mobileLogoPanel && !mobileLogoPanel.contains(event.target) && !mobileLogoToggle.contains(event.target)) {
-      mobileLogoPanel.classList.remove("show");
+    if (mobileLogoPanel && mobileLogoToggle) {
+      const clickedOnPanel = mobileLogoPanel.contains(event.target);
+      const clickedOnToggle = mobileLogoToggle.contains(event.target);
+      
+      if (!clickedOnPanel && !clickedOnToggle) {
+        mobileLogoPanel.classList.remove("show");
+      }
     }
   });
 
   // Close Mobile Logo Panel when clicking any menu link
   if (mobileLogoPanel) {
     document.querySelectorAll('.mobile-logo-nav-links a').forEach(link => {
-      link.addEventListener('click', () => {
+      link.addEventListener('click', (e) => {
+        console.log("Mobile logo nav link clicked!");
         mobileLogoPanel.classList.remove('show');
       });
     });
