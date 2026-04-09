@@ -45,31 +45,7 @@
     dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
   }
 
-  // ===== GET SUPABASE CONFIG SAFELY =====
-  function getSupabaseConfig() {
-    try {
-      // Check if CONFIG is defined globally
-      if (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.SUPABASE && CONFIG.SUPABASE.URL && CONFIG.SUPABASE.KEY) {
-        return { url: CONFIG.SUPABASE.URL, key: CONFIG.SUPABASE.KEY };
-      }
-      // Also check window.CONFIG
-      if (typeof window !== 'undefined' && window.CONFIG && window.CONFIG.SUPABASE && window.CONFIG.SUPABASE.URL && window.CONFIG.SUPABASE.KEY) {
-        return { url: window.CONFIG.SUPABASE.URL, key: window.CONFIG.SUPABASE.KEY };
-      }
-      // Check localStorage as fallback
-      const urlLS = localStorage.getItem('SUPABASE_URL');
-      const keyLS = localStorage.getItem('SUPABASE_KEY');
-      if (urlLS && keyLS) return { url: urlLS, key: keyLS };
-    } catch (e) {
-      console.warn('Error reading Supabase config:', e);
-    }
-    return null;
-  }
-
-  // ===== DEFAULT STORE LOGO PLACEHOLDER (SVG) =====
-  const DEFAULT_STORE_LOGO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='30' width='80' height='60' fill='%23e0e0e0' stroke='%23999' stroke-width='2'/%3E%3Crect x='20' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Crect x='40' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Crect x='60' y='35' width='15' height='25' fill='%23fff' stroke='%23ccc' stroke-width='1'/%3E%3Cline x1='45' y1='65' x2='55' y2='65' stroke='%23999' stroke-width='2'/%3E%3C/svg%3E";
-
-  // ===== LOAD SELLER PROFILE IMAGE FROM SUPABASE =====
+  // ===== LOAD SELLER PROFILE IMAGE FROM BACKEND API =====
   async function loadSellerProfileImage() {
     try {
       const profileImg = document.getElementById("sellerProfileImage");
@@ -83,57 +59,34 @@
 
       console.log("Fetching seller profile for store logo...");
 
-      // Get Supabase config
-      const supabaseConfig = getSupabaseConfig();
-      if (!supabaseConfig) {
-        console.warn("Supabase config not available, keeping empty image");
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log("No auth token found");
         return;
       }
 
-      // Get current user ID from localStorage
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        console.log("No user found in localStorage, keeping empty image");
-        return;
-      }
+      // Use backend API (which handles auth and RLS)
+      const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
+        ? CONFIG.API_BASE_URL 
+        : 'https://marketmix-backend.onrender.com/api';
 
-      let userId;
-      try {
-        const userData = JSON.parse(userStr);
-        userId = userData.id || userData.user_id;
-      } catch (e) {
-        console.warn("Failed to parse user data from localStorage:", e);
-        return;
-      }
-
-      if (!userId) {
-        console.log("User ID not found, keeping empty image");
-        return;
-      }
-
-      // Fetch seller profile from Supabase
-      const baseUrl = supabaseConfig.url.replace(/\/+$/, '');
-      const url = `${baseUrl}/rest/v1/seller_profiles?id=eq.${encodeURIComponent(userId)}&select=store_logo_url`;
-      
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/seller/profile`, {
         method: 'GET',
         headers: {
-          'apikey': supabaseConfig.key,
-          'Authorization': `Bearer ${supabaseConfig.key}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
         console.warn(`Failed to fetch seller profile: ${response.status}`);
-        if (profileImg) profileImg.src = DEFAULT_STORE_LOGO;
-        if (profileImgMobile) profileImgMobile.src = DEFAULT_STORE_LOGO;
+        // Neither show placeholder nor set empty - leave as is
         return;
       }
 
       const data = await response.json();
-      const sellerProfile = data && data.length > 0 ? data[0] : null;
-      const storeLogoUrl = sellerProfile?.store_logo_url;
+      const storeLogoUrl = data?.data?.seller?.profile?.storeLogo;
 
       if (storeLogoUrl && storeLogoUrl.trim() !== '') {
         // Seller has store_logo_url → display it
@@ -141,18 +94,16 @@
         if (profileImgMobile) profileImgMobile.src = storeLogoUrl;
         console.log("Store logo loaded:", storeLogoUrl);
       } else {
-        // No store_logo_url → show default placeholder
-        if (profileImg) profileImg.src = DEFAULT_STORE_LOGO;
-        if (profileImgMobile) profileImgMobile.src = DEFAULT_STORE_LOGO;
-        console.log("No store logo found, using default store placeholder");
+        // No store_logo_url → keep images empty (no placeholder)
+        console.log("No store logo found, keeping images empty");
       }
 
-      // Error handling: if image fails to load, use default placeholder
+      // Error handling: if image fails to load, just leave it empty
       const setErrorHandler = (img) => {
         if (img) {
           img.onerror = () => {
-            img.src = DEFAULT_STORE_LOGO;
-            console.log("Store logo failed to load, using default placeholder");
+            // Don't set a placeholder, keep empty
+            console.log("Store logo failed to load, keeping image empty");
           };
         }
       };
@@ -161,15 +112,7 @@
       setErrorHandler(profileImgMobile);
     } catch (error) {
       console.error("Error loading seller profile image:", error);
-      // Set default placeholder on error
-      const profileImg = document.getElementById("sellerProfileImage");
-      const profileImgMobile = document.getElementById("sellerProfileImageMobile");
-      if (profileImg) {
-        profileImg.src = DEFAULT_STORE_LOGO;
-      }
-      if (profileImgMobile) {
-        profileImgMobile.src = DEFAULT_STORE_LOGO;
-      }
+      // Do nothing on error - leave images empty
     }
   }
 
