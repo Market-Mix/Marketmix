@@ -35,11 +35,64 @@
   // Initialize product badge if available
   initializeProductBadge();
 
+  // Load seller profile image
+  loadSellerProfileImage();
+
   });
 
  function toggleProfileDropdown() {
     const dropdown = document.getElementById("profileDropdown");
     dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
+  }
+
+  // ===== LOAD SELLER PROFILE IMAGE =====
+  async function loadSellerProfileImage() {
+    try {
+      const profileImg = document.getElementById("sellerProfileImage");
+      
+      // Guard: element must exist
+      if (!profileImg) {
+        console.log("Profile image element not found");
+        return;
+      }
+
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log("No auth token found, keeping default image");
+        return;
+      }
+
+      console.log("Fetching seller profile...");
+      
+      // Fetch seller profile from API
+      const response = await fetch(`${CONFIG.API_BASE_URL}/seller/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch seller profile: ${response.status}`, response.statusText);
+        return;
+      }
+
+      const data = await response.json();
+      const avatarUrl = data.data?.seller?.avatarUrl;
+
+      if (avatarUrl) {
+        // Seller has avatar_url → display it
+        profileImg.src = avatarUrl;
+        console.log("Loaded avatar:", avatarUrl);
+      } else {
+        // No avatar_url → show default placeholder (SVG circle with user icon)
+        profileImg.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23e0e0e0'/%3E%3Ccircle cx='50' cy='30' r='15' fill='%23999' /%3E%3Cpath d='M 30 70 Q 30 55 50 55 Q 70 55 70 70 Q 70 80 50 80 Q 30 80 30 70' fill='%23999'/%3E%3C/svg%3E";
+        console.log("No avatar URL found, using default placeholder");
+      }
+    } catch (error) {
+      console.error("Error loading seller profile image:", error);
+      // Keep the default image on error
+    }
   }
 
   // Close dropdown if clicking outside
