@@ -385,7 +385,7 @@
       // Determine progress level - check in order
       if (!storeSetupCompleted) {
         progress = 20;
-        messageHTML = '<a href="sellers setting.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
+        messageHTML = '<a href="setup-store.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
         backgroundColor = "#ef4444"; // red
         console.log("Stage 1: Store setup needed");
       } 
