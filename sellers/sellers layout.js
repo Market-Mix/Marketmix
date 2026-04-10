@@ -589,31 +589,214 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.reset();
   };
 
-  // Sales Chart render with Chart.js
+  // Sales Chart render with Chart.js - REAL DATA
   function renderSalesChart() {
-    // Load Chart.js from CDN if not loaded yet
     if (typeof Chart === 'undefined') {
-      const script = document.createElement('script');
-      script.src = "https://cdn.jsdelivr.net/npm/chart.js";
-      script.onload = drawChart;
-      document.head.appendChild(script);
-    } else {
-      drawChart();
+      console.error("❌ Chart.js not loaded");
+      alert("Chart library failed to load");
+      return;
+    }
+    
+    // Fetch real sales data from backend
+    fetchMonthlySalesData();
+  }
+
+  // Fetch monthly sales data from backend
+  async function fetchMonthlySalesData() {
+    try {
+      console.log("📊 Fetching monthly sales data...");
+      
+      // Get user ID
+      let userId = null;
+      if (typeof supabase !== 'undefined') {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          userId = user?.id;
+        } catch (err) {
+          console.log("Could not get Supabase user");
+        }
+      }
+
+      if (!userId) {
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          try {
+            const localUser = JSON.parse(localUserStr);
+            userId = localUser?.id;
+          } catch (err) {
+            console.log("Could not parse localStorage user");
+          }
+        }
+      }
+
+      if (!userId) {
+        console.error("❌ No user ID found");
+        drawDemoChart();
+        return;
+      }
+
+      console.log("✓ Got seller ID:", userId);
+
+      // Try Supabase first
+      let orders = [];
+      if (typeof supabase !== 'undefined') {
+        try {
+          console.log("🔍 Fetching orders from Supabase...");
+          const { data, error } = await supabase
+            .from("orders")
+            .select("total_amount, created_at")
+            .eq("seller_id", userId);
+          
+          if (error) {
+            console.warn("⚠️ Supabase error:", error.message);
+          } else if (data) {
+            orders = data;
+            console.log("✓ Got orders from Supabase:", orders.length, "orders");
+          }
+        } catch (err) {
+          console.warn("⚠️ Exception with Supabase:", err.message);
+        }
+      }
+
+      // Fallback to API if no data from Supabase
+      if (orders.length === 0) {
+        console.log("⚠️ No data from Supabase, trying API fallback...");
+        try {
+          const token = localStorage.getItem('token');
+          const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
+            ? CONFIG.API_BASE_URL 
+            : 'https://marketmix-backend.onrender.com/api';
+
+          console.log("📡 Fetching from API:", `${apiUrl}/sellers/orders`);
+          const response = await fetch(`${apiUrl}/sellers/orders`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            console.warn("⚠️ API Error:", response.status);
+            drawDemoChart();
+            return;
+          }
+
+          const data = await response.json();
+          if (data?.data?.orders) {
+            orders = data.data.orders;
+            console.log("✓ Got orders from API:", orders.length, "orders");
+          } else {
+            console.warn("⚠️ Unexpected API response format");
+            drawDemoChart();
+            return;
+          }
+        } catch (err) {
+          console.error("❌ API Error:", err.message);
+          drawDemoChart();
+          return;
+        }
+      }
+
+      // Process orders into monthly totals
+      const monthlySales = new Array(12).fill(0);
+      
+      orders.forEach(order => {
+        if (order.created_at && order.total_amount) {
+          const date = new Date(order.created_at);
+          const month = date.getMonth(); // 0-11
+          monthlySales[month] += order.total_amount;
+        }
+      });
+
+      console.log("📈 Monthly sales totals:", monthlySales);
+
+      // Draw chart with real data
+      drawChartWithData(monthlySales);
+
+    } catch (error) {
+      console.error("❌ Error fetching sales data:", error);
+      drawDemoChart();
     }
   }
 
-  function drawChart() {
+  // Draw chart with real data
+  function drawChartWithData(monthlySales) {
     const ctx = document.getElementById('salesChart').getContext('2d');
-    // Clear previous chart if any
+    if (window.salesChartInstance) window.salesChartInstance.destroy();
+
+    const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    window.salesChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Monthly Sales ($)',
+          data: monthlySales,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#3b82f6',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          },
+          title: {
+            display: true,
+            text: 'Your Monthly Sales Performance'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '$' + value.toLocaleString();
+              }
+            },
+            title: {
+              display: true,
+              text: 'Sales Amount ($)'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Month'
+            }
+          }
+        }
+      }
+    });
+
+    console.log("✓ Chart rendered with real data");
+  }
+
+  // Fallback demo chart
+  function drawDemoChart() {
+    console.log("📊 Drawing demo chart (no data available)");
+    const ctx = document.getElementById('salesChart').getContext('2d');
     if (window.salesChartInstance) window.salesChartInstance.destroy();
 
     window.salesChartInstance = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         datasets: [{
-          label: 'Sales ($)',
-          data: [1200, 1900, 3000, 2500, 3200, 4000],
+          label: 'Sales ($) - Demo Data',
+          data: [1200, 1900, 3000, 2500, 3200, 4000, 3800, 4200, 3900, 4500, 5000, 5500],
           borderColor: '#ff6600',
           backgroundColor: 'rgba(255,102,0,0.3)',
           fill: true,
@@ -624,6 +807,7 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: true,
         scales: {
           y: { beginAtZero: true }
         }
