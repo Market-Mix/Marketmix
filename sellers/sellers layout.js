@@ -412,6 +412,7 @@
                 business_address: profile.businessAddress || profile.business_address,
                 kyc_document_urls: profile.kycDocumentUrls || profile.kyc_document_urls,
                 kyc_verified: profile.isVerified || false,
+                kyc_status: profile.kyc_status || profile.kycStatus || null,
                 total_sales: profile.totalSales || data.data.seller.totalSales || 0,
                 product_count: data.data.seller.productCount || 0
               };
@@ -422,6 +423,7 @@
                 storeLogo: profile.storeLogo,
                 kycDocumentUrls: profile.kycDocumentUrls,
                 isVerified: profile.isVerified,
+                kyc_status: profile.kyc_status || profile.kycStatus,
                 totalSales: profile.totalSales,
                 productCount: data.data.seller.productCount
               });
@@ -475,10 +477,15 @@
       kycCompleted = sellerProfile?.kyc_verified && hasKycData;
       
       totalSales = sellerProfile?.total_sales || 0;
+      
+      // Get KYC status - tracks three states: pending, under_review, approved
+      const kycStatus = sellerProfile?.kyc_status;
+      console.log("📌 KYC Status from profile:", kycStatus);
 
       console.log("Checking conditions:", {
         storeSetupCompleted,
         kycCompleted,
+        kycStatus,
         kyc_verified: sellerProfile?.kyc_verified,
         kycDocumentUrls: sellerProfile?.kyc_document_urls,
         productCount,
@@ -492,7 +499,15 @@
         backgroundColor = "#ef4444"; // red
         console.log("Stage 1: Store setup needed");
       } 
-      else if (!kycCompleted) {
+      else if (kycStatus === "under_review") {
+        // KYC is under review - show message without link
+        progress = 40;
+        messageHTML = '<span style="color: #1e293b;">Your KYC is under review. We\'ll notify you once approved.</span>';
+        backgroundColor = "#f97316"; // orange
+        console.log("Stage 2: KYC under review");
+      }
+      else if (!kycCompleted || kycStatus === "pending") {
+        // KYC not started or pending - show clickable link
         progress = 40;
         messageHTML = '<a href="kyc-verification.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete KYC HERE</a>';
         backgroundColor = "#f97316"; // orange
