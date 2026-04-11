@@ -109,29 +109,69 @@ async function applyCoupon(code, productId) {
       return false;
     }
 
-    // Fetch coupon from Supabase
-    if (typeof supabase === 'undefined') {
-      console.error("❌ Supabase not available");
-      showCouponMessage("Service unavailable. Please try again.", "error");
-      return false;
+    let coupon = null;
+    let couponError = null;
+
+    // Try Supabase first
+    if (typeof supabase !== 'undefined') {
+      try {
+        console.log("🔍 Trying Supabase - Fetching coupon...");
+        const { data, error } = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('code', code.toUpperCase())
+          .eq('is_active', true)
+          .single();
+
+        if (!error && data) {
+          coupon = data;
+          console.log("✓ Coupon found from Supabase:", coupon);
+        } else {
+          couponError = error?.message;
+          console.log("⚠️ Supabase lookup failed:", couponError);
+        }
+      } catch (err) {
+        console.log("⚠️ Supabase error:", err.message);
+        couponError = err.message;
+      }
     }
 
-    console.log("🔍 Fetching coupon from Supabase...");
-    const { data: coupon, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('code', code.toUpperCase())
-      .eq('product_id', productId)
-      .eq('is_active', true)
-      .single();
+    // Fallback to API if Supabase not available or failed
+    if (!coupon) {
+      try {
+        console.log("⚠️ Using API fallback for coupon validation...");
+        const token = localStorage.getItem('token');
+        const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL)
+          ? CONFIG.API_BASE_URL
+          : 'https://marketmix-backend.onrender.com/api';
 
-    if (error || !coupon) {
-      console.warn("❌ Coupon not found:", error?.message);
+        const response = await fetch(`${apiUrl}/coupons/validate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ code: code.toUpperCase() })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          coupon = data.data?.coupon || data.coupon;
+          console.log("✓ Coupon found from API:", coupon);
+        } else {
+          console.warn("❌ API coupon lookup failed:", response.status);
+        }
+      } catch (apiErr) {
+        console.warn("⚠️ API fallback error:", apiErr.message);
+      }
+    }
+
+    // If still no coupon found
+    if (!coupon) {
+      console.warn("❌ Coupon not found from any source");
       showCouponMessage("❌ Invalid coupon code", "error");
       return false;
     }
-
-    console.log("✓ Coupon found:", coupon);
 
     // Check if expired
     if (coupon.expiry_date && new Date() > new Date(coupon.expiry_date)) {
