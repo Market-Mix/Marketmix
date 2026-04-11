@@ -223,6 +223,14 @@
       <input type="text" id="coupon-code" required />
       <label for="discount">Discount (%):</label>
       <input type="number" id="discount" min="1" max="100" required />
+      <label for="couponProduct">Select Product:</label>
+      <select id="couponProduct" required>
+        <option value="">-- Choose a product --</option>
+      </select>
+      <label for="couponExpiry">Expiry Date:</label>
+      <input type="date" id="couponExpiry" />
+      <label for="couponLimit">Usage Limit:</label>
+      <input type="number" id="couponLimit" min="1" placeholder="Usage limit (e.g. 10)" />
       <button type="submit">Create Coupon</button>
     </form>
   </div>

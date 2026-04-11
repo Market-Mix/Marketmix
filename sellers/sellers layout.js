@@ -564,7 +564,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const salesModal = document.getElementById('sales-modal');
 
   // Open modals on tool card click
-  document.getElementById('marketing-coupons-card').onclick = () => couponsModal.style.display = 'block';
+  document.getElementById('marketing-coupons-card').onclick = () => {
+    couponsModal.style.display = 'block';
+    loadSellerProductsForCoupon(); // Load products when modal opens
+  };
   document.getElementById('sales-chart-card').onclick = () => {
     salesModal.style.display = 'block';
     renderSalesChart();
@@ -581,13 +584,207 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // Coupon form submit demo
-  document.getElementById('coupon-form').onsubmit = (e) => {
+  // Coupon form submit - REAL LOGIC
+  document.getElementById('coupon-form').onsubmit = async (e) => {
     e.preventDefault();
-    alert(`Coupon "${e.target['coupon-code'].value}" with ${e.target['discount'].value}% discount created! (Demo)`);
-    couponsModal.style.display = 'none';
-    e.target.reset();
+    
+    try {
+      console.log("🎟️ Creating coupon...");
+
+      // Get logged-in user
+      let user = null;
+      if (typeof supabase !== 'undefined') {
+        try {
+          const { data, error } = await supabase.auth.getUser();
+          if (data?.user) {
+            user = data.user;
+          }
+        } catch (err) {
+          console.log("Could not get Supabase user");
+        }
+      }
+
+      if (!user) {
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          try {
+            user = JSON.parse(localUserStr);
+          } catch (err) {
+            console.log("Could not parse localStorage user");
+          }
+        }
+      }
+
+      if (!user) {
+        alert("❌ Please log in to create a coupon");
+        console.error("No user found");
+        return;
+      }
+
+      const userId = user.id;
+      console.log("✓ User ID:", userId);
+
+      // Read form values
+      const code = document.getElementById('coupon-code').value.trim().toUpperCase();
+      const discount = parseInt(document.getElementById('discount').value);
+      const productId = document.getElementById('couponProduct').value;
+      const expiryDate = document.getElementById('couponExpiry').value;
+      const usageLimit = parseInt(document.getElementById('couponLimit').value) || 0;
+
+      console.log("📋 Form Data:", { code, discount, productId, expiryDate, usageLimit });
+
+      // Validation
+      if (!code || code.trim() === '') {
+        alert("❌ Please enter a coupon code");
+        return;
+      }
+
+      if (discount < 1 || discount > 100) {
+        alert("❌ Discount must be between 1 and 100%");
+        return;
+      }
+
+      if (!productId) {
+        alert("❌ Please select a product");
+        return;
+      }
+
+      console.log("✓ Validation passed");
+
+      // Save to Supabase
+      if (typeof supabase !== 'undefined') {
+        try {
+          console.log("💾 Saving coupon to Supabase...");
+          
+          const { data, error } = await supabase.from('coupons').insert({
+            seller_id: userId,
+            product_id: productId,
+            code: code,
+            discount_percent: discount,
+            expiry_date: expiryDate || null,
+            usage_limit: usageLimit || 0,
+            created_at: new Date().toISOString()
+          });
+
+          if (error) {
+            console.error("❌ Supabase Error:", error);
+            alert("❌ Error creating coupon: " + error.message);
+            return;
+          }
+
+          console.log("✓ Coupon created successfully!", data);
+          alert("✅ Coupon created successfully!\nCode: " + code + "\nDiscount: " + discount + "%");
+
+          // Reset form and close modal
+          e.target.reset();
+          couponsModal.style.display = 'none';
+
+          // Reload products dropdown for next coupon
+          loadSellerProductsForCoupon();
+
+        } catch (err) {
+          console.error("❌ Exception:", err);
+          alert("❌ Error: " + err.message);
+        }
+      } else {
+        console.warn("⚠️ Supabase not available");
+        alert("❌ Supabase service not available");
+      }
+
+    } catch (error) {
+      console.error("❌ Coupon error:", error);
+      alert("❌ Error: " + error.message);
+    }
   };
+
+  // LOAD SELLER PRODUCTS FOR COUPON DROPDOWN
+  async function loadSellerProductsForCoupon() {
+    try {
+      console.log("📦 Loading seller products for coupon dropdown...");
+
+      // Get logged-in user
+      let user = null;
+      if (typeof supabase !== 'undefined') {
+        try {
+          const { data, error } = await supabase.auth.getUser();
+          if (data?.user) {
+            user = data.user;
+          }
+        } catch (err) {
+          console.log("Could not get Supabase user");
+        }
+      }
+
+      if (!user) {
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          try {
+            user = JSON.parse(localUserStr);
+          } catch (err) {
+            console.log("Could not parse localStorage user");
+          }
+        }
+      }
+
+      if (!user) {
+        console.warn("⚠️ No user found for loading products");
+        return;
+      }
+
+      const userId = user.id;
+      console.log("✓ User ID for products:", userId);
+
+      // Fetch products from Supabase
+      if (typeof supabase !== 'undefined') {
+        try {
+          console.log("🔍 Querying products for seller...");
+          
+          const { data: products, error } = await supabase
+            .from('products')
+            .select('id, name')
+            .eq('seller_id', userId);
+
+          if (error) {
+            console.error("❌ Error fetching products:", error);
+            return;
+          }
+
+          console.log("✓ Products fetched:", products?.length || 0, "products");
+
+          // Populate dropdown
+          const productDropdown = document.getElementById('couponProduct');
+          productDropdown.innerHTML = '<option value="">-- Choose a product --</option>';
+
+          if (!products || products.length === 0) {
+            console.log("⚠️ No products available");
+            productDropdown.innerHTML = '<option value="">No products available</option>';
+            productDropdown.disabled = true;
+            return;
+          }
+
+          productDropdown.disabled = false;
+
+          products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = product.name;
+            productDropdown.appendChild(option);
+            console.log("✓ Added product:", product.name);
+          });
+
+          console.log("✓ Dropdown populated with " + products.length + " products");
+
+        } catch (err) {
+          console.error("❌ Exception loading products:", err);
+        }
+      } else {
+        console.warn("⚠️ Supabase not available for loading products");
+      }
+
+    } catch (error) {
+      console.error("❌ Error in loadSellerProductsForCoupon:", error);
+    }
+  }
 
   // Sales Chart render with Chart.js - REAL DATA
   function renderSalesChart() {
