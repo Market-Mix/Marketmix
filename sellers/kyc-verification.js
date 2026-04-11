@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
   })
     .then(r => r.json())
     .then(data => {
-      const { kycStatus, isVerified } = data.data || {};
-      if (isVerified || kycStatus === 'approved') {
+   const { kycStatus } = data.data || {};
+          if (kycStatus === 'approved') {
         showBanner('Your identity is already verified ✅', 'success');
         disableForm();
       } else if (kycStatus === 'pending') {
