@@ -412,7 +412,7 @@
                 business_address: profile.businessAddress || profile.business_address,
                 kyc_document_urls: profile.kycDocumentUrls || profile.kyc_document_urls,
                 kyc_verified: profile.isVerified || false,
-                kyc_status: profile.kyc_status || profile.kycStatus || null,
+                kyc_status: profile.kycDocumentUrls?.kyc_status || profile.kyc_document_urls?.kyc_status || profile.kyc_status || null,
                 total_sales: profile.totalSales || data.data.seller.totalSales || 0,
                 product_count: data.data.seller.productCount || 0
               };
@@ -423,7 +423,7 @@
                 storeLogo: profile.storeLogo,
                 kycDocumentUrls: profile.kycDocumentUrls,
                 isVerified: profile.isVerified,
-                kyc_status: profile.kyc_status || profile.kycStatus,
+                kyc_status: profile.kycDocumentUrls?.kyc_status || profile.kyc_document_urls?.kyc_status,
                 totalSales: profile.totalSales,
                 productCount: data.data.seller.productCount
               });
@@ -479,7 +479,8 @@
       totalSales = sellerProfile?.total_sales || 0;
       
       // Get KYC status - tracks three states: pending, under_review, approved
-      const kycStatus = sellerProfile?.kyc_status;
+      // Check both direct and nested locations since API stores it in kycDocumentUrls.kyc_status
+      const kycStatus = sellerProfile?.kyc_status || sellerProfile?.kyc_document_urls?.kyc_status;
       console.log("📌 KYC Status from profile:", kycStatus);
 
       console.log("Checking conditions:", {
