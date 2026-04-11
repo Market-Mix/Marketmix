@@ -500,15 +500,16 @@
         backgroundColor = "#ef4444"; // red
         console.log("Stage 1: Store setup needed");
       } 
-      else if (kycStatus === "under_review") {
+      else if (kycStatus === "under_review" || (kycStatus === "pending" && sellerProfile?.kyc_document_urls?.kyc_submitted_at)) {
         // KYC is under review - show message without link
+        // (either explicitly under_review, or pending with kyc_submitted_at timestamp)
         progress = 40;
         messageHTML = '<span style="color: #1e293b;">Your KYC is under review. We\'ll notify you once approved.</span>';
         backgroundColor = "#f97316"; // orange
         console.log("Stage 2: KYC under review");
       }
       else if (!kycCompleted || kycStatus === "pending") {
-        // KYC not started or pending - show clickable link
+        // KYC not started or pending (without submission) - show clickable link
         progress = 40;
         messageHTML = '<a href="kyc-verification.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete KYC HERE</a>';
         backgroundColor = "#f97316"; // orange
