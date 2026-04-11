@@ -55,6 +55,13 @@
   <option value="marketmix">MarketMix Delivery</option>
 </select>
 
+        <label for="couponCode">Coupon Code (Optional)</label>
+        <div class="coupon-input-group">
+          <input type="text" id="couponCode" placeholder="Enter coupon code" style="flex: 1;">
+          <button type="button" id="applyCouponBtn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply</button>
+        </div>
+        <p id="couponMessage" class="hidden"></p>
+
       </form>
     </div>
 
@@ -66,6 +73,14 @@
         <li class="item"><span>Product 2</span> <span>$15</span></li>
         <li class="item"><span>Shipping</span> <span>$5</span></li>
       </ul>
+      <div class="subtotal">
+        <strong>Subtotal</strong>
+        <span id="subtotalAmount">$40</span>
+      </div>
+      <div id="discountSection" class="discount" style="display: none;">
+        <strong>Discount</strong>
+        <span id="discountAmount">-$0</span>
+      </div>
       <div class="total">
         <strong>Total</strong>
         <span id="totalAmount">$40</span>
@@ -77,24 +92,186 @@
 <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
+  <script src="../config.js"></script>
   <script >
-document.getElementById("placeOrderBtn").addEventListener("click", () => {
+// Global state for applied coupon
+let appliedCoupon = null;
+let originalSubtotal = 40; // Will be updated from actual cart
+
+// ===== APPLY COUPON FUNCTION =====
+async function applyCoupon(code, productId) {
+  try {
+    console.log("🎟️ Validating coupon:", code, "for product:", productId);
+
+    if (!code || code.trim() === '') {
+      console.warn("⚠️ Empty coupon code");
+      showCouponMessage("Please enter a coupon code", "error");
+      return false;
+    }
+
+    // Fetch coupon from Supabase
+    if (typeof supabase === 'undefined') {
+      console.error("❌ Supabase not available");
+      showCouponMessage("Service unavailable. Please try again.", "error");
+      return false;
+    }
+
+    console.log("🔍 Fetching coupon from Supabase...");
+    const { data: coupon, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .eq('product_id', productId)
+      .eq('is_active', true)
+      .single();
+
+    if (error || !coupon) {
+      console.warn("❌ Coupon not found:", error?.message);
+      showCouponMessage("❌ Invalid coupon code", "error");
+      return false;
+    }
+
+    console.log("✓ Coupon found:", coupon);
+
+    // Check if expired
+    if (coupon.expiry_date && new Date() > new Date(coupon.expiry_date)) {
+      console.warn("❌ Coupon expired");
+      showCouponMessage("❌ This coupon has expired", "error");
+      return false;
+    }
+
+    // Check usage limit
+    if (coupon.usage_limit > 0 && coupon.used_count >= coupon.usage_limit) {
+      console.warn("❌ Usage limit reached");
+      showCouponMessage("❌ This coupon has reached its usage limit", "error");
+      return false;
+    }
+
+    // Apply discount
+    const discountAmount = (originalSubtotal * coupon.discount_percent) / 100;
+    const finalPrice = Math.max(0, originalSubtotal - discountAmount);
+
+    console.log("📊 Discount calculation:", {
+      originalPrice: originalSubtotal,
+      discountPercent: coupon.discount_percent,
+      discountAmount: discountAmount,
+      finalPrice: finalPrice
+    });
+
+    // Update global state
+    appliedCoupon = {
+      id: coupon.id,
+      code: coupon.code,
+      discount_percent: coupon.discount_percent,
+      discount_amount: discountAmount,
+      final_price: finalPrice,
+      product_id: coupon.product_id
+    };
+
+    // Update UI
+    document.getElementById('discountSection').style.display = 'flex';
+    document.getElementById('discountAmount').textContent = `-$${discountAmount.toFixed(2)}`;
+    document.getElementById('totalAmount').textContent = `$${finalPrice.toFixed(2)}`;
+
+    showCouponMessage(`✅ Coupon applied! You saved $${discountAmount.toFixed(2)}`, "success");
+    console.log("✓ Coupon applied successfully");
+
+    return true;
+
+  } catch (error) {
+    console.error("❌ Coupon error:", error);
+    showCouponMessage("Error applying coupon. Please try again.", "error");
+    return false;
+  }
+}
+
+// Show coupon message
+function showCouponMessage(message, type) {
+  const messageEl = document.getElementById('couponMessage');
+  messageEl.textContent = message;
+  messageEl.className = type;
+  messageEl.classList.remove('hidden');
+
+  setTimeout(() => {
+    messageEl.classList.add('hidden');
+  }, 5000);
+}
+
+// Apply coupon button listener
+document.addEventListener('DOMContentLoaded', () => {
+  const applyCouponBtn = document.getElementById('applyCouponBtn');
+  if (applyCouponBtn) {
+    applyCouponBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const code = document.getElementById('couponCode').value.trim();
+      const productId = localStorage.getItem('checkoutProductId') || 'demo-product-id';
+      await applyCoupon(code, productId);
+    });
+  }
+
+  const couponInput = document.getElementById('couponCode');
+  if (couponInput) {
+    couponInput.addEventListener('keypress', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const code = document.getElementById('couponCode').value.trim();
+        const productId = localStorage.getItem('checkoutProductId') || 'demo-product-id';
+        await applyCoupon(code, productId);
+      }
+    });
+  }
+});
+
+document.getElementById("placeOrderBtn").addEventListener("click", async () => {
   const form = document.getElementById("checkoutForm");
   const message = document.getElementById("orderMessage");
 
   if (form.checkValidity()) {
-    message.textContent = "✅ Order placed successfully! Redirecting...";
-    message.className = "success";
-    message.classList.remove("hidden");
+    try {
+      // If coupon was applied, increment its usage count
+      if (appliedCoupon) {
+        console.log("📈 Incrementing coupon usage count...");
+        const { data: currentCoupon } = await supabase
+          .from('coupons')
+          .select('used_count')
+          .eq('id', appliedCoupon.id)
+          .single();
 
-    // Simulate clearing cart
-    document.getElementById("orderItems").innerHTML = "<li>Your cart is empty.</li>";
-    document.getElementById("totalAmount").textContent = "$0";
+        const { error: updateError } = await supabase
+          .from('coupons')
+          .update({
+            used_count: (currentCoupon?.used_count || 0) + 1
+          })
+          .eq('id', appliedCoupon.id);
 
-    // Redirect to buyers homepage after 2 seconds
-    setTimeout(() => {
-      window.location.href = '/buyers/buyers homepage.html';
-    }, 2000);
+        if (updateError) {
+          console.error("❌ Error updating coupon usage:", updateError);
+        } else {
+          console.log("✓ Coupon usage updated");
+        }
+      }
+
+      message.textContent = "✅ Order placed successfully! Redirecting...";
+      message.className = "success";
+      message.classList.remove("hidden");
+
+      // Clear cart and reset
+      document.getElementById("orderItems").innerHTML = "<li>Your cart is empty.</li>";
+      document.getElementById("totalAmount").textContent = "$0";
+      document.getElementById('discountSection').style.display = 'none';
+      appliedCoupon = null;
+
+      // Redirect to buyers homepage after 2 seconds
+      setTimeout(() => {
+        window.location.href = '/buyers/buyers homepage.html';
+      }, 2000);
+
+    } catch (error) {
+      console.error("❌ Error placing order:", error);
+      message.textContent = "⚠️ Error placing order. Please try again.";
+      message.className = "error";
+      message.classList.remove("hidden");
+    }
 
   } else {
     message.textContent = "⚠️ Please fill all required fields.";

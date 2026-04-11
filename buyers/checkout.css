@@ -202,3 +202,50 @@ button:hover {
       margin-top: 60px;
       font-size: 15px;
     }
+
+/* ===== COUPON STYLES ===== */
+.coupon-input-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.coupon-input-group input {
+  margin-top: 0;
+  flex: 1;
+}
+
+#couponMessage {
+  margin-top: 8px;
+  font-weight: bold;
+  text-align: left;
+  font-size: 0.9rem;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+#couponMessage.success {
+  color: green;
+  background: rgba(34, 197, 94, 0.1);
+  border-left: 4px solid green;
+}
+
+#couponMessage.error {
+  color: red;
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 4px solid red;
+}
+
+.subtotal, .discount {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 1rem;
+  color: #555;
+}
+
+.discount {
+  color: green;
+  font-weight: bold;
+}
