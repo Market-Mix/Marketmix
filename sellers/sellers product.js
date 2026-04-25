@@ -50,6 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('searchInput').addEventListener('input', renderProducts);
   document.getElementById('statusFilter').addEventListener('change', renderProducts);
 
+  // Price input formatting
+  document.getElementById('newProductPrice').addEventListener('input', function() {
+    formatPriceInput(this);
+  });
+  document.getElementById('editPrice').addEventListener('input', function() {
+    formatPriceInput(this);
+  });
+
   // Edit form submit
   document.getElementById('editForm').addEventListener('submit', handleEditSubmit);
 
@@ -313,7 +321,7 @@ async function handleEditSubmit(e) {
   try {
     const formData = new FormData();
     formData.append('name', name);
-    formData.append('price', price);
+    formData.append('price', parsePriceInput(document.getElementById('editPrice').value));
     formData.append('stock_quantity', stock || '0');
     formData.append('description', description);
     if (imageFile) formData.append('image', imageFile);
@@ -429,4 +437,20 @@ function showToast(message, type = 'info') {
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Price formatting ──────────────────────────────────────────────────────────
+function formatPriceInput(input) {
+  // Strip everything except digits
+  let raw = input.value.replace(/[^0-9]/g, '');
+  
+  // Format with commas
+  if (raw) {
+    input.value = parseInt(raw, 10).toLocaleString('en-US');
+  }
+}
+
+// Get the clean number back before submitting
+function parsePriceInput(value) {
+  return parseFloat(value.replace(/,/g, '')) || 0;
 }

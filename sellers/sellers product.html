@@ -109,7 +109,7 @@
         <input type="text" id="newProductName" placeholder="e.g. Classic Leather Bag" required>
 
         <label for="newProductPrice">Price (₦) <span class="req">*</span></label>
-        <input type="number" step="0.01" min="0" id="newProductPrice" placeholder="0.00" required>
+        <input type="text" id="newProductPrice" placeholder="0" inputmode="numeric" required>
 
         <label for="newProductStock">Stock Quantity</label>
         <input type="number" min="0" id="newProductStock" placeholder="0" value="0">
@@ -141,7 +141,7 @@
       <div>Image</div>
       <div>Name</div>
       <div>Status</div>
-      <div>Price</div>
+      <div>Price</div>  
       <div>Actions</div>
     </div>
     <div class="product-grid" id="productGrid"></div>
@@ -158,8 +158,8 @@
         <label>Product Name <span class="req">*</span></label>
         <input type="text" id="editName" required>
 
-        <label>Price (₦) <span class="req">*</span></label>
-        <input type="number" step="0.01" min="0" id="editPrice" required>
+        <label>Price (₦f) <span class="req">*</span></label>
+        <input type="text" id="editPrice" inputmode="numeric" required>
 
         <label>Stock Quantity</label>
         <input type="number" min="0" id="editStock">
