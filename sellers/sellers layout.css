@@ -532,6 +532,11 @@ body {
     font-size: 30px;
     margin-bottom: 10px;
   }
+  @media (max-width: 768px) {
+  .shop-settings {
+   margin-left: 50%;
+  }
+}
 
   .notification-badge {
     position: absolute;
