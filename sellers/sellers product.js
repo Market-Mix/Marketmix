@@ -270,17 +270,18 @@ function openEditModal(id) {
 
   editingProductId = id;
 
-  document.getElementById('editId').value = id;
-  document.getElementById('editName').value = product.name;
-  document.getElementById('editPrice').value = parseFloat(product.price).toLocaleString('en-US');
-  document.getElementById('editStatus').value = product.stockStatus || getStockStatus(product.stock_quantity);
+  const fields = {
+    editId:          id,
+    editName:        product.name,
+    editPrice:       parseFloat(product.price).toLocaleString('en-US'),
+    editStock:       product.stock_quantity,
+    editDescription: product.description || '',
+  };
 
-  // Only set these if the fields exist in your HTML
-  const editStock = document.getElementById('editStock');
-  if (editStock) editStock.value = product.stock_quantity;
-
-  const editDescription = document.getElementById('editDescription');
-  if (editDescription) editDescription.value = product.description || '';
+  Object.entries(fields).forEach(([fieldId, value]) => {
+    const el = document.getElementById(fieldId);
+    if (el) el.value = value;
+  });
 
   const currentImg = document.getElementById('editCurrentImage');
   if (currentImg) {
