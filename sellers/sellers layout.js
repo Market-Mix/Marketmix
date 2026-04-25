@@ -37,18 +37,12 @@
   const mobileLogoPanel = document.getElementById("mobileLogoPanel");
   const mobileLogoPanelClose = document.getElementById("mobileLogoPanelClose");
 
-  console.log("Mobile Logo Toggle elements found:", { 
-    toggle: !!mobileLogoToggle, 
-    panel: !!mobileLogoPanel, 
-    close: !!mobileLogoPanelClose 
-  });
 
   // Open Mobile Logo Panel
   if (mobileLogoToggle && mobileLogoPanel) {
     mobileLogoToggle.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      console.log("Mobile logo toggle clicked!");
       mobileLogoPanel.classList.add("show");
     });
   }
@@ -58,7 +52,6 @@
     mobileLogoPanelClose.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      console.log("Mobile logo panel close clicked!");
       mobileLogoPanel.classList.remove("show");
     });
   }
@@ -79,7 +72,6 @@
   if (mobileLogoPanel) {
     document.querySelectorAll('.mobile-logo-nav-links a').forEach(link => {
       link.addEventListener('click', (e) => {
-        console.log("Mobile logo nav link clicked!");
         mobileLogoPanel.classList.remove('show');
       });
     });
@@ -106,21 +98,19 @@
 
   // Refresh progress tracker every 5 seconds (more responsive)
   setInterval(() => {
-    console.log("🔄 Auto-refreshing progress tracker (5s interval)...");
-    updateProgressTracker();
   }, 5000);
 
   // Refresh progress tracker when page becomes visible (user switches back to tab)
   document.addEventListener("visibilitychange", function() {
     if (document.visibilityState === "visible") {
-      console.log("👁️ Page became visible - refreshing progress tracker...");
+      // // console.("👁️ Page became visible - refreshing progress tracker...");
       updateProgressTracker();
     }
   });
 
   // Refresh progress tracker when window gets focus (user returns to window)
   window.addEventListener("focus", function() {
-    console.log("🪟 Window focused - refreshing progress tracker...");
+    // // console.("🪟 Window focused - refreshing progress tracker...");
     updateProgressTracker();
   });
 
@@ -136,21 +126,21 @@
     try {
       const profileImg = document.getElementById("sellerProfileImage");
       
-      console.log("=== LOADING SELLER PROFILE IMAGE ===");
-      console.log("Desktop image element found:", !!profileImg);
+      // // console.("=== LOADING SELLER PROFILE IMAGE ===");
+      // // console.("Desktop image element found:", !!profileImg);
       
       // Guard: element must exist
       if (!profileImg) {
-        console.error("ERROR: Desktop profile image element not found in DOM");
+        // // // console.("ERROR: Desktop profile image element not found in DOM");
         return;
       }
 
-      console.log("Fetching seller profile for store logo...");
+      // // console.("Fetching seller profile for store logo...");
 
       // Get token from localStorage
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log("No auth token found");
+        // // // console.("No auth token found");
         return;
       }
 
@@ -168,15 +158,15 @@
       });
 
       if (!response.ok) {
-        console.warn(`Failed to fetch seller profile: ${response.status}`);
+        // console.(`Failed to fetch seller profile: ${response.status}`);
         return;
       }
 
       const data = await response.json();
-      console.log("Seller profile API response:", data);
+      // // console.("Seller profile API response:", data);
       const storeLogoUrl = data?.data?.seller?.profile?.storeLogo;
 
-      console.log("Store logo URL extracted:", storeLogoUrl ? storeLogoUrl.substring(0, 50) + "..." : "NULL/EMPTY");
+      // // console.("Store logo URL extracted:", storeLogoUrl ? storeLogoUrl.substring(0, 50) + "..." : "NULL/EMPTY");
 
       // Set desktop image
       if (storeLogoUrl && storeLogoUrl.trim() !== '') {
@@ -184,11 +174,11 @@
         profileImg.style.backgroundImage = "none";
         
         const computed = window.getComputedStyle(profileImg);
-        console.log(`✓ Desktop image src updated. Display: ${computed.display}, Opacity: ${computed.opacity}`);
+        // // console.(`✓ Desktop image src updated. Display: ${computed.display}, Opacity: ${computed.opacity}`);
         
         // Setup load handler
         profileImg.onload = () => {
-          console.log(`✓ Desktop image loaded successfully`);
+          // // console.(`✓ Desktop image loaded successfully`);
             // Force re-render after image loads
             profileImg.style.opacity = "0.99";
             setTimeout(() => {
@@ -198,23 +188,23 @@
           
           // Handle image load errors
           profileImg.onerror = () => {
-            console.error(`✗ Desktop image failed to load. Attempting retry...`);
+            // console.(`✗ Desktop image failed to load. Attempting retry...`);
             // Retry after 1 second
             setTimeout(() => {
               if (profileImg.src && profileImg.src !== storeLogoUrl) {
                 profileImg.src = storeLogoUrl;
-                console.log(`↻ Desktop image retry initiated`);
+                // // console.(`↻ Desktop image retry initiated`);
               }
             }, 1000);
           };
       } else {
         // No store logo found
         profileImg.src = "";
-        console.log("No store logo found, image cleared");
+        // // console.("No store logo found, image cleared");
       }
       
     } catch (error) {
-      console.error("ERROR loading seller profile image:", error);
+      // // console.("ERROR loading seller profile image:", error);
     }
   }
 
@@ -223,7 +213,7 @@
     try {
       const welcomeTextElement = document.getElementById("welcomeText");
       if (!welcomeTextElement) {
-        console.warn("Welcome text element not found");
+        // // // console.("Welcome text element not found");
         return;
       }
 
@@ -236,7 +226,7 @@
           const { data: { user: supabaseUser } } = await supabase.auth.getUser();
           user = supabaseUser;
         } catch (err) {
-          console.log("Could not get Supabase user:", err.message);
+          // // // console.("Could not get Supabase user:", err.message);
         }
       }
 
@@ -247,7 +237,7 @@
           try {
             user = JSON.parse(localUserStr);
           } catch (err) {
-            console.log("Could not parse localStorage user:", err.message);
+            // console.("Could not parse localStorage user:", err.message);
           }
         }
       }
@@ -255,10 +245,10 @@
       // Determine display name with priority
       if (user?.user_metadata?.firstName) {
         displayName = user.user_metadata.firstName;
-        console.log("Using firstName from user metadata:", displayName);
+        // // console.("Using firstName from user metadata:", displayName);
       } else if (user?.firstName) {
         displayName = user.firstName;
-        console.log("Using firstName from user object:", displayName);
+        // // console.("Using firstName from user object:", displayName);
       } else if (user?.id) {
         // Try to fetch businessName from seller_profiles
         try {
@@ -271,20 +261,20 @@
             
             if (sellerProfile?.businessName) {
               displayName = sellerProfile.businessName;
-              console.log("Using businessName from seller_profiles:", displayName);
+              // // // console.("Using businessName from seller_profiles:", displayName);
             }
           }
         } catch (err) {
-          console.log("Could not fetch seller profile:", err.message);
+          // // // console.("Could not fetch seller profile:", err.message);
         }
       }
 
       // Update the welcome text
       welcomeTextElement.textContent = `Welcome, ${displayName}!`;
-      console.log("Welcome text updated to:", displayName);
+      // // console.("Welcome text updated to:", displayName);
       
     } catch (error) {
-      console.error("ERROR updating welcome text:", error);
+      // // console.("ERROR updating welcome text:", error);
     }
   }
 
@@ -295,7 +285,7 @@
       const progressText = document.getElementById("progress-text");
 
       if (!progressBar || !progressText) {
-        console.warn("Progress tracker elements not found");
+        // // console.("Progress tracker elements not found");
         return;
       }
 
@@ -313,9 +303,9 @@
         try {
           const { data: { user } } = await supabase.auth.getUser();
           userId = user?.id;
-          console.log("✓ Got user ID from Supabase:", userId);
+          // // console.("✓ Got user ID from Supabase:", userId);
         } catch (err) {
-          console.log("Could not get Supabase user:", err.message);
+          // console.("Could not get Supabase user:", err.message);
         }
       }
 
@@ -326,15 +316,15 @@
           try {
             const localUser = JSON.parse(localUserStr);
             userId = localUser?.id;
-            console.log("✓ Got user ID from localStorage:", userId);
+            // // console.("✓ Got user ID from localStorage:", userId);
           } catch (err) {
-            console.log("Could not parse localStorage user:", err.message);
+            // console.("Could not parse localStorage user:", err.message);
           }
         }
       }
 
       if (!userId) {
-        console.warn("No user ID found - keeping default progress");
+        // // console.("No user ID found - keeping default progress");
         progressBar.style.width = progress + "%";
         progressBar.style.backgroundColor = backgroundColor;
         progressText.innerHTML = messageHTML;
@@ -344,40 +334,40 @@
       // Fetch seller profile
       let sellerProfile = null;
 
-      console.log("🔍 Supabase available?", typeof supabase !== 'undefined');
+      // // console.("🔍 Supabase available?", typeof supabase !== 'undefined');
 
       if (typeof supabase !== 'undefined') {
         try {
-          console.log("🔍 Using Supabase - Querying seller_profiles table for user:", userId);
+          // // console.("🔍 Using Supabase - Querying seller_profiles table for user:", userId);
           const { data: profile, error } = await supabase
             .from("seller_profiles")
             .select("*")
             .eq("id", userId)
             .single();
           
-          console.log("📊 Supabase Query returned:", { profile, error });
+          // // console.("📊 Supabase Query returned:", { profile, error });
           
           if (error) {
-            console.error("❌ Supabase Error fetching seller profile:", error.message, error);
+            // // console.("❌ Supabase Error fetching seller profile:", error.message, error);
           } else if (!profile) {
-            console.error("❌ Supabase returned null profile");
+            // // console.("❌ Supabase returned null profile");
           } else {
             sellerProfile = profile;
-            console.log("✓ Seller profile fetched from Supabase - FULL DATA:", JSON.stringify(profile, null, 2));
+            // // console.("✓ Seller profile fetched from Supabase - FULL DATA:", JSON.stringify(profile, null, 2));
             
             // Log every single field
-            console.log("📋 ALL FIELDS IN PROFILE:");
-            Object.keys(profile).forEach(key => {
-              console.log(`  ${key}: ${profile[key]}`);
-            });
+            // // console.("📋 ALL FIELDS IN PROFILE:");
+            // Object.keys(profile).forEach(key => {
+            //   // console.(`  ${key}: ${profile[key]}`);
+            // });
           }
         } catch (err) {
-          console.error("❌ Exception with Supabase:", err.message, err);
+          // // console.("❌ Exception with Supabase:", err.message, err);
         }
       } else {
         // Fallback: Use the same API endpoint that works for the logo
         try {
-          console.log("⚠️ Supabase not available - Using API fallback for seller profile");
+          // // console.("⚠️ Supabase not available - Using API fallback for seller profile");
           const token = localStorage.getItem('token');
           const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
             ? CONFIG.API_BASE_URL 
@@ -392,16 +382,16 @@
           });
 
           if (!response.ok) {
-            console.error("❌ API Error:", response.status);
+            // // console.("❌ API Error:", response.status);
           } else {
             const data = await response.json();
-            console.log("📊 API Response - FULL STRUCTURE:", JSON.stringify(data, null, 2));
+            // // console.("📊 API Response - FULL STRUCTURE:", JSON.stringify(data, null, 2));
             
             // Log the nested data structure
             if (data?.data?.seller) {
-              console.log("📋 data.data.seller fields:", Object.keys(data.data.seller));
-              console.log("📋 data.data.seller.profile fields:", data.data.seller.profile ? Object.keys(data.data.seller.profile) : "NULL");
-              console.log("📋 Full data.data.seller object:", JSON.stringify(data.data.seller, null, 2));
+              // // console.("📋 data.data.seller fields:", Object.keys(data.data.seller));
+              // // console.("📋 data.data.seller.profile fields:", data.data.seller.profile ? Object.keys(data.data.seller.profile) : "NULL");
+              // // console.("📋 Full data.data.seller object:", JSON.stringify(data.data.seller, null, 2));
             }
             
             if (data?.data?.seller?.profile) {
@@ -417,50 +407,50 @@
                 product_count: data.data.seller.productCount || 0
               };
               
-              console.log("✓ Seller profile fetched from API - RAW DATA:", {
-                businessName: profile.businessName,
-                businessAddress: profile.businessAddress,
-                storeLogo: profile.storeLogo,
-                kycDocumentUrls: profile.kycDocumentUrls,
-                isVerified: profile.isVerified,
-                kyc_status: profile.kycDocumentUrls?.kyc_status || profile.kyc_document_urls?.kyc_status,
-                totalSales: profile.totalSales,
-                productCount: data.data.seller.productCount
-              });
-              console.log("✓ MAPPED DATA:", sellerProfile);
+              // // console.("✓ Seller profile fetched from API - RAW DATA:", {
+              //   businessName: profile.businessName,
+              //   businessAddress: profile.businessAddress,
+              //   storeLogo: profile.storeLogo,
+              //   kycDocumentUrls: profile.kycDocumentUrls,
+              //   isVerified: profile.isVerified,
+              //   kyc_status: profile.kycDocumentUrls?.kyc_status || profile.kyc_document_urls?.kyc_status,
+              //   totalSales: profile.totalSales,
+              //   productCount: data.data.seller.productCount
+              // });
+              // // console.("✓ MAPPED DATA:", sellerProfile);
               
               // Also update productCount variable from API
               productCount = data.data.seller.productCount || 0;
-              console.log("✓ Product count from API:", productCount);
+              // // console.("✓ Product count from API:", productCount);
             }
           }
         } catch (err) {
-          console.error("❌ Exception with API fallback:", err.message);
+          // // console.("❌ Exception with API fallback:", err.message);
         }
       }
 
       // Fetch product count
       if (typeof supabase !== 'undefined') {
         try {
-          console.log("🔍 Using Supabase - Querying products table for seller:", userId);
+          // // console.("🔍 Using Supabase - Querying products table for seller:", userId);
           const { count, error } = await supabase
             .from("products")
             .select("id", { count: "exact", head: true })
             .eq("seller_id", userId);
           
-          console.log("📊 Products query returned:", { count, error });
+          // // console.("📊 Products query returned:", { count, error });
           
           if (error) {
-            console.error("❌ Error fetching product count:", error.message, error);
+            // // console.("❌ Error fetching product count:", error.message, error);
           } else {
             productCount = count || 0;
-            console.log("✓ Product count from Supabase:", productCount);
+            // // console.("✓ Product count from Supabase:", productCount);
           }
         } catch (err) {
-          console.error("❌ Exception fetching product count:", err.message, err);
+          // // console.("❌ Exception fetching product count:", err.message, err);
         }
       } else {
-        console.log("⚠️ Supabase not available - product count check skipped");
+        // // console.("⚠️ Supabase not available - product count check skipped");
       }
 
       // Check conditions
@@ -481,24 +471,24 @@
       // Get KYC status - tracks three states: pending, under_review, approved
       // Check both direct and nested locations since API stores it in kycDocumentUrls.kyc_status
       const kycStatus = sellerProfile?.kyc_status || sellerProfile?.kyc_document_urls?.kyc_status;
-      console.log("📌 KYC Status from profile:", kycStatus);
+      // // console.("📌 KYC Status from profile:", kycStatus);
 
-      console.log("Checking conditions:", {
-        storeSetupCompleted,
-        kycCompleted,
-        kycStatus,
-        kyc_verified: sellerProfile?.kyc_verified,
-        kycDocumentUrls: sellerProfile?.kyc_document_urls,
-        productCount,
-        totalSales
-      });
+      // // // console.("Checking conditions:", {
+        // storeSetupCompleted,
+        // kycCompleted,
+        // kycStatus,
+        // kyc_verified: sellerProfile?.kyc_verified,
+        // kycDocumentUrls: sellerProfile?.kyc_document_urls,
+        // productCount,
+        // totalSales
+      // });
 
       // Determine progress level - check in order
       if (!storeSetupCompleted) {
         progress = 20;
         messageHTML = '<a href="setup-store.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
         backgroundColor = "#ef4444"; // red
-        console.log("Stage 1: Store setup needed");
+        // // // console.("Stage 1: Store setup needed");
       } 
       else if (kycStatus === "under_review" || (kycStatus === "pending" && sellerProfile?.kyc_document_urls?.kyc_submitted_at)) {
         // KYC is under review - show message without link
@@ -506,38 +496,38 @@
         progress = 40;
         messageHTML = '<span style="color: #1e293b;">Your KYC is under review. We\'ll notify you once approved.</span>';
         backgroundColor = "#f97316"; // orange
-        console.log("Stage 2: KYC under review");
+        // // // console.("Stage 2: KYC under review");
       }
       else if (!kycCompleted || kycStatus === "pending") {
         // KYC not started or pending (without submission) - show clickable link
         progress = 40;
         messageHTML = '<a href="kyc-verification.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete KYC HERE</a>';
         backgroundColor = "#f97316"; // orange
-        console.log("Stage 2: KYC needed");
+        // // // console.("Stage 2: KYC needed");
       }
       else if (productCount < 1) {
         progress = 60;
         messageHTML = '<a href="sellers product.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Add your first product HERE</a>';
         backgroundColor = "#eab308"; // yellow
-        console.log("Stage 3: First product needed");
+        // // // console.("Stage 3: First product needed");
       }
       else if (totalSales < 1) {
         progress = 75;
         messageHTML = 'Make your first sale';
         backgroundColor = "#86efac"; // lightgreen
-        console.log("Stage 4: First sale needed");
+        // // // console.("Stage 4: First sale needed");
       }
       else if (totalSales < 10) {
         progress = 90;
         messageHTML = 'Reach 10 sales';
         backgroundColor = "#22c55e"; // green
-        console.log("Stage 5: Need 10 sales");
+        // // // console.("Stage 5: Need 10 sales");
       }
       else {
         progress = 100;
         messageHTML = 'Verified Seller ✓';
         backgroundColor = "#3b82f6"; // blue
-        console.log("Stage 6: Verified seller");
+        // // // console.("Stage 6: Verified seller");
       }
 
       // Update progress bar
@@ -547,14 +537,14 @@
       // Update progress text with HTML
       progressText.innerHTML = messageHTML;
 
-      console.log("✓ Progress tracker updated:", { 
-        progress,
-        stage: messageHTML,
-        color: backgroundColor
-      });
+      // // console.("✓ Progress tracker updated:", { 
+      //   progress,
+      //   stage: messageHTML,
+      //   color: backgroundColor
+      // });
 
     } catch (error) {
-      console.error("ERROR updating progress tracker:", error);
+      // // console.("ERROR updating progress tracker:", error);
     }
   }
 
@@ -606,7 +596,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     
     try {
-      console.log("🎟️ Creating coupon...");
+      // // console.("🎟️ Creating coupon...");
 
       // Get logged-in user
       let user = null;
@@ -617,7 +607,7 @@ document.addEventListener("DOMContentLoaded", () => {
             user = data.user;
           }
         } catch (err) {
-          console.log("Could not get Supabase user");
+          // console.("Could not get Supabase user");
         }
       }
 
@@ -627,19 +617,19 @@ document.addEventListener("DOMContentLoaded", () => {
           try {
             user = JSON.parse(localUserStr);
           } catch (err) {
-            console.log("Could not parse localStorage user");
+            // console.("Could not parse localStorage user");
           }
         }
       }
 
       if (!user) {
         alert("❌ Please log in to create a coupon");
-        console.error("No user found");
+        // console.("No user found");
         return;
       }
 
       const userId = user.id;
-      console.log("✓ User ID:", userId);
+      // // console.("✓ User ID:", userId);
 
       // Read form values
       const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -648,7 +638,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const expiryDate = document.getElementById('couponExpiry').value;
       const usageLimit = parseInt(document.getElementById('couponLimit').value) || 0;
 
-      console.log("📋 Form Data:", { code, discount, productId, expiryDate, usageLimit });
+      // // console.("📋 Form Data:", { code, discount, productId, expiryDate, usageLimit });
 
       // Validation
       if (!code || code.trim() === '') {
@@ -666,12 +656,12 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      console.log("✓ Validation passed");
+      // // console.("✓ Validation passed");
 
       // Save to Supabase
       if (typeof supabase !== 'undefined') {
         try {
-          console.log("💾 Saving coupon to Supabase...");
+          // // console.("💾 Saving coupon to Supabase...");
           
           const { data, error } = await supabase.from('coupons').insert({
             seller_id: userId,
@@ -684,12 +674,12 @@ document.addEventListener("DOMContentLoaded", () => {
           });
 
           if (error) {
-            console.error("❌ Supabase Error:", error);
+            // // console.("❌ Supabase Error:", error);
             alert("❌ Error creating coupon: " + error.message);
             return;
           }
 
-          console.log("✓ Coupon created successfully!", data);
+          // // console.("✓ Coupon created successfully!", data);
           alert("✅ Coupon created successfully!\nCode: " + code + "\nDiscount: " + discount + "%");
 
           // Reset form and close modal
@@ -700,16 +690,16 @@ document.addEventListener("DOMContentLoaded", () => {
           loadSellerProductsForCoupon();
 
         } catch (err) {
-          console.error("❌ Exception:", err);
+          // // console.("❌ Exception:", err);
           alert("❌ Error: " + err.message);
         }
       } else {
-        console.warn("⚠️ Supabase not available");
+        // // console.("⚠️ Supabase not available");
         alert("❌ Supabase service not available");
       }
 
     } catch (error) {
-      console.error("❌ Coupon error:", error);
+      // // console.("❌ Coupon error:", error);
       alert("❌ Error: " + error.message);
     }
   };
@@ -717,7 +707,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // LOAD SELLER PRODUCTS FOR COUPON DROPDOWN
   async function loadSellerProductsForCoupon() {
     try {
-      console.log("📦 Loading seller products for coupon dropdown...");
+      // // console.("📦 Loading seller products for coupon dropdown...");
 
       // Get logged-in user
       let user = null;
@@ -728,7 +718,7 @@ document.addEventListener("DOMContentLoaded", () => {
             user = data.user;
           }
         } catch (err) {
-          console.log("Could not get Supabase user");
+          // console.("Could not get Supabase user");
         }
       }
 
@@ -738,23 +728,23 @@ document.addEventListener("DOMContentLoaded", () => {
           try {
             user = JSON.parse(localUserStr);
           } catch (err) {
-            console.log("Could not parse localStorage user");
+            // console.("Could not parse localStorage user");
           }
         }
       }
 
       if (!user) {
-        console.warn("⚠️ No user found for loading products");
+        // // console.("⚠️ No user found for loading products");
         return;
       }
 
       const userId = user.id;
-      console.log("✓ User ID for products:", userId);
+      // // console.("✓ User ID for products:", userId);
 
       // Fetch products from Supabase
       if (typeof supabase !== 'undefined') {
         try {
-          console.log("🔍 Querying products for seller...");
+          // // console.("🔍 Querying products for seller...");
           
           const { data: products, error } = await supabase
             .from('products')
@@ -762,18 +752,18 @@ document.addEventListener("DOMContentLoaded", () => {
             .eq('seller_id', userId);
 
           if (error) {
-            console.error("❌ Error fetching products:", error);
+            // // console.("❌ Error fetching products:", error);
             return;
           }
 
-          console.log("✓ Products fetched:", products?.length || 0, "products");
+          // // console.("✓ Products fetched:", products?.length || 0, "products");
 
           // Populate dropdown
           const productDropdown = document.getElementById('couponProduct');
           productDropdown.innerHTML = '<option value="">-- Choose a product --</option>';
 
           if (!products || products.length === 0) {
-            console.log("⚠️ No products available");
+            // // console.("⚠️ No products available");
             productDropdown.innerHTML = '<option value="">No products available</option>';
             productDropdown.disabled = true;
             return;
@@ -786,27 +776,27 @@ document.addEventListener("DOMContentLoaded", () => {
             option.value = product.id;
             option.textContent = product.name;
             productDropdown.appendChild(option);
-            console.log("✓ Added product:", product.name);
+            // // console.("✓ Added product:", product.name);
           });
 
-          console.log("✓ Dropdown populated with " + products.length + " products");
+          // // console.("✓ Dropdown populated with " + products.length + " products");
 
         } catch (err) {
-          console.error("❌ Exception loading products:", err);
+          // // console.("❌ Exception loading products:", err);
         }
       } else {
-        console.warn("⚠️ Supabase not available for loading products");
+        // // console.("⚠️ Supabase not available for loading products");
       }
 
     } catch (error) {
-      console.error("❌ Error in loadSellerProductsForCoupon:", error);
+      // // console.("❌ Error in loadSellerProductsForCoupon:", error);
     }
   }
 
   // Sales Chart render with Chart.js - REAL DATA
   function renderSalesChart() {
     if (typeof Chart === 'undefined') {
-      console.error("❌ Chart.js not loaded");
+      // // console.("❌ Chart.js not loaded");
       alert("Chart library failed to load");
       return;
     }
@@ -818,7 +808,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Fetch monthly sales data from backend
   async function fetchMonthlySalesData() {
     try {
-      console.log("📊 Fetching monthly sales data...");
+      // // console.("📊 Fetching monthly sales data...");
       
       // Get user ID
       let userId = null;
@@ -827,7 +817,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const { data: { user } } = await supabase.auth.getUser();
           userId = user?.id;
         } catch (err) {
-          console.log("Could not get Supabase user");
+          // // console.("Could not get Supabase user");
         }
       }
 
@@ -838,50 +828,50 @@ document.addEventListener("DOMContentLoaded", () => {
             const localUser = JSON.parse(localUserStr);
             userId = localUser?.id;
           } catch (err) {
-            console.log("Could not parse localStorage user");
+            // console.("Could not parse localStorage user");
           }
         }
       }
 
       if (!userId) {
-        console.error("❌ No user ID found");
+        // // console.("❌ No user ID found");
         drawDemoChart();
         return;
       }
 
-      console.log("✓ Got seller ID:", userId);
+      // // console.("✓ Got seller ID:", userId);
 
       // Try Supabase first
       let orders = [];
       if (typeof supabase !== 'undefined') {
         try {
-          console.log("🔍 Fetching orders from Supabase...");
+          // // console.("🔍 Fetching orders from Supabase...");
           const { data, error } = await supabase
             .from("orders")
             .select("total_amount, created_at")
             .eq("seller_id", userId);
           
           if (error) {
-            console.warn("⚠️ Supabase error:", error.message);
+            // // console.("⚠️ Supabase error:", error.message);
           } else if (data) {
             orders = data;
-            console.log("✓ Got orders from Supabase:", orders.length, "orders");
+            // // console.("✓ Got orders from Supabase:", orders.length, "orders");
           }
         } catch (err) {
-          console.warn("⚠️ Exception with Supabase:", err.message);
+          // // console.("⚠️ Exception with Supabase:", err.message);
         }
       }
 
       // Fallback to API if no data from Supabase
       if (orders.length === 0) {
-        console.log("⚠️ No data from Supabase, trying API fallback...");
+        // // console.("⚠️ No data from Supabase, trying API fallback...");
         try {
           const token = localStorage.getItem('token');
           const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
             ? CONFIG.API_BASE_URL 
             : 'https://marketmix-backend.onrender.com/api';
 
-          console.log("📡 Fetching from API:", `${apiUrl}/sellers/orders`);
+          // // console.("📡 Fetching from API:", `${apiUrl}/sellers/orders`);
           const response = await fetch(`${apiUrl}/sellers/orders`, {
             method: 'GET',
             headers: {
@@ -891,7 +881,7 @@ document.addEventListener("DOMContentLoaded", () => {
           });
 
           if (!response.ok) {
-            console.warn("⚠️ API Error:", response.status);
+            // // console.("⚠️ API Error:", response.status);
             drawDemoChart();
             return;
           }
@@ -899,14 +889,14 @@ document.addEventListener("DOMContentLoaded", () => {
           const data = await response.json();
           if (data?.data?.orders) {
             orders = data.data.orders;
-            console.log("✓ Got orders from API:", orders.length, "orders");
+            // // console.("✓ Got orders from API:", orders.length, "orders");
           } else {
-            console.warn("⚠️ Unexpected API response format");
+            // // console.("⚠️ Unexpected API response format");
             drawDemoChart();
             return;
           }
         } catch (err) {
-          console.error("❌ API Error:", err.message);
+          // // console.("❌ API Error:", err.message);
           drawDemoChart();
           return;
         }
@@ -923,13 +913,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      console.log("📈 Monthly sales totals:", monthlySales);
+      // // console.("📈 Monthly sales totals:", monthlySales);
 
       // Draw chart with real data
       drawChartWithData(monthlySales);
 
     } catch (error) {
-      console.error("❌ Error fetching sales data:", error);
+      // // console.("❌ Error fetching sales data:", error);
       drawDemoChart();
     }
   }
@@ -995,12 +985,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    console.log("✓ Chart rendered with real data");
+    // // console.("✓ Chart rendered with real data");
   }
 
   // Fallback demo chart
   function drawDemoChart() {
-    console.log("📊 Drawing demo chart (no data available)");
+    // // console.("📊 Drawing demo chart (no data available)");
     const ctx = document.getElementById('salesChart').getContext('2d');
     if (window.salesChartInstance) window.salesChartInstance.destroy();
 

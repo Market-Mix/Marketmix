@@ -535,6 +535,7 @@ body {
   @media (max-width: 768px) {
   .shop-settings {
    margin-left: 50%;
+   padding: 20px;
   }
 }
 
