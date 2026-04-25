@@ -272,20 +272,22 @@ function openEditModal(id) {
 
   document.getElementById('editId').value = id;
   document.getElementById('editName').value = product.name;
-  document.getElementById('editPrice').value = product.price;
-  document.getElementById('editStock').value = product.stock_quantity;
-  document.getElementById('editDescription').value = product.description || '';
+  document.getElementById('editPrice').value = parseFloat(product.price).toLocaleString('en-US');
+  document.getElementById('editStatus').value = product.stockStatus || getStockStatus(product.stock_quantity);
 
-  const editStatus = document.getElementById('editStatus');
-  const ss = product.stockStatus || getStockStatus(product.stock_quantity);
-  editStatus.value = ss;
+  // Only set these if the fields exist in your HTML
+  const editStock = document.getElementById('editStock');
+  if (editStock) editStock.value = product.stock_quantity;
 
-  // Show current image
+  const editDescription = document.getElementById('editDescription');
+  if (editDescription) editDescription.value = product.description || '';
+
   const currentImg = document.getElementById('editCurrentImage');
   if (currentImg) {
     currentImg.src = product.main_image_url || 'https://via.placeholder.com/80?text=No+Image';
     currentImg.style.display = 'block';
   }
+
   const editPreview = document.getElementById('editImagePreview');
   if (editPreview) editPreview.style.display = 'none';
 
