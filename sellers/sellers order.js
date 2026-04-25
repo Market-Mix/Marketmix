@@ -1,184 +1,351 @@
+/* =============================================================
+   sellers order.js  —  MarketMix Seller Orders (API-integrated)
+   ============================================================= */
 
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
+/* ── helpers ─────────────────────────────────────────────── */
 
+function getToken() {
+  return localStorage.getItem('token') || '';
+}
 
-       document.addEventListener("DOMContentLoaded", function () {
-  const toggler = document.getElementById("navbar-toggler");
-  const offcanvasMenu = document.getElementById("offcanvasMenu");
-  const offcanvasClose = document.getElementById("offcanvasClose");
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${getToken()}`,
+  };
+}
 
-  // Open Offcanvas Menu
-  toggler.addEventListener("click", function () {
-    offcanvasMenu.classList.add("show");
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
+}
 
-  // Close Offcanvas Menu
-  offcanvasClose.addEventListener("click", function () {
-    offcanvasMenu.classList.remove("show");
-  });
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
-  // Close Offcanvas when clicking outside, but not when clicking inside
-  document.addEventListener("click", function (event) {
-    if (!offcanvasMenu.contains(event.target) && !toggler.contains(event.target)) {
-      offcanvasMenu.classList.remove("show");
-    }
-  });
-
-  // Ensure clicking inside doesn't close menu
-  offcanvasMenu.addEventListener("click", function (event) {
-    event.stopPropagation();
-  });
-
-  // Close offcanvas when clicking any menu link (for better UX)
-  document.querySelectorAll('.offcanvas-body a').forEach(link => {
-    link.addEventListener('click', () => {
-      offcanvasMenu.classList.remove('show');
-    });
-  });
-
-  });
-
-
-function toggleProfileDropdown() {
-    const dropdown = document.getElementById("profileDropdown");
-    dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
-  }
-
-  // Close dropdown if clicking outside
-  document.addEventListener("click", function (e) {
-    const dropdown = document.getElementById("profileDropdown");
-    const profile = document.querySelector(".profile-icon");
-
-    if (!dropdown.contains(e.target) && !profile.contains(e.target)) {
-      dropdown.style.display = "none";
-    }
-  });
-
-
-
-
-const ordersData = [
-  { id: "OD001", customer: "Alice Johnson", product: "Red Dress", quantity: 2, date: "2025-05-15", status: "Pending" },
-  { id: "OD002", customer: "Bob Smith", product: "Bluetooth Speaker", quantity: 1, date: "2025-05-16", status: "Shipped" },
-  { id: "OD003", customer: "Carol Lee", product: "Coffee Maker", quantity: 1, date: "2025-05-17", status: "Delivered" },
-  { id: "OD004", customer: "David Kim", product: "Running Shoes", quantity: 3, date: "2025-05-18", status: "Pending" },
-  { id: "OD005", customer: "Eva Green", product: "Smart Watch", quantity: 1, date: "2025-05-19", status: "Shipped" },
-  { id: "OD006", customer: "Frank Wright", product: "Yoga Mat", quantity: 2, date: "2025-05-20", status: "Pending" },
-  { id: "OD007", customer: "Grace Hall", product: "Wireless Headphones", quantity: 1, date: "2025-05-21", status: "Delivered" },
-  { id: "OD008", customer: "Henry Adams", product: "Gaming Mouse", quantity: 1, date: "2025-05-22", status: "Pending" },
-  { id: "OD009", customer: "Isla Brown", product: "LED Desk Lamp", quantity: 2, date: "2025-05-23", status: "Shipped" },
-  { id: "OD010", customer: "Jack White", product: "Backpack", quantity: 1, date: "2025-05-24", status: "Pending" },
-];
+/* ── state ───────────────────────────────────────────────── */
 
 let currentPage = 1;
-const ordersPerPage = 5;
-let filteredOrders = [...ordersData];
-let selectedOrderId = null;
-let selectedNewStatus = null;
+const PAGE_SIZE = 10;
+let totalOrders = 0;
+let allLoaded = false;
 
-const orderTable = document.getElementById("orderTable");
-const statusFilter = document.getElementById("statusFilter");
-const searchInput = document.getElementById("searchInput");
-const loadMoreBtn = document.getElementById("loadMoreBtn");
-const toast = document.getElementById("toast");
-const confirmationModal = document.getElementById("confirmationModal");
-const newStatusText = document.getElementById("newStatusText");
-const confirmYes = document.getElementById("confirmYes");
-const confirmNo = document.getElementById("confirmNo");
+// Accumulated rows across "load more" calls
+let loadedOrders = [];
 
-function renderOrders() {
-  document.querySelectorAll(".order-row:not(.header)").forEach(row => row.remove());
+// Pending confirmation
+let pendingOrderId = null;
+let pendingNewStatus = null;
 
-  const search = searchInput.value.toLowerCase();
-  filteredOrders = ordersData.filter(order =>
-    (statusFilter.value === "all" || order.status === statusFilter.value) &&
-    (order.id.toLowerCase().includes(search) ||
-     order.customer.toLowerCase().includes(search) ||
-     order.product.toLowerCase().includes(search))
-  );
+/* ── DOM refs ────────────────────────────────────────────── */
 
-  const end = currentPage * ordersPerPage;
-  const paginated = filteredOrders.slice(0, end);
-  loadMoreBtn.style.display = end >= filteredOrders.length ? "none" : "block";
+const orderTable     = document.getElementById('orderTable');
+const searchInput    = document.getElementById('searchInput');
+const statusFilter   = document.getElementById('statusFilter');
+const loadMoreBtn    = document.getElementById('loadMoreBtn');
+const toast          = document.getElementById('toast');
+const confirmModal   = document.getElementById('confirmationModal');
+const newStatusText  = document.getElementById('newStatusText');
+const confirmYes     = document.getElementById('confirmYes');
+const confirmNo      = document.getElementById('confirmNo');
 
-  paginated.forEach(order => {
-    const row = document.createElement("div");
-    row.className = "order-row";
+/* ── toast ───────────────────────────────────────────────── */
+
+function showToast(msg, isError = false) {
+  toast.textContent = msg;
+  toast.style.background = isError ? '#c0392b' : '#2d3436';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+/* ── fetch orders from API ───────────────────────────────── */
+
+async function fetchOrders(reset = false) {
+  if (reset) {
+    currentPage  = 1;
+    loadedOrders = [];
+    allLoaded    = false;
+  }
+
+  const search = searchInput.value.trim();
+  const status = statusFilter.value;
+
+  const params = new URLSearchParams({
+    page:  currentPage,
+    limit: PAGE_SIZE,
+  });
+  if (search) params.set('search', search);
+  if (status && status !== 'all') params.set('status', status);
+
+  try {
+    setTableLoading(reset);
+
+    const res = await fetch(`${API_BASE}/seller/orders?${params.toString()}`, {
+      headers: authHeaders(),
+    });
+
+    if (res.status === 401) {
+      showToast('Session expired. Please log in again.', true);
+      setTimeout(() => (window.location.href = 'login.html'), 2000);
+      return;
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const { orders = [], pagination = {} } = data.data || {};
+
+    totalOrders = pagination.total || 0;
+
+    if (reset) {
+      loadedOrders = orders;
+    } else {
+      loadedOrders = [...loadedOrders, ...orders];
+    }
+
+    allLoaded = loadedOrders.length >= totalOrders;
+    loadMoreBtn.style.display = allLoaded ? 'none' : 'block';
+
+    renderOrders(reset);
+  } catch (err) {
+    console.error('fetchOrders error:', err);
+    showToast('Failed to load orders: ' + err.message, true);
+    setTableEmpty('Could not load orders. Please try again.');
+  }
+}
+
+/* ── render ──────────────────────────────────────────────── */
+
+function setTableLoading(clear) {
+  if (!clear) return;
+  // Remove all existing data rows
+  document.querySelectorAll('.order-row:not(.header)').forEach(r => r.remove());
+
+  const loadingRow = document.createElement('div');
+  loadingRow.className = 'order-row loading-row';
+  loadingRow.style.cssText = 'grid-column:1/-1;text-align:center;color:#718096;padding:24px;';
+  loadingRow.textContent = 'Loading orders…';
+  orderTable.appendChild(loadingRow);
+}
+
+function setTableEmpty(msg) {
+  document.querySelectorAll('.order-row:not(.header), .loading-row').forEach(r => r.remove());
+
+  const emptyRow = document.createElement('div');
+  emptyRow.className = 'order-row empty-row';
+  emptyRow.style.cssText =
+    'grid-column:1/-1;text-align:center;color:#a0aec0;padding:40px;font-size:1rem;';
+  emptyRow.textContent = msg || 'No orders found.';
+  orderTable.appendChild(emptyRow);
+}
+
+function renderOrders(reset) {
+  // On reset, clear existing rows; on "load more", keep existing and append
+  if (reset) {
+    document.querySelectorAll('.order-row:not(.header), .loading-row, .empty-row').forEach(r =>
+      r.remove()
+    );
+  }
+
+  if (loadedOrders.length === 0) {
+    setTableEmpty('No orders found.');
+    return;
+  }
+
+  // Determine which slice to render (new rows only on load-more)
+  const startIdx = reset ? 0 : loadedOrders.length - (loadedOrders.length % PAGE_SIZE || PAGE_SIZE);
+  const slice    = reset ? loadedOrders : loadedOrders.slice(startIdx);
+
+  slice.forEach(order => {
+    // One row per order (may contain multiple items; show first product + count)
+    const firstItem  = order.items[0] || {};
+    const extraCount = order.items.length > 1 ? ` (+${order.items.length - 1} more)` : '';
+    const productLabel = (firstItem.productName || '—') + extraCount;
+    const totalQty   = order.items.reduce((s, i) => s + i.quantity, 0);
+
+    const row = document.createElement('div');
+    row.className = 'order-row';
+    row.dataset.orderId = order.orderId;
+
     row.innerHTML = `
-      <div data-label="Order ID">${order.id}</div>
-      <div data-label="Customer">${order.customer}</div>
-      <div data-label="Product">${order.product}</div>
-      <div data-label="Qty">${order.quantity}</div>
-      <div data-label="Date">${order.date}</div>
-      <div data-label="Status"><span class="status ${order.status}">${order.status}</span></div>
+      <div data-label="Order ID">#${order.orderId.slice(0, 8).toUpperCase()}</div>
+      <div data-label="Customer">${order.buyer.name || '—'}</div>
+      <div data-label="Product">${productLabel}</div>
+      <div data-label="Qty">${totalQty}</div>
+      <div data-label="Date">${formatDate(order.createdAt)}</div>
+      <div data-label="Status">
+        <span class="status ${capitalize(order.status)}">${capitalize(order.status)}</span>
+      </div>
       <div data-label="Action">
-        ${
-          order.status === "Pending"
-          ? `<button class="mark-btn" data-id="${order.id}" data-status="Shipped">Shipped</button>`
-          : order.status === "Shipped"
-          ? `<button class="mark-btn" data-id="${order.id}" data-status="Delivered"> Delivered</button>`
-          : `<button class="mark-btn" disabled>Completed</button>`
-        }
+        ${buildActionButton(order)}
       </div>
     `;
+
     orderTable.appendChild(row);
   });
 
-  document.querySelectorAll(".mark-btn:not([disabled])").forEach(btn => {
-    btn.addEventListener("click", () => {
-      selectedOrderId = btn.dataset.id;
-      selectedNewStatus = btn.dataset.status;
-      newStatusText.textContent = selectedNewStatus;
-      confirmationModal.classList.add("show");
+  // Attach event listeners to action buttons
+  document.querySelectorAll('.mark-btn:not([disabled])').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingOrderId   = btn.dataset.id;
+      pendingNewStatus = btn.dataset.status;
+      newStatusText.textContent = capitalize(pendingNewStatus);
+      confirmModal.classList.add('show');
     });
   });
 }
 
-loadMoreBtn.addEventListener("click", () => {
-  currentPage++;
-  renderOrders();
-});
+function buildActionButton(order) {
+  const status = (order.status || '').toLowerCase();
 
-statusFilter.addEventListener("change", () => {
-  currentPage = 1;
-  renderOrders();
-});
-
-searchInput.addEventListener("input", () => {
-  currentPage = 1;
-  renderOrders();
-});
-
-confirmYes.addEventListener("click", () => {
-  const order = ordersData.find(o => o.id === selectedOrderId);
-  if (order) {
-    order.status = selectedNewStatus;
-    showToast(`Order ${order.id} marked as ${selectedNewStatus}`);
-    renderOrders();
+  if (status === 'pending') {
+    return `<button class="mark-btn" data-id="${order.orderId}" data-status="confirmed">Confirm</button>`;
   }
-  closeModal();
-});
+  if (status === 'confirmed') {
+    return `<button class="mark-btn" data-id="${order.orderId}" data-status="processing">Processing</button>`;
+  }
+  if (status === 'processing') {
+    return `<button class="mark-btn" data-id="${order.orderId}" data-status="shipped">Ship</button>`;
+  }
+  if (status === 'shipped') {
+    return `<button class="mark-btn" data-id="${order.orderId}" data-status="delivered" style="background:#27ae60">Delivered</button>`;
+  }
+  if (status === 'delivered') {
+    return `<button class="mark-btn" disabled>Completed</button>`;
+  }
+  if (status === 'cancelled') {
+    return `<button class="mark-btn" disabled style="background:#e74c3c">Cancelled</button>`;
+  }
+  return `<button class="mark-btn" disabled>—</button>`;
+}
 
-confirmNo.addEventListener("click", closeModal);
-window.addEventListener("click", (e) => {
-  if (e.target === confirmationModal) closeModal();
-});
+/* ── status update ───────────────────────────────────────── */
+
+async function updateOrderStatus(orderId, newStatus) {
+  try {
+    const res = await fetch(`${API_BASE}/seller/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ status: newStatus }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data.message || `HTTP ${res.status}`);
+    }
+
+    showToast(`Order updated to "${capitalize(newStatus)}" ✓`);
+
+    // Refresh the list to reflect the new status
+    await fetchOrders(true);
+  } catch (err) {
+    console.error('updateOrderStatus error:', err);
+    showToast('Failed to update order: ' + err.message, true);
+  }
+}
+
+/* ── modal ───────────────────────────────────────────────── */
 
 function closeModal() {
-  confirmationModal.classList.remove("show");
-  selectedOrderId = null;
-  selectedNewStatus = null;
+  confirmModal.classList.remove('show');
+  pendingOrderId   = null;
+  pendingNewStatus = null;
 }
 
-function showToast(msg) {
-  toast.textContent = msg;
-  toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 3000);
-}
-
-renderOrders();
-
-
-document.getElementById("closeTips").addEventListener("click", function () {
-  document.getElementById("sellerTips").style.display = "none";
+confirmYes.addEventListener('click', async () => {
+  if (!pendingOrderId || !pendingNewStatus) return closeModal();
+  const id     = pendingOrderId;
+  const status = pendingNewStatus;
+  closeModal();
+  await updateOrderStatus(id, status);
 });
+
+confirmNo.addEventListener('click', closeModal);
+
+window.addEventListener('click', e => {
+  if (e.target === confirmModal) closeModal();
+});
+
+/* ── filters / search ────────────────────────────────────── */
+
+let searchDebounceTimer;
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => fetchOrders(true), 400);
+});
+
+statusFilter.addEventListener('change', () => fetchOrders(true));
+
+/* ── load more ───────────────────────────────────────────── */
+
+loadMoreBtn.addEventListener('click', () => {
+  if (allLoaded) return;
+  currentPage++;
+  fetchOrders(false);
+});
+
+/* ── navbar / tips (unchanged from original) ─────────────── */
+
+document.addEventListener('DOMContentLoaded', function () {
+  const toggler       = document.getElementById('navbar-toggler');
+  const offcanvasMenu = document.getElementById('offcanvasMenu');
+  const offcanvasClose = document.getElementById('offcanvasClose');
+
+  toggler.addEventListener('click', () => offcanvasMenu.classList.add('show'));
+  offcanvasClose.addEventListener('click', () => offcanvasMenu.classList.remove('show'));
+
+  document.addEventListener('click', e => {
+    if (!offcanvasMenu.contains(e.target) && !toggler.contains(e.target)) {
+      offcanvasMenu.classList.remove('show');
+    }
+  });
+
+  offcanvasMenu.addEventListener('click', e => e.stopPropagation());
+
+  document.querySelectorAll('.offcanvas-body a').forEach(link => {
+    link.addEventListener('click', () => offcanvasMenu.classList.remove('show'));
+  });
+
+  // Profile dropdown
+  document.querySelectorAll('.profile-icon').forEach(icon => {
+    icon.addEventListener('click', toggleProfileDropdown);
+  });
+
+  document.addEventListener('click', e => {
+    const dropdown = document.getElementById('profileDropdown');
+    const profile  = document.querySelector('.profile-icon');
+    if (dropdown && profile && !dropdown.contains(e.target) && !profile.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // Seller tips close
+  const closeTips = document.getElementById('closeTips');
+  if (closeTips) {
+    closeTips.addEventListener('click', () => {
+      document.getElementById('sellerTips').style.display = 'none';
+    });
+  }
+
+  // Initial load
+  fetchOrders(true);
+});
+
+function toggleProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  if (dropdown) {
+    dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+  }
+}
