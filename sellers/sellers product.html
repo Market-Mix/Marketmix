@@ -3,116 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>My Products | MarketMix</title>
-<meta name="description" content="View and manage products listed for sale on MarketMix. Edit, update or delete your seller items easily.">
-
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <title>My Products | MarketMix</title>
+    <meta name="description" content="View and manage products listed for sale on MarketMix. Edit, update or delete your seller items easily.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <link rel="stylesheet" href="sellers product.css">
     <link rel="shortcut icon" href="images/marketplace blue.avif" type="image/x-icon">
 </head>
 <body>
- 
-<div>
-  <!-- Navbar --> 
-  <nav class="navbar">
-    <div class="nav-container">
-      <a href="#" class="brand-logo">MarketMix</a>
-      <button class="navbar-toggler" id="navbar-toggler" type="button" aria-label="Toggle navigation">
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="#" class="brand-logo">MarketMix</a>
+    <button class="navbar-toggler" id="navbar-toggler" type="button" aria-label="Toggle navigation">
       <img src="images/elon.jfif" class="navbar-toggler-icon" alt="">
-      </button>
-      <div class="nav-large">
-        <ul class="nav-list">
-          
-  <ul class="nav-links">
-    <li><a href="sellers layout.html">Dashboard</a></li>
-    <li><a href="sellers product.html">My Products</a></li>
-    <li><a href="sellers order.html">Orders</a></li>
-    <li><a href="sellers returns.html">Returns & Refunds</a></li>
-    <li><a href="sellers earning.html">Earnings</a></li>
-    <li><a href="sellers setting.html">Shop Settings</a></li>
-  </ul>
-         
-        </ul>
-        <div class="nav-actions">
-       
-        </div>
-        
-          <div class="icon-container">
-    <div class="profile-container">
-  <img src="images/elon.jfif" alt="Profile" class="profile-icon" onclick="toggleProfileDropdown()">
-
-  <div class="profile-dropdown" id="profileDropdown">
-    <a href="view profile.html">View Profile</a>
-    <a href="sellers setting.html">Account Settings</a>
-    <a href="help.html">Help & Support</a>
-    <a href="logout.html">Logout</a>
-  </div>
-</div>
-
+    </button>
+    <div class="nav-large">
+      <ul class="nav-links">
+        <li><a href="sellers layout.html">Dashboard</a></li>
+        <li><a href="sellers product.html">My Products</a></li>
+        <li><a href="sellers order.html">Orders</a></li>
+        <li><a href="sellers returns.html">Returns &amp; Refunds</a></li>
+        <li><a href="sellers earning.html">Earnings</a></li>
+        <li><a href="sellers setting.html">Shop Settings</a></li>
+      </ul>
+      <div class="nav-actions"></div>
+      <div class="icon-container">
+        <div class="profile-container">
+          <img src="images/elon.jfif" alt="Profile" class="profile-icon" onclick="toggleProfileDropdown()">
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="view profile.html">View Profile</a>
+            <a href="sellers setting.html">Account Settings</a>
+            <a href="help.html">Help &amp; Support</a>
+            <a href="logout.html">Logout</a>
           </div>
         </div>
       </div>
     </div>
-  </nav>
-
-  <!-- Offcanvas Menu (for small screens) -->
-  <div class="offcanvas-menu" id="offcanvasMenu">
-    <div class="offcanvas-header">
-      <button class="offcanvas-close" id="offcanvasClose">&times;</button>
-    </div>
-    <div class="offcanvas-body">
-      <ul class="nav-list">
-       <ul class="nav-links">
-    <li><a href="sellers layout.html">Dashboard</a></li>
-    <li><a href="sellers product.html">My Products</a></li>
-    <li><a href="sellers order.html">Orders</a></li>
-    <li><a href="sellers returns.html">Returns & Refunds</a></li>
-    <li><a href="sellers earning.html">Earnings</a></li>
-    <li><a href="sellers setting.html">Shop Settings</a></li>
-  
-  </ul>
-
-      </ul>
-      <div class="nav-actions">
-     
-      </div>
-      
-        <div class="icon-container">
-   <div class="profile-container">
-  <img src="images/elon.jfif" alt="Profile" class="profile-icon" onclick="toggleProfileDropdown()">
-
-  <div class="nav-list">
-     <li><a style="text-decoration: none; color: white;" href="view profile.html">View Profile</a></li>
-    <li><a style="text-decoration: none; color: white;" href="sellers setting.html">Account Settings</a></li>
-    <li><a style="text-decoration: none; color: white;" href="help.html">Help & Support</a></li>
-    <li><a style="text-decoration: none; color: white;" href="logout.html">Logout</a></li>
   </div>
-</div>
+</nav>
 
-
+<!-- Offcanvas Menu -->
+<div class="offcanvas-menu" id="offcanvasMenu">
+  <div class="offcanvas-header">
+    <button class="offcanvas-close" id="offcanvasClose">&times;</button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="nav-links">
+      <li><a href="sellers layout.html">Dashboard</a></li>
+      <li><a href="sellers product.html">My Products</a></li>
+      <li><a href="sellers order.html">Orders</a></li>
+      <li><a href="sellers returns.html">Returns and Refunds</a></li>
+      <li><a href="sellers earning.html">Earnings</a></li>
+      <li><a href="sellers setting.html">Shop Settings</a></li>
+    </ul>
+    <div class="nav-actions"></div>
+    <div class="icon-container">
+      <div class="profile-container">
+        <img src="images/elon.jfif" alt="Profile" class="profile-icon" onclick="toggleProfileDropdown()">
+        <div class="nav-list">
+          <li><a style="text-decoration:none;color:white;" href="view profile.html">View Profile</a></li>
+          <li><a style="text-decoration:none;color:white;" href="sellers setting.html">Account Settings</a></li>
+          <li><a style="text-decoration:none;color:white;" href="help.html">Help &amp; Support</a></li>
+          <li><a style="text-decoration:none;color:white;" href="logout.html">Logout</a></li>
         </div>
       </div>
     </div>
   </div>
+</div>
 
 
-
-
-
+<!-- Main Section -->
 <section id="seller-products" class="product-management">
   <h2>My Products</h2>
 
   <!-- Inventory Stats -->
   <div class="inventory-stats">
-    <p>Total Products: <span id="total-products">0</span></p>
-    <p>In Stock: <span id="in-stock-count">0</span></p>
-    <p>Low Stock: <span id="low-stock-count">0</span></p>
-    <p>Out of Stock: <span id="out-of-stock-count">0</span></p>
+    <p>Total: <span id="total-products">—</span></p>
+    <p>In Stock: <span id="in-stock-count">—</span></p>
+    <p>Low Stock: <span id="low-stock-count">—</span></p>
+    <p>Out of Stock: <span id="out-of-stock-count">—</span></p>
   </div>
 
   <!-- Filter/Search -->
   <div class="filter-search">
-    <input type="text" id="searchInput" placeholder="Search by product name...">
+    <input type="text" id="searchInput" placeholder="Search by product name…">
     <select id="statusFilter">
       <option value="all">All</option>
       <option value="in-stock">In Stock</option>
@@ -121,36 +96,44 @@
     </select>
   </div>
 
-  <button class="add-product-btn" onclick="openAddModal()">Add Product</button>
-  <!-- Add Product Modal -->
-<div class="modal" id="addProductModal" style="display:none;">
-  <div class="modal-content">
-    <span class="close-btn" onclick="closeAddModal()">&times;</span>
-    <h3>Add New Product</h3>
-    <form id="addProductForm" onsubmit="event.preventDefault(); addProduct();">
-      <label for="newProductName">Product Name:</label>
-      <input type="text" id="newProductName" required>
+  <button class="add-product-btn" onclick="openAddModal()">+ Add Product</button>
 
-      <label for="newProductPrice">Price ($):</label>
-      <input type="number" step="0.01" id="newProductPrice" required>
+  <!-- ── Add Product Modal ─────────────────────────────────────── -->
+  <div class="modal" id="addProductModal" style="display:none;">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeAddModal()">&times;</span>
+      <h3>Add New Product</h3>
+      <form id="addProductForm" onsubmit="event.preventDefault(); addProduct();">
 
-      <label for="newProductStatus">Status:</label>
-      <select id="newProductStatus" required>
-        <option value="in stock">In Stock</option>
-        <option value="low stock">Low Stock</option>
-        <option value="out of stock">Out of Stock</option>
-      </select>
+        <label for="newProductName">Product Name <span class="req">*</span></label>
+        <input type="text" id="newProductName" placeholder="e.g. Classic Leather Bag" required>
 
-      <label for="newProductImage">Image URL:</label>
-      <input type="text" id="newProductImage" required>
+        <label for="newProductPrice">Price ($) <span class="req">*</span></label>
+        <input type="number" step="0.01" min="0" id="newProductPrice" placeholder="0.00" required>
 
-      <button type="submit" class="shop-now-btn">Add Product</button>
-    </form>
+        <label for="newProductStock">Stock Quantity</label>
+        <input type="number" min="0" id="newProductStock" placeholder="0" value="0">
+
+        <label for="newProductDescription">Description</label>
+        <textarea id="newProductDescription" rows="3" placeholder="Brief product description…"></textarea>
+
+        <!-- Image upload -->
+        <label for="newProductImage">Product Image</label>
+        <div class="image-upload-area" onclick="document.getElementById('newProductImage').click()">
+          <img id="addImagePreview" src="" alt="" style="display:none; max-height:120px; border-radius:6px; margin-bottom:8px;">
+          <div class="upload-placeholder" id="addUploadPlaceholder">
+            <i class="fas fa-cloud-upload-alt" style="font-size:2rem; color:#a0aec0;"></i>
+            <p style="margin:6px 0 0; color:#718096; font-size:0.9rem;">Click to upload image</p>
+            <p style="color:#a0aec0; font-size:0.8rem;">JPEG, PNG, WebP · max 5 MB</p>
+          </div>
+          <input type="file" id="newProductImage" accept="image/jpeg,image/png,image/webp,image/gif"
+                 style="display:none;">
+        </div>
+
+        <button type="submit" class="shop-now-btn">Add Product</button>
+      </form>
+    </div>
   </div>
-</div>
-
-
-
 
   <!-- Product Table -->
   <div class="product-table">
@@ -161,40 +144,55 @@
       <div>Price</div>
       <div>Actions</div>
     </div>
-
-    <!-- Dynamic Product Rows will be inserted here -->
     <div class="product-grid" id="productGrid"></div>
   </div>
 
-  <!-- Edit Modal -->
-  <div class="modal" id="editModal">
+  <!-- ── Edit Modal ────────────────────────────────────────────── -->
+  <div class="modal" id="editModal" style="display:none;">
     <div class="modal-content">
       <span class="close-btn" onclick="closeModal()">&times;</span>
       <h3>Edit Product</h3>
       <form id="editForm">
         <input type="hidden" id="editId">
-        <label>Product Name</label>
+
+        <label>Product Name <span class="req">*</span></label>
         <input type="text" id="editName" required>
-        <label>Price ($)</label>
-        <input type="number" id="editPrice" required>
-        <label>Status</label>
-        <select id="editStatus">
-          <option value="In Stock">In Stock</option>
-          <option value="Low Stock">Low Stock</option>
-          <option value="Out of Stock">Out of Stock</option>
-        </select>
+
+        <label>Price ($) <span class="req">*</span></label>
+        <input type="number" step="0.01" min="0" id="editPrice" required>
+
+        <label>Stock Quantity</label>
+        <input type="number" min="0" id="editStock">
+
+        <label>Description</label>
+        <textarea id="editDescription" rows="3"></textarea>
+
+        <!-- Current image -->
+        <label>Current Image</label>
+        <img id="editCurrentImage" src="" alt="Current product image"
+             style="display:none; max-height:100px; border-radius:6px; margin-bottom:8px;">
+
+        <!-- New image upload -->
+        <label for="editProductImage">Replace Image</label>
+        <div class="image-upload-area" onclick="document.getElementById('editProductImage').click()">
+          <img id="editImagePreview" src="" alt="" style="display:none; max-height:120px; border-radius:6px; margin-bottom:8px;">
+          <div class="upload-placeholder">
+            <i class="fas fa-image" style="font-size:1.5rem; color:#a0aec0;"></i>
+            <p style="margin:4px 0 0; color:#718096; font-size:0.85rem;">Click to replace image</p>
+          </div>
+          <input type="file" id="editProductImage" accept="image/jpeg,image/png,image/webp,image/gif"
+                 style="display:none;">
+        </div>
+
         <button type="submit" class="shop-now-btn">Save Changes</button>
       </form>
     </div>
   </div>
 </section>
 
-        </div>
-      </section>
-      </div>
 <script src="sellers product.js"></script>
- <footer>
-    &copy; 2025 MarketMix. All Rights Reserved.
-  </footer>
+<footer>
+  &copy; 2025 MarketMix. All Rights Reserved.
+</footer>
 </body>
 </html>
