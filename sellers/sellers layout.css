@@ -535,7 +535,7 @@ body {
   @media (max-width: 768px) {
   .shop-settings {
    margin-left: 50%;
-   padding: 40%;
+   padding: 80%;
    transition: transform 0.3s;
   }
 }
