@@ -176,7 +176,7 @@ function renderProducts() {
     const ss = product.stockStatus || getStockStatus(product.stock_quantity);
     const statusClass = ss.toLowerCase().replace(/\s+/g, '-');
     const imgSrc = product.main_image_url || 'https://via.placeholder.com/60x60?text=No+Image';
-    const price = typeof product.price === 'number' ? product.price.toFixed(2) : parseFloat(product.price || 0).toFixed(2);
+    const price = parseFloat(product.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const row = document.createElement('div');
     row.className = 'product-row';
@@ -188,7 +188,7 @@ function renderProducts() {
       </div>
       <div style="font-weight:600;">${escapeHtml(product.name)}</div>
       <div><span class="status ${statusClass}">${ss}</span></div>
-      <div>$${price}</div>
+      <div>₦${price}</div>
       <div class="actions">
         <button class="edit-btn" onclick="openEditModal('${product.id}')">Edit</button>
         <button class="delete-btn" onclick="deleteProduct('${product.id}', '${escapeHtml(product.name)}')">Delete</button>
@@ -236,7 +236,7 @@ async function addProduct() {
   try {
     const formData = new FormData();
     formData.append('name', name);
-    formData.append('price', price);
+    formData.append('price', parsePriceInput(price));
     formData.append('stock_quantity', stock || '0');
     formData.append('description', description);
     if (imageFile) formData.append('image', imageFile);
