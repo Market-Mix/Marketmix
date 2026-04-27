@@ -2,13 +2,17 @@
  * MarketMix Seller Earnings Integration
  */
 
-const API_BASE = CONFIG.API_BASE_URL;
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
 // Auth helpers
-const getToken = () => localStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
+const getToken = () => localStorage.getItem('token') || sessionStorage.getItem('token');
 const getUserId = () => {
-    const user = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.USER) || '{}');
-    return user.id;
+    try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return user.id;
+    } catch (_) {
+        return 'unknown';
+    }
 };
 
 const authHeaders = () => ({
