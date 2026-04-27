@@ -892,7 +892,7 @@ window.addEventListener('DOMContentLoaded', () => {
   async function addToBackendCart(product) {
     try {
       // Check if user is logged in
-      const token = Auth.getToken();
+      const token = localStorage.getItem('token');
       if (!token) {
         showToast('Please login to add items to cart');
         setTimeout(() => {
@@ -941,7 +941,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!product || !product.name) return;
 
     // First, try to add to backend if logged in
-    const token = Auth.getToken();
+    const token = localStorage.getItem('token');
     if (token) {
       const backendSuccess = await addToBackendCart(product);
       if (!backendSuccess) {
@@ -1038,7 +1038,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // If user is authenticated, fetch server wishlist and replace local wishlist (non-destructive)
   (async function syncWishlistFromServer() {
     try {
-      const token = Auth.getToken();
+      const token = localStorage.getItem('token');
       if (!token) return; // not logged in
       const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
