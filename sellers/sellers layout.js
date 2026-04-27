@@ -80,6 +80,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderWelcome(profile);
   renderProfileImage(profile);
   renderOverviewCards(stats, earnings, profile);
+  renderKYCStatusBanner(profile);
   renderProgressTracker(profile);
   await renderActivityLog();
 });
@@ -172,7 +173,41 @@ function renderProfileImage(profile) {
     };
   }
 }
+// ─── KYC Status Banner ───────────────────────────────────
+function renderKYCStatusBanner(profile) {
+  const banner = document.getElementById("kycNotificationBanner");
+  const closeBtn = document.getElementById("kycNotificationClose");
+  if (!banner || !closeBtn) return;
 
+  const p = profile?.profile;
+  const kycUrls = p?.kycDocumentUrls || {};
+  const kycStatus = kycUrls.kyc_status || null;
+  const kycSubmitted = !!kycUrls.kyc_submitted_at;
+  const kycApproved = p?.isVerified && kycStatus === "approved";
+
+  // Show banner only if KYC is under review
+  if ((kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) && !kycApproved) {
+    banner.style.display = "block";
+
+    // Close button functionality
+    closeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      banner.style.animation = "slideUp 0.3s ease-out";
+      setTimeout(() => {
+        banner.style.display = "none";
+      }, 300);
+      // Store dismissal in localStorage for this session
+      sessionStorage.setItem("kycBannerDismissed", "true");
+    });
+
+    // Check if user already dismissed the banner in this session
+    if (sessionStorage.getItem("kycBannerDismissed") === "true") {
+      banner.style.display = "none";
+    }
+  } else {
+    banner.style.display = "none";
+  }
+}
 // ─── Overview Cards ──────────────────────────────────────────
 function renderOverviewCards(stats, earnings, profile) {
   // Orders
@@ -243,14 +278,17 @@ function renderProgressTracker(profile) {
     color = "#ef4444";
     html = `<a href="setup-store.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
   } else if (kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) {
-    progress = 40;
-    color = "#f97316";
-    html = `<span style="color:#1e293b">Your KYC is under review. We'll notify you once approved.</span>`;
+    // KYC is submitted and under review - move to 60% stage
+    progress = 60;
+    color = "#eab308";
+    html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Add your first product</a>`;
   } else if (!kycApproved) {
+    // KYC not submitted yet
     progress = 40;
     color = "#f97316";
     html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC verification</a>`;
   } else if (productCount < 1) {
+    // KYC approved but no products
     progress = 60;
     color = "#eab308";
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Add your first product</a>`;
