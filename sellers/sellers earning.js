@@ -52,6 +52,15 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
+    // Withdrawal Modal Trigger
+    const withdrawBtn = document.getElementById("withdrawBtn");
+    const withdrawModal = document.getElementById("withdrawModal");
+    if (withdrawBtn && withdrawModal) {
+        withdrawBtn.addEventListener("click", () => {
+            withdrawModal.style.display = "flex";
+        });
+    }
+
     // Load earnings data
     fetchEarningsData();
     setupWithdrawalForm();
@@ -80,55 +89,66 @@ function renderEarnings(data) {
     const { summary, transactions, productEarnings } = data;
 
     // Update Summary Cards
-    document.getElementById("total-earnings").textContent = `$${summary.totalEarnings.toFixed(2)}`;
-    document.getElementById("available-balance").textContent = `$${summary.availableBalance.toFixed(2)}`;
-    document.getElementById("pending").textContent = `$${summary.pendingEarnings.toFixed(2)}`;
-    document.getElementById("withdrawals").textContent = `$${summary.totalWithdrawn.toFixed(2)}`;
+    if (document.getElementById("total-earnings"))
+        document.getElementById("total-earnings").textContent = `$${summary.totalEarnings.toFixed(2)}`;
+    if (document.getElementById("available-balance"))
+        document.getElementById("available-balance").textContent = `$${summary.availableBalance.toFixed(2)}`;
+    if (document.getElementById("pending"))
+        document.getElementById("pending").textContent = `$${summary.pendingEarnings.toFixed(2)}`;
+    if (document.getElementById("withdrawals"))
+        document.getElementById("withdrawals").textContent = `$${summary.totalWithdrawn.toFixed(2)}`;
     
     // Update Projected (Placeholder or calculated)
     const projected = summary.totalEarnings + summary.pendingEarnings;
-    document.getElementById("projected").textContent = `Projected earnings: $${projected.toFixed(2)}`;
+    if (document.getElementById("projected"))
+        document.getElementById("projected").textContent = `Projected earnings: $${projected.toFixed(2)}`;
 
     // Render Chart
     renderChart(transactions);
 
     // Render Transactions
     const list = document.getElementById("transactions-list");
-    list.innerHTML = '';
-    
-    if (transactions.length === 0) {
-        list.innerHTML = '<div class="transaction"><span>No transactions found</span></div>';
-    } else {
-        transactions.forEach(tx => {
-            const date = new Date(tx.date).toLocaleDateString();
-            const div = document.createElement("div");
-            div.classList.add("transaction");
-            div.innerHTML = `
-                <span>${date}</span>
-                <span>${tx.type}: ${tx.productName || "Order #" + tx.orderId.substring(0,8)}</span>
-                <span class="amount ${tx.amount < 0 ? "negative" : ""}">${tx.amount < 0 ? "–" : "+"} $${Math.abs(tx.amount).toFixed(2)}</span>
-            `;
-            div.addEventListener("click", () => showTransactionModal(tx));
-            list.appendChild(div);
-        });
+    if (list) {
+        list.innerHTML = '';
+        
+        if (transactions.length === 0) {
+            list.innerHTML = '<div class="transaction"><span>No transactions found</span></div>';
+        } else {
+            transactions.forEach(tx => {
+                const date = new Date(tx.date).toLocaleDateString();
+                const div = document.createElement("div");
+                div.classList.add("transaction");
+                div.innerHTML = `
+                    <span>${date}</span>
+                    <span>${tx.type}: ${tx.productName || "Order #" + (tx.orderId ? tx.orderId.substring(0,8) : 'N/A')}</span>
+                    <span class="amount ${tx.amount < 0 ? "negative" : ""}">${tx.amount < 0 ? "–" : "+"} $${Math.abs(tx.amount).toFixed(2)}</span>
+                `;
+                div.addEventListener("click", () => showTransactionModal(tx));
+                list.appendChild(div);
+            });
+        }
     }
 
     // Render Product Table
     const tableBody = document.getElementById("product-table-body");
-    tableBody.innerHTML = '';
-    
-    if (productEarnings.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="3">No product data available</td></tr>';
-    } else {
-        productEarnings.forEach(p => {
-            const row = `<tr><td>${p.name}</td><td>${p.qty}</td><td>$${p.revenue.toFixed(2)}</td></tr>`;
-            tableBody.innerHTML += row;
-        });
+    if (tableBody) {
+        tableBody.innerHTML = '';
+        
+        if (productEarnings.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="3">No product data available</td></tr>';
+        } else {
+            productEarnings.forEach(p => {
+                const row = `<tr><td>${p.name}</td><td>${p.qty}</td><td>$${p.revenue.toFixed(2)}</td></tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
     }
 }
 
 function renderChart(transactions) {
-    const ctx = document.getElementById("earningsChart").getContext("2d");
+    const chartCanvas = document.getElementById("earningsChart");
+    if (!chartCanvas) return;
+    const ctx = chartCanvas.getContext("2d");
     
     // Process transactions for chart (group by month)
     const monthlyData = {};
@@ -180,6 +200,8 @@ function renderChart(transactions) {
 function showTransactionModal(tx) {
     const modal = document.getElementById("transaction-modal");
     const modalBody = document.getElementById("modal-body");
+    if (!modal || !modalBody) return;
+
     const date = new Date(tx.date).toLocaleString();
     
     modalBody.innerHTML = `
@@ -222,7 +244,8 @@ function setupWithdrawalForm() {
 
             if (data.status === 'success') {
                 showToast(`Withdrawal of $${amount.toFixed(2)} processed successfully!`);
-                document.getElementById("withdrawModal").style.display = "none";
+                const withdrawModal = document.getElementById("withdrawModal");
+                if (withdrawModal) withdrawModal.style.display = "none";
                 form.reset();
                 // Refresh data
                 fetchEarningsData();
@@ -237,23 +260,27 @@ function setupWithdrawalForm() {
 }
 
 // Global UI handlers
-function toggleProfileDropdown() {
+window.toggleProfileDropdown = function() {
     const dropdown = document.getElementById("profileDropdown");
-    dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
-}
+    if (dropdown) {
+        dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
+    }
+};
 
 window.onclick = (e) => {
-    const modal = document.getElementById("transaction-modal");
-    if (e.target === modal) modal.style.display = "none";
+    const transModal = document.getElementById("transaction-modal");
+    if (e.target === transModal) transModal.style.display = "none";
     
     const withdrawModal = document.getElementById("withdrawModal");
     if (e.target === withdrawModal) withdrawModal.style.display = "none";
 };
 
-document.querySelector(".close-btn")?.addEventListener("click", () => {
-    document.getElementById("transaction-modal").style.display = "none";
-});
-
-document.querySelector("#withdrawModal .close-btn")?.addEventListener("click", () => {
-    document.getElementById("withdrawModal").style.display = "none";
+// Close buttons for all modals
+document.querySelectorAll(".close-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const transModal = document.getElementById("transaction-modal");
+        const withdrawModal = document.getElementById("withdrawModal");
+        if (transModal) transModal.style.display = "none";
+        if (withdrawModal) withdrawModal.style.display = "none";
+    });
 });
