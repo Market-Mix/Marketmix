@@ -13,15 +13,119 @@
   <div class="profile-container">
     <h2>Seller Profile</h2>
     <div class="profile-card">
-      <img src="elon.jfif" alt="Seller Image">
+      <img id="sellerProfileImage" src="elon.jfif" alt="Seller Image">
       <div class="info">
-        <p><strong>Name:</strong> Sarah Johnson</p>
-        <p><strong>Email:</strong> sarah@marketmix.com</p>
-        <p><strong>Phone:</strong> +234 812 345 6789</p>
-        <p><strong>Shop Name:</strong> Sarah's Style Hub</p>
-        <p><strong>Joined:</strong> January 10, 2024</p>
+        <p><strong>Name:</strong> <span id="sellerName">Sarah Johnson</span></p>
+        <p><strong>Email:</strong> <span id="sellerEmail">sarah@marketmix.com</span></p>
+        <p><strong>Phone:</strong> <span id="sellerPhone">+234 812 345 6789</span></p>
+        <p><strong>Shop Name:</strong> <span id="sellerShopName">Sarah's Style Hub</span></p>
+        <p><strong>Joined:</strong> <span id="sellerJoined">January 10, 2024</span></p>
+        <p><strong>Business Address:</strong> <span id="sellerAddress">N/A</span></p>
+        <p><strong>Rating:</strong> <span id="sellerRating">N/A</span></p>
+        <p><strong>Total Reviews:</strong> <span id="sellerReviews">0</span></p>
       </div>
     </div>
   </div>
+
+  <script src="../config.js"></script>
+  <script>
+    // ===== LOAD SELLER PROFILE DATA =====
+    async function loadSellerProfile() {
+      try {
+        console.log("🔍 Loading seller profile...");
+        
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.warn("⚠️ No auth token found");
+          return;
+        }
+
+        // Get API URL from config or use default
+        const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
+          ? CONFIG.API_BASE_URL 
+          : 'https://marketmix-backend.onrender.com/api';
+
+        // Fetch seller profile from API
+        const response = await fetch(`${apiUrl}/seller/profile`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`❌ Failed to fetch seller profile: ${response.status}`);
+          return;
+        }
+
+        const data = await response.json();
+        console.log("✓ Seller profile fetched:", data);
+
+        // Extract seller data
+        const seller = data?.data?.seller;
+        const profile = seller?.profile;
+
+        if (!seller || !profile) {
+          console.error("❌ Invalid seller data structure");
+          return;
+        }
+
+        // Format joined date
+        const joinedDate = new Date(seller.createdAt || profile.createdAt);
+        const formattedDate = joinedDate.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        // Update name field
+        const fullName = `${seller.firstName || ''} ${seller.lastName || ''}`.trim();
+        document.getElementById('sellerName').textContent = fullName || 'N/A';
+
+        // Update email
+        document.getElementById('sellerEmail').textContent = seller.email || 'N/A';
+
+        // Update phone
+        document.getElementById('sellerPhone').textContent = seller.phone || profile.businessPhone || 'N/A';
+
+        // Update shop name
+        document.getElementById('sellerShopName').textContent = profile.businessName || 'N/A';
+
+        // Update joined date
+        document.getElementById('sellerJoined').textContent = formattedDate || 'N/A';
+
+        // Update business address
+        document.getElementById('sellerAddress').textContent = profile.businessAddress || 'N/A';
+
+        // Update rating and reviews
+        const rating = profile.rating || 0;
+        const reviews = profile.totalReviews || 0;
+        document.getElementById('sellerRating').textContent = rating > 0 ? `${rating.toFixed(1)} / 5` : 'No ratings yet';
+        document.getElementById('sellerReviews').textContent = reviews;
+
+        // Update profile image
+        if (profile.storeLogo && profile.storeLogo.trim() !== '') {
+          const profileImg = document.getElementById('sellerProfileImage');
+          profileImg.src = profile.storeLogo;
+          profileImg.onload = () => {
+            console.log("✓ Profile image loaded successfully");
+          };
+          profileImg.onerror = () => {
+            console.warn("⚠️ Profile image failed to load, keeping default");
+          };
+        }
+
+        console.log("✓ Seller profile updated successfully");
+
+      } catch (error) {
+        console.error("❌ Error loading seller profile:", error);
+      }
+    }
+
+    // Load profile when page loads
+    document.addEventListener('DOMContentLoaded', loadSellerProfile);
+  </script>
 </body>
 </html>
