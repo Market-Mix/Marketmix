@@ -1,1106 +1,530 @@
-       document.addEventListener("DOMContentLoaded", function () {
+/* ============================================================
+   sellers layout.js  —  MarketMix Seller Dashboard
+   Backend: https://marketmix-backend.onrender.com/api
+   ============================================================ */
+
+const API_BASE = "https://marketmix-backend.onrender.com/api";
+
+// ─── Auth helpers ────────────────────────────────────────────
+function getToken() {
+  return localStorage.getItem("token") || "";
+}
+
+function authHeaders() {
+  return {
+    Authorization: `Bearer ${getToken()}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function apiFetch(path, opts = {}) {
+  opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
+  const res = await fetch(`${API_BASE}${path}`, opts);
+  if (res.status === 401) {
+    handleLogout();
+    throw new Error("Unauthorized");
+  }
+  return res.json();
+}
+
+// ─── Logout ──────────────────────────────────────────────────
+async function handleLogout() {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+  } catch (_) {
+    /* ignore network errors on logout */
+  }
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  window.location.href = "login.html";
+}
+
+// Wire logout links
+document.querySelectorAll('a[href="#"]').forEach((a) => {
+  if (a.textContent.trim().toLowerCase() === "logout") {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleLogout();
+    });
+  }
+});
+
+// ─── DOM Ready ───────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async () => {
+  initNavToggle();
+  initMobilePanel();
+  initProfileDropdownClose();
+  initTips();
+  initActivityModal();
+  initModals();
+
+  // Parallel data loads
+  const [profileData, statsData, earningsData] = await Promise.allSettled([
+    apiFetch("/seller/profile"),
+    apiFetch("/seller/orders/stats"),
+    apiFetch("/earnings"),
+  ]);
+
+  const profile =
+    profileData.status === "fulfilled" ? profileData.value?.data?.seller : null;
+  const stats =
+    statsData.status === "fulfilled" ? statsData.value?.data?.stats : null;
+  const earnings =
+    earningsData.status === "fulfilled"
+      ? earningsData.value?.data?.summary
+      : null;
+
+  renderWelcome(profile);
+  renderProfileImage(profile);
+  renderOverviewCards(stats, earnings, profile);
+  renderProgressTracker(profile);
+  await renderActivityLog();
+});
+
+// ─── Nav Toggle ──────────────────────────────────────────────
+function initNavToggle() {
   const toggler = document.getElementById("navbar-toggler");
-  const offcanvasMenu = document.getElementById("offcanvasMenu");
-  const offcanvasClose = document.getElementById("offcanvasClose");
+  const menu = document.getElementById("offcanvasMenu");
+  const close = document.getElementById("offcanvasClose");
+  if (!toggler || !menu) return;
 
-  // Open Offcanvas Menu
-  toggler.addEventListener("click", function () {
-    offcanvasMenu.classList.add("show");
+  toggler.addEventListener("click", () => menu.classList.add("show"));
+  close?.addEventListener("click", () => menu.classList.remove("show"));
+
+  document.addEventListener("click", (e) => {
+    if (!menu.contains(e.target) && !toggler.contains(e.target))
+      menu.classList.remove("show");
   });
+  menu.addEventListener("click", (e) => e.stopPropagation());
 
-  // Close Offcanvas Menu
-  offcanvasClose.addEventListener("click", function () {
-    offcanvasMenu.classList.remove("show");
+  document.querySelectorAll(".offcanvas-body a").forEach((l) =>
+    l.addEventListener("click", () => menu.classList.remove("show"))
+  );
+}
+
+// ─── Mobile Panel ────────────────────────────────────────────
+function initMobilePanel() {
+  const toggle = document.getElementById("mobileLogoToggle");
+  const panel = document.getElementById("mobileLogoPanel");
+  const closeBtn = document.getElementById("mobileLogoPanelClose");
+  if (!toggle || !panel) return;
+
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    panel.classList.add("show");
   });
-
-  // Close Offcanvas when clicking outside, but not when clicking inside
-  document.addEventListener("click", function (event) {
-    if (!offcanvasMenu.contains(event.target) && !toggler.contains(event.target)) {
-      offcanvasMenu.classList.remove("show");
-    }
+  closeBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    panel.classList.remove("show");
   });
-
-  // Ensure clicking inside doesn't close menu
-  offcanvasMenu.addEventListener("click", function (event) {
-    event.stopPropagation();
+  document.addEventListener("click", (e) => {
+    if (!panel.contains(e.target) && !toggle.contains(e.target))
+      panel.classList.remove("show");
   });
+  panel.addEventListener("click", (e) => e.stopPropagation());
 
-  // Close offcanvas when clicking any menu link (for better UX)
-  document.querySelectorAll('.offcanvas-body a').forEach(link => {
-    link.addEventListener('click', () => {
-      offcanvasMenu.classList.remove('show');
-    });
-  });
+  document.querySelectorAll(".mobile-logo-nav-links a").forEach((l) =>
+    l.addEventListener("click", () => panel.classList.remove("show"))
+  );
+}
 
-  // ========== MOBILE LOGO TOGGLE FUNCTIONALITY ==========
-  const mobileLogoToggle = document.getElementById("mobileLogoToggle");
-  const mobileLogoPanel = document.getElementById("mobileLogoPanel");
-  const mobileLogoPanelClose = document.getElementById("mobileLogoPanelClose");
+// ─── Profile Dropdown ────────────────────────────────────────
+function toggleProfileDropdown() {
+  const dd = document.getElementById("profileDropdown");
+  if (!dd) return;
+  dd.style.display = dd.style.display === "flex" ? "none" : "flex";
+}
+window.toggleProfileDropdown = toggleProfileDropdown;
 
-
-  // Open Mobile Logo Panel
-  if (mobileLogoToggle && mobileLogoPanel) {
-    mobileLogoToggle.addEventListener("click", function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      mobileLogoPanel.classList.add("show");
-    });
-  }
-
-  // Close Mobile Logo Panel
-  if (mobileLogoPanelClose && mobileLogoPanel) {
-    mobileLogoPanelClose.addEventListener("click", function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      mobileLogoPanel.classList.remove("show");
-    });
-  }
-
-  // Close Mobile Logo Panel when clicking outside
-  document.addEventListener("click", function (event) {
-    if (mobileLogoPanel && mobileLogoToggle) {
-      const clickedOnPanel = mobileLogoPanel.contains(event.target);
-      const clickedOnToggle = mobileLogoToggle.contains(event.target);
-      
-      if (!clickedOnPanel && !clickedOnToggle) {
-        mobileLogoPanel.classList.remove("show");
-      }
+function initProfileDropdownClose() {
+  document.addEventListener("click", (e) => {
+    const dd = document.getElementById("profileDropdown");
+    const icon = document.querySelector(".profile-icon");
+    if (dd && icon && !dd.contains(e.target) && !icon.contains(e.target)) {
+      dd.style.display = "none";
     }
   });
-
-  // Close Mobile Logo Panel when clicking any menu link
-  if (mobileLogoPanel) {
-    document.querySelectorAll('.mobile-logo-nav-links a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        mobileLogoPanel.classList.remove('show');
-      });
-    });
-  }
-
-  // Prevent closing when clicking inside the panel
-  if (mobileLogoPanel) {
-    mobileLogoPanel.addEventListener("click", function (event) {
-      event.stopPropagation();
-    });
-  }
-
-  // Initialize product badge if available
-  initializeProductBadge();
-
-  // Load seller profile image
-  loadSellerProfileImage();
-
-  // Update welcome text with seller name
-  updateWelcomeText();
-
-  // Update progress tracker
-  updateProgressTracker();
-
-  // Refresh progress tracker every 5 seconds (more responsive)
-  setInterval(() => {
-  }, 5000);
-
-  // Refresh progress tracker when page becomes visible (user switches back to tab)
-  document.addEventListener("visibilitychange", function() {
-    if (document.visibilityState === "visible") {
-      // // console.("👁️ Page became visible - refreshing progress tracker...");
-      updateProgressTracker();
-    }
-  });
-
-  // Refresh progress tracker when window gets focus (user returns to window)
-  window.addEventListener("focus", function() {
-    // // console.("🪟 Window focused - refreshing progress tracker...");
-    updateProgressTracker();
-  });
-
-  });
-
- function toggleProfileDropdown() {
-    const dropdown = document.getElementById("profileDropdown");
-    dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
-  }
-
-  // ===== LOAD SELLER PROFILE IMAGE FROM BACKEND API =====
-  async function loadSellerProfileImage() {
-    try {
-      const profileImg = document.getElementById("sellerProfileImage");
-      
-      // // console.("=== LOADING SELLER PROFILE IMAGE ===");
-      // // console.("Desktop image element found:", !!profileImg);
-      
-      // Guard: element must exist
-      if (!profileImg) {
-        // // // console.("ERROR: Desktop profile image element not found in DOM");
-        return;
-      }
-
-      // // console.("Fetching seller profile for store logo...");
-
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
-      if (!token) {
-        // // // console.("No auth token found");
-        return;
-      }
-
-      // Use backend API
-      const API_BASE = 'https://marketmix-backend.onrender.com/api';
-
-      const response = await fetch(`${API_BASE}/seller/profile`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        // console.(`Failed to fetch seller profile: ${response.status}`);
-        return;
-      }
-
-      const data = await response.json();
-      // // console.("Seller profile API response:", data);
-      const storeLogoUrl = data?.data?.seller?.profile?.storeLogo;
-
-      // // console.("Store logo URL extracted:", storeLogoUrl ? storeLogoUrl.substring(0, 50) + "..." : "NULL/EMPTY");
-
-      // Set desktop image
-      if (storeLogoUrl && storeLogoUrl.trim() !== '') {
-        profileImg.src = storeLogoUrl;
-        profileImg.style.backgroundImage = "none";
-        
-        const computed = window.getComputedStyle(profileImg);
-        // // console.(`✓ Desktop image src updated. Display: ${computed.display}, Opacity: ${computed.opacity}`);
-        
-        // Setup load handler
-        profileImg.onload = () => {
-          // // console.(`✓ Desktop image loaded successfully`);
-            // Force re-render after image loads
-            profileImg.style.opacity = "0.99";
-            setTimeout(() => {
-              profileImg.style.opacity = "1";
-            }, 10);
-          };
-          
-          // Handle image load errors
-          profileImg.onerror = () => {
-            // console.(`✗ Desktop image failed to load. Attempting retry...`);
-            // Retry after 1 second
-            setTimeout(() => {
-              if (profileImg.src && profileImg.src !== storeLogoUrl) {
-                profileImg.src = storeLogoUrl;
-                // // console.(`↻ Desktop image retry initiated`);
-              }
-            }, 1000);
-          };
-      } else {
-        // No store logo found
-        profileImg.src = "";
-        // // console.("No store logo found, image cleared");
-      }
-      
-    } catch (error) {
-      // // console.("ERROR loading seller profile image:", error);
-    }
-  }
-
-  // ===== UPDATE WELCOME TEXT WITH SELLER NAME =====
-  async function updateWelcomeText() {
-    try {
-      const welcomeTextElement = document.getElementById("welcomeText");
-      if (!welcomeTextElement) {
-        // // // console.("Welcome text element not found");
-        return;
-      }
-
-      let displayName = "Seller";
-      
-      // Try to get Supabase user
-      let user = null;
-      if (typeof supabase !== 'undefined') {
-        try {
-          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-          user = supabaseUser;
-        } catch (err) {
-          // // // console.("Could not get Supabase user:", err.message);
-        }
-      }
-
-      // Fallback to localStorage if Supabase fails
-      if (!user) {
-        const localUserStr = localStorage.getItem("user");
-        if (localUserStr) {
-          try {
-            user = JSON.parse(localUserStr);
-          } catch (err) {
-            // console.("Could not parse localStorage user:", err.message);
-          }
-        }
-      }
-
-      // Determine display name with priority
-      if (user?.user_metadata?.firstName) {
-        displayName = user.user_metadata.firstName;
-        // // console.("Using firstName from user metadata:", displayName);
-      } else if (user?.firstName) {
-        displayName = user.firstName;
-        // // console.("Using firstName from user object:", displayName);
-      } else if (user?.id) {
-        // Try to fetch businessName from seller_profiles
-        try {
-          if (typeof supabase !== 'undefined') {
-            const { data: sellerProfile } = await supabase
-              .from("seller_profiles")
-              .select("businessName")
-              .eq("id", user.id)
-              .single();
-            
-            if (sellerProfile?.businessName) {
-              displayName = sellerProfile.businessName;
-              // // // console.("Using businessName from seller_profiles:", displayName);
-            }
-          }
-        } catch (err) {
-          // // // console.("Could not fetch seller profile:", err.message);
-        }
-      }
-
-      // Update the welcome text
-      welcomeTextElement.textContent = `Welcome, ${displayName}!`;
-      // // console.("Welcome text updated to:", displayName);
-      
-    } catch (error) {
-      // // console.("ERROR updating welcome text:", error);
-    }
-  }
-
-  // ===== UPDATE PROGRESS TRACKER =====
-  async function updateProgressTracker() {
-    try {
-      const progressBar = document.getElementById("progressBar");
-      const progressText = document.getElementById("progress-text");
-
-      if (!progressBar || !progressText) {
-        // // console.("Progress tracker elements not found");
-        return;
-      }
-
-      let progress = 20;
-      let messageHTML = '<a href="setup-store.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
-      let backgroundColor = "#ef4444"; // red
-      let storeSetupCompleted = false;
-      let kycCompleted = false;
-      let productCount = 0;
-      let totalSales = 0;
-
-      // Get authenticated user
-      let userId = null;
-      if (typeof supabase !== 'undefined') {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          userId = user?.id;
-          // // console.("✓ Got user ID from Supabase:", userId);
-        } catch (err) {
-          // console.("Could not get Supabase user:", err.message);
-        }
-      }
-
-      // Fallback to localStorage
-      if (!userId) {
-        const localUserStr = localStorage.getItem("user");
-        if (localUserStr) {
-          try {
-            const localUser = JSON.parse(localUserStr);
-            userId = localUser?.id;
-            // // console.("✓ Got user ID from localStorage:", userId);
-          } catch (err) {
-            // console.("Could not parse localStorage user:", err.message);
-          }
-        }
-      }
-
-      if (!userId) {
-        // // console.("No user ID found - keeping default progress");
-        progressBar.style.width = progress + "%";
-        progressBar.style.backgroundColor = backgroundColor;
-        progressText.innerHTML = messageHTML;
-        return;
-      }
-
-      // Fetch seller profile
-      let sellerProfile = null;
-
-      // // console.("🔍 Supabase available?", typeof supabase !== 'undefined');
-
-      if (typeof supabase !== 'undefined') {
-        try {
-          // // console.("🔍 Using Supabase - Querying seller_profiles table for user:", userId);
-          const { data: profile, error } = await supabase
-            .from("seller_profiles")
-            .select("*")
-            .eq("id", userId)
-            .single();
-          
-          // // console.("📊 Supabase Query returned:", { profile, error });
-          
-          if (error) {
-            // // console.("❌ Supabase Error fetching seller profile:", error.message, error);
-          } else if (!profile) {
-            // // console.("❌ Supabase returned null profile");
-          } else {
-            sellerProfile = profile;
-            // // console.("✓ Seller profile fetched from Supabase - FULL DATA:", JSON.stringify(profile, null, 2));
-            
-            // Log every single field
-            // // console.("📋 ALL FIELDS IN PROFILE:");
-            // Object.keys(profile).forEach(key => {
-            //   // console.(`  ${key}: ${profile[key]}`);
-            // });
-          }
-        } catch (err) {
-          // // console.("❌ Exception with Supabase:", err.message, err);
-        }
-      } else {
-        // Fallback: Use the same API endpoint that works for the logo
-        try {
-          // // console.("⚠️ Supabase not available - Using API fallback for seller profile");
-          const token = localStorage.getItem('token');
-          const API_BASE = 'https://marketmix-backend.onrender.com/api';
-
-          const response = await fetch(`${API_BASE}/seller/profile`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (!response.ok) {
-            // // console.("❌ API Error:", response.status);
-          } else {
-            const data = await response.json();
-            // // console.("📊 API Response - FULL STRUCTURE:", JSON.stringify(data, null, 2));
-            
-            // Log the nested data structure
-            if (data?.data?.seller) {
-              // // console.("📋 data.data.seller fields:", Object.keys(data.data.seller));
-              // // console.("📋 data.data.seller.profile fields:", data.data.seller.profile ? Object.keys(data.data.seller.profile) : "NULL");
-              // // console.("📋 Full data.data.seller object:", JSON.stringify(data.data.seller, null, 2));
-            }
-            
-            if (data?.data?.seller?.profile) {
-              const profile = data.data.seller.profile;
-              sellerProfile = {
-                store_name: profile.businessName || profile.storeName || profile.store_name,
-                store_logo_url: profile.storeLogo || profile.store_logo_url,
-                business_address: profile.businessAddress || profile.business_address,
-                kyc_document_urls: profile.kycDocumentUrls || profile.kyc_document_urls,
-                kyc_verified: profile.isVerified || false,
-                kyc_status: profile.kycDocumentUrls?.kyc_status || profile.kyc_document_urls?.kyc_status || profile.kyc_status || null,
-                total_sales: profile.totalSales || data.data.seller.totalSales || 0,
-                product_count: data.data.seller.productCount || 0
-              };
-              
-              // // console.("✓ Seller profile fetched from API - RAW DATA:", {
-              //   businessName: profile.businessName,
-              //   businessAddress: profile.businessAddress,
-              //   storeLogo: profile.storeLogo,
-              //   kycDocumentUrls: profile.kycDocumentUrls,
-              //   isVerified: profile.isVerified,
-              //   kyc_status: profile.kycDocumentUrls?.kyc_status || profile.kyc_document_urls?.kyc_status,
-              //   totalSales: profile.totalSales,
-              //   productCount: data.data.seller.productCount
-              // });
-              // // console.("✓ MAPPED DATA:", sellerProfile);
-              
-              // Also update productCount variable from API
-              productCount = data.data.seller.productCount || 0;
-              // // console.("✓ Product count from API:", productCount);
-            }
-          }
-        } catch (err) {
-          // // console.("❌ Exception with API fallback:", err.message);
-        }
-      }
-
-      // Fetch product count
-      if (typeof supabase !== 'undefined') {
-        try {
-          // // console.("🔍 Using Supabase - Querying products table for seller:", userId);
-          const { count, error } = await supabase
-            .from("products")
-            .select("id", { count: "exact", head: true })
-            .eq("seller_id", userId);
-          
-          // // console.("📊 Products query returned:", { count, error });
-          
-          if (error) {
-            // // console.("❌ Error fetching product count:", error.message, error);
-          } else {
-            productCount = count || 0;
-            // // console.("✓ Product count from Supabase:", productCount);
-          }
-        } catch (err) {
-          // // console.("❌ Exception fetching product count:", err.message, err);
-        }
-      } else {
-        // // console.("⚠️ Supabase not available - product count check skipped");
-      }
-
-      // Check conditions
-      storeSetupCompleted = 
-        !!(sellerProfile?.store_name && 
-           sellerProfile?.store_logo_url && 
-           sellerProfile?.business_address);
-      
-      // KYC is only complete if verified AND has submitted meaningful KYC data (website or at least one social link filled)
-      const hasKycData = sellerProfile?.kyc_document_urls && (
-        sellerProfile.kyc_document_urls.website || 
-        (sellerProfile.kyc_document_urls.social_links && Object.values(sellerProfile.kyc_document_urls.social_links).some(v => v))
-      );
-      kycCompleted = sellerProfile?.kyc_verified && hasKycData;
-      
-      totalSales = sellerProfile?.total_sales || 0;
-      
-      // Get KYC status - tracks three states: pending, under_review, approved
-      // Check both direct and nested locations since API stores it in kycDocumentUrls.kyc_status
-      const kycStatus = sellerProfile?.kyc_status || sellerProfile?.kyc_document_urls?.kyc_status;
-      // // console.("📌 KYC Status from profile:", kycStatus);
-
-      // // // console.("Checking conditions:", {
-        // storeSetupCompleted,
-        // kycCompleted,
-        // kycStatus,
-        // kyc_verified: sellerProfile?.kyc_verified,
-        // kycDocumentUrls: sellerProfile?.kyc_document_urls,
-        // productCount,
-        // totalSales
-      // });
-
-      // Determine progress level - check in order
-      if (!storeSetupCompleted) {
-        progress = 20;
-        messageHTML = '<a href="setup-store.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete your store setup Here</a>';
-        backgroundColor = "#ef4444"; // red
-        // // // console.("Stage 1: Store setup needed");
-      } 
-      else if (kycStatus === "under_review" || (kycStatus === "pending" && sellerProfile?.kyc_document_urls?.kyc_submitted_at)) {
-        // KYC is under review - show message without link
-        // (either explicitly under_review, or pending with kyc_submitted_at timestamp)
-        progress = 40;
-        messageHTML = '<span style="color: #1e293b;">Your KYC is under review. We\'ll notify you once approved.</span>';
-        backgroundColor = "#f97316"; // orange
-        // // // console.("Stage 2: KYC under review");
-      }
-      else if (!kycCompleted || kycStatus === "pending") {
-        // KYC not started or pending (without submission) - show clickable link
-        progress = 40;
-        messageHTML = '<a href="kyc-verification.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Complete KYC HERE</a>';
-        backgroundColor = "#f97316"; // orange
-        // // // console.("Stage 2: KYC needed");
-      }
-      else if (productCount < 1) {
-        progress = 60;
-        messageHTML = '<a href="sellers product.html" style="color: #1e293b; text-decoration: underline; cursor: pointer;">Add your first product HERE</a>';
-        backgroundColor = "#eab308"; // yellow
-        // // // console.("Stage 3: First product needed");
-      }
-      else if (totalSales < 1) {
-        progress = 75;
-        messageHTML = 'Make your first sale';
-        backgroundColor = "#86efac"; // lightgreen
-        // // // console.("Stage 4: First sale needed");
-      }
-      else if (totalSales < 10) {
-        progress = 90;
-        messageHTML = 'Reach 10 sales';
-        backgroundColor = "#22c55e"; // green
-        // // // console.("Stage 5: Need 10 sales");
-      }
-      else {
-        progress = 100;
-        messageHTML = 'Verified Seller ✓';
-        backgroundColor = "#3b82f6"; // blue
-        // // // console.("Stage 6: Verified seller");
-      }
-
-      // Update progress bar
-      progressBar.style.width = progress + "%";
-      progressBar.style.backgroundColor = backgroundColor;
-
-      // Update progress text with HTML
-      progressText.innerHTML = messageHTML;
-
-      // // console.("✓ Progress tracker updated:", { 
-      //   progress,
-      //   stage: messageHTML,
-      //   color: backgroundColor
-      // });
-
-    } catch (error) {
-      // // console.("ERROR updating progress tracker:", error);
-    }
-  }
-
-  // Close dropdown if clicking outside
-  document.addEventListener("click", function (e) {
-    const dropdown = document.getElementById("profileDropdown");
-    const profile = document.querySelector(".profile-icon");
-
-    if (!dropdown.contains(e.target) && !profile.contains(e.target)) {
-      dropdown.style.display = "none";
-    }
-  });
-
-
-
-
-
-
-
-
-  // Modal handling
-document.addEventListener("DOMContentLoaded", () => {
-  const couponsModal = document.getElementById('coupons-modal');
-  const salesModal = document.getElementById('sales-modal');
-
-  // Open modals on tool card click
-  document.getElementById('marketing-coupons-card').onclick = () => {
-    couponsModal.style.display = 'block';
-    loadSellerProductsForCoupon(); // Load products when modal opens
-  };
-  document.getElementById('sales-chart-card').onclick = () => {
-    salesModal.style.display = 'block';
-    renderSalesChart();
-  };
-
-  // Close buttons
-  document.getElementById('close-coupons').onclick = () => couponsModal.style.display = 'none';
-  document.getElementById('close-sales').onclick = () => salesModal.style.display = 'none';
-
-  // Close modal when clicking outside modal content
-  window.onclick = (e) => {
-    if (e.target.classList.contains('modal')) {
-      e.target.style.display = 'none';
-    }
-  };
-
-  // Coupon form submit - REAL LOGIC
-  document.getElementById('coupon-form').onsubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      // // console.("🎟️ Creating coupon...");
-
-      // Get logged-in user
-      let user = null;
-      if (typeof supabase !== 'undefined') {
-        try {
-          const { data, error } = await supabase.auth.getUser();
-          if (data?.user) {
-            user = data.user;
-          }
-        } catch (err) {
-          // console.("Could not get Supabase user");
-        }
-      }
-
-      if (!user) {
-        const localUserStr = localStorage.getItem("user");
-        if (localUserStr) {
-          try {
-            user = JSON.parse(localUserStr);
-          } catch (err) {
-            // console.("Could not parse localStorage user");
-          }
-        }
-      }
-
-      if (!user) {
-        alert("❌ Please log in to create a coupon");
-        // console.("No user found");
-        return;
-      }
-
-      const userId = user.id;
-      // // console.("✓ User ID:", userId);
-
-      // Read form values
-      const code = document.getElementById('coupon-code').value.trim().toUpperCase();
-      const discount = parseInt(document.getElementById('discount').value);
-      const productId = document.getElementById('couponProduct').value;
-      const expiryDate = document.getElementById('couponExpiry').value;
-      const usageLimit = parseInt(document.getElementById('couponLimit').value) || 0;
-
-      // // console.("📋 Form Data:", { code, discount, productId, expiryDate, usageLimit });
-
-      // Validation
-      if (!code || code.trim() === '') {
-        alert("❌ Please enter a coupon code");
-        return;
-      }
-
-      if (discount < 1 || discount > 100) {
-        alert("❌ Discount must be between 1 and 100%");
-        return;
-      }
-
-      if (!productId) {
-        alert("❌ Please select a product");
-        return;
-      }
-
-      // // console.("✓ Validation passed");
-
-      // Save to Supabase
-      if (typeof supabase !== 'undefined') {
-        try {
-          // // console.("💾 Saving coupon to Supabase...");
-          
-          const { data, error } = await supabase.from('coupons').insert({
-            seller_id: userId,
-            product_id: productId,
-            code: code,
-            discount_percent: discount,
-            expiry_date: expiryDate || null,
-            usage_limit: usageLimit || 0,
-            created_at: new Date().toISOString()
-          });
-
-          if (error) {
-            // // console.("❌ Supabase Error:", error);
-            alert("❌ Error creating coupon: " + error.message);
-            return;
-          }
-
-          // // console.("✓ Coupon created successfully!", data);
-          alert("✅ Coupon created successfully!\nCode: " + code + "\nDiscount: " + discount + "%");
-
-          // Reset form and close modal
-          e.target.reset();
-          couponsModal.style.display = 'none';
-
-          // Reload products dropdown for next coupon
-          loadSellerProductsForCoupon();
-
-        } catch (err) {
-          // // console.("❌ Exception:", err);
-          alert("❌ Error: " + err.message);
-        }
-      } else {
-        // // console.("⚠️ Supabase not available");
-        alert("❌ Supabase service not available");
-      }
-
-    } catch (error) {
-      // // console.("❌ Coupon error:", error);
-      alert("❌ Error: " + error.message);
-    }
-  };
-
-  // LOAD SELLER PRODUCTS FOR COUPON DROPDOWN
-  async function loadSellerProductsForCoupon() {
-    try {
-      // // console.("📦 Loading seller products for coupon dropdown...");
-
-      // Get logged-in user
-      let user = null;
-      if (typeof supabase !== 'undefined') {
-        try {
-          const { data, error } = await supabase.auth.getUser();
-          if (data?.user) {
-            user = data.user;
-          }
-        } catch (err) {
-          // console.("Could not get Supabase user");
-        }
-      }
-
-      if (!user) {
-        const localUserStr = localStorage.getItem("user");
-        if (localUserStr) {
-          try {
-            user = JSON.parse(localUserStr);
-          } catch (err) {
-            // console.("Could not parse localStorage user");
-          }
-        }
-      }
-
-      if (!user) {
-        // // console.("⚠️ No user found for loading products");
-        return;
-      }
-
-      const userId = user.id;
-      // // console.("✓ User ID for products:", userId);
-
-      // Fetch products from Supabase
-      if (typeof supabase !== 'undefined') {
-        try {
-          // // console.("🔍 Querying products for seller...");
-          
-          const { data: products, error } = await supabase
-            .from('products')
-            .select('id, name')
-            .eq('seller_id', userId);
-
-          if (error) {
-            // // console.("❌ Error fetching products:", error);
-            return;
-          }
-
-          // // console.("✓ Products fetched:", products?.length || 0, "products");
-
-          // Populate dropdown
-          const productDropdown = document.getElementById('couponProduct');
-          productDropdown.innerHTML = '<option value="">-- Choose a product --</option>';
-
-          if (!products || products.length === 0) {
-            // // console.("⚠️ No products available");
-            productDropdown.innerHTML = '<option value="">No products available</option>';
-            productDropdown.disabled = true;
-            return;
-          }
-
-          productDropdown.disabled = false;
-
-          products.forEach(product => {
-            const option = document.createElement('option');
-            option.value = product.id;
-            option.textContent = product.name;
-            productDropdown.appendChild(option);
-            // // console.("✓ Added product:", product.name);
-          });
-
-          // // console.("✓ Dropdown populated with " + products.length + " products");
-
-        } catch (err) {
-          // // console.("❌ Exception loading products:", err);
-        }
-      } else {
-        // // console.("⚠️ Supabase not available for loading products");
-      }
-
-    } catch (error) {
-      // // console.("❌ Error in loadSellerProductsForCoupon:", error);
-    }
-  }
-
-  // Sales Chart render with Chart.js - REAL DATA
-  function renderSalesChart() {
-    if (typeof Chart === 'undefined') {
-      // // console.("❌ Chart.js not loaded");
-      alert("Chart library failed to load");
-      return;
-    }
-    
-    // Fetch real sales data from backend
-    fetchMonthlySalesData();
-  }
-
-  // Fetch monthly sales data from backend
-  async function fetchMonthlySalesData() {
-    try {
-      // // console.("📊 Fetching monthly sales data...");
-      
-      // Get user ID
-      let userId = null;
-      if (typeof supabase !== 'undefined') {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          userId = user?.id;
-        } catch (err) {
-          // // console.("Could not get Supabase user");
-        }
-      }
-
-      if (!userId) {
-        const localUserStr = localStorage.getItem("user");
-        if (localUserStr) {
-          try {
-            const localUser = JSON.parse(localUserStr);
-            userId = localUser?.id;
-          } catch (err) {
-            // console.("Could not parse localStorage user");
-          }
-        }
-      }
-
-      if (!userId) {
-        // // console.("❌ No user ID found");
-        drawDemoChart();
-        return;
-      }
-
-      // // console.("✓ Got seller ID:", userId);
-
-      // Try Supabase first
-      let orders = [];
-      if (typeof supabase !== 'undefined') {
-        try {
-          // // console.("🔍 Fetching orders from Supabase...");
-          const { data, error } = await supabase
-            .from("orders")
-            .select("total_amount, created_at")
-            .eq("seller_id", userId);
-          
-          if (error) {
-            // // console.("⚠️ Supabase error:", error.message);
-          } else if (data) {
-            orders = data;
-            // // console.("✓ Got orders from Supabase:", orders.length, "orders");
-          }
-        } catch (err) {
-          // // console.("⚠️ Exception with Supabase:", err.message);
-        }
-      }
-
-      // Fallback to API if no data from Supabase
-      if (orders.length === 0) {
-        // // console.("⚠️ No data from Supabase, trying API fallback...");
-        try {
-          const token = localStorage.getItem('token');
-          const API_BASE = 'https://marketmix-backend.onrender.com/api';
-
-          // // console.("📡 Fetching from API:", `${API_BASE}/sellers/orders`);
-          const response = await fetch(`${API_BASE}/sellers/orders`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (!response.ok) {
-            // // console.("⚠️ API Error:", response.status);
-            drawDemoChart();
-            return;
-          }
-
-          const data = await response.json();
-          if (data?.data?.orders) {
-            orders = data.data.orders;
-            // // console.("✓ Got orders from API:", orders.length, "orders");
-          } else {
-            // // console.("⚠️ Unexpected API response format");
-            drawDemoChart();
-            return;
-          }
-        } catch (err) {
-          // // console.("❌ API Error:", err.message);
-          drawDemoChart();
-          return;
-        }
-      }
-
-      // Process orders into monthly totals
-      const monthlySales = new Array(12).fill(0);
-      
-      orders.forEach(order => {
-        if (order.created_at && order.total_amount) {
-          const date = new Date(order.created_at);
-          const month = date.getMonth(); // 0-11
-          monthlySales[month] += order.total_amount;
-        }
-      });
-
-      // // console.("📈 Monthly sales totals:", monthlySales);
-
-      // Draw chart with real data
-      drawChartWithData(monthlySales);
-
-    } catch (error) {
-      // // console.("❌ Error fetching sales data:", error);
-      drawDemoChart();
-    }
-  }
-
-  // Draw chart with real data
-  function drawChartWithData(monthlySales) {
-    const ctx = document.getElementById('salesChart').getContext('2d');
-    if (window.salesChartInstance) window.salesChartInstance.destroy();
-
-    const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-    window.salesChartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Monthly Sales ($)',
-          data: monthlySales,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-          pointBackgroundColor: '#3b82f6',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top'
-          },
-          title: {
-            display: true,
-            text: 'Your Monthly Sales Performance'
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function(value) {
-                return '$' + value.toLocaleString();
-              }
-            },
-            title: {
-              display: true,
-              text: 'Sales Amount ($)'
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: 'Month'
-            }
-          }
-        }
-      }
-    });
-
-    // // console.("✓ Chart rendered with real data");
-  }
-
-  // Fallback demo chart
-  function drawDemoChart() {
-    // // console.("📊 Drawing demo chart (no data available)");
-    const ctx = document.getElementById('salesChart').getContext('2d');
-    if (window.salesChartInstance) window.salesChartInstance.destroy();
-
-    window.salesChartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        datasets: [{
-          label: 'Sales ($) - Demo Data',
-          data: [1200, 1900, 3000, 2500, 3200, 4000, 3800, 4200, 3900, 4500, 5000, 5500],
-          borderColor: '#ff6600',
-          backgroundColor: 'rgba(255,102,0,0.3)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 5,
-          pointHoverRadius: 7
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        scales: {
-          y: { beginAtZero: true }
-        }
-      }
-    });
-  }
-});
-
-
-
-  // Dark Mode Toggle
-// const darkModeBtn = document.getElementById('darkModeBtn');
-
-// darkModeBtn.addEventListener('click', () => {
-//   document.body.classList.toggle('dark-mode');
-  
-//   if (document.body.classList.contains('dark-mode')) {
-//     darkModeBtn.textContent = '☀️ Light Mode';
-//   } else {
-//     darkModeBtn.textContent = '🌙 Dark Mode';
-//   }
-// });
-
-// Seller Tips - Rotate every 2 seconds
-const tips = [
-  "Welcome to MarketMix!",
-  "Keep your product descriptions clear and detailed.",
-  "Offer promotions to boost your sales.",
-  "Respond quickly to buyer inquiries for better ratings.",
-  "Update your shop regularly to keep it fresh."
-];
-
-let tipIndex = 0;
-const tipText = document.getElementById('tip-text');
-
-setInterval(() => {
-  tipIndex = (tipIndex + 1) % tips.length;
-  tipText.textContent = tips[tipIndex];
-}, 3000);
-
-
-
-
-// Activity Log Modal Handler
-const activityTicker = document.getElementById('activityTicker');
-const activityModal = document.getElementById('activityModal');
-const closeModal = document.getElementById('closeModal');
-
-// Open modal on ticker click
-activityTicker.addEventListener('click', () => {
-  activityModal.style.display = 'block';
-});
-
-// Close modal
-closeModal.addEventListener('click', () => {
-  activityModal.style.display = 'none';
-});
-
-// Close modal when clicking outside the content
-window.addEventListener('click', (e) => {
-  if (e.target === activityModal) {
-    activityModal.style.display = 'none';
-  }
-});
-
-// Function to initialize and update product badge
-function initializeProductBadge() {
-  const productBadge = document.getElementById('productBadge');
-  if (!productBadge) return; // Badge element may not exist on all pages
-  
-  // Check if we're on a page with product data available
-  // If products array exists (from sellers product.js), update badge
-  if (typeof window.products !== 'undefined') {
-    updateProductBadgeDisplay();
-  } else {
-    // Set a default sample number for demo purposes
-    productBadge.textContent = '2';
-    productBadge.style.display = 'flex';
+}
+
+// ─── Welcome Text ────────────────────────────────────────────
+function renderWelcome(profile) {
+  const el = document.getElementById("welcomeText");
+  if (!el) return;
+  const name =
+    profile?.firstName ||
+    profile?.profile?.businessName ||
+    "Seller";
+  el.textContent = `Welcome, ${name}!`;
+}
+
+// ─── Profile Image ───────────────────────────────────────────
+function renderProfileImage(profile) {
+  const img = document.getElementById("sellerProfileImage");
+  if (!img) return;
+  const logo = profile?.profile?.storeLogo;
+  if (logo) {
+    img.src = logo;
+    img.onerror = () => {
+      img.src = "";
+    };
   }
 }
 
-function updateProductBadgeDisplay() {
-  if (typeof window.products === 'undefined') return;
-  
-  const productBadge = document.getElementById('productBadge');
-  if (!productBadge) return;
-  
-  // Count low-stock and out-of-stock items
-  let lowStock = 0, outStock = 0;
-  window.products.forEach(product => {
-    if (product.status === 'Low Stock') lowStock++;
-    if (product.status === 'Out of Stock') outStock++;
+// ─── Overview Cards ──────────────────────────────────────────
+function renderOverviewCards(stats, earnings, profile) {
+  // Orders
+  const orderCard = document.querySelector(
+    ".overview-card:nth-child(1) h3"
+  );
+  if (orderCard && stats) {
+    orderCard.textContent = stats.totalOrders ?? "0";
+  }
+
+  // Products
+  const productCard = document.querySelector(
+    ".overview-card:nth-child(2) h3"
+  );
+  if (productCard && profile) {
+    productCard.textContent = profile.productCount ?? "0";
+  }
+
+  // Earnings
+  const earningsCard = document.querySelector(
+    ".overview-card:nth-child(3) h3"
+  );
+  if (earningsCard && earnings) {
+    const total = earnings.totalEarnings ?? 0;
+    earningsCard.textContent =
+      "$" +
+      Number(total).toLocaleString("en-US", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+  }
+
+  // Returns — no dedicated endpoint yet; show placeholder
+  const returnsCard = document.querySelector(
+    ".overview-card:nth-child(4) h3"
+  );
+  if (returnsCard) {
+    returnsCard.textContent = "—";
+  }
+}
+
+// ─── Progress Tracker ────────────────────────────────────────
+function renderProgressTracker(profile) {
+  const bar = document.getElementById("progressBar");
+  const text = document.getElementById("progress-text");
+  if (!bar || !text) return;
+
+  const p = profile?.profile;
+
+  const storeSetupDone = !!(
+    p?.businessName &&
+    p?.storeLogo &&
+    p?.businessAddress
+  );
+
+  const kycUrls = p?.kycDocumentUrls || {};
+  const kycStatus = kycUrls.kyc_status || null;
+  const kycSubmitted = !!kycUrls.kyc_submitted_at;
+  const kycApproved = p?.isVerified && kycStatus === "approved";
+
+  const productCount = profile?.productCount ?? 0;
+  const totalSales = p?.totalSales ?? 0;
+
+  let progress, color, html;
+
+  if (!storeSetupDone) {
+    progress = 20;
+    color = "#ef4444";
+    html = `<a href="setup-store.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
+  } else if (kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) {
+    progress = 40;
+    color = "#f97316";
+    html = `<span style="color:#1e293b">Your KYC is under review. We'll notify you once approved.</span>`;
+  } else if (!kycApproved) {
+    progress = 40;
+    color = "#f97316";
+    html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC verification</a>`;
+  } else if (productCount < 1) {
+    progress = 60;
+    color = "#eab308";
+    html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Add your first product</a>`;
+  } else if (totalSales < 1) {
+    progress = 75;
+    color = "#86efac";
+    html = `Make your first sale`;
+  } else if (totalSales < 10) {
+    progress = 90;
+    color = "#22c55e";
+    html = `Reach 10 sales`;
+  } else {
+    progress = 100;
+    color = "#3b82f6";
+    html = `Verified Seller ✓`;
+  }
+
+  bar.style.width = progress + "%";
+  bar.style.backgroundColor = color;
+  text.innerHTML = html;
+}
+
+// ─── Activity Log ────────────────────────────────────────────
+async function renderActivityLog() {
+  try {
+    const data = await apiFetch("/seller/orders?limit=10");
+    const orders = data?.data?.orders || [];
+    if (!orders.length) return;
+
+    const tickerList = document.getElementById("tickerList");
+    const fullLog = document.querySelector(".full-log");
+    if (!tickerList) return;
+
+    // Build ticker items from recent orders
+    const items = orders.slice(0, 10).map((o) => {
+      const label = o.status.charAt(0).toUpperCase() + o.status.slice(1);
+      const short = String(o.orderId).substring(0, 8);
+      return `Order #${short} — ${label}`;
+    });
+
+    tickerList.innerHTML = items
+      .map((i) => `<li>${i}</li>`)
+      .join("");
+
+    if (fullLog) {
+      fullLog.innerHTML = orders
+        .slice(0, 20)
+        .map((o) => {
+          const d = new Date(o.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+          const label =
+            o.status.charAt(0).toUpperCase() + o.status.slice(1);
+          const short = String(o.orderId).substring(0, 8);
+          const amt = Number(o.totalAmount).toFixed(2);
+          return `<li>Order #${short} — ${label} — $${amt} — ${d}</li>`;
+        })
+        .join("");
+    }
+  } catch (_) {
+    /* keep static fallback in HTML if API fails */
+  }
+}
+
+// ─── Seller Tips ─────────────────────────────────────────────
+function initTips() {
+  const tips = [
+    "Welcome to MarketMix!",
+    "Keep your product descriptions clear and detailed.",
+    "Offer promotions to boost your sales.",
+    "Respond quickly to buyer inquiries for better ratings.",
+    "Update your shop regularly to keep it fresh.",
+    "Use high-quality images to attract more buyers.",
+    "Check your earnings dashboard weekly.",
+  ];
+  let i = 0;
+  const el = document.getElementById("tip-text");
+  if (!el) return;
+  setInterval(() => {
+    i = (i + 1) % tips.length;
+    el.textContent = tips[i];
+  }, 3000);
+}
+
+// ─── Activity Modal ──────────────────────────────────────────
+function initActivityModal() {
+  const ticker = document.getElementById("activityTicker");
+  const modal = document.getElementById("activityModal");
+  const close = document.getElementById("closeModal");
+
+  ticker?.addEventListener("click", () => {
+    if (modal) modal.style.display = "block";
   });
-  
-  const totalAlerts = lowStock + outStock;
-  productBadge.textContent = totalAlerts;
-  productBadge.style.display = totalAlerts > 0 ? 'flex' : 'none';
+  close?.addEventListener("click", () => {
+    if (modal) modal.style.display = "none";
+  });
+  window.addEventListener("click", (e) => {
+    if (e.target === modal) modal.style.display = "none";
+  });
+}
+
+// ─── Tool Modals (Coupons + Sales Chart) ─────────────────────
+function initModals() {
+  const couponsModal = document.getElementById("coupons-modal");
+  const salesModal = document.getElementById("sales-modal");
+
+  document.getElementById("marketing-coupons-card")?.addEventListener("click", () => {
+    if (couponsModal) couponsModal.style.display = "block";
+    loadSellerProductsForCoupon();
+  });
+
+  document.getElementById("sales-chart-card")?.addEventListener("click", () => {
+    if (salesModal) salesModal.style.display = "block";
+    renderSalesChart();
+  });
+
+  document.getElementById("close-coupons")?.addEventListener("click", () => {
+    if (couponsModal) couponsModal.style.display = "none";
+  });
+  document.getElementById("close-sales")?.addEventListener("click", () => {
+    if (salesModal) salesModal.style.display = "none";
+  });
+
+  window.addEventListener("click", (e) => {
+    if (e.target?.classList?.contains("modal")) e.target.style.display = "none";
+  });
+
+  // Coupon form submit
+  document.getElementById("coupon-form")?.addEventListener("submit", handleCouponSubmit);
+}
+
+// ─── Load Seller Products for Coupon Dropdown ────────────────
+async function loadSellerProductsForCoupon() {
+  const dropdown = document.getElementById("couponProduct");
+  if (!dropdown) return;
+  dropdown.innerHTML = `<option value="">Loading...</option>`;
+  dropdown.disabled = true;
+
+  try {
+    const data = await apiFetch("/seller/products?limit=100");
+    const products = data?.data?.products || [];
+
+    dropdown.innerHTML = `<option value="">-- Choose a product --</option>`;
+    if (!products.length) {
+      dropdown.innerHTML = `<option value="">No products available</option>`;
+      return;
+    }
+    products.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      dropdown.appendChild(opt);
+    });
+    dropdown.disabled = false;
+  } catch (err) {
+    dropdown.innerHTML = `<option value="">Failed to load products</option>`;
+    console.error("loadSellerProductsForCoupon:", err);
+  }
+}
+
+// ─── Coupon Submit ───────────────────────────────────────────
+async function handleCouponSubmit(e) {
+  e.preventDefault();
+
+  const code = document.getElementById("coupon-code")?.value.trim().toUpperCase();
+  const discount = parseInt(document.getElementById("discount")?.value);
+  const productId = document.getElementById("couponProduct")?.value;
+  const expiryDate = document.getElementById("couponExpiry")?.value;
+  const usageLimit = parseInt(document.getElementById("couponLimit")?.value) || 0;
+
+  if (!code) return alert("Please enter a coupon code.");
+  if (discount < 1 || discount > 100) return alert("Discount must be 1–100%.");
+  if (!productId) return alert("Please select a product.");
+
+  // NOTE: The backend doesn't have a /coupons endpoint yet.
+  // When it's added, swap the block below for an apiFetch call.
+  // For now we store locally and show success so the UI works.
+  try {
+    const coupons = JSON.parse(localStorage.getItem("mm_coupons") || "[]");
+    coupons.push({ code, discount, productId, expiryDate, usageLimit, createdAt: new Date().toISOString() });
+    localStorage.setItem("mm_coupons", JSON.stringify(coupons));
+
+    alert(`✅ Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
+    e.target.reset();
+    document.getElementById("coupons-modal").style.display = "none";
+  } catch (err) {
+    alert("❌ Error saving coupon: " + err.message);
+  }
+}
+
+// ─── Sales Chart ─────────────────────────────────────────────
+async function renderSalesChart() {
+  if (typeof Chart === "undefined") {
+    alert("Chart library not loaded.");
+    return;
+  }
+
+  const ctx = document.getElementById("salesChart")?.getContext("2d");
+  if (!ctx) return;
+
+  // Destroy previous instance
+  if (window._salesChartInstance) {
+    window._salesChartInstance.destroy();
+    window._salesChartInstance = null;
+  }
+
+  let monthlySales = new Array(12).fill(0);
+
+  try {
+    // Fetch ALL seller orders (up to 200 for charting)
+    const data = await apiFetch("/seller/orders?limit=200");
+    const orders = data?.data?.orders || [];
+
+    orders.forEach((o) => {
+      if (o.createdAt && o.totalAmount) {
+        const month = new Date(o.createdAt).getMonth(); // 0–11
+        monthlySales[month] += Number(o.totalAmount);
+      }
+    });
+  } catch (err) {
+    console.warn("Sales chart: could not fetch orders, using zeros.", err);
+  }
+
+  const labels = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+
+  window._salesChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Monthly Sales ($)",
+          data: monthlySales,
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,0.1)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: "#3b82f6",
+          pointBorderColor: "#fff",
+          pointBorderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: true, position: "top" },
+        title: {
+          display: true,
+          text: "Your Monthly Sales Performance",
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => " $" + Number(ctx.parsed.y).toLocaleString(),
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (v) => "$" + Number(v).toLocaleString(),
+          },
+          title: { display: true, text: "Sales ($)" },
+        },
+        x: { title: { display: true, text: "Month" } },
+      },
+    },
+  });
 }
