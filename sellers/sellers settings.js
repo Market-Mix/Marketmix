@@ -50,6 +50,19 @@ function setValue(id, value) {
   if (el) el.value = value;
 }
 
+// ─── Profile Image ────────────────────────────────────────────────────────────
+function renderProfileImage(profile) {
+  const img = document.getElementById('sellerProfileImage');
+  if (!img) return;
+  const logo = profile?.profile?.storeLogo;
+  if (logo) {
+    img.src = logo;
+    img.onerror = () => {
+      img.src = '';
+    };
+  }
+}
+
 // ─── Load Seller Profile ───────────────────────────────────────────────────────
 
 async function loadSellerProfile() {
@@ -95,7 +108,7 @@ async function loadSellerProfile() {
     setValue('shop-facebook',  social.facebook         || '');
     setValue('shop-twitter',   social.twitter          || '');
 
-    // Show existing store logo
+    // Show existing store logo and update profile image
     const logoUrl = profile.storeLogo || profile.storeLogoUrl;
     if (logoUrl) {
       const preview = document.getElementById('logo-preview');
@@ -106,12 +119,7 @@ async function loadSellerProfile() {
     }
 
     // Update navbar avatar
-    const avatarUrl = seller.avatarUrl || logoUrl;
-    if (avatarUrl) {
-      document.querySelectorAll('.profile-icon').forEach(img => {
-        img.src = avatarUrl;
-      });
-    }
+    renderProfileImage(seller);
 
   } catch (err) {
     console.error('loadSellerProfile error:', err);

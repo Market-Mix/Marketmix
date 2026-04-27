@@ -50,6 +50,73 @@ const returnsData = [
   }
 ];
 
+// API Constants
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
+
+// Auth helpers
+function getToken() {
+  return localStorage.getItem('token') || '';
+}
+
+function authHeaders() {
+  return {
+    'Authorization': `Bearer ${getToken()}`,
+    'Content-Type': 'application/json'
+  };
+}
+
+// API Fetch
+async function apiFetch(path, opts = {}) {
+  opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
+  const res = await fetch(`${API_BASE}${path}`, opts);
+  if (res.status === 401) {
+    handleLogout();
+    throw new Error('Unauthorized');
+  }
+  return res.json();
+}
+
+// Profile Image
+function renderProfileImage(profile) {
+  const img = document.getElementById('sellerProfileImage');
+  if (!img) return;
+  const logo = profile?.profile?.storeLogo;
+  if (logo) {
+    img.src = logo;
+    img.onerror = () => {
+      img.src = '';
+    };
+  }
+}
+
+// Logout
+async function handleLogout() {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+  } catch (_) {
+    /* ignore network errors on logout */
+  }
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = 'login.html';
+}
+
+// Load Profile
+async function loadProfile() {
+  try {
+    const data = await apiFetch('/seller/profile');
+    const profile = data?.data?.seller;
+    if (profile) {
+      renderProfileImage(profile);
+    }
+  } catch (err) {
+    console.error('Error loading profile:', err);
+  }
+}
+
 let currentReturnId = null;
 
 // DOM Elements
@@ -66,8 +133,12 @@ const offcanvasClose = document.getElementById('offcanvasClose');
 // Profile Dropdown
 function toggleProfileDropdown() {
   const dropdown = document.getElementById('profileDropdown');
-  dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+  if (dropdown) {
+    dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+  }
 }
+
+window.toggleProfileDropdown = toggleProfileDropdown;
 
 // Navbar Toggle
 if (navbarToggler) {
@@ -211,5 +282,6 @@ function showNotification(message, type = 'success') {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  loadProfile();
   renderTable();
 });

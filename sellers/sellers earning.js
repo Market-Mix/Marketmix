@@ -20,6 +20,46 @@ const authHeaders = () => ({
     'Content-Type': 'application/json'
 });
 
+// API Fetch
+async function apiFetch(path, opts = {}) {
+    opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
+    const res = await fetch(`${API_BASE}${path}`, opts);
+    if (res.status === 401) {
+        handleLogout();
+        throw new Error('Unauthorized');
+    }
+    return res.json();
+}
+
+// Profile Image
+function renderProfileImage(profile) {
+    const img = document.getElementById('sellerProfileImage');
+    if (!img) return;
+    const logo = profile?.profile?.storeLogo;
+    if (logo) {
+        img.src = logo;
+        img.onerror = () => {
+            img.src = '';
+        };
+    }
+}
+
+// Logout
+async function handleLogout() {
+    try {
+        await fetch(`${API_BASE}/auth/logout`, {
+            method: 'POST',
+            headers: authHeaders(),
+        });
+    } catch (_) {
+        /* ignore network errors on logout */
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    window.location.href = 'login.html';
+}
+
 // UI Helpers
 function showToast(message, success = true) {
     const toast = document.getElementById("toast");
@@ -66,9 +106,31 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Load earnings data
+    loadProfile();
     fetchEarningsData();
     setupWithdrawalForm();
 });
+
+async function loadProfile() {
+    try {
+        const data = await apiFetch('/seller/profile');
+        const profile = data?.data?.seller;
+        if (profile) {
+            renderProfileImage(profile);
+        }
+    } catch (err) {
+        console.error('Error loading profile:', err);
+    }
+}
+
+function toggleProfileDropdown() {
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+    }
+}
+
+window.toggleProfileDropdown = toggleProfileDropdown;
 
 async function fetchEarningsData() {
     try {
