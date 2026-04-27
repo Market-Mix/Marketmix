@@ -1,3 +1,6 @@
+// API Base URL
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
+
 document.addEventListener('DOMContentLoaded', function() {
   // ===== CART SYSTEM =====
   // Load existing cart or create new
@@ -52,8 +55,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Prefer a real product id when provided by the markup; otherwise create a temporary id
       const tempProductId = btoa(product.name).substring(0, 36);
       const productIdToSend = product.productId || tempProductId;
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
-      const response = await fetch(`${CONFIG.API_BASE_URL}/cart/add`, {
+      const response = await fetch(`${API_BASE}/cart/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,8 +176,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   async function fetchCategoryProducts(categoryId) {
     try {
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
       // Fetch category details
-      const categoryRes = await fetch(`${CONFIG.API_BASE_URL}/categories/${categoryId}`);
+      const categoryRes = await fetch(`${API_BASE}/categories/${categoryId}`);
       if (!categoryRes.ok) throw new Error('Category not found');
       const categoryData = await categoryRes.json();
       const categoryName = categoryData.data.name;
@@ -183,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('categoryTitle').textContent = `${categoryName}`;
 
       // Fetch products for this category
-      const productsRes = await fetch(`${CONFIG.API_BASE_URL}/categories/${categoryId}/products?limit=100`);
+      const productsRes = await fetch(`${API_BASE}/categories/${categoryId}/products?limit=100`);
       if (!productsRes.ok) throw new Error('Failed to fetch products');
       const productsData = await productsRes.json();
       const products = productsData.data || [];
@@ -324,7 +329,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // ===== LOAD BEST-SELLING PRODUCTS =====
   async function loadBestSellingProducts() {
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/products?limit=20`);
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
+      const response = await fetch(`${API_BASE}/products?limit=20`);
       if (!response.ok) throw new Error('Failed to fetch products');
       const data = await response.json();
       const products = data.data || [];
@@ -413,8 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
           // fetch more products from the API
           if (matched.length === 0 && category !== 'all') {
             try {
-              const base = (window.CONFIG && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : 'https://marketmix-backend.onrender.com/api';
-              const resp = await fetch(`${base}/products?limit=200`);
+              const API_BASE = 'https://marketmix-backend.onrender.com/api';
+              const resp = await fetch(`${API_BASE}/products?limit=200`);
               if (resp.ok) {
                 const json = await resp.json();
                 const items = json.data || [];
@@ -465,7 +471,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchAndPopulateFilterButtons() {
       try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/categories`);
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
+        const response = await fetch(`${API_BASE}/categories`);
         if (!response.ok) throw new Error('Failed to fetch categories');
         
         const result = await response.json();

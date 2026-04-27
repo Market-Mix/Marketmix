@@ -54,11 +54,14 @@ document.addEventListener('DOMContentLoaded', function(){
       let apiUrl;
       if (categoryId) {
         // Fetch products for a specific category using the same endpoint as category.html
-        apiUrl = `${CONFIG.API_BASE_URL}/categories/${encodeURIComponent(categoryId)}/products?limit=100`;
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
+        apiUrl = `${API_BASE}/categories/${encodeURIComponent(categoryId)}/products?limit=100`;
       } else if (q) {
-        apiUrl = `${CONFIG.API_BASE_URL}/products/search/query?q=${encodeURIComponent(q)}`;
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
+        apiUrl = `${API_BASE}/products/search/query?q=${encodeURIComponent(q)}`;
       } else {
-        apiUrl = `${CONFIG.API_BASE_URL}/products?limit=50`;
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
+        apiUrl = `${API_BASE}/products?limit=50`;
       }
       
       console.log('Fetching products from:', apiUrl);
@@ -96,7 +99,8 @@ document.addEventListener('DOMContentLoaded', function(){
         return;
       }
 
-      const apiUrl = `${CONFIG.API_BASE_URL}/categories/search/query?q=${encodeURIComponent(q)}`;
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
+      const apiUrl = `${API_BASE}/categories/search/query?q=${encodeURIComponent(q)}`;
       console.log('Fetching categories from:', apiUrl);
       const response = await fetch(apiUrl);
       

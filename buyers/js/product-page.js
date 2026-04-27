@@ -38,7 +38,8 @@ async function fetchProduct(productId) {
   try {
     // Try API first
     const token = localStorage.getItem('token');
-    const url = `${CONFIG.API_BASE_URL}/products/${productId}`;
+    const API_BASE = 'https://marketmix-backend.onrender.com/api';
+    const url = `${API_BASE}/products/${productId}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -54,7 +55,8 @@ async function fetchProduct(productId) {
 
       // Fetch reviews for this product
       try {
-        const reviewsUrl = `${CONFIG.API_BASE_URL}/reviews/product/${productId}`;
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
+        const reviewsUrl = `${API_BASE}/reviews/product/${productId}`;
         const reviewsResponse = await fetch(reviewsUrl, {
           method: 'GET',
           headers: {
@@ -337,7 +339,8 @@ function setupEventListeners(product) {
 async function trackProductView(productId) {
   try {
     const token = localStorage.getItem('token');
-    const url = `${CONFIG.API_BASE_URL}/products/${productId}/view`;
+    const API_BASE = 'https://marketmix-backend.onrender.com/api';
+    const url = `${API_BASE}/products/${productId}/view`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -405,9 +408,10 @@ async function addToCart(product) {
   // Also sync to backend cart API if user is authenticated (keeps cart_items in DB in sync)
   try {
     const token = localStorage.getItem('token');
+    const API_BASE = 'https://marketmix-backend.onrender.com/api';
     if (token) {
       // Backend expects product_id and quantity
-      const res = await fetch(`${CONFIG.API_BASE_URL}/cart/add`, {
+      const res = await fetch(`${API_BASE}/cart/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

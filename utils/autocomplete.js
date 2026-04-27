@@ -29,9 +29,10 @@ class MarketMixAutocomplete {
 
     try {
       // Fetch both products and categories in parallel
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
       const [productsRes, categoriesRes] = await Promise.all([
-        fetch(`${CONFIG.API_BASE_URL}/products`).catch(() => null),
-        fetch(`${CONFIG.API_BASE_URL}/categories`).catch(() => null)
+        fetch(`${API_BASE}/products`).catch(() => null),
+        fetch(`${API_BASE}/categories`).catch(() => null)
       ]);
 
       let products = [];
@@ -68,7 +69,8 @@ class MarketMixAutocomplete {
     }
 
     try {
-      const url = `${CONFIG.API_BASE_URL}/products/search/query?q=${encodeURIComponent(query)}`;
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
+      const url = `${API_BASE}/products/search/query?q=${encodeURIComponent(query)}`;
       console.log('Searching products:', url);
       const response = await fetch(url);
       
@@ -96,7 +98,8 @@ class MarketMixAutocomplete {
     }
 
     try {
-      const url = `${CONFIG.API_BASE_URL}/categories/search/query?q=${encodeURIComponent(query)}`;
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
+      const url = `${API_BASE}/categories/search/query?q=${encodeURIComponent(query)}`;
       console.log('Searching categories:', url);
       const response = await fetch(url);
       

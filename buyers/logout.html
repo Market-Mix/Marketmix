@@ -159,8 +159,7 @@
         // =====================================================
         // LOGOUT HANDLER
         // =====================================================
-        // Prefer global CONFIG.API_BASE_URL when present
-const API_BASE_URL = (window.CONFIG && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : 'https://marketmix-backend.onrender.com/api';
+const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
 
         async function performLogout() {
             console.log('🚪 Logout page loaded - starting logout process...');

@@ -43,9 +43,10 @@ document.addEventListener('DOMContentLoaded', function(){
   
   async function searchProducts() {
     try {
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
       const apiUrl = q 
-        ? `${CONFIG.API_BASE_URL}/products/search/query?q=${encodeURIComponent(q)}`
-        : `${CONFIG.API_BASE_URL}/products?limit=50`;
+        ? `${API_BASE}/products/search/query?q=${encodeURIComponent(q)}`
+        : `${API_BASE}/products?limit=50`;
       
       console.log('Fetching products from:', apiUrl);
       const response = await fetch(apiUrl);
@@ -78,7 +79,8 @@ document.addEventListener('DOMContentLoaded', function(){
         return;
       }
 
-      const apiUrl = `${CONFIG.API_BASE_URL}/categories/search/query?q=${encodeURIComponent(q)}`;
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
+      const apiUrl = `${API_BASE}/categories/search/query?q=${encodeURIComponent(q)}`;
       console.log('Fetching categories from:', apiUrl);
       const response = await fetch(apiUrl);
       

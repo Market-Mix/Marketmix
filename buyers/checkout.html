@@ -92,7 +92,7 @@
 <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
-  <script src="../config.js"></script>
+
   <script >
 // Global state for applied coupon
 let appliedCoupon = null;
@@ -141,11 +141,9 @@ async function applyCoupon(code, productId) {
       try {
         console.log("⚠️ Using API fallback for coupon validation...");
         const token = localStorage.getItem('token');
-        const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL)
-          ? CONFIG.API_BASE_URL
-          : 'https://marketmix-backend.onrender.com/api';
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
-        const response = await fetch(`${apiUrl}/coupons/validate`, {
+        const response = await fetch(`${API_BASE}/coupons/validate`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

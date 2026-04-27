@@ -144,12 +144,10 @@
         return;
       }
 
-      // Use backend API (which handles auth and RLS)
-      const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
-        ? CONFIG.API_BASE_URL 
-        : 'https://marketmix-backend.onrender.com/api';
+      // Use backend API
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
-      const response = await fetch(`${apiUrl}/seller/profile`, {
+      const response = await fetch(`${API_BASE}/seller/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -369,11 +367,9 @@
         try {
           // // console.("⚠️ Supabase not available - Using API fallback for seller profile");
           const token = localStorage.getItem('token');
-          const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
-            ? CONFIG.API_BASE_URL 
-            : 'https://marketmix-backend.onrender.com/api';
+          const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
-          const response = await fetch(`${apiUrl}/seller/profile`, {
+          const response = await fetch(`${API_BASE}/seller/profile`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -867,12 +863,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // // console.("⚠️ No data from Supabase, trying API fallback...");
         try {
           const token = localStorage.getItem('token');
-          const apiUrl = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.API_BASE_URL) 
-            ? CONFIG.API_BASE_URL 
-            : 'https://marketmix-backend.onrender.com/api';
+          const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
-          // // console.("📡 Fetching from API:", `${apiUrl}/sellers/orders`);
-          const response = await fetch(`${apiUrl}/sellers/orders`, {
+          // // console.("📡 Fetching from API:", `${API_BASE}/sellers/orders`);
+          const response = await fetch(`${API_BASE}/sellers/orders`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`,

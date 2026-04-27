@@ -201,7 +201,7 @@
     </button>
   </div>
 
-  <script src="../config.js"></script>
+
   <script src="../utils/autocomplete.js"></script>
   <script src="../utils/navbar.js"></script>
   <script src="../landingpage.js" defer></script>
@@ -250,8 +250,9 @@
 
     async function fetchCategoryProducts(categoryId) {
       try {
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
         // Fetch category details
-        const categoryRes = await fetch(`${CONFIG.API_BASE_URL}/categories/${categoryId}`);
+        const categoryRes = await fetch(`${API_BASE}/categories/${categoryId}`);
         if (!categoryRes.ok) throw new Error('Category not found');
         const categoryData = await categoryRes.json();
         const categoryName = categoryData.data.name;
@@ -261,7 +262,7 @@
         document.getElementById('categoryTitle').textContent = `Results for "${categoryName}"`;
 
         // Fetch products for this category
-        const productsRes = await fetch(`${CONFIG.API_BASE_URL}/categories/${categoryId}/products?limit=100`);
+        const productsRes = await fetch(`${API_BASE}/categories/${categoryId}/products?limit=100`);
         if (!productsRes.ok) throw new Error('Failed to fetch products');
         const productsData = await productsRes.json();
         const products = productsData.data || [];

@@ -337,11 +337,11 @@
   <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
-  <script src="config.js"></script>
+
   <script>
     // Cart + Recent-Deleted script
 
-    const CART_KEY = (CONFIG && CONFIG.STORAGE_KEYS && CONFIG.STORAGE_KEYS.CART) ? CONFIG.STORAGE_KEYS.CART : 'cart';
+    const CART_KEY = 'cart';
 
     let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
     let recentDeleted = JSON.parse(localStorage.getItem('recentDeleted') || '[]');
@@ -453,8 +453,9 @@
             // Try backend update if item has id
             try {
               const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
+              const API_BASE = 'https://marketmix-backend.onrender.com/api';
               if (item.id && token) {
-                const resp = await fetch(`${CONFIG.API_BASE_URL}/cart/${item.id}`, { 
+                const resp = await fetch(`${API_BASE}/cart/${item.id}`, { 
                   method: 'PUT', 
                   headers: { 
                     'Content-Type': 'application/json',
@@ -479,8 +480,9 @@
           // Try backend update if item has id
           try {
             const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
+            const API_BASE = 'https://marketmix-backend.onrender.com/api';
             if (item.id && token) {
-              const resp = await fetch(`${CONFIG.API_BASE_URL}/cart/${item.id}`, { 
+              const resp = await fetch(`${API_BASE}/cart/${item.id}`, { 
                 method: 'PUT', 
                 headers: { 
                   'Content-Type': 'application/json',
@@ -521,8 +523,9 @@
           // Try backend deletion if item has id
           try {
             const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
+            const API_BASE = 'https://marketmix-backend.onrender.com/api';
             if (item.id && token) {
-              const resp = await fetch(`${CONFIG.API_BASE_URL}/cart/${item.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+              const resp = await fetch(`${API_BASE}/cart/${item.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
               if (resp.ok) {
                 cart.splice(index,1);
                 saveAndRender();
@@ -587,8 +590,9 @@
           // If user is logged in, call backend API
           if(token && item.productId) {
             try {
-              console.log('Restore: POST', `${CONFIG.API_BASE_URL}/cart/add`, { product_id: item.productId, quantity: item.quantity || 1 });
-              const response = await fetch(`${CONFIG.API_BASE_URL}/cart/add`, {
+              console.log('Restore: POST', `https://marketmix-backend.onrender.com/api/cart/add`, { product_id: item.productId, quantity: item.quantity || 1 });
+              const API_BASE = 'https://marketmix-backend.onrender.com/api';
+              const response = await fetch(`${API_BASE}/cart/add`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -654,9 +658,10 @@
     async function loadBackendCart() {
       try {
         const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
         if (!token) return false;
 
-        const resp = await fetch(`${CONFIG.API_BASE_URL}/cart`, {
+        const resp = await fetch(`${API_BASE}/cart`, {
           method: 'GET',
           headers: { 'Authorization': `Bearer ${token}` }
         });

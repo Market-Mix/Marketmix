@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', async function(){
   if (!grid) return;
 
   try {
-    const resp = await fetch(`${CONFIG.API_BASE_URL}/categories?limit=200`);
+    const API_BASE = 'https://marketmix-backend.onrender.com/api';
+    const resp = await fetch(`${API_BASE}/categories?limit=200`);
     if (!resp.ok) throw new Error('Failed to fetch categories');
     const json = await resp.json();
     const cats = json.data || [];

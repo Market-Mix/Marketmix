@@ -1,5 +1,5 @@
 // API Base URL - prefer global CONFIG when available to support development mode
-const API_BASE_URL = (window.CONFIG && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : 'https://marketmix-backend.onrender.com/api'; // Change this to your actual backend URL if needed
+const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
 
 // NOTE: stray slash removed (it caused an unterminated regex / syntax error)
 

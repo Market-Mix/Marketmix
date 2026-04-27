@@ -144,8 +144,8 @@
             // fetch more products from the API (larger limit) and render matches into the section.
             if (matched.length === 0 && category !== 'all') {
               try {
-                const base = (window.CONFIG && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : 'https://marketmix-backend.onrender.com/api';
-                const resp = await fetch(`${base}/products?limit=200`);
+                const API_BASE = 'https://marketmix-backend.onrender.com/api';
+                const resp = await fetch(`${API_BASE}/products?limit=200`);
                 if (resp.ok) {
                   const json = await resp.json();
                   const items = json.data || [];
@@ -276,9 +276,9 @@
     (async () => {
       try {
         const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
-        const base = (window.CONFIG && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : 'https://marketmix-backend.onrender.com/api';
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
         if (token && productObj.productId) {
-          const resp = await fetch(`${base}/cart/add`, {
+          const resp = await fetch(`${API_BASE}/cart/add`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ product_id: productObj.productId, quantity: 1 })
@@ -313,8 +313,8 @@
   // Load products from backend and render into the grids
   async function loadLandingProducts(limit = 8) {
     try {
-      const base = (window.CONFIG && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : 'https://marketmix-backend.onrender.com/api';
-      const res = await fetch(`${base}/products?limit=${limit}`);
+      const API_BASE = 'https://marketmix-backend.onrender.com/api';
+      const res = await fetch(`${API_BASE}/products?limit=${limit}`);
       if (!res.ok) throw new Error('Failed to fetch products');
       const json = await res.json();
       const items = json.data || [];
@@ -655,7 +655,8 @@
 
     async function fetchAndPopulateCategories() {
       try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/categories`);
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
+        const response = await fetch(`${API_BASE}/categories`);
         if (!response.ok) throw new Error('Failed to fetch categories');
         
         const result = await response.json();

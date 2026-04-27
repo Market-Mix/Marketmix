@@ -31,11 +31,9 @@ function showNotification(message, type = 'success') {
 }
 
 // Handle form submission with notification and redirect
-// Get API base safely (CONFIG is defined in buyers/config.js)
+// Get API base
 function apiBase() {
-  if (window.CONFIG && CONFIG.API_BASE_URL) return CONFIG.API_BASE_URL;
-  // Fallback to relative path
-  return '/api';
+  return 'https://marketmix-backend.onrender.com/api';
 }
 
 // Merge localStorage cart with server cart after login
@@ -125,10 +123,10 @@ async function handleFormSubmit(event, formType, redirectUrl) {
             return;
         }
 
-        // Save token and user using same keys as CONFIG if available
-        const tokenKey = (window.CONFIG && CONFIG.STORAGE_KEYS && CONFIG.STORAGE_KEYS.TOKEN) ? CONFIG.STORAGE_KEYS.TOKEN : 'token';
-        const userKey = (window.CONFIG && CONFIG.STORAGE_KEYS && CONFIG.STORAGE_KEYS.USER) ? CONFIG.STORAGE_KEYS.USER : 'user';
-        const roleKey = (window.CONFIG && CONFIG.STORAGE_KEYS && CONFIG.STORAGE_KEYS.USER_ROLE) ? CONFIG.STORAGE_KEYS.USER_ROLE : 'userRole';
+        // Save token and user
+        const tokenKey = 'token';
+        const userKey = 'user';
+        const roleKey = 'userRole';
 
         localStorage.setItem(tokenKey, token);
         localStorage.setItem(userKey, JSON.stringify(user || {}));

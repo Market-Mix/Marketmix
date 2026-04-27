@@ -1,9 +1,7 @@
 // wishlist-util.js
 // Reusable utility for wishlist operations
 
-// Prefer the global CONFIG API base when present (supports localhost development).
-// Fallback to the documented production URL for backwards compatibility.
-const API_BASE_URL = (window.CONFIG && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : 'https://marketmix-backend.onrender.com/api'; // Change to your backend URL if needed
+const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
 
 /**
  * Add product to wishlist
