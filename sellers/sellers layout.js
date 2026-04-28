@@ -5,7 +5,7 @@
 
 const API_BASE = "https://marketmix-backend.onrender.com/api";
 
-// ─── Auth helpers ────────────────────────────────────────────
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
 function getToken() {
   return localStorage.getItem("token") || "";
 }
@@ -27,16 +27,14 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
-// ─── Logout ──────────────────────────────────────────────────
+// ─── Logout ───────────────────────────────────────────────────────────────────
 async function handleLogout() {
   try {
     await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
       headers: authHeaders(),
     });
-  } catch (_) {
-    /* ignore network errors on logout */
-  }
+  } catch (_) { /* ignore */ }
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   window.location.href = "login.html";
@@ -52,7 +50,7 @@ document.querySelectorAll('a[href="#"]').forEach((a) => {
   }
 });
 
-// ─── DOM Ready ───────────────────────────────────────────────
+// ─── DOM Ready ────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
   initNavToggle();
   initMobilePanel();
@@ -61,78 +59,67 @@ document.addEventListener("DOMContentLoaded", async () => {
   initActivityModal();
   initModals();
 
-  // Parallel data loads
-  const [profileData, statsData, earningsData] = await Promise.allSettled([
+  // Fetch all data in parallel
+  const [profileRes, statsRes, earningsRes, activityRes] = await Promise.allSettled([
     apiFetch("/seller/profile"),
     apiFetch("/seller/orders/stats"),
     apiFetch("/earnings"),
+    apiFetch("/seller/activity?limit=50"),
   ]);
 
-  const profile =
-    profileData.status === "fulfilled" ? profileData.value?.data?.seller : null;
-  const stats =
-    statsData.status === "fulfilled" ? statsData.value?.data?.stats : null;
-  const earnings =
-    earningsData.status === "fulfilled"
-      ? earningsData.value?.data?.summary
-      : null;
+  const profile  = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller   : null;
+  const stats    = statsRes.status    === "fulfilled" ? statsRes.value?.data?.stats       : null;
+  const earnings = earningsRes.status === "fulfilled" ? earningsRes.value?.data?.summary  : null;
+  const activities = activityRes.status === "fulfilled"
+    ? (activityRes.value?.data?.activities || [])
+    : [];
 
   renderWelcome(profile);
   renderProfileImage(profile);
   renderOverviewCards(stats, earnings, profile);
-  renderKYCStatusBanner(profile);
   renderProgressTracker(profile);
-  await renderActivityLog();
+  renderActivityLog(activities);
 });
 
-// ─── Nav Toggle ──────────────────────────────────────────────
+// ─── Nav Toggle ───────────────────────────────────────────────────────────────
 function initNavToggle() {
   const toggler = document.getElementById("navbar-toggler");
-  const menu = document.getElementById("offcanvasMenu");
-  const close = document.getElementById("offcanvasClose");
+  const menu    = document.getElementById("offcanvasMenu");
+  const close   = document.getElementById("offcanvasClose");
   if (!toggler || !menu) return;
 
   toggler.addEventListener("click", () => menu.classList.add("show"));
   close?.addEventListener("click", () => menu.classList.remove("show"));
-
   document.addEventListener("click", (e) => {
     if (!menu.contains(e.target) && !toggler.contains(e.target))
       menu.classList.remove("show");
   });
   menu.addEventListener("click", (e) => e.stopPropagation());
-
   document.querySelectorAll(".offcanvas-body a").forEach((l) =>
     l.addEventListener("click", () => menu.classList.remove("show"))
   );
 }
 
-// ─── Mobile Panel ────────────────────────────────────────────
+// ─── Mobile Panel ─────────────────────────────────────────────────────────────
 function initMobilePanel() {
-  const toggle = document.getElementById("mobileLogoToggle");
-  const panel = document.getElementById("mobileLogoPanel");
+  const toggle   = document.getElementById("mobileLogoToggle");
+  const panel    = document.getElementById("mobileLogoPanel");
   const closeBtn = document.getElementById("mobileLogoPanelClose");
   if (!toggle || !panel) return;
 
-  toggle.addEventListener("click", (e) => {
-    e.stopPropagation();
-    panel.classList.add("show");
-  });
-  closeBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    panel.classList.remove("show");
-  });
+  toggle.addEventListener("click", (e) => { e.stopPropagation(); panel.classList.add("show"); });
+  closeBtn?.addEventListener("click", (e) => { e.stopPropagation(); panel.classList.remove("show"); });
   document.addEventListener("click", (e) => {
     if (!panel.contains(e.target) && !toggle.contains(e.target))
       panel.classList.remove("show");
   });
   panel.addEventListener("click", (e) => e.stopPropagation());
-
   document.querySelectorAll(".mobile-logo-nav-links a").forEach((l) =>
     l.addEventListener("click", () => panel.classList.remove("show"))
   );
 }
 
-// ─── Profile Dropdown ────────────────────────────────────────
+// ─── Profile Dropdown ─────────────────────────────────────────────────────────
 function toggleProfileDropdown() {
   const dd = document.getElementById("profileDropdown");
   if (!dd) return;
@@ -142,219 +129,205 @@ window.toggleProfileDropdown = toggleProfileDropdown;
 
 function initProfileDropdownClose() {
   document.addEventListener("click", (e) => {
-    const dd = document.getElementById("profileDropdown");
+    const dd   = document.getElementById("profileDropdown");
     const icon = document.querySelector(".profile-icon");
-    if (dd && icon && !dd.contains(e.target) && !icon.contains(e.target)) {
+    if (dd && icon && !dd.contains(e.target) && !icon.contains(e.target))
       dd.style.display = "none";
-    }
   });
 }
 
-// ─── Welcome Text ────────────────────────────────────────────
+// ─── Welcome Text ─────────────────────────────────────────────────────────────
 function renderWelcome(profile) {
   const el = document.getElementById("welcomeText");
   if (!el) return;
-  const name =
-    profile?.firstName ||
-    profile?.profile?.businessName ||
-    "Seller";
+  const name = profile?.firstName || profile?.profile?.businessName || "Seller";
   el.textContent = `Welcome, ${name}!`;
 }
 
-// ─── Profile Image ───────────────────────────────────────────
+// ─── Profile Image ────────────────────────────────────────────────────────────
 function renderProfileImage(profile) {
   const img = document.getElementById("sellerProfileImage");
   if (!img) return;
   const logo = profile?.profile?.storeLogo;
   if (logo) {
-    img.src = logo;
-    img.onerror = () => {
-      img.src = "";
-    };
+    img.src    = logo;
+    img.onerror = () => { img.src = ""; };
   }
 }
-// ─── KYC Status Banner ───────────────────────────────────
-function renderKYCStatusBanner(profile) {
-  const banner = document.getElementById("kycNotificationBanner");
-  const closeBtn = document.getElementById("kycNotificationClose");
-  if (!banner || !closeBtn) return;
 
-  const p = profile?.profile;
-  const kycUrls = p?.kycDocumentUrls || {};
-  const kycStatus = kycUrls.kyc_status || null;
-  const kycSubmitted = !!kycUrls.kyc_submitted_at;
-  const kycApproved = p?.isVerified && kycStatus === "approved";
-
-  // Show banner only if KYC is under review
-  if ((kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) && !kycApproved) {
-    banner.style.display = "block";
-
-    // Close button functionality
-    closeBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      banner.style.animation = "slideUp 0.3s ease-out";
-      setTimeout(() => {
-        banner.style.display = "none";
-      }, 300);
-      // Store dismissal in localStorage for this session
-      sessionStorage.setItem("kycBannerDismissed", "true");
-    });
-
-    // Check if user already dismissed the banner in this session
-    if (sessionStorage.getItem("kycBannerDismissed") === "true") {
-      banner.style.display = "none";
-    }
-  } else {
-    banner.style.display = "none";
-  }
-}
-// ─── Overview Cards ──────────────────────────────────────────
+// ─── Overview Cards ───────────────────────────────────────────────────────────
+/**
+ * Wires REAL numbers into every overview card.
+ *
+ * Card order (matching the HTML):
+ *  1. Orders      → stats.totalOrders
+ *  2. Products    → profile.productCount
+ *  3. Earnings    → earnings.totalEarnings
+ *  4. Returns     → stats.cancelled  (best proxy until a dedicated endpoint exists)
+ */
 function renderOverviewCards(stats, earnings, profile) {
-  // Orders
-  const orderCard = document.querySelector(
-    ".overview-card:nth-child(1) h3"
-  );
-  if (orderCard && stats) {
-    orderCard.textContent = stats.totalOrders ?? "0";
+  // Helper — finds the <h3> inside the Nth .overview-card
+  function cardH3(n) {
+    return document.querySelector(`.overview-card:nth-child(${n}) h3`);
   }
 
-  // Products
-  const productCard = document.querySelector(
-    ".overview-card:nth-child(2) h3"
-  );
-  if (productCard && profile) {
-    productCard.textContent = profile.productCount ?? "0";
+  // 1. Orders
+  const ordersEl = cardH3(1);
+  if (ordersEl) {
+    ordersEl.textContent = stats?.totalOrders ?? "—";
   }
 
-  // Earnings
-  const earningsCard = document.querySelector(
-    ".overview-card:nth-child(3) h3"
-  );
-  if (earningsCard && earnings) {
-    const total = earnings.totalEarnings ?? 0;
-    earningsCard.textContent =
-      "$" +
-      Number(total).toLocaleString("en-US", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      });
+  // 2. Products
+  const productsEl = cardH3(2);
+  if (productsEl) {
+    productsEl.textContent = profile?.productCount ?? "—";
   }
 
-  // Returns — no dedicated endpoint yet; show placeholder
-  const returnsCard = document.querySelector(
-    ".overview-card:nth-child(4) h3"
-  );
-  if (returnsCard) {
-    returnsCard.textContent = "—";
+  // 3. Earnings
+  const earningsEl = cardH3(3);
+  if (earningsEl) {
+    const total = earnings?.totalEarnings ?? null;
+    earningsEl.textContent =
+      total !== null
+        ? "$" + Number(total).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+        : "—";
+  }
+
+  // 4. Returns / Cancelled orders (proxy)
+  const returnsEl = cardH3(4);
+  if (returnsEl) {
+    // Use cancelled count as the returns proxy.
+    // Replace with a real endpoint value once returns tracking is added.
+    returnsEl.textContent = stats?.cancelled ?? "—";
   }
 }
 
-// ─── Progress Tracker ────────────────────────────────────────
+// ─── Progress Tracker ─────────────────────────────────────────────────────────
 function renderProgressTracker(profile) {
-  const bar = document.getElementById("progressBar");
+  const bar  = document.getElementById("progressBar");
   const text = document.getElementById("progress-text");
   if (!bar || !text) return;
 
-  const p = profile?.profile;
-
-  const storeSetupDone = !!(
-    p?.businessName &&
-    p?.storeLogo &&
-    p?.businessAddress
-  );
-
+  const p       = profile?.profile;
   const kycUrls = p?.kycDocumentUrls || {};
   const kycStatus = kycUrls.kyc_status || null;
-  const kycSubmitted = !!kycUrls.kyc_submitted_at;
-  const kycApproved = p?.isVerified && kycStatus === "approved";
 
-  const productCount = profile?.productCount ?? 0;
-  const totalSales = p?.totalSales ?? 0;
+  const storeSetupDone = !!(p?.businessName && p?.storeLogo && p?.businessAddress);
+  const kycSubmitted   = !!kycUrls.kyc_submitted_at;
+  const kycApproved    = p?.isVerified && kycStatus === "approved";
+  const productCount   = profile?.productCount ?? 0;
+  const totalSales     = p?.totalSales ?? 0;
 
   let progress, color, html;
 
   if (!storeSetupDone) {
-    progress = 20;
-    color = "#ef4444";
+    progress = 20; color = "#ef4444";
     html = `<a href="setup-store.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
   } else if (kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) {
-    // KYC is submitted and under review - move to 60% stage
-    progress = 60;
-    color = "#eab308";
-    html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Add your first product</a>`;
+    progress = 40; color = "#f97316";
+    html = `<span style="color:#1e293b">Your KYC is under review. We'll notify you once approved.</span>`;
   } else if (!kycApproved) {
-    // KYC not submitted yet
-    progress = 40;
-    color = "#f97316";
+    progress = 40; color = "#f97316";
     html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC verification</a>`;
   } else if (productCount < 1) {
-    // KYC approved but no products
-    progress = 60;
-    color = "#eab308";
+    progress = 60; color = "#eab308";
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Add your first product</a>`;
   } else if (totalSales < 1) {
-    progress = 75;
-    color = "#86efac";
+    progress = 75; color = "#86efac";
     html = `Make your first sale`;
   } else if (totalSales < 10) {
-    progress = 90;
-    color = "#22c55e";
+    progress = 90; color = "#22c55e";
     html = `Reach 10 sales`;
   } else {
-    progress = 100;
-    color = "#3b82f6";
+    progress = 100; color = "#3b82f6";
     html = `Verified Seller ✓`;
   }
 
-  bar.style.width = progress + "%";
+  bar.style.width           = progress + "%";
   bar.style.backgroundColor = color;
-  text.innerHTML = html;
+  text.innerHTML            = html;
 }
 
-// ─── Activity Log ────────────────────────────────────────────
-async function renderActivityLog() {
-  try {
-    const data = await apiFetch("/seller/orders?limit=10");
-    const orders = data?.data?.orders || [];
-    if (!orders.length) return;
+// ─── Activity Log ─────────────────────────────────────────────────────────────
+/**
+ * Renders both the scrolling ticker and the full-log inside the modal.
+ *
+ * Activity type → icon + label mapping
+ */
+const ACTIVITY_META = {
+  product_added:    { icon: "📦", label: "Product added"    },
+  product_updated:  { icon: "✏️",  label: "Product updated"  },
+  product_deleted:  { icon: "🗑️",  label: "Product deleted"  },
+  order_confirmed:  { icon: "✅",  label: "Order confirmed"  },
+  order_processing: { icon: "⚙️",  label: "Order processing" },
+  order_shipped:    { icon: "🚚",  label: "Order shipped"    },
+  order_delivered:  { icon: "📬",  label: "Order delivered"  },
+  order_cancelled:  { icon: "❌",  label: "Order cancelled"  },
+  order_updated:    { icon: "🔄",  label: "Order updated"    },
+  withdrawal_requested: { icon: "💰", label: "Withdrawal requested" },
+};
 
-    const tickerList = document.getElementById("tickerList");
-    const fullLog = document.querySelector(".full-log");
-    if (!tickerList) return;
+function activityMeta(type) {
+  return ACTIVITY_META[type] || { icon: "🔔", label: type.replace(/_/g, " ") };
+}
 
-    // Build ticker items from recent orders
-    const items = orders.slice(0, 10).map((o) => {
-      const label = o.status.charAt(0).toUpperCase() + o.status.slice(1);
-      const short = String(o.orderId).substring(0, 8);
-      return `Order #${short} — ${label}`;
-    });
+function formatRelativeTime(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  if (mins < 1)   return "just now";
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs  < 24)  return `${hrs}h ago`;
+  const days = Math.floor(hrs  / 24);
+  if (days < 7)   return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
-    tickerList.innerHTML = items
-      .map((i) => `<li>${i}</li>`)
-      .join("");
+function renderActivityLog(activities) {
+  const tickerList = document.getElementById("tickerList");
+  const fullLog    = document.querySelector(".full-log");
 
-    if (fullLog) {
-      fullLog.innerHTML = orders
-        .slice(0, 20)
-        .map((o) => {
-          const d = new Date(o.createdAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
-          const label =
-            o.status.charAt(0).toUpperCase() + o.status.slice(1);
-          const short = String(o.orderId).substring(0, 8);
-          const amt = Number(o.totalAmount).toFixed(2);
-          return `<li>Order #${short} — ${label} — $${amt} — ${d}</li>`;
+  // ── Ticker (scrolling strip) ──────────────────────────────
+  if (tickerList) {
+    if (!activities.length) {
+      tickerList.innerHTML = "<li>No activity yet — start by adding a product!</li>";
+    } else {
+      tickerList.innerHTML = activities
+        .slice(0, 15)
+        .map((a) => {
+          const { icon } = activityMeta(a.type);
+          const time     = formatRelativeTime(a.createdAt);
+          return `<li>${icon} ${a.title} <span style="opacity:.55;font-size:.85em">${time}</span></li>`;
         })
         .join("");
     }
-  } catch (_) {
-    /* keep static fallback in HTML if API fails */
+  }
+
+  // ── Full log (inside modal) ───────────────────────────────
+  if (fullLog) {
+    if (!activities.length) {
+      fullLog.innerHTML = "<li>No activity yet.</li>";
+    } else {
+      fullLog.innerHTML = activities
+        .map((a) => {
+          const { icon, label } = activityMeta(a.type);
+          const dateStr = new Date(a.createdAt).toLocaleString("en-US", {
+            month: "short", day: "numeric",
+            hour: "2-digit", minute: "2-digit",
+          });
+          const detail = a.detail ? `<br><span style="font-size:.85em;opacity:.65">${a.detail}</span>` : "";
+          return `<li style="padding:.5rem 0;border-bottom:1px solid rgba(0,0,0,.06)">
+            <span style="font-size:1.1em;margin-right:.4em">${icon}</span>
+            <strong>${a.title}</strong>${detail}
+            <span style="float:right;font-size:.8em;opacity:.5">${dateStr}</span>
+          </li>`;
+        })
+        .join("");
+    }
   }
 }
 
-// ─── Seller Tips ─────────────────────────────────────────────
+// ─── Seller Tips ──────────────────────────────────────────────────────────────
 function initTips() {
   const tips = [
     "Welcome to MarketMix!",
@@ -374,27 +347,21 @@ function initTips() {
   }, 3000);
 }
 
-// ─── Activity Modal ──────────────────────────────────────────
+// ─── Activity Modal ───────────────────────────────────────────────────────────
 function initActivityModal() {
   const ticker = document.getElementById("activityTicker");
-  const modal = document.getElementById("activityModal");
-  const close = document.getElementById("closeModal");
+  const modal  = document.getElementById("activityModal");
+  const close  = document.getElementById("closeModal");
 
-  ticker?.addEventListener("click", () => {
-    if (modal) modal.style.display = "block";
-  });
-  close?.addEventListener("click", () => {
-    if (modal) modal.style.display = "none";
-  });
-  window.addEventListener("click", (e) => {
-    if (e.target === modal) modal.style.display = "none";
-  });
+  ticker?.addEventListener("click", () => { if (modal) modal.style.display = "block"; });
+  close?.addEventListener("click",  () => { if (modal) modal.style.display = "none";  });
+  window.addEventListener("click",  (e) => { if (e.target === modal) modal.style.display = "none"; });
 }
 
-// ─── Tool Modals (Coupons + Sales Chart) ─────────────────────
+// ─── Tool Modals (Coupons + Sales Chart) ──────────────────────────────────────
 function initModals() {
   const couponsModal = document.getElementById("coupons-modal");
-  const salesModal = document.getElementById("sales-modal");
+  const salesModal   = document.getElementById("sales-modal");
 
   document.getElementById("marketing-coupons-card")?.addEventListener("click", () => {
     if (couponsModal) couponsModal.style.display = "block";
@@ -406,32 +373,26 @@ function initModals() {
     renderSalesChart();
   });
 
-  document.getElementById("close-coupons")?.addEventListener("click", () => {
-    if (couponsModal) couponsModal.style.display = "none";
-  });
-  document.getElementById("close-sales")?.addEventListener("click", () => {
-    if (salesModal) salesModal.style.display = "none";
-  });
+  document.getElementById("close-coupons")?.addEventListener("click", () => { if (couponsModal) couponsModal.style.display = "none"; });
+  document.getElementById("close-sales")?.addEventListener("click",   () => { if (salesModal)   salesModal.style.display   = "none"; });
 
   window.addEventListener("click", (e) => {
     if (e.target?.classList?.contains("modal")) e.target.style.display = "none";
   });
 
-  // Coupon form submit
   document.getElementById("coupon-form")?.addEventListener("submit", handleCouponSubmit);
 }
 
-// ─── Load Seller Products for Coupon Dropdown ────────────────
+// ─── Coupon product dropdown ──────────────────────────────────────────────────
 async function loadSellerProductsForCoupon() {
   const dropdown = document.getElementById("couponProduct");
   if (!dropdown) return;
   dropdown.innerHTML = `<option value="">Loading...</option>`;
-  dropdown.disabled = true;
+  dropdown.disabled  = true;
 
   try {
-    const data = await apiFetch("/seller/products?limit=100");
+    const data     = await apiFetch("/seller/products?limit=100");
     const products = data?.data?.products || [];
-
     dropdown.innerHTML = `<option value="">-- Choose a product --</option>`;
     if (!products.length) {
       dropdown.innerHTML = `<option value="">No products available</option>`;
@@ -439,7 +400,7 @@ async function loadSellerProductsForCoupon() {
     }
     products.forEach((p) => {
       const opt = document.createElement("option");
-      opt.value = p.id;
+      opt.value       = p.id;
       opt.textContent = p.name;
       dropdown.appendChild(opt);
     });
@@ -450,28 +411,24 @@ async function loadSellerProductsForCoupon() {
   }
 }
 
-// ─── Coupon Submit ───────────────────────────────────────────
+// ─── Coupon submit ────────────────────────────────────────────────────────────
 async function handleCouponSubmit(e) {
   e.preventDefault();
-
-  const code = document.getElementById("coupon-code")?.value.trim().toUpperCase();
-  const discount = parseInt(document.getElementById("discount")?.value);
+  const code      = document.getElementById("coupon-code")?.value.trim().toUpperCase();
+  const discount  = parseInt(document.getElementById("discount")?.value);
   const productId = document.getElementById("couponProduct")?.value;
-  const expiryDate = document.getElementById("couponExpiry")?.value;
-  const usageLimit = parseInt(document.getElementById("couponLimit")?.value) || 0;
+  const expiryDate= document.getElementById("couponExpiry")?.value;
+  const usageLimit= parseInt(document.getElementById("couponLimit")?.value) || 0;
 
-  if (!code) return alert("Please enter a coupon code.");
-  if (discount < 1 || discount > 100) return alert("Discount must be 1–100%.");
-  if (!productId) return alert("Please select a product.");
+  if (!code)                           return alert("Please enter a coupon code.");
+  if (discount < 1 || discount > 100)  return alert("Discount must be 1–100%.");
+  if (!productId)                      return alert("Please select a product.");
 
-  // NOTE: The backend doesn't have a /coupons endpoint yet.
-  // When it's added, swap the block below for an apiFetch call.
-  // For now we store locally and show success so the UI works.
+  // No backend coupon endpoint yet — persist locally until one is built.
   try {
     const coupons = JSON.parse(localStorage.getItem("mm_coupons") || "[]");
     coupons.push({ code, discount, productId, expiryDate, usageLimit, createdAt: new Date().toISOString() });
     localStorage.setItem("mm_coupons", JSON.stringify(coupons));
-
     alert(`✅ Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
     e.target.reset();
     document.getElementById("coupons-modal").style.display = "none";
@@ -480,32 +437,23 @@ async function handleCouponSubmit(e) {
   }
 }
 
-// ─── Sales Chart ─────────────────────────────────────────────
+// ─── Sales Chart ──────────────────────────────────────────────────────────────
 async function renderSalesChart() {
-  if (typeof Chart === "undefined") {
-    alert("Chart library not loaded.");
-    return;
-  }
+  if (typeof Chart === "undefined") { alert("Chart library not loaded."); return; }
 
   const ctx = document.getElementById("salesChart")?.getContext("2d");
   if (!ctx) return;
 
-  // Destroy previous instance
-  if (window._salesChartInstance) {
-    window._salesChartInstance.destroy();
-    window._salesChartInstance = null;
-  }
+  if (window._salesChartInstance) { window._salesChartInstance.destroy(); window._salesChartInstance = null; }
 
   let monthlySales = new Array(12).fill(0);
 
   try {
-    // Fetch ALL seller orders (up to 200 for charting)
-    const data = await apiFetch("/seller/orders?limit=200");
+    const data   = await apiFetch("/seller/orders?limit=200");
     const orders = data?.data?.orders || [];
-
     orders.forEach((o) => {
       if (o.createdAt && o.totalAmount) {
-        const month = new Date(o.createdAt).getMonth(); // 0–11
+        const month = new Date(o.createdAt).getMonth();
         monthlySales[month] += Number(o.totalAmount);
       }
     });
@@ -513,52 +461,33 @@ async function renderSalesChart() {
     console.warn("Sales chart: could not fetch orders, using zeros.", err);
   }
 
-  const labels = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
+  const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   window._salesChartInstance = new Chart(ctx, {
     type: "line",
     data: {
       labels,
-      datasets: [
-        {
-          label: "Monthly Sales ($)",
-          data: monthlySales,
-          borderColor: "#3b82f6",
-          backgroundColor: "rgba(59,130,246,0.1)",
-          fill: true,
-          tension: 0.35,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-          pointBackgroundColor: "#3b82f6",
-          pointBorderColor: "#fff",
-          pointBorderWidth: 2,
-        },
-      ],
+      datasets: [{
+        label: "Monthly Sales ($)",
+        data: monthlySales,
+        borderColor: "#3b82f6",
+        backgroundColor: "rgba(59,130,246,0.1)",
+        fill: true, tension: 0.35,
+        pointRadius: 5, pointHoverRadius: 7,
+        pointBackgroundColor: "#3b82f6", pointBorderColor: "#fff", pointBorderWidth: 2,
+      }],
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: true,
+      responsive: true, maintainAspectRatio: true,
       plugins: {
         legend: { display: true, position: "top" },
-        title: {
-          display: true,
-          text: "Your Monthly Sales Performance",
-        },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => " $" + Number(ctx.parsed.y).toLocaleString(),
-          },
-        },
+        title: { display: true, text: "Your Monthly Sales Performance" },
+        tooltip: { callbacks: { label: (ctx) => " $" + Number(ctx.parsed.y).toLocaleString() } },
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: {
-            callback: (v) => "$" + Number(v).toLocaleString(),
-          },
+          ticks: { callback: (v) => "$" + Number(v).toLocaleString() },
           title: { display: true, text: "Sales ($)" },
         },
         x: { title: { display: true, text: "Month" } },
