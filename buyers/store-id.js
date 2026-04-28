@@ -19,7 +19,7 @@ function renderProducts(filter = "all") {
       <img src="${p.img}" alt="${p.name}">
       <div class="product-info">
         <h4>${p.name}</h4>
-        <p>$${p.price.toFixed(2)}</p>
+        <p>₦${p.price.toFixed(2)}</p>
         <div class="product-actions">
           <span><i class="fa-solid fa-star" style="color:gold"></i> ${p.rating}</span>
           <button onclick="addToCart('${p.name}')">Add to Cart</button>

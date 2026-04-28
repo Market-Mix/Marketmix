@@ -69,21 +69,21 @@
     <div class="checkout-summary">
       <h2>Order Summary</h2>
       <ul id="orderItems">
-        <li class="item"><span>Product 1</span> <span>$20</span></li>
-        <li class="item"><span>Product 2</span> <span>$15</span></li>
-        <li class="item"><span>Shipping</span> <span>$5</span></li>
+        <li class="item"><span>Product 1</span> <span>₦20</span></li>
+        <li class="item"><span>Product 2</span> <span>₦15</span></li>
+        <li class="item"><span>Shipping</span> <span>₦5</span></li>
       </ul>
       <div class="subtotal">
         <strong>Subtotal</strong>
-        <span id="subtotalAmount">$40</span>
+        <span id="subtotalAmount">₦40</span>
       </div>
       <div id="discountSection" class="discount" style="display: none;">
         <strong>Discount</strong>
-        <span id="discountAmount">-$0</span>
+        <span id="discountAmount">-₦0</span>
       </div>
       <div class="total">
         <strong>Total</strong>
-        <span id="totalAmount">$40</span>
+        <span id="totalAmount">₦40</span>
       </div>
       <button id="placeOrderBtn">Place Order</button>
       <p id="orderMessage" class="hidden"></p>
@@ -208,10 +208,10 @@ async function applyCoupon(code, productId) {
 
     // Update UI
     document.getElementById('discountSection').style.display = 'flex';
-    document.getElementById('discountAmount').textContent = `-$${discountAmount.toFixed(2)}`;
-    document.getElementById('totalAmount').textContent = `$${finalPrice.toFixed(2)}`;
+    document.getElementById('discountAmount').textContent = `-₦${discountAmount.toFixed(2)}`;
+    document.getElementById('totalAmount').textContent = `₦${finalPrice.toFixed(2)}`;
 
-    showCouponMessage(`✅ Coupon applied! You saved $${discountAmount.toFixed(2)}`, "success");
+    showCouponMessage(`✅ Coupon applied! You saved ₦${discountAmount.toFixed(2)}`, "success");
     console.log("✓ Coupon applied successfully");
 
     return true;
@@ -295,7 +295,7 @@ document.getElementById("placeOrderBtn").addEventListener("click", async () => {
 
       // Clear cart and reset
       document.getElementById("orderItems").innerHTML = "<li>Your cart is empty.</li>";
-      document.getElementById("totalAmount").textContent = "$0";
+      document.getElementById("totalAmount").textContent = "₦0";
       document.getElementById('discountSection').style.display = 'none';
       appliedCoupon = null;
 

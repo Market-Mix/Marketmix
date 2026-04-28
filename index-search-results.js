@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="product-info">
           <div class="product-name">${p.name}</div>
           ${p.description ? `<div class="product-desc">${p.description}</div>` : ''}
-          <div class="meta"><div class="price">$${price.toFixed(2)}</div></div>
+          <div class="meta"><div class="price">₦${price.toFixed(2)}</div></div>
         </div>
         <button class="add-to-cart" data-product-id="${p.id}">Add to Cart</button>
       `;

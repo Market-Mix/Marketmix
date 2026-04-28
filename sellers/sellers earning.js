@@ -156,18 +156,18 @@ function renderEarnings(data) {
 
     // Update Summary Cards
     if (document.getElementById("total-earnings"))
-        document.getElementById("total-earnings").textContent = `$${summary.totalEarnings.toFixed(2)}`;
+        document.getElementById("total-earnings").textContent = `₦${summary.totalEarnings.toFixed(2)}`;
     if (document.getElementById("available-balance"))
-        document.getElementById("available-balance").textContent = `$${summary.availableBalance.toFixed(2)}`;
+        document.getElementById("available-balance").textContent = `₦${summary.availableBalance.toFixed(2)}`;
     if (document.getElementById("pending"))
-        document.getElementById("pending").textContent = `$${summary.pendingEarnings.toFixed(2)}`;
+        document.getElementById("pending").textContent = `₦${summary.pendingEarnings.toFixed(2)}`;
     if (document.getElementById("withdrawals"))
-        document.getElementById("withdrawals").textContent = `$${summary.totalWithdrawn.toFixed(2)}`;
+        document.getElementById("withdrawals").textContent = `₦${summary.totalWithdrawn.toFixed(2)}`;
     
     // Update Projected (Placeholder or calculated)
     const projected = summary.totalEarnings + summary.pendingEarnings;
     if (document.getElementById("projected"))
-        document.getElementById("projected").textContent = `Projected earnings: $${projected.toFixed(2)}`;
+        document.getElementById("projected").textContent = `Projected earnings: ₦${projected.toFixed(2)}`;
 
     // Render Chart
     renderChart(transactions);
@@ -187,7 +187,7 @@ function renderEarnings(data) {
                 div.innerHTML = `
                     <span>${date}</span>
                     <span>${tx.type}: ${tx.productName || "Order #" + (tx.orderId ? tx.orderId.substring(0,8) : 'N/A')}</span>
-                    <span class="amount ${tx.amount < 0 ? "negative" : ""}">${tx.amount < 0 ? "–" : "+"} $${Math.abs(tx.amount).toFixed(2)}</span>
+                    <span class="amount ${tx.amount < 0 ? "negative" : ""}">${tx.amount < 0 ? "–" : "+"} ₦${Math.abs(tx.amount).toFixed(2)}</span>
                 `;
                 div.addEventListener("click", () => showTransactionModal(tx));
                 list.appendChild(div);
@@ -204,7 +204,7 @@ function renderEarnings(data) {
             tableBody.innerHTML = '<tr><td colspan="3">No product data available</td></tr>';
         } else {
             productEarnings.forEach(p => {
-                const row = `<tr><td>${p.name}</td><td>${p.qty}</td><td>$${p.revenue.toFixed(2)}</td></tr>`;
+                const row = `<tr><td>${p.name}</td><td>${p.qty}</td><td>₦${p.revenue.toFixed(2)}</td></tr>`;
                 tableBody.innerHTML += row;
             });
         }
@@ -277,7 +277,7 @@ function showTransactionModal(tx) {
         <p><strong>Product:</strong> ${tx.productName || "N/A"}</p>
         <p><strong>Order ID:</strong> ${tx.orderId || "N/A"}</p>
         <p><strong>Status:</strong> <span class="status-badge ${tx.status}">${tx.status}</span></p>
-        <p><strong>Amount:</strong> $${Math.abs(tx.amount).toFixed(2)}</p>
+        <p><strong>Amount:</strong> ₦${Math.abs(tx.amount).toFixed(2)}</p>
     `;
     modal.style.display = "flex";
 }
@@ -309,7 +309,7 @@ function setupWithdrawalForm() {
             const data = await response.json();
 
             if (data.status === 'success') {
-                showToast(`Withdrawal of $${amount.toFixed(2)} processed successfully!`);
+                showToast(`Withdrawal of ₦${amount.toFixed(2)} processed successfully!`);
                 const withdrawModal = document.getElementById("withdrawModal");
                 if (withdrawModal) withdrawModal.style.display = "none";
                 form.reset();

@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="product-info">
               <div class="product-name">${product.name}</div>
               <div class="meta">
-                <div class="price">$${parseFloat(product.price).toFixed(2)}</div>
+                <div class="price">₦${parseFloat(product.price).toFixed(2)}</div>
               </div>
             </div>
             <button class="add-to-cart">Add to Cart</button>
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="product-info">
           <div class="product-name">${p.name}</div>
           <div class="meta">
-            <div class="price">$${parseFloat(p.price).toFixed(2)}</div>
+            <div class="price">₦${parseFloat(p.price).toFixed(2)}</div>
           </div>
         </div>
         <button class="add-to-cart">Add to Cart</button>

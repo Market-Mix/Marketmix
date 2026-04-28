@@ -122,7 +122,7 @@ function renderWishlist(items) {
       <div class="wishlist-item" data-id="${item.id}" data-product-id="${item.product_id}">
         <img src="${item.main_image_url || 'placeholder.jpg'}" alt="${item.name}" />
         <h4>${item.name}</h4>
-        <p>$${parseFloat(item.price).toFixed(2)}</p>
+        <p>₦${parseFloat(item.price).toFixed(2)}</p>
         <div class="wishlist-actions">
           <button class="move" data-product-id="${item.product_id}">Move to Cart</button>
           <button class="remove" data-item-id="${item.id}">Remove</button>

@@ -214,7 +214,7 @@ function renderOverviewCards(stats, earnings, profile) {
   setCard(
     "Earnings",
     total !== null
-      ? "$" + Number(total).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+      ? "₦" + Number(total).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
       : "—"
   );
 
@@ -487,7 +487,7 @@ async function renderSalesChart() {
     data: {
       labels,
       datasets: [{
-        label: "Monthly Sales ($)",
+        label: "Monthly Sales (₦)",
         data: monthlySales,
         borderColor: "#3b82f6",
         backgroundColor: "rgba(59,130,246,0.1)",
@@ -501,13 +501,13 @@ async function renderSalesChart() {
       plugins: {
         legend: { display: true, position: "top" },
         title: { display: true, text: "Your Monthly Sales Performance" },
-        tooltip: { callbacks: { label: (ctx) => " $" + Number(ctx.parsed.y).toLocaleString() } },
+        tooltip: { callbacks: { label: (ctx) => " ₦" + Number(ctx.parsed.y).toLocaleString() } },
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: { callback: (v) => "$" + Number(v).toLocaleString() },
-          title: { display: true, text: "Sales ($)" },
+          ticks: { callback: (v) => "₦" + Number(v).toLocaleString() },
+          title: { display: true, text: "Sales (₦)" },
         },
         x: { title: { display: true, text: "Month" } },
       },

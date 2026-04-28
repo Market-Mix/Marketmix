@@ -589,7 +589,7 @@ function generateReport() {
             label: function(context) {
               const v = context.raw || 0;
               const pct = total ? (v / total * 100).toFixed(1) : '0.0';
-              return `$${v.toFixed(2)} (${pct}%)`;
+              return `₦${v.toFixed(2)} (${pct}%)`;
             }
           }
         },
@@ -678,7 +678,7 @@ function generateRevenueChart() {
             label: function(context) {
               const v = context.raw || 0;
               const pct = total ? (v / total * 100).toFixed(1) : '0.0';
-              return `$${v.toFixed(2)} (${pct}%)`;
+              return `₦${v.toFixed(2)} (${pct}%)`;
             }
           }
         },
@@ -806,10 +806,10 @@ function exportReportPDF() {
   labels.forEach((label, idx) => {
     const val = values[idx];
     const pct = ((val / total) * 100).toFixed(2);
-    html += `<tr><td>${label}</td><td>$${val.toFixed(2)}</td><td>${pct}%</td></tr>`;
+    html += `<tr><td>${label}</td><td>₦${val.toFixed(2)}</td><td>${pct}%</td></tr>`;
   });
 
-  html += `<tr style="background-color: #dbeafe; font-weight: bold;"><td>TOTAL</td><td>$${total.toFixed(2)}</td><td>100%</td></tr>`;
+  html += `<tr style="background-color: #dbeafe; font-weight: bold;"><td>TOTAL</td><td>₦${total.toFixed(2)}</td><td>100%</td></tr>`;
   html += '</tbody></table></body></html>';
 
   // Convert to PDF using browser's print-to-PDF
@@ -827,9 +827,9 @@ function renderTransactions() {
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Transactions</h1>
       
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        ${renderCard('Wallet Balance', '$45,230.50', 'wallet', 'blue')}
-        ${renderCard('Monthly Earnings', '$12,500.00', 'dollar-sign', 'green')}
-        ${renderCard('Pending Payouts', '$3,200.00', 'clock', 'orange')}
+        ${renderCard('Wallet Balance', '₦45,230.50', 'wallet', 'blue')}
+        ${renderCard('Monthly Earnings', '₦12,500.00', 'dollar-sign', 'green')}
+        ${renderCard('Pending Payouts', '₦3,200.00', 'clock', 'orange')}
         ${renderCard('Withdrawal Requests', '5', 'arrow-right', 'red')}
       </div>
 
@@ -851,7 +851,7 @@ function renderTransactions() {
                 <tr class="border-b border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-gray-600">
                   <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${wr.id}</td>
                   <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${wr.seller}</td>
-                  <td class="px-6 py-4 font-semibold text-gray-900 dark:text-white">$${wr.amount.toFixed(2)}</td>
+                  <td class="px-6 py-4 font-semibold text-gray-900 dark:text-white">₦${wr.amount.toFixed(2)}</td>
                   <td class="px-6 py-4">
                     <span class="px-3 py-1 rounded-full text-xs font-semibold ${
                       wr.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :

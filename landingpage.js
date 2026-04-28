@@ -389,7 +389,7 @@
       <div class="you-card" data-product-id="${p.id}" data-name="${escapeHtml(p.name)}" data-price="${p.price}">
         <img src="${p.image || p.main_image_url || ''}" alt="${escapeHtml(p.name)}" />
         <h3>${escapeHtml(p.name)}</h3>
-        <p class="price">$${typeof p.price === 'number' ? p.price.toFixed(2) : p.price}</p>
+        <p class="price">₦${typeof p.price === 'number' ? p.price.toFixed(2) : p.price}</p>
         <button class="add-to-cart">Add to Cart</button>
       </div>
     `).join('');
@@ -418,7 +418,7 @@
           <div class="product-name">${escapeHtml(product.name)}</div>
           <div class="product-desc">${escapeHtml(product.description || '')}</div>
           <div class="meta">
-            <div class="price">$${price}</div>
+            <div class="price">₦${price}</div>
           </div>
         </div>
         <button class="add-to-cart">Add to Cart</button>
