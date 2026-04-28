@@ -59,7 +59,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   initActivityModal();
   initModals();
 
-  // Fetch all data in parallel
+  // Clear static demo content immediately so users never see hardcoded numbers
+  clearOverviewCards();
+  clearActivityTicker();
+
+  // Initial data load
+  await loadDashboardData();
+
+  // Auto-refresh every 30 seconds — keeps ticker and cards live without a page reload
+  setInterval(loadDashboardData, 30_000);
+});
+
+// ─── Clear placeholder content before data loads ──────────────────────────────
+function clearOverviewCards() {
+  // Set all 4 stat h3s to a loading dash immediately
+  const cards = document.querySelectorAll(".overview-card h3");
+  cards.forEach((h3) => {
+    h3.textContent = "—";
+  });
+}
+
+function clearActivityTicker() {
+  const tickerList = document.getElementById("tickerList");
+  if (tickerList) tickerList.innerHTML = "<li>Loading activity...</li>";
+
+  const fullLog = document.querySelector(".full-log");
+  if (fullLog) fullLog.innerHTML = "<li>Loading activity...</li>";
+}
+
+// ─── Central data loader (called on init + every 30s) ────────────────────────
+async function loadDashboardData() {
   const [profileRes, statsRes, earningsRes, activityRes] = await Promise.allSettled([
     apiFetch("/seller/profile"),
     apiFetch("/seller/orders/stats"),
@@ -67,9 +96,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     apiFetch("/seller/activity?limit=50"),
   ]);
 
-  const profile  = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller   : null;
-  const stats    = statsRes.status    === "fulfilled" ? statsRes.value?.data?.stats       : null;
-  const earnings = earningsRes.status === "fulfilled" ? earningsRes.value?.data?.summary  : null;
+  const profile    = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller      : null;
+  const stats      = statsRes.status    === "fulfilled" ? statsRes.value?.data?.stats          : null;
+  const earnings   = earningsRes.status === "fulfilled" ? earningsRes.value?.data?.summary     : null;
   const activities = activityRes.status === "fulfilled"
     ? (activityRes.value?.data?.activities || [])
     : [];
@@ -79,7 +108,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderOverviewCards(stats, earnings, profile);
   renderProgressTracker(profile);
   renderActivityLog(activities);
-});
+}
 
 // ─── Nav Toggle ───────────────────────────────────────────────────────────────
 function initNavToggle() {
@@ -150,56 +179,47 @@ function renderProfileImage(profile) {
   if (!img) return;
   const logo = profile?.profile?.storeLogo;
   if (logo) {
-    img.src    = logo;
+    img.src     = logo;
     img.onerror = () => { img.src = ""; };
   }
 }
 
 // ─── Overview Cards ───────────────────────────────────────────────────────────
 /**
- * Wires REAL numbers into every overview card.
- *
- * Card order (matching the HTML):
- *  1. Orders      → stats.totalOrders
- *  2. Products    → profile.productCount
- *  3. Earnings    → earnings.totalEarnings
- *  4. Returns     → stats.cancelled  (best proxy until a dedicated endpoint exists)
+ * The HTML has 5 .overview-card elements (Orders, Products, Earnings, Returns,
+ * Shop Settings). We target them by finding the card whose <p> text matches,
+ * so the order in the HTML doesn't matter and won't break if cards are reordered.
  */
 function renderOverviewCards(stats, earnings, profile) {
-  // Helper — finds the <h3> inside the Nth .overview-card
-  function cardH3(n) {
-    return document.querySelector(`.overview-card:nth-child(${n}) h3`);
+  function setCard(labelText, value) {
+    const cards = document.querySelectorAll(".overview-card");
+    for (const card of cards) {
+      const p = card.querySelector("p");
+      if (p && p.textContent.trim().toLowerCase() === labelText.toLowerCase()) {
+        const h3 = card.querySelector("h3");
+        if (h3) h3.textContent = value;
+        return;
+      }
+    }
   }
 
-  // 1. Orders
-  const ordersEl = cardH3(1);
-  if (ordersEl) {
-    ordersEl.textContent = stats?.totalOrders ?? "—";
-  }
+  // Orders
+  setCard("Orders", stats?.totalOrders ?? "—");
 
-  // 2. Products
-  const productsEl = cardH3(2);
-  if (productsEl) {
-    productsEl.textContent = profile?.productCount ?? "—";
-  }
+  // Products
+  setCard("Products", profile?.productCount ?? "—");
 
-  // 3. Earnings
-  const earningsEl = cardH3(3);
-  if (earningsEl) {
-    const total = earnings?.totalEarnings ?? null;
-    earningsEl.textContent =
-      total !== null
-        ? "$" + Number(total).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-        : "—";
-  }
+  // Earnings — format as currency
+  const total = earnings?.totalEarnings ?? null;
+  setCard(
+    "Earnings",
+    total !== null
+      ? "$" + Number(total).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+      : "—"
+  );
 
-  // 4. Returns / Cancelled orders (proxy)
-  const returnsEl = cardH3(4);
-  if (returnsEl) {
-    // Use cancelled count as the returns proxy.
-    // Replace with a real endpoint value once returns tracking is added.
-    returnsEl.textContent = stats?.cancelled ?? "—";
-  }
+  // Returns — use cancelled as proxy until a dedicated returns endpoint exists
+  setCard("Returns", stats?.cancelled ?? "—");
 }
 
 // ─── Progress Tracker ─────────────────────────────────────────────────────────
@@ -249,22 +269,17 @@ function renderProgressTracker(profile) {
 }
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
-/**
- * Renders both the scrolling ticker and the full-log inside the modal.
- *
- * Activity type → icon + label mapping
- */
 const ACTIVITY_META = {
-  product_added:    { icon: "📦", label: "Product added"    },
-  product_updated:  { icon: "✏️",  label: "Product updated"  },
-  product_deleted:  { icon: "🗑️",  label: "Product deleted"  },
-  order_confirmed:  { icon: "✅",  label: "Order confirmed"  },
-  order_processing: { icon: "⚙️",  label: "Order processing" },
-  order_shipped:    { icon: "🚚",  label: "Order shipped"    },
-  order_delivered:  { icon: "📬",  label: "Order delivered"  },
-  order_cancelled:  { icon: "❌",  label: "Order cancelled"  },
-  order_updated:    { icon: "🔄",  label: "Order updated"    },
-  withdrawal_requested: { icon: "💰", label: "Withdrawal requested" },
+  product_added:        { icon: "📦", label: "Product added"       },
+  product_updated:      { icon: "✏️",  label: "Product updated"     },
+  product_deleted:      { icon: "🗑️",  label: "Product deleted"     },
+  order_confirmed:      { icon: "✅",  label: "Order confirmed"     },
+  order_processing:     { icon: "⚙️",  label: "Order processing"    },
+  order_shipped:        { icon: "🚚",  label: "Order shipped"       },
+  order_delivered:      { icon: "📬",  label: "Order delivered"     },
+  order_cancelled:      { icon: "❌",  label: "Order cancelled"     },
+  order_updated:        { icon: "🔄",  label: "Order updated"       },
+  withdrawal_requested: { icon: "💰",  label: "Withdrawal requested"},
 };
 
 function activityMeta(type) {
@@ -274,12 +289,12 @@ function activityMeta(type) {
 function formatRelativeTime(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins  = Math.floor(diff / 60_000);
-  if (mins < 1)   return "just now";
-  if (mins < 60)  return `${mins}m ago`;
+  if (mins < 1)  return "just now";
+  if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs  < 24)  return `${hrs}h ago`;
+  if (hrs  < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs  / 24);
-  if (days < 7)   return `${days}d ago`;
+  if (days < 7)  return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
@@ -287,7 +302,7 @@ function renderActivityLog(activities) {
   const tickerList = document.getElementById("tickerList");
   const fullLog    = document.querySelector(".full-log");
 
-  // ── Ticker (scrolling strip) ──────────────────────────────
+  // ── Ticker ────────────────────────────────────────────────
   if (tickerList) {
     if (!activities.length) {
       tickerList.innerHTML = "<li>No activity yet — start by adding a product!</li>";
@@ -303,7 +318,7 @@ function renderActivityLog(activities) {
     }
   }
 
-  // ── Full log (inside modal) ───────────────────────────────
+  // ── Full log (modal) ──────────────────────────────────────
   if (fullLog) {
     if (!activities.length) {
       fullLog.innerHTML = "<li>No activity yet.</li>";
@@ -315,7 +330,9 @@ function renderActivityLog(activities) {
             month: "short", day: "numeric",
             hour: "2-digit", minute: "2-digit",
           });
-          const detail = a.detail ? `<br><span style="font-size:.85em;opacity:.65">${a.detail}</span>` : "";
+          const detail = a.detail
+            ? `<br><span style="font-size:.85em;opacity:.65">${a.detail}</span>`
+            : "";
           return `<li style="padding:.5rem 0;border-bottom:1px solid rgba(0,0,0,.06)">
             <span style="font-size:1.1em;margin-right:.4em">${icon}</span>
             <strong>${a.title}</strong>${detail}
@@ -414,26 +431,25 @@ async function loadSellerProductsForCoupon() {
 // ─── Coupon submit ────────────────────────────────────────────────────────────
 async function handleCouponSubmit(e) {
   e.preventDefault();
-  const code      = document.getElementById("coupon-code")?.value.trim().toUpperCase();
-  const discount  = parseInt(document.getElementById("discount")?.value);
-  const productId = document.getElementById("couponProduct")?.value;
-  const expiryDate= document.getElementById("couponExpiry")?.value;
-  const usageLimit= parseInt(document.getElementById("couponLimit")?.value) || 0;
+  const code       = document.getElementById("coupon-code")?.value.trim().toUpperCase();
+  const discount   = parseInt(document.getElementById("discount")?.value);
+  const productId  = document.getElementById("couponProduct")?.value;
+  const expiryDate = document.getElementById("couponExpiry")?.value;
+  const usageLimit = parseInt(document.getElementById("couponLimit")?.value) || 0;
 
   if (!code)                           return alert("Please enter a coupon code.");
   if (discount < 1 || discount > 100)  return alert("Discount must be 1–100%.");
   if (!productId)                      return alert("Please select a product.");
 
-  // No backend coupon endpoint yet — persist locally until one is built.
   try {
     const coupons = JSON.parse(localStorage.getItem("mm_coupons") || "[]");
     coupons.push({ code, discount, productId, expiryDate, usageLimit, createdAt: new Date().toISOString() });
     localStorage.setItem("mm_coupons", JSON.stringify(coupons));
-    alert(`✅ Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
+    alert(`Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
     e.target.reset();
     document.getElementById("coupons-modal").style.display = "none";
   } catch (err) {
-    alert("❌ Error saving coupon: " + err.message);
+    alert("Error saving coupon: " + err.message);
   }
 }
 
@@ -444,7 +460,10 @@ async function renderSalesChart() {
   const ctx = document.getElementById("salesChart")?.getContext("2d");
   if (!ctx) return;
 
-  if (window._salesChartInstance) { window._salesChartInstance.destroy(); window._salesChartInstance = null; }
+  if (window._salesChartInstance) {
+    window._salesChartInstance.destroy();
+    window._salesChartInstance = null;
+  }
 
   let monthlySales = new Array(12).fill(0);
 
@@ -458,7 +477,7 @@ async function renderSalesChart() {
       }
     });
   } catch (err) {
-    console.warn("Sales chart: could not fetch orders, using zeros.", err);
+    console.warn("Sales chart: could not fetch orders, showing empty chart.", err);
   }
 
   const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
