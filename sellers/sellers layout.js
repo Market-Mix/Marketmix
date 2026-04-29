@@ -107,6 +107,7 @@ async function loadDashboardData() {
   renderProfileImage(profile);
   renderOverviewCards(stats, earnings, profile);
   renderProgressTracker(profile);
+  updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
 }
 
@@ -244,8 +245,9 @@ function renderProgressTracker(profile) {
     progress = 20; color = "#ef4444";
     html = `<a href="setup-store.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
   } else if (kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) {
-    progress = 40; color = "#f97316";
-    html = `<span style="color:#1e293b">Your KYC is under review. We'll notify you once approved.</span>`;
+    // KYC is under review — advance to next step but show notification banner
+    progress = 60; color = "#eab308";
+    html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
   } else if (!kycApproved) {
     progress = 40; color = "#f97316";
     html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC verification</a>`;
@@ -266,6 +268,34 @@ function renderProgressTracker(profile) {
   bar.style.width           = progress + "%";
   bar.style.backgroundColor = color;
   text.innerHTML            = html;
+}
+
+// ─── KYC Notification Banner ──────────────────────────────────────────────────
+function updateKYCNotificationBanner(profile) {
+  const banner = document.getElementById("kycNotificationBanner");
+  const closeBtn = document.getElementById("kycNotificationClose");
+  if (!banner || !closeBtn) return;
+
+  const p       = profile?.profile;
+  const kycUrls = p?.kycDocumentUrls || {};
+  const kycStatus = kycUrls.kyc_status || null;
+  const kycSubmitted = !!kycUrls.kyc_submitted_at;
+
+  // Show banner if KYC is under review or pending after submission
+  if (kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) {
+    banner.style.display = "block";
+    document.getElementById("kycNotificationText").textContent = "Your KYC verification is under review. We'll notify you once approved.";
+  } else {
+    banner.style.display = "none";
+  }
+
+  // Set up close button listener (only once via data attribute check)
+  if (!closeBtn.dataset.listenerAttached) {
+    closeBtn.addEventListener("click", () => {
+      banner.style.display = "none";
+    });
+    closeBtn.dataset.listenerAttached = "true";
+  }
 }
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
