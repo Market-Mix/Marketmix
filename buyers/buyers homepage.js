@@ -696,8 +696,8 @@ async function loadPopularShops() {
   loadBestSellingProducts();
   loadNewArrivalsProducts();
   loadRecommendedProducts();
-loadFeaturedBrands();
-loadPopularShops();
+  loadFeaturedBrands();
+  loadPopularShops();
   // Countdown Timer
   function startCountdown(duration, display) {
     let timer = duration, hours, minutes, seconds;
