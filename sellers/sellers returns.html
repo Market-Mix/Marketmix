@@ -136,6 +136,7 @@
         <div class="col-status">Status</div>
         <div class="col-date">Date</div>
         <div class="col-action">Actions</div>
+        <div class="col-chat">Chat</div>
       </div>
       <div class="table-body" id="returnsTableBody">
         <!-- Populated by JavaScript -->
@@ -194,6 +195,77 @@
     </div>
   </div>
 </div>
+
+<!-- Chat Side Panel -->
+<div class="chat-side-panel" id="chatPanel">
+  <!-- Chat Header -->
+  <div class="chat-header">
+    <div class="chat-header-info">
+      <h3 id="chatBuyerName">Chat with Buyer</h3>
+      <p id="chatOrderId" class="chat-order">Order ID: ---</p>
+    </div>
+    <button class="chat-close-btn" id="chatCloseBtn">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <!-- Chat Status Bar -->
+  <div class="chat-status-bar">
+    <span id="chatResolutionStatus" class="resolution-status pending">
+      <i class="fas fa-circle"></i> Pending Resolution
+    </span>
+  </div>
+
+  <!-- Chat Messages -->
+  <div class="chat-messages" id="chatMessages">
+    <!-- Messages populated by JS -->
+  </div>
+
+  <!-- Chat Input Area -->
+  <div class="chat-input-area">
+    <!-- Attachment preview -->
+    <div id="attachmentPreview" class="attachment-preview" style="display: none;">
+      <div class="preview-item">
+        <img id="previewImage" src="" alt="Preview" />
+        <button class="remove-attachment" onclick="removeAttachment()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Input field and buttons -->
+    <div class="input-row">
+      <textarea 
+        id="chatInput" 
+        class="chat-input" 
+        placeholder="Type your message here..." 
+        rows="3"
+      ></textarea>
+      <div class="input-actions">
+        <label class="file-upload-label" title="Attach image or file">
+          <i class="fas fa-paperclip"></i>
+          <input 
+            type="file" 
+            id="chatFileInput" 
+            hidden 
+            accept="image/*,.pdf,.doc,.docx"
+          />
+        </label>
+        <button class="btn-send-chat" id="sendChatBtn">
+          <i class="fas fa-paper-plane"></i> Send
+        </button>
+      </div>
+    </div>
+
+    <!-- Chat info -->
+    <p class="chat-info-text">
+      <i class="fas fa-info-circle"></i> All conversations are monitored by MarketMix
+    </p>
+  </div>
+</div>
+
+<!-- Chat Overlay (to dim background when chat is open) -->
+<div class="chat-overlay" id="chatOverlay"></div>
 
 <footer>
   &copy; 2025 MarketMix. All Rights Reserved.

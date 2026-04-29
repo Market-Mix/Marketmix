@@ -171,6 +171,7 @@ function renderTable(data = returnsData) {
       <div class="col-status"><span class="status-badge ${statusClass}">${item.status}</span></div>
       <div class="col-date">${item.date}</div>
       <div class="col-action"><button class="btn-action" onclick="openModal(${item.id})">View</button></div>
+      <div class="col-chat"><button class="btn-chat" onclick="openChat(${item.id})" title="Open chat with buyer"><i class="fas fa-comments"></i> Chat</button></div>
     `;
     
     returnsTableBody.appendChild(row);
@@ -247,6 +248,277 @@ function filterTable() {
 
 searchInput.addEventListener('input', filterTable);
 statusFilter.addEventListener('change', filterTable);
+
+// ──────────────────────────────────────────────────────────────────────
+// CHAT FUNCTIONALITY
+// ──────────────────────────────────────────────────────────────────────
+
+let currentChatId = null;
+let currentChatData = null;
+let attachedFile = null;
+
+// DOM Elements for Chat
+const chatPanel = document.getElementById('chatPanel');
+const chatOverlay = document.getElementById('chatOverlay');
+const chatCloseBtn = document.getElementById('chatCloseBtn');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const sendChatBtn = document.getElementById('sendChatBtn');
+const chatFileInput = document.getElementById('chatFileInput');
+const attachmentPreview = document.getElementById('attachmentPreview');
+
+// Chat Storage Key
+function getChatStorageKey(returnId) {
+  return `mm_return_chat_${returnId}`;
+}
+
+// Open Chat Panel
+function openChat(returnId) {
+  const returnItem = returnsData.find(r => r.id === returnId);
+  if (!returnItem) return;
+
+  currentChatId = returnId;
+  currentChatData = returnItem;
+
+  // Update chat header
+  document.getElementById('chatBuyerName').textContent = `Chat with ${returnItem.buyerName}`;
+  document.getElementById('chatOrderId').textContent = `Order ID: ${returnItem.orderId}`;
+
+  // Update resolution status
+  const statusElement = document.getElementById('chatResolutionStatus');
+  const statusClass = returnItem.status.toLowerCase();
+  statusElement.className = `resolution-status ${statusClass}`;
+  statusElement.innerHTML = `<i class="fas fa-circle"></i> ${returnItem.status}`;
+
+  // Load and display chat history
+  loadChatMessages(returnId);
+
+  // Show chat panel with animation
+  chatPanel.classList.add('active');
+  chatOverlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+
+  // Focus on input
+  setTimeout(() => chatInput.focus(), 300);
+}
+
+// Close Chat Panel
+function closeChat() {
+  chatPanel.classList.remove('active');
+  chatOverlay.classList.remove('active');
+  document.body.style.overflow = 'auto';
+  currentChatId = null;
+  currentChatData = null;
+  chatInput.value = '';
+  removeAttachment();
+}
+
+// Load Chat Messages
+function loadChatMessages(returnId) {
+  const storageKey = getChatStorageKey(returnId);
+  const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+  chatMessages.innerHTML = '';
+
+  if (messages.length === 0) {
+    chatMessages.innerHTML = `
+      <div class="chat-message system">
+        <p><i class="fas fa-info-circle"></i> Chat opened for Order ${currentChatData.orderId}</p>
+      </div>
+    `;
+    return;
+  }
+
+  messages.forEach((msg, idx) => {
+    const msgEl = document.createElement('div');
+    msgEl.className = `chat-message ${msg.sender === 'seller' ? 'seller' : 'buyer'}`;
+
+    const timestamp = new Date(msg.timestamp);
+    const timeStr = timestamp.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+
+    let content = `
+      <div class="message-content">
+        <p class="message-text">${escapeHtml(msg.text)}</p>
+    `;
+
+    if (msg.file) {
+      if (msg.file.type === 'image') {
+        content += `<img src="${msg.file.data}" class="message-image" alt="Uploaded image" />`;
+      } else {
+        content += `<a href="${msg.file.data}" class="message-file" download><i class="fas fa-file"></i> ${msg.file.name}</a>`;
+      }
+    }
+
+    content += `
+        <span class="message-time">${timeStr}</span>
+        <span class="read-status" title="${msg.read ? 'Read' : 'Sent'}">
+          ${msg.read ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-check"></i>'}
+        </span>
+      </div>
+    `;
+
+    msgEl.innerHTML = content;
+    chatMessages.appendChild(msgEl);
+  });
+
+  // Scroll to bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Mark messages as read
+  setTimeout(() => markMessagesAsRead(returnId), 500);
+}
+
+// Mark Messages as Read
+function markMessagesAsRead(returnId) {
+  const storageKey = getChatStorageKey(returnId);
+  const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  let updated = false;
+
+  messages.forEach(msg => {
+    if (msg.sender === 'buyer' && !msg.read) {
+      msg.read = true;
+      updated = true;
+    }
+  });
+
+  if (updated) {
+    localStorage.setItem(storageKey, JSON.stringify(messages));
+    loadChatMessages(returnId);
+  }
+}
+
+// Send Chat Message
+function sendChatMessage() {
+  const text = chatInput.value.trim();
+  if (!text && !attachedFile) return;
+  if (!currentChatId) return;
+
+  const storageKey = getChatStorageKey(currentChatId);
+  const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+  const message = {
+    id: Date.now(),
+    sender: 'seller',
+    text: text,
+    timestamp: new Date().toISOString(),
+    read: false,
+    file: attachedFile ? { ...attachedFile } : null
+  };
+
+  messages.push(message);
+  localStorage.setItem(storageKey, JSON.stringify(messages));
+
+  // Clear input
+  chatInput.value = '';
+  removeAttachment();
+
+  // Reload messages
+  loadChatMessages(currentChatId);
+
+  // Simulate buyer response after 3 seconds (for demo)
+  if (Math.random() > 0.5) {
+    setTimeout(() => {
+      simulateBuyerResponse(currentChatId);
+    }, 3000);
+  }
+}
+
+// Simulate Buyer Response (for demo)
+function simulateBuyerResponse(returnId) {
+  if (currentChatId !== returnId) return; // Only if chat is still open
+
+  const responses = [
+    "Thanks for your help!",
+    "When can I expect the replacement?",
+    "I've uploaded the proof images.",
+    "This issue needs to be resolved ASAP!",
+    "Okay, I'll return the item.",
+    "What's the return process?"
+  ];
+
+  const storageKey = getChatStorageKey(returnId);
+  const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+  const message = {
+    id: Date.now(),
+    sender: 'buyer',
+    text: responses[Math.floor(Math.random() * responses.length)],
+    timestamp: new Date().toISOString(),
+    read: false,
+    file: null
+  };
+
+  messages.push(message);
+  localStorage.setItem(storageKey, JSON.stringify(messages));
+  loadChatMessages(returnId);
+}
+
+// Handle File Upload
+chatFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const isImage = file.type.startsWith('image/');
+    attachedFile = {
+      name: file.name,
+      type: isImage ? 'image' : 'file',
+      data: event.target.result
+    };
+
+    // Show preview
+    if (isImage) {
+      document.getElementById('previewImage').src = event.target.result;
+      attachmentPreview.style.display = 'flex';
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
+// Remove Attachment
+function removeAttachment() {
+  attachedFile = null;
+  attachmentPreview.style.display = 'none';
+  chatFileInput.value = '';
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Event Listeners
+chatCloseBtn.addEventListener('click', closeChat);
+chatOverlay.addEventListener('click', closeChat);
+sendChatBtn.addEventListener('click', sendChatMessage);
+
+// Enable send on Enter key
+chatInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', () => {
+  loadProfile();
+  renderTable();
+});
+
+// Send on Ctrl+Enter or Cmd+Enter
+chatInput.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    sendChatMessage();
+  }
+}
 
 // Notification
 function showNotification(message, type = 'success') {
