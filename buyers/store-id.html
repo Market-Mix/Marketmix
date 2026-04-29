@@ -336,11 +336,43 @@
     .filter-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
 
-    .filter-row select {
+    .search-wrap {
+      flex: 1;
+      min-width: 180px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-wrap i {
+      position: absolute;
+      left: 12px;
+      color: var(--ink-4);
+      font-size: 0.82rem;
+      pointer-events: none;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 8px 14px 8px 34px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--surface-3);
+      background: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      color: var(--ink-2);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-wrap input:focus { border-color: var(--accent); }
+
+    #categoryFilter {
       padding: 8px 14px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--surface-3);
@@ -350,11 +382,15 @@
       color: var(--ink-2);
       cursor: pointer;
       outline: none;
+      min-width: 160px;
+      flex-shrink: 0;
     }
 
-    .filter-row select:focus { border-color: var(--accent); }
+    #categoryFilter:focus { border-color: var(--accent); }
 
     .product-count-label {
+      display: block;
+      margin-bottom: 16px;
       font-size: 0.85rem;
       color: var(--ink-4);
     }
@@ -727,15 +763,77 @@
 
     /* ── RESPONSIVE ──────────────────────────────────────────── */
     @media (max-width: 768px) {
-      .identity-strip { padding: 0 16px 0 130px; }
-      .store-avatar { left: 16px; width: 80px; height: 80px; bottom: 16px; }
-      .stats-strip { padding: 0 16px; overflow-x: auto; }
-      .tabs-bar { padding: 0 16px; overflow-x: auto; }
-      .tab-panel { padding: 24px 16px; }
+      .hero { height: 180px; }
+
+      .identity-strip {
+        padding: 0 12px 0 106px;
+        min-height: 72px;
+        flex-direction: column;
+        align-items: flex-start;
+        padding-bottom: 12px;
+      }
+
+      .store-avatar {
+        left: 12px;
+        width: 72px;
+        height: 72px;
+        bottom: 12px;
+        border-radius: var(--radius-md);
+      }
+
+      .store-name { font-size: 1.2rem; }
+
+      .store-meta-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      .identity-actions {
+        padding: 0 12px 12px;
+        width: 100%;
+      }
+
+      .btn-follow, .btn-contact {
+        flex: 1;
+        justify-content: center;
+        padding: 9px 0;
+      }
+
+      .stats-strip {
+        padding: 0 12px;
+        overflow-x: auto;
+        gap: 0;
+      }
+
+      .stat-block { padding: 12px 20px 12px 0; }
+      .stat-value { font-size: 1.2rem; }
+
+      .tabs-bar {
+        padding: 0 8px;
+        overflow-x: auto;
+        gap: 0;
+      }
+
+      .tab-btn { padding: 12px 14px; font-size: 0.82rem; white-space: nowrap; }
+
+      .tab-panel { padding: 20px 12px; }
+
+      .filter-row { flex-direction: column; align-items: stretch; }
+      .search-wrap { min-width: unset; }
+      #categoryFilter { width: 100%; }
+
+      .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+        gap: 12px;
+      }
+
       .reviews-layout { grid-template-columns: 1fr; }
+      .rating-overview { position: static; }
       .about-layout { grid-template-columns: 1fr; }
-      .identity-actions { gap: 8px; }
-      .btn-follow, .btn-contact { padding: 8px 14px; font-size: 0.82rem; }
+
+      .policy-card { border-radius: var(--radius-sm); }
+      .policy-item { padding: 14px 16px; gap: 12px; }
     }
   </style>
   <script>
@@ -824,11 +922,15 @@
   <!-- Products Panel -->
   <section id="products" class="tab-panel active">
     <div class="filter-row">
+      <div class="search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="productSearch" placeholder="Search products in this store..." />
+      </div>
       <select id="categoryFilter">
         <option value="all">All Categories</option>
       </select>
-      <span class="product-count-label" id="productCountLabel"></span>
     </div>
+    <span class="product-count-label" id="productCountLabel"></span>
     <div class="products-grid" id="productsGrid">
       <div class="loading-state">
         <i class="fa-solid fa-spinner fa-spin"></i> Loading products...
@@ -1076,6 +1178,74 @@
           </div>
         </div>`;
       return card;
+    }
+
+    // Category filter
+    function populateCategoryFilter(categories) {
+      const select = document.getElementById('categoryFilter');
+      select.innerHTML = `<option value="all">All Categories</option>` +
+        categories
+          .filter(c => c && c.trim() !== '')
+          .map(c => `<option value="${c}">${c}</option>`)
+          .join('');
+
+      select.addEventListener('change', e => {
+        currentSearchQuery = '';
+        document.getElementById('productSearch').value = '';
+        loadProducts(e.target.value);
+      });
+    }
+
+    // Search
+    let currentSearchQuery = '';
+    let searchDebounce = null;
+
+    document.getElementById('productSearch').addEventListener('input', e => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        currentSearchQuery = e.target.value.trim();
+        currentPage = 1;
+        loadProductsFiltered();
+      }, 350);
+    });
+
+    async function loadProductsFiltered() {
+      const grid = document.getElementById('productsGrid');
+      grid.innerHTML = `<div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Searching...</div>`;
+
+      const cat = document.getElementById('categoryFilter').value;
+      const catParam = cat !== 'all' ? `&category=${encodeURIComponent(cat)}` : '';
+      const searchParam = currentSearchQuery ? `&search=${encodeURIComponent(currentSearchQuery)}` : '';
+
+      try {
+        const res = await fetch(
+          `${API}/seller/public/${SELLER_ID}/products?page=1&limit=${PAGE_LIMIT}${catParam}${searchParam}`,
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        const { products, total } = data.data;
+        totalProducts = total;
+        allProducts = products;
+        currentPage = 1;
+
+        grid.innerHTML = '';
+        if (products.length === 0) {
+          grid.innerHTML = `<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>No products found.</p></div>`;
+        } else {
+          products.forEach(p => grid.appendChild(buildProductCard(p)));
+        }
+
+        document.getElementById('productCountLabel').textContent =
+          `${total} product${total !== 1 ? 's' : ''}`;
+
+        document.getElementById('loadMoreWrap').style.display =
+          allProducts.length < totalProducts ? 'block' : 'none';
+
+      } catch (err) {
+        grid.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not load products.</p></div>`;
+      }
     }
 
     // Re-init tabs to match new .tab-panel class
