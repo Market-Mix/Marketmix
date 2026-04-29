@@ -1,5 +1,5 @@
 const API = 'https://marketmix-backend.onrender.com/api';
-const token = localStorage.getItem('token');
+const authToken = localStorage.getItem('token');
 
 // ─── Get sellerId from URL ───────────────────────────────────────────────────
 // Links to this page should be: store-id.html?seller=<uuid>
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadStoreProfile() {
   try {
     const res = await fetch(`${API}/seller/public/${SELLER_ID}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${authToken}` }
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to load store');
@@ -125,7 +125,7 @@ async function loadProducts(categoryFilter = 'all', append = false) {
     const catParam = categoryFilter !== 'all' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
     const res = await fetch(
       `${API}/seller/public/${SELLER_ID}/products?page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${authToken}` } }
     );
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to load products');
@@ -226,7 +226,7 @@ function populateCategoryFilter(categories) {
 async function loadReviews() {
   try {
     const res = await fetch(`${API}/reviews/seller/${SELLER_ID}?limit=10`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${authToken}` }
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
@@ -290,7 +290,7 @@ async function addToCart(productId, productName) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${authToken}`
       },
       body: JSON.stringify({ product_id: productId, quantity: 1 })
     });
