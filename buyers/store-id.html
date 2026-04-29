@@ -4,8 +4,740 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Store Profile | MarketMix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="store-id.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: #ea580c;
+      --accent-deep: #9a3412;
+      --accent-glow: #fed7aa;
+      --ink: #0c0a09;
+      --ink-2: #292524;
+      --ink-3: #57534e;
+      --ink-4: #a8a29e;
+      --surface: #fafaf9;
+      --surface-2: #f5f5f4;
+      --surface-3: #e7e5e4;
+      --white: #ffffff;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --verified-green: #15803d;
+      --verified-bg: #dcfce7;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--surface);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* ── HERO BANNER ─────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      height: 300px;
+      background: linear-gradient(135deg, #1c0a04 0%, #431407 40%, #7c2d12 70%, #ea580c 100%);
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 80% at 80% 50%, rgba(234,88,12,0.35) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 10% 80%, rgba(154,52,18,0.4) 0%, transparent 60%);
+    }
+
+    .hero-pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.06;
+      background-image:
+        repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 40px,
+          rgba(255,255,255,0.5) 40px,
+          rgba(255,255,255,0.5) 41px
+        );
+    }
+
+    .verified-badge {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: var(--verified-bg);
+      color: var(--verified-green);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Syne', sans-serif;
+    }
+
+    /* ── STORE IDENTITY STRIP ────────────────────────────────── */
+    .identity-strip {
+      position: relative;
+      background: var(--white);
+      padding: 0 48px 0 180px;
+      min-height: 88px;
+      border-bottom: 1px solid var(--surface-3);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .store-avatar {
+      position: absolute;
+      bottom: 20px;
+      left: 40px;
+      width: 100px;
+      height: 100px;
+      border-radius: var(--radius-lg);
+      border: 4px solid var(--white);
+      background: var(--surface-2);
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .store-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .logo-initials {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .identity-left {
+      padding-bottom: 20px;
+      flex: 1;
+    }
+
+    .store-name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .store-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.2;
+    }
+
+    .verified-inline {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      background: var(--verified-bg);
+      color: var(--verified-green);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-family: 'Syne', sans-serif;
+    }
+
+    .store-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.84rem;
+      color: var(--ink-3);
+    }
+
+    .meta-item i { font-size: 0.78rem; color: var(--accent); }
+
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stars-display { color: #f59e0b; font-size: 0.9rem; letter-spacing: 1px; }
+    .rating-number { font-weight: 500; font-size: 0.9rem; color: var(--ink-2); }
+    .review-count { font-size: 0.82rem; color: var(--ink-4); }
+
+    .identity-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding-bottom: 20px;
+    }
+
+    .btn-follow {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 20px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--surface-3);
+      background: var(--white);
+      color: var(--ink-2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn-follow:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-follow.following {
+      background: #fff7ed;
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-contact {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 20px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.18s ease;
+    }
+
+    .btn-contact:hover { background: var(--accent-deep); }
+
+    /* ── STATS STRIP ─────────────────────────────────────────── */
+    .stats-strip {
+      background: var(--white);
+      border-bottom: 1px solid var(--surface-3);
+      padding: 0 48px;
+      display: flex;
+      gap: 0;
+    }
+
+    .stat-block {
+      padding: 16px 32px 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: relative;
+    }
+
+    .stat-block::after {
+      content: '';
+      position: absolute;
+      right: 16px;
+      top: 20%;
+      height: 60%;
+      width: 1px;
+      background: var(--surface-3);
+    }
+
+    .stat-block:last-child::after { display: none; }
+
+    .stat-block + .stat-block { padding-left: 24px; }
+
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--ink-4);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* ── TABS ────────────────────────────────────────────────── */
+    .tabs-bar {
+      background: var(--white);
+      border-bottom: 1px solid var(--surface-3);
+      padding: 0 48px;
+      display: flex;
+      gap: 0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 15px 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: var(--ink-3);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.15s;
+    }
+
+    .tab-btn::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0; right: 0;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transition: transform 0.2s ease;
+    }
+
+    .tab-btn.active { color: var(--accent); font-weight: 500; }
+    .tab-btn.active::after { transform: scaleX(1); }
+    .tab-btn:hover { color: var(--ink); }
+
+    /* ── TAB PANELS ──────────────────────────────────────────── */
+    .tab-panel { display: none; padding: 36px 48px; }
+    .tab-panel.active { display: block; }
+
+    /* ── FILTER BAR ──────────────────────────────────────────── */
+    .filter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .filter-row select {
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--surface-3);
+      background: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      color: var(--ink-2);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .filter-row select:focus { border-color: var(--accent); }
+
+    .product-count-label {
+      font-size: 0.85rem;
+      color: var(--ink-4);
+    }
+
+    /* ── PRODUCTS GRID ───────────────────────────────────────── */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 20px;
+    }
+
+    .product-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--surface-3);
+      overflow: hidden;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .product-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    }
+
+    .flash-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: var(--accent);
+      color: var(--white);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 100px;
+      font-family: 'Syne', sans-serif;
+      letter-spacing: 0.02em;
+      z-index: 1;
+    }
+
+    .card-img-wrap {
+      aspect-ratio: 4/3;
+      overflow: hidden;
+      background: var(--surface-2);
+      cursor: pointer;
+    }
+
+    .card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .product-card:hover .card-img-wrap img { transform: scale(1.04); }
+
+    .card-body { padding: 14px; }
+
+    .card-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--ink);
+      line-height: 1.4;
+      margin-bottom: 6px;
+      cursor: pointer;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-name:hover { color: var(--accent); }
+
+    .card-price {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .card-stars { color: #f59e0b; font-size: 0.78rem; }
+    .card-stars small { color: var(--ink-4); font-size: 0.72rem; margin-left: 2px; }
+
+    .out-of-stock-tag {
+      font-size: 0.7rem;
+      background: #fef2f2;
+      color: #dc2626;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .card-actions { display: flex; gap: 8px; }
+
+    .btn-view-sm {
+      flex: 1;
+      padding: 7px 0;
+      border-radius: 7px;
+      border: 1px solid var(--surface-3);
+      background: var(--white);
+      color: var(--ink-2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-view-sm:hover { border-color: var(--ink-3); }
+
+    .btn-cart-sm {
+      flex: 2;
+      padding: 7px 0;
+      border-radius: 7px;
+      border: none;
+      background: var(--accent);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-cart-sm:hover:not(:disabled) { background: var(--accent-deep); }
+    .btn-cart-sm:disabled { background: var(--surface-3); color: var(--ink-4); cursor: not-allowed; }
+
+    .load-more-wrap { text-align: center; margin-top: 32px; }
+
+    .btn-load-more {
+      padding: 11px 36px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--surface-3);
+      background: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-load-more:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── REVIEWS ─────────────────────────────────────────────── */
+    .reviews-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 36px;
+      align-items: start;
+    }
+
+    .rating-overview {
+      background: var(--white);
+      border: 1px solid var(--surface-3);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      position: sticky;
+      top: 80px;
+    }
+
+    .big-rating-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .big-stars { color: #f59e0b; font-size: 1.1rem; letter-spacing: 2px; margin: 6px 0; }
+    .big-count { font-size: 0.82rem; color: var(--ink-4); }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 24px 1fr 28px;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .bar-label { font-size: 0.78rem; color: var(--ink-3); text-align: right; }
+    .bar-bg { height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.5s ease; }
+    .bar-pct { font-size: 0.72rem; color: var(--ink-4); }
+
+    .reviews-list { display: flex; flex-direction: column; gap: 16px; }
+
+    .review-card {
+      background: var(--white);
+      border: 1px solid var(--surface-3);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .review-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .reviewer-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--accent-glow);
+      color: var(--accent-deep);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .reviewer-name { font-size: 0.9rem; font-weight: 500; color: var(--ink); }
+    .review-stars-sm { color: #f59e0b; font-size: 0.78rem; margin-top: 2px; }
+    .review-date { font-size: 0.78rem; color: var(--ink-4); margin-left: auto; white-space: nowrap; }
+    .review-product-tag { font-size: 0.78rem; color: var(--ink-3); margin-bottom: 8px; }
+    .review-product-tag i { color: var(--accent); margin-right: 4px; }
+    .review-body { font-size: 0.88rem; color: var(--ink-2); line-height: 1.65; }
+
+    /* ── ABOUT ───────────────────────────────────────────────── */
+    .about-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 36px;
+      align-items: start;
+    }
+
+    .about-description {
+      font-size: 0.95rem;
+      color: var(--ink-2);
+      line-height: 1.75;
+      margin-bottom: 24px;
+    }
+
+    .about-detail-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 0;
+      border-top: 1px solid var(--surface-3);
+      font-size: 0.875rem;
+    }
+
+    .about-detail-row:first-of-type { border-top: none; }
+    .about-detail-label { color: var(--ink-4); min-width: 80px; }
+    .about-detail-value { color: var(--ink-2); font-weight: 500; }
+
+    .social-card {
+      background: var(--white);
+      border: 1px solid var(--surface-3);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .social-card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      margin-bottom: 16px;
+    }
+
+    .social-link-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      border-top: 1px solid var(--surface-3);
+      text-decoration: none;
+      color: var(--ink-2);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .social-link-item:first-of-type { border-top: none; }
+    .social-link-item:hover { color: var(--accent); }
+    .social-link-item i { width: 18px; text-align: center; color: var(--ink-3); font-size: 0.9rem; }
+    .social-link-item:hover i { color: var(--accent); }
+
+    /* ── POLICIES ────────────────────────────────────────────── */
+    .policy-card {
+      background: var(--white);
+      border: 1px solid var(--surface-3);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      max-width: 700px;
+    }
+
+    .policy-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--surface-3);
+    }
+
+    .policy-item:last-child { border-bottom: none; }
+
+    .policy-icon {
+      width: 36px;
+      height: 36px;
+      background: #fff7ed;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .policy-icon i { color: var(--accent); font-size: 0.9rem; }
+    .policy-title { font-size: 0.9rem; font-weight: 600; color: var(--ink); margin-bottom: 3px; font-family: 'Syne', sans-serif; }
+    .policy-desc { font-size: 0.85rem; color: var(--ink-3); line-height: 1.55; }
+
+    /* ── STATES ──────────────────────────────────────────────── */
+    .loading-state {
+      padding: 60px 0;
+      text-align: center;
+      color: var(--ink-4);
+      font-size: 0.9rem;
+      grid-column: 1 / -1;
+    }
+
+    .loading-state i { margin-right: 8px; color: var(--accent); }
+
+    .empty-state {
+      padding: 60px 0;
+      text-align: center;
+      color: var(--ink-4);
+      grid-column: 1 / -1;
+    }
+
+    .empty-state i { font-size: 2rem; color: var(--surface-3); display: block; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ── TOAST ───────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--ink);
+      color: var(--white);
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+      z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .identity-strip { padding: 0 16px 0 130px; }
+      .store-avatar { left: 16px; width: 80px; height: 80px; bottom: 16px; }
+      .stats-strip { padding: 0 16px; overflow-x: auto; }
+      .tabs-bar { padding: 0 16px; overflow-x: auto; }
+      .tab-panel { padding: 24px 16px; }
+      .reviews-layout { grid-template-columns: 1fr; }
+      .about-layout { grid-template-columns: 1fr; }
+      .identity-actions { gap: 8px; }
+      .btn-follow, .btn-contact { padding: 8px 14px; font-size: 0.82rem; }
+    }
+  </style>
   <script>
     const token = localStorage.getItem('token');
     if (!token) window.location.replace("login for buyers.html");
@@ -13,102 +745,338 @@
 </head>
 <body>
 
-  <!-- Store Header / Banner -->
-  <div class="store-header" id="storeHeader">
-    <div class="store-logo" id="storeLogo">
-      <span id="storeLogoFallback"></span>
-    </div>
-    <!-- Verified badge -->
-    <span class="verified-badge" id="verifiedBadge" style="display:none">
+  <!-- Hero Banner -->
+  <div class="hero" id="storeHeader">
+    <div class="hero-pattern"></div>
+    <span class="verified-badge" id="verifiedBadge">
       <i class="fa-solid fa-circle-check"></i> Verified Seller
     </span>
   </div>
 
-  <!-- Store Info -->
-  <div class="store-info">
-    <div class="store-details">
-      <h2 id="storeName">Loading...</h2>
-      <p id="storeRatingRow">
-        <i class="fa-solid fa-star" style="color:gold"></i>
-        <span id="storeRating">—</span>
-        <span id="storeReviewCount"></span>
-      </p>
-      <p id="storeAddress" class="store-meta"></p>
-      <p id="storeMemberSince" class="store-meta"></p>
+  <!-- Identity Strip -->
+  <div class="identity-strip">
+    <div class="store-avatar" id="storeLogo">
+      <span class="logo-initials" id="storeLogoFallback"></span>
     </div>
-    <div class="store-actions">
-      <button id="followBtn" onclick="toggleFollow()">
+
+    <div class="identity-left">
+      <div class="store-name-row">
+        <h1 class="store-name" id="storeName">Loading...</h1>
+        <span class="verified-inline" id="verifiedInline">
+          <i class="fa-solid fa-circle-check"></i> Verified
+        </span>
+      </div>
+      <div class="store-meta-row">
+        <div class="rating-row">
+          <span class="stars-display" id="storeStarsDisplay"></span>
+          <span class="rating-number" id="storeRating">—</span>
+          <span class="review-count" id="storeReviewCount"></span>
+        </div>
+        <div class="meta-item" id="storeAddressItem" style="display:none">
+          <i class="fa-solid fa-location-dot"></i>
+          <span id="storeAddress"></span>
+        </div>
+        <div class="meta-item" id="storeMemberItem" style="display:none">
+          <i class="fa-regular fa-calendar"></i>
+          <span id="storeMemberSince"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="identity-actions">
+      <button class="btn-follow" id="followBtn" onclick="toggleFollow()">
         <i class="fa-regular fa-heart"></i> Follow
       </button>
-      <button id="contactBtn" onclick="contactSeller()">
-        <i class="fa-solid fa-envelope"></i> Contact Seller
+      <button class="btn-contact" onclick="contactSeller()">
+        <i class="fa-solid fa-envelope"></i> Contact
       </button>
     </div>
   </div>
 
   <!-- Stats Strip -->
-  <div class="store-stats" id="storeStats">
-    <div class="stat"><span id="statProducts">—</span><small>Products</small></div>
-    <div class="stat"><span id="statSales">—</span><small>Sales</small></div>
-    <div class="stat"><span id="statRating">—</span><small>Rating</small></div>
-    <div class="stat"><span id="statReviews">—</span><small>Reviews</small></div>
+  <div class="stats-strip">
+    <div class="stat-block">
+      <span class="stat-value" id="statProducts">—</span>
+      <span class="stat-label">Products</span>
+    </div>
+    <div class="stat-block">
+      <span class="stat-value" id="statSales">—</span>
+      <span class="stat-label">Sales</span>
+    </div>
+    <div class="stat-block">
+      <span class="stat-value" id="statRating">—</span>
+      <span class="stat-label">Rating</span>
+    </div>
+    <div class="stat-block">
+      <span class="stat-value" id="statReviews">—</span>
+      <span class="stat-label">Reviews</span>
+    </div>
   </div>
 
   <!-- Tabs -->
-  <div class="store-tabs">
+  <div class="tabs-bar">
     <button class="tab-btn active" data-tab="products">Products</button>
     <button class="tab-btn" data-tab="reviews">Reviews</button>
     <button class="tab-btn" data-tab="about">About</button>
     <button class="tab-btn" data-tab="policies">Policies</button>
   </div>
 
-  <!-- Products Tab -->
-  <section id="products" class="tab-content active">
-    <div class="filter-bar">
+  <!-- Products Panel -->
+  <section id="products" class="tab-panel active">
+    <div class="filter-row">
       <select id="categoryFilter">
         <option value="all">All Categories</option>
       </select>
-      <span id="productCountLabel"></span>
+      <span class="product-count-label" id="productCountLabel"></span>
     </div>
-    <div id="productsGrid" class="products-grid">
+    <div class="products-grid" id="productsGrid">
       <div class="loading-state">
         <i class="fa-solid fa-spinner fa-spin"></i> Loading products...
       </div>
     </div>
-    <div id="loadMoreWrap" style="text-align:center;margin:20px 0;display:none">
-      <button id="loadMoreBtn" onclick="loadMoreProducts()">Load More</button>
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none">
+      <button class="btn-load-more" id="loadMoreBtn" onclick="loadMoreProducts()">Load more products</button>
     </div>
   </section>
 
-  <!-- Reviews Tab -->
-  <section id="reviews" class="tab-content">
-    <div id="reviewsSummary" class="reviews-summary"></div>
-    <div id="reviewsList" class="reviews-list">
-      <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading reviews...</div>
+  <!-- Reviews Panel -->
+  <section id="reviews" class="tab-panel">
+    <div class="reviews-layout">
+      <div id="reviewsSummary">
+        <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i></div>
+      </div>
+      <div id="reviewsList" class="reviews-list">
+        <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading reviews...</div>
+      </div>
     </div>
   </section>
 
-  <!-- About Tab -->
-  <section id="about" class="tab-content">
-    <div id="aboutContent" class="about-content">
-      <p class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>
+  <!-- About Panel -->
+  <section id="about" class="tab-panel">
+    <div id="aboutContent">
+      <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
     </div>
   </section>
 
-  <!-- Policies Tab -->
-  <section id="policies" class="tab-content">
-    <div class="policies-content" id="policiesContent">
-      <ul>
-        <li><strong>Shipping:</strong> Orders ship within 2–3 business days.</li>
-        <li><strong>Returns:</strong> Returns accepted within 7 days of delivery.</li>
-        <li><strong>Contact:</strong> <span id="policyEmail">—</span></li>
-      </ul>
+  <!-- Policies Panel -->
+  <section id="policies" class="tab-panel">
+    <div class="policy-card">
+      <div class="policy-item">
+        <div class="policy-icon"><i class="fa-solid fa-truck"></i></div>
+        <div>
+          <div class="policy-title">Shipping</div>
+          <div class="policy-desc">Orders ship within 2–3 business days of confirmed payment.</div>
+        </div>
+      </div>
+      <div class="policy-item">
+        <div class="policy-icon"><i class="fa-solid fa-rotate-left"></i></div>
+        <div>
+          <div class="policy-title">Returns</div>
+          <div class="policy-desc">Returns accepted within 7 days of delivery. Item must be unused and in original condition.</div>
+        </div>
+      </div>
+      <div class="policy-item">
+        <div class="policy-icon"><i class="fa-solid fa-envelope"></i></div>
+        <div>
+          <div class="policy-title">Contact</div>
+          <div class="policy-desc" id="policyEmail">—</div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- Toast -->
   <div id="toast"></div>
 
   <script src="store-id.js"></script>
+  <script>
+    // Override renderStoreInfo to use new layout
+    const _originalRenderStoreInfo = window.renderStoreInfo;
+
+    function renderStoreInfo(store) {
+      document.title = `${store.businessName} | MarketMix`;
+
+      // Avatar
+      const logoEl = document.getElementById('storeLogo');
+      if (store.storeLogo) {
+        logoEl.innerHTML = `<img src="${store.storeLogo}" alt="${store.businessName} logo" />`;
+      } else {
+        const initials = store.businessName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        logoEl.innerHTML = `<span class="logo-initials">${initials}</span>`;
+      }
+
+      // Verified badges — only when isVerified is true
+      if (store.isVerified) {
+        document.getElementById('verifiedBadge').style.display = 'inline-flex';
+        document.getElementById('verifiedInline').style.display = 'inline-flex';
+      }
+
+      // Name
+      document.getElementById('storeName').textContent = store.businessName;
+
+      // Rating
+      const rating = parseFloat(store.rating) || 0;
+      const reviews = parseInt(store.totalReviews) || 0;
+      const fullStars = Math.round(rating);
+      document.getElementById('storeStarsDisplay').textContent =
+        '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
+      document.getElementById('storeRating').textContent =
+        rating > 0 ? rating.toFixed(1) : 'No ratings yet';
+      document.getElementById('storeReviewCount').textContent =
+        reviews > 0 ? `(${reviews.toLocaleString()} reviews)` : '';
+
+      // Address
+      if (store.businessAddress) {
+        document.getElementById('storeAddress').textContent = store.businessAddress;
+        document.getElementById('storeAddressItem').style.display = 'flex';
+      }
+
+      // Member since
+      if (store.memberSince) {
+        const year = new Date(store.memberSince).getFullYear();
+        document.getElementById('storeMemberSince').textContent = `Member since ${year}`;
+        document.getElementById('storeMemberItem').style.display = 'flex';
+      }
+
+      // Stats
+      document.getElementById('statProducts').textContent = (parseInt(store.productCount) || 0).toLocaleString();
+      document.getElementById('statSales').textContent = (parseInt(store.totalSales) || 0).toLocaleString();
+      document.getElementById('statRating').textContent = rating > 0 ? rating.toFixed(1) : '—';
+      document.getElementById('statReviews').textContent = reviews.toLocaleString();
+
+      // Policies email
+      document.getElementById('policyEmail').textContent = store.businessEmail || 'Contact via MarketMix';
+
+      // About
+      document.getElementById('aboutContent').innerHTML = buildAboutHTML(store);
+    }
+
+    function buildAboutHTML(store) {
+      const links = store.socialLinks || {};
+      const socialItems = [
+        links.website    ? { icon: 'fa-solid fa-globe',      label: 'Website',    href: links.website } : null,
+        links.instagram  ? { icon: 'fa-brands fa-instagram', label: 'Instagram',  href: `https://instagram.com/${links.instagram}` } : null,
+        links.facebook   ? { icon: 'fa-brands fa-facebook',  label: 'Facebook',   href: links.facebook } : null,
+        links.twitter    ? { icon: 'fa-brands fa-x-twitter', label: 'Twitter/X',  href: `https://twitter.com/${links.twitter}` } : null,
+        links.tiktok     ? { icon: 'fa-brands fa-tiktok',    label: 'TikTok',     href: `https://tiktok.com/@${links.tiktok}` } : null,
+      ].filter(Boolean);
+
+      const socialsHTML = socialItems.length > 0 ? `
+        <div class="social-card">
+          <div class="social-card-title">Connect</div>
+          ${socialItems.map(s => `
+            <a href="${s.href}" target="_blank" class="social-link-item">
+              <i class="${s.icon}"></i> ${s.label}
+            </a>`).join('')}
+        </div>` : '';
+
+      const details = [
+        store.category     ? { label: 'Category', value: store.category } : null,
+        store.businessPhone ? { label: 'Phone',    value: store.businessPhone } : null,
+        store.businessEmail ? { label: 'Email',    value: store.businessEmail } : null,
+      ].filter(Boolean);
+
+      const detailsHTML = details.map(d => `
+        <div class="about-detail-row">
+          <span class="about-detail-label">${d.label}</span>
+          <span class="about-detail-value">${d.value}</span>
+        </div>`).join('');
+
+      return `
+        <div class="about-layout">
+          <div>
+            <p class="about-description">${store.businessDescription || 'This seller has not added a store description yet.'}</p>
+            ${detailsHTML}
+          </div>
+          <div>${socialsHTML}</div>
+        </div>`;
+    }
+
+    // Override renderReviews to use new layout
+    function renderReviews(reviews, summary) {
+      const summaryEl = document.getElementById('reviewsSummary');
+      const avgRating = parseFloat(summary.avgRating) || 0;
+      const total = parseInt(summary.total) || 0;
+
+      summaryEl.innerHTML = `
+        <div class="rating-overview">
+          <div class="big-rating-num">${avgRating > 0 ? avgRating.toFixed(1) : '—'}</div>
+          <div class="big-stars">${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))}</div>
+          <div class="big-count">${total.toLocaleString()} review${total !== 1 ? 's' : ''}</div>
+          <div style="margin-top:16px">
+            ${[5,4,3,2,1].map(n => {
+              const keyMap = { 5:'fiveStar', 4:'fourStar', 3:'threeStar', 2:'twoStar', 1:'oneStar' };
+              const count = parseInt(summary[keyMap[n]]) || 0;
+              const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+              return `<div class="bar-row">
+                <span class="bar-label">${n}★</span>
+                <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+                <span class="bar-pct">${pct}%</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+
+      const listEl = document.getElementById('reviewsList');
+      listEl.className = 'reviews-list';
+
+      if (!reviews || reviews.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><i class="fa-regular fa-star"></i><p>No reviews yet for this store.</p></div>`;
+        return;
+      }
+
+      listEl.innerHTML = reviews.map(r => `
+        <div class="review-card">
+          <div class="review-header">
+            <div class="reviewer-avatar">${(r.first_name || '?')[0].toUpperCase()}</div>
+            <div style="flex:1">
+              <div class="reviewer-name">${r.first_name} ${(r.last_name || '?')[0]}.</div>
+              <div class="review-stars-sm">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+            </div>
+            <span class="review-date">${new Date(r.created_at).toLocaleDateString('en-NG', { year:'numeric', month:'short', day:'numeric' })}</span>
+          </div>
+          ${r.product_name ? `<p class="review-product-tag"><i class="fa-solid fa-tag"></i>${r.product_name}</p>` : ''}
+          <p class="review-body">${r.body || ''}</p>
+        </div>`).join('');
+    }
+
+    // Override buildProductCard for new design
+    function buildProductCard(p) {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+
+      const isFlashActive = p.flash_start && p.flash_end &&
+        new Date() >= new Date(p.flash_start) && new Date() <= new Date(p.flash_end);
+
+      const rating = parseFloat(p.avgRating) || 0;
+      const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+      const imgSrc = p.main_image_url || 'https://via.placeholder.com/300x300?text=No+Image';
+      const price = parseFloat(p.price).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+
+      card.innerHTML = `
+        ${isFlashActive ? '<span class="flash-badge">Flash Sale</span>' : ''}
+        <div class="card-img-wrap" onclick="viewProduct('${p.id}')">
+          <img src="${imgSrc}" alt="${p.name}" loading="lazy"
+            onerror="this.src='https://via.placeholder.com/300x300?text=No+Image'" />
+        </div>
+        <div class="card-body">
+          <div class="card-name" onclick="viewProduct('${p.id}')">${p.name}</div>
+          <div class="card-price">₦${price}</div>
+          <div class="card-meta">
+            <span class="card-stars">${stars}
+              <small>${p.reviewCount > 0 ? `(${p.reviewCount})` : ''}</small>
+            </span>
+            ${p.stock_quantity === 0 ? '<span class="out-of-stock-tag">Out of stock</span>' : ''}
+          </div>
+          <div class="card-actions">
+            <button class="btn-view-sm" onclick="viewProduct('${p.id}')">View</button>
+            <button class="btn-cart-sm" onclick="addToCart('${p.id}', '${p.name.replace(/'/g, "\\'")}')"
+              ${p.stock_quantity === 0 ? 'disabled' : ''}>
+              <i class="fa-solid fa-cart-plus"></i> Add to cart
+            </button>
+          </div>
+        </div>`;
+      return card;
+    }
+  </script>
 </body>
 </html>
