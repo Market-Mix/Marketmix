@@ -6,31 +6,52 @@
   <title>Store Profile | MarketMix</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="store-id.css" />
-     <!-- 🔒 BLOCK UNAUTHORIZED USERS -->
-    <script>
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.replace("login for buyers.html");
-        }
-    </script>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.replace("login for buyers.html");
+  </script>
 </head>
 <body>
 
-  <!-- Store Header -->
-  <div class="store-header">
-    <div class="store-logo"></div>
+  <!-- Store Header / Banner -->
+  <div class="store-header" id="storeHeader">
+    <div class="store-logo" id="storeLogo">
+      <span id="storeLogoFallback"></span>
+    </div>
+    <!-- Verified badge -->
+    <span class="verified-badge" id="verifiedBadge" style="display:none">
+      <i class="fa-solid fa-circle-check"></i> Verified Seller
+    </span>
   </div>
 
   <!-- Store Info -->
   <div class="store-info">
     <div class="store-details">
-      <h2 id="storeName">UrbanStyle Collections</h2>
-      <p><i class="fa-solid fa-star" style="color:gold"></i> <span id="storeRating">4.8</span> (1.2k reviews)</p>
+      <h2 id="storeName">Loading...</h2>
+      <p id="storeRatingRow">
+        <i class="fa-solid fa-star" style="color:gold"></i>
+        <span id="storeRating">—</span>
+        <span id="storeReviewCount"></span>
+      </p>
+      <p id="storeAddress" class="store-meta"></p>
+      <p id="storeMemberSince" class="store-meta"></p>
     </div>
     <div class="store-actions">
-      <button id="followBtn">Follow</button>
-      <button><i class="fa-solid fa-envelope"></i> Contact Seller</button>
+      <button id="followBtn" onclick="toggleFollow()">
+        <i class="fa-regular fa-heart"></i> Follow
+      </button>
+      <button id="contactBtn" onclick="contactSeller()">
+        <i class="fa-solid fa-envelope"></i> Contact Seller
+      </button>
     </div>
+  </div>
+
+  <!-- Stats Strip -->
+  <div class="store-stats" id="storeStats">
+    <div class="stat"><span id="statProducts">—</span><small>Products</small></div>
+    <div class="stat"><span id="statSales">—</span><small>Sales</small></div>
+    <div class="stat"><span id="statRating">—</span><small>Rating</small></div>
+    <div class="stat"><span id="statReviews">—</span><small>Reviews</small></div>
   </div>
 
   <!-- Tabs -->
@@ -41,39 +62,48 @@
     <button class="tab-btn" data-tab="policies">Policies</button>
   </div>
 
-  <!-- Tab Contents -->
+  <!-- Products Tab -->
   <section id="products" class="tab-content active">
     <div class="filter-bar">
       <select id="categoryFilter">
         <option value="all">All Categories</option>
-        <option value="clothing">Clothing</option>
-        <option value="shoes">Shoes</option>
-        <option value="accessories">Accessories</option>
       </select>
+      <span id="productCountLabel"></span>
     </div>
-
-    <div id="productsGrid" class="products-grid"></div>
+    <div id="productsGrid" class="products-grid">
+      <div class="loading-state">
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading products...
+      </div>
+    </div>
+    <div id="loadMoreWrap" style="text-align:center;margin:20px 0;display:none">
+      <button id="loadMoreBtn" onclick="loadMoreProducts()">Load More</button>
+    </div>
   </section>
 
+  <!-- Reviews Tab -->
   <section id="reviews" class="tab-content">
-    <div class="reviews">
-      <h3>Customer Reviews</h3>
-      <p>⭐ 4.8 average from 1,200 reviews</p>
-      <p>“Fast delivery and great quality products!” – Janet</p>
-      <p>“Excellent seller. Will buy again.” – Tolu</p>
+    <div id="reviewsSummary" class="reviews-summary"></div>
+    <div id="reviewsList" class="reviews-list">
+      <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading reviews...</div>
     </div>
   </section>
 
+  <!-- About Tab -->
   <section id="about" class="tab-content">
-    <p>UrbanStyle Collections is your one-stop shop for trendy and comfortable wear. We deliver quality items at affordable prices across Nigeria.</p>
+    <div id="aboutContent" class="about-content">
+      <p class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>
+    </div>
   </section>
 
+  <!-- Policies Tab -->
   <section id="policies" class="tab-content">
-    <ul>
-      <li><strong>Shipping:</strong> Orders ship within 2–3 business days.</li>
-      <li><strong>Returns:</strong> Returns accepted within 7 days of delivery.</li>
-      <li><strong>Contact:</strong> urbanstyle@marketmix.com</li>
-    </ul>
+    <div class="policies-content" id="policiesContent">
+      <ul>
+        <li><strong>Shipping:</strong> Orders ship within 2–3 business days.</li>
+        <li><strong>Returns:</strong> Returns accepted within 7 days of delivery.</li>
+        <li><strong>Contact:</strong> <span id="policyEmail">—</span></li>
+      </ul>
+    </div>
   </section>
 
   <!-- Toast -->

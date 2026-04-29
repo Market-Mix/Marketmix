@@ -532,6 +532,88 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // ===== FEATURED BRANDS LOADER =====
+async function loadFeaturedBrands() {
+  const container = document.getElementById('brandCarousel');
+  if (!container) return;
+
+  try {
+    const API_BASE = 'https://marketmix-backend.onrender.com/api';
+    const res = await fetch(`${API_BASE}/seller/public?limit=8`);
+    const data = await res.json();
+
+    if (!res.ok || !data.data?.sellers?.length) {
+      // Keep the hardcoded fallback HTML already in the page
+      return;
+    }
+
+    const { sellers } = data.data;
+
+    container.innerHTML = sellers.map(seller => {
+      const logo = seller.storeLogo ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(seller.businessName)}&background=F97316&color=fff&size=100`;
+      const featuredImg = seller.featuredProductImage ||
+        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300';
+      const category = seller.category || 'Marketplace';
+      const rating = seller.rating > 0
+        ? `<span class="brand-rating">⭐ ${seller.rating.toFixed(1)}</span>`
+        : '';
+      const verified = seller.isVerified
+        ? `<span class="brand-verified" title="Verified Seller">✓</span>`
+        : '';
+
+      return `
+        <a href="store-id.html?seller=${seller.sellerId}" class="brand-card">
+          <img src="${logo}" alt="${escapeHtml(seller.businessName)}" class="brand-logo"
+               onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(seller.businessName)}&background=F97316&color=fff&size=100'">
+          <h3>${escapeHtml(seller.businessName)} ${verified}</h3>
+          <p class="muted">${escapeHtml(category)}</p>
+          ${rating}
+          <img src="${featuredImg}" alt="Featured product"
+               class="featured-product"
+               onerror="this.src='marketplace.png'">
+        </a>`;
+    }).join('');
+
+  } catch (err) {
+    console.error('Error loading featured brands:', err);
+    // Silently fail — hardcoded fallback stays if this runs before JS overwrites
+  }
+}
+
+// ===== POPULAR SHOPS LOADER =====
+async function loadPopularShops() {
+  const container = document.getElementById('shopStrip');
+  if (!container) return;
+
+  try {
+    const API_BASE = 'https://marketmix-backend.onrender.com/api';
+    const res = await fetch(`${API_BASE}/seller/public?limit=12`);
+    const data = await res.json();
+
+    if (!res.ok || !data.data?.sellers?.length) {
+      return;
+    }
+
+    const { sellers } = data.data;
+
+    container.innerHTML = sellers.map(seller => {
+      const logo = seller.storeLogo ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(seller.businessName)}&background=F97316&color=fff&size=150`;
+
+      return `
+        <a href="store-id.html?seller=${seller.sellerId}" title="${escapeHtml(seller.businessName)}">
+          <img src="${logo}"
+               alt="${escapeHtml(seller.businessName)}"
+               onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(seller.businessName)}&background=F97316&color=fff&size=150'">
+        </a>`;
+    }).join('');
+
+  } catch (err) {
+    console.error('Error loading popular shops:', err);
+  }
+}
+
       // Render recommended product cards
       container.innerHTML = data.data.map(product => `
         <div class="recommended-item" data-product-id="${product.id}">
@@ -614,7 +696,8 @@ window.addEventListener('DOMContentLoaded', () => {
   loadBestSellingProducts();
   loadNewArrivalsProducts();
   loadRecommendedProducts();
-
+loadFeaturedBrands();
+loadPopularShops();
   // Countdown Timer
   function startCountdown(duration, display) {
     let timer = duration, hours, minutes, seconds;
