@@ -3,29 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Return & Refund Reports - MarketMix</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>Returns & Refunds - MarketMix</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    body {
+    * {
       margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
       font-family: 'Segoe UI', sans-serif;
       background: #FFF7ED;
       color: #333;
     }
 
-    .container {
+    /* ========== CONTAINER ========== */
+    .returns-container {
       max-width: 1200px;
-      margin: auto;
-      padding: 20px;
+      margin: 80px auto;
+      padding: 0 1rem;
     }
 
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
+    .returns-section h1 {
+      font-size: 2rem;
       color: #333;
+      margin-bottom: 1.5rem;
+      font-weight: 600;
     }
 
-    /* Loading Spinner */
+    /* ========== FILTER & SEARCH ========== */
+    .filter-search {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-search input,
+    .filter-search select {
+      padding: 0.75rem 1rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .filter-search input {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .filter-search input:focus,
+    .filter-search select:focus {
+      outline: none;
+      border-color: #F97316;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+    }
+
+    /* ========== TABLE ========== */
+    .returns-table {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .table-header,
+    .table-row {
+      display: grid;
+      grid-template-columns: 140px 160px 110px 100px 100px 110px 90px 80px;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid #eee;
+      font-size: 0.95rem;
+    }
+
+    .table-header {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #F97316;
+      border-bottom: 2px solid #ddd;
+    }
+
+    .table-row {
+      background: white;
+    }
+
+    .table-row:hover {
+      background: #f8fafc;
+    }
+
+    /* ========== STATUS BADGE ========== */
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+      text-transform: capitalize;
+    }
+
+    .status-badge.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-badge.under_review {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .status-badge.resolved {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.refunded {
+      background: #e7d4f5;
+      color: #5a1f8a;
+    }
+
+    .status-badge.rejected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    /* ========== ACTION BUTTONS ========== */
+    .btn-action,
+    .btn-chat {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+
+    .btn-action {
+      background: #F97316;
+      color: white;
+    }
+
+    .btn-action:hover {
+      background: #EA580C;
+      transform: translateY(-2px);
+    }
+
+    .btn-chat {
+      background: #17a2b8;
+      color: white;
+    }
+
+    .btn-chat:hover {
+      background: #138496;
+      transform: translateY(-2px);
+    }
+
+    /* ========== EMPTY STATE ========== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state i {
+      font-size: 48px;
+      color: #ccc;
+      margin-bottom: 20px;
+    }
+
+    .empty-state p {
+      font-size: 1.1rem;
+      color: #666;
+    }
+
+    /* ========== LOADING SPINNER ========== */
     .loading-overlay {
       position: fixed;
       top: 0;
@@ -37,6 +197,10 @@
       justify-content: center;
       align-items: center;
       z-index: 1000;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
     }
 
     .spinner {
@@ -53,257 +217,314 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Insights Dashboard */
-    .dashboard {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
-    }
-
-    .card {
+    /* ========== CHAT SIDE PANEL ========== */
+    .chat-side-panel {
+      position: fixed;
+      right: -400px;
+      top: 0;
+      width: 400px;
+      height: 100vh;
       background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      text-align: center;
-    }
-
-    .card h3 {
-      margin: 5px 0;
-      font-size: 1.3em;
-    }
-
-    .card p {
-      margin: 0;
-      color: #777;
-      font-size: 0.9em;
-    }
-
-    /* Filter bar */
-    .filter-bar {
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.2);
+      z-index: 2000;
       display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      transition: right 0.3s ease;
     }
 
-    .filter-bar select {
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 0.9em;
+    .chat-side-panel.active {
+      right: 0;
     }
 
-    .filter-bar button {
+    /* Chat Header */
+    .chat-header {
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-header-info {
+      flex: 1;
+    }
+
+    .chat-header-info h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .chat-order {
+      margin: 0.25rem 0 0 0;
+      font-size: 0.8rem;
+      opacity: 0.9;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .chat-close-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      transition: background 0.3s;
+    }
+
+    .chat-close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Chat Status Bar */
+    .chat-status-bar {
+      padding: 0.75rem 1.5rem;
+      background: #fff3cd;
+      border-bottom: 1px solid #e0e7ff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .resolution-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+      padding: 0.4rem 0.8rem;
+      border-radius: 12px;
+    }
+
+    .resolution-status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .resolution-status.pending i {
+      color: #ffc107;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Chat Messages */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background: #fafbfc;
+    }
+
+    .chat-message {
+      display: flex;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chat-message.buyer {
+      justify-content: flex-start;
+    }
+
+    .chat-message.seller {
+      justify-content: flex-end;
+    }
+
+    .chat-message.system {
+      justify-content: center;
+    }
+
+    .chat-message.system p {
+      background: #e8f4f8;
+      color: #0c5460;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      text-align: center;
+      margin: 0;
+      max-width: 90%;
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-width: 85%;
+    }
+
+    .chat-message.buyer .message-content {
+      align-items: flex-start;
+    }
+
+    .chat-message.seller .message-content {
+      align-items: flex-end;
+    }
+
+    .message-text {
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      margin: 0;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .chat-message.buyer .message-text {
+      background: #e9ecef;
+      color: #333;
+    }
+
+    .chat-message.seller .message-text {
+      background: #F97316;
+      color: white;
+    }
+
+    .message-time {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 0.25rem;
+    }
+
+    /* Chat Input Area */
+    .chat-input-area {
+      padding: 1rem;
+      border-top: 1px solid #eee;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      resize: none;
+      transition: all 0.3s;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: #F97316;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+    }
+
+    .input-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .file-upload-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: #FFF7ED;
+      border: 1px solid #F97316;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #F97316;
+      transition: all 0.3s;
+      font-size: 1rem;
+    }
+
+    .file-upload-label:hover {
+      background: #F97316;
+      color: white;
+    }
+
+    .btn-send-chat {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
       background: #F97316;
       color: white;
       border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.9em;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+      white-space: nowrap;
     }
 
-    .filter-bar button:hover {
+    .btn-send-chat:hover {
       background: #EA580C;
+      transform: translateY(-2px);
     }
 
-    /* Reports Table/Cards */
-    .reports-container {
-      display: grid;
-      gap: 15px;
-    }
-
-    .report-card {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      padding: 15px;
-      border-left: 4px solid #F97316;
-    }
-
-    .report-card.pending {
-      border-left-color: #F59E0B;
-    }
-
-    .report-card.under_review {
-      border-left-color: #3B82F6;
-    }
-
-    .report-card.resolved {
-      border-left-color: #10B981;
-    }
-
-    .report-card.rejected {
-      border-left-color: #EF4444;
-    }
-
-    .report-card.refunded {
-      border-left-color: #8B5CF6;
-    }
-
-    .report-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .report-id {
-      font-weight: bold;
-      color: #333;
-    }
-
-    .status-badge {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.8em;
-      font-weight: bold;
-      text-transform: capitalize;
-      color: white;
-    }
-
-    .status-badge.pending {
-      background: #F59E0B;
-    }
-
-    .status-badge.under_review {
-      background: #3B82F6;
-    }
-
-    .status-badge.resolved {
-      background: #10B981;
-    }
-
-    .status-badge.rejected {
-      background: #EF4444;
-    }
-
-    .status-badge.refunded {
-      background: #8B5CF6;
-    }
-
-    .report-details {
-      margin-bottom: 10px;
-      font-size: 0.9em;
-    }
-
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 5px;
-      flex-wrap: wrap;
-    }
-
-    .detail-label {
-      font-weight: 600;
-      color: #666;
-      min-width: 120px;
-    }
-
-    .detail-value {
-      color: #333;
-    }
-
-    .reason-badge {
-      display: inline-block;
-      background: #FEE2E2;
-      color: #DC2626;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.8em;
-    }
-
-    .report-description {
-      background: #f9f9f9;
-      padding: 10px;
-      border-radius: 4px;
-      margin: 10px 0;
-      border-left: 3px solid #F97316;
-      font-size: 0.9em;
-      line-height: 1.5;
-    }
-
-    .evidence-section {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #eee;
-    }
-
-    .evidence-link {
-      color: #F97316;
-      text-decoration: none;
-      font-size: 0.9em;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .evidence-link:hover {
-      text-decoration: underline;
-    }
-
-    .response-section {
-      margin-top: 10px;
-      padding: 10px;
-      background: #F0FDF4;
-      border-radius: 4px;
-      border-left: 3px solid #10B981;
-    }
-
-    .response-label {
-      font-weight: 600;
-      color: #059669;
-      margin-bottom: 5px;
-    }
-
-    .response-text {
-      color: #333;
-      font-size: 0.9em;
-      line-height: 1.5;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px;
+    .chat-info-text {
+      font-size: 0.75rem;
       color: #999;
-    }
-
-    .error-message {
-      background: #fee;
-      color: #c00;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 20px 0;
       text-align: center;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
     }
 
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    /* Chat Overlay */
+    .chat-overlay {
       display: none;
-      z-index: 999;
-      max-width: 300px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1500;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
 
-    .notification.show {
+    .chat-overlay.active {
       display: block;
+      opacity: 1;
     }
 
+    /* ========== BACK BUTTON ========== */
     .back-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       background: #F97316;
-      color: #fff;
+      color: white;
       border: none;
       padding: 10px 16px;
       border-radius: 10px;
@@ -318,29 +539,7 @@
       transform: translateY(-2px);
     }
 
-    /* Pagination */
-    .pagination {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .pagination button {
-      background: #F97316;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    .pagination button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-
+    /* ========== FOOTER ========== */
     footer {
       background: rgba(0, 0, 0, 0.7);
       color: #f8fafc;
@@ -350,26 +549,98 @@
       font-size: 15px;
     }
 
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 1024px) {
+      .table-header,
+      .table-row {
+        grid-template-columns: 120px 140px 100px 90px 90px 100px 80px 70px;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        font-size: 0.85rem;
+      }
+    }
+
     @media (max-width: 768px) {
-      .dashboard {
-        grid-template-columns: repeat(2, 1fr);
+      .returns-container {
+        margin: 60px auto;
       }
 
-      .report-header {
-        flex-direction: column;
-        align-items: flex-start;
+      .returns-section h1 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
       }
 
-      .detail-row {
+      .filter-search {
         flex-direction: column;
+        gap: 0.75rem;
       }
+
+      .filter-search input,
+      .filter-search select {
+        width: 100%;
+      }
+
+      .table-header {
+        display: none;
+      }
+
+      .table-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+
+      .col-store::before { content: "Store: "; font-weight: 600; color: #F97316; }
+      .col-product::before { content: "Product: "; font-weight: 600; color: #F97316; }
+      .col-order::before { content: "Order ID: "; font-weight: 600; color: #F97316; }
+      .col-amount::before { content: "Amount: "; font-weight: 600; color: #F97316; }
+      .col-status::before { content: "Status: "; font-weight: 600; color: #F97316; }
+      .col-date::before { content: "Date: "; font-weight: 600; color: #F97316; }
+
+      .chat-side-panel {
+        width: 100%;
+        right: -100%;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .returns-container {
+        margin: 20px auto;
+        padding: 0 0.5rem;
+      }
+
+      .btn-action, .btn-chat {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+      }
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #F97316;
+      border-radius: 10px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+      background: #EA580C;
     }
   </style>
 </head>
 <body>
 
 <!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-overlay hidden" id="loadingOverlay">
   <div class="spinner"></div>
 </div>
 
@@ -377,76 +648,203 @@
   <i class="fas fa-chevron-left"></i> Back
 </button>
 
-<div class="container">
-  <h2>📋 Return & Refund Reports</h2>
-
-  <!-- Dashboard -->
-  <div class="dashboard">
-    <div class="card">
-      <h3 id="totalReports">0</h3>
-      <p>Total Reports</p>
+<div class="returns-container">
+  <section class="returns-section">
+    <h1>Returns & Refunds</h1>
+    
+    <!-- Filter/Search -->
+    <div class="filter-search">
+      <input type="text" id="searchInput" placeholder="Search by Store name or Order ID...">
+      <select id="statusFilter">
+        <option value="all">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="under_review">Under Review</option>
+        <option value="resolved">Resolved</option>
+        <option value="refunded">Refunded</option>
+        <option value="rejected">Rejected</option>
+      </select>
     </div>
-    <div class="card">
-      <h3 id="pendingReports">0</h3>
-      <p>Pending</p>
+
+    <!-- Returns Table -->
+    <div class="returns-table">
+      <div class="table-header">
+        <div class="col-store">Store Name</div>
+        <div class="col-product">Product</div>
+        <div class="col-order">Order ID</div>
+        <div class="col-amount">Amount</div>
+        <div class="col-status">Status</div>
+        <div class="col-date">Date</div>
+        <div class="col-action">Actions</div>
+        <div class="col-chat">Chat</div>
+      </div>
+      <div class="table-body" id="returnsTableBody">
+        <!-- Populated by JavaScript -->
+      </div>
     </div>
-    <div class="card">
-      <h3 id="resolvedReports">0</h3>
-      <p>Resolved</p>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <i class="fas fa-inbox"></i>
+      <p>No return reports yet</p>
     </div>
-    <div class="card">
-      <h3 id="refundedReports">0</h3>
-      <p>Refunded</p>
+  </section>
+</div>
+
+<!-- Chat Side Panel -->
+<div class="chat-side-panel" id="chatPanel">
+  <!-- Chat Header -->
+  <div class="chat-header">
+    <div class="chat-header-info">
+      <h3 id="chatStoreName">Chat with Seller</h3>
+      <p id="chatOrderId" class="chat-order">Order ID: ---</p>
     </div>
-  </div>
-
-  <!-- Error Message -->
-  <div id="errorMessage" class="error-message" style="display:none;"></div>
-
-  <!-- Filter bar -->
-  <div class="filter-bar">
-    <select id="statusFilter">
-      <option value="">All Statuses</option>
-      <option value="pending">Pending</option>
-      <option value="under_review">Under Review</option>
-      <option value="resolved">Resolved</option>
-      <option value="rejected">Rejected</option>
-      <option value="refunded">Refunded</option>
-    </select>
-    <button onclick="applyFilters()">Filter</button>
-  </div>
-
-  <!-- Reports Container -->
-  <div class="reports-container" id="reportsContainer"></div>
-
-  <!-- Empty State -->
-  <div id="emptyState" class="empty-state" style="display:none;">
-    <i class="fas fa-inbox" style="font-size: 48px; color: #ccc;"></i>
-    <p>No reports submitted yet</p>
-  </div>
-
-  <!-- Pagination -->
-  <div class="pagination" id="pagination" style="display:none;">
-    <button id="prevBtn" onclick="changePage(-1)">
-      <i class="fas fa-chevron-left"></i> Previous
+    <button class="chat-close-btn" id="chatCloseBtn">
+      <i class="fas fa-times"></i>
     </button>
-    <span id="pageInfo">Page 1 of 1</span>
-    <button id="nextBtn" onclick="changePage(1)">
-      Next <i class="fas fa-chevron-right"></i>
-    </button>
+  </div>
+
+  <!-- Chat Status Bar -->
+  <div class="chat-status-bar">
+    <span id="chatResolutionStatus" class="resolution-status pending">
+      <i class="fas fa-circle"></i> Pending Resolution
+    </span>
+  </div>
+
+  <!-- Chat Messages -->
+  <div class="chat-messages scrollbar-thin" id="chatMessages">
+    <!-- Messages populated by JS -->
+  </div>
+
+  <!-- Chat Input Area -->
+  <div class="chat-input-area">
+    <div class="input-row">
+      <textarea 
+        id="chatInput" 
+        class="chat-input" 
+        placeholder="Type your message here..." 
+        rows="3"
+      ></textarea>
+      <div class="input-actions">
+        <label class="file-upload-label" title="Attach image or file">
+          <i class="fas fa-paperclip"></i>
+          <input 
+            type="file" 
+            id="chatFileInput" 
+            hidden 
+            accept="image/*,.pdf,.doc,.docx"
+          />
+        </label>
+        <button class="btn-send-chat" id="sendChatBtn">
+          <i class="fas fa-paper-plane"></i> Send
+        </button>
+      </div>
+    </div>
+
+    <!-- Chat info -->
+    <p class="chat-info-text">
+      <i class="fas fa-info-circle"></i> All conversations are monitored by MarketMix
+    </p>
   </div>
 </div>
 
-<!-- Notification -->
-<div class="notification" id="notification"></div>
+<!-- Chat Overlay -->
+<div class="chat-overlay" id="chatOverlay"></div>
+
+<footer>
+  © MarketMix 2025
+</footer>
 
 <script>
-  const API_BASE_URL = 'https://marketmix-backend.onrender.com';
-  let currentPage = 1;
-  let totalPages = 1;
-  let currentFilter = '';
+  const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
+  let currentReports = [];
+  let currentChatData = null;
 
-  // Authentication check
+  // =====================================================
+  // SAMPLE/DEMO DATA
+  // =====================================================
+  const sampleReports = [
+    {
+      id: 1,
+      order_id: 'ORD-2025-001',
+      store_name: 'TechHub Store',
+      product_name: 'Wireless Headphones',
+      total_amount: 15999,
+      status: 'pending',
+      reason: 'defective',
+      description: 'The headphones stopped working after 2 days of use. The left ear is completely silent.',
+      created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+      seller_response: null,
+      messages: [
+        { type: 'buyer', text: 'Hi, I received defective headphones. Can you help?', time: new Date(Date.now() - 1.5*24*60*60*1000) },
+        { type: 'seller', text: 'We are very sorry to hear that. Let me check your order details.', time: new Date(Date.now() - 1.4*24*60*60*1000) }
+      ]
+    },
+    {
+      id: 2,
+      order_id: 'ORD-2025-002',
+      store_name: 'Fashion Boutique',
+      product_name: 'Summer Dress',
+      total_amount: 8500,
+      status: 'under_review',
+      reason: 'wrong_item',
+      description: 'Received a size M instead of the ordered size L. The tag shows a different brand.',
+      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+      seller_response: 'We apologize for this mistake. We will send you the correct size immediately.',
+      messages: [
+        { type: 'buyer', text: 'I ordered size L but received M', time: new Date(Date.now() - 1*24*60*60*1000) },
+        { type: 'seller', text: 'My sincere apologies! I will expedite the correct size to you.', time: new Date(Date.now() - 0.8*24*60*60*1000) },
+        { type: 'buyer', text: 'Thank you! When can I expect it?', time: new Date(Date.now() - 0.7*24*60*60*1000) },
+      ]
+    },
+    {
+      id: 3,
+      order_id: 'ORD-2025-003',
+      store_name: 'Electronics Plus',
+      product_name: 'USB-C Cable (2m)',
+      total_amount: 2999,
+      status: 'resolved',
+      reason: 'not_as_described',
+      description: 'The cable appears to be used/damaged. The connector has visible scratches.',
+      created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
+      seller_response: 'We sincerely apologize. A replacement has been shipped to you.',
+      messages: [
+        { type: 'buyer', text: 'This cable looks used', time: new Date(Date.now() - 5*24*60*60*1000) },
+        { type: 'seller', text: 'We apologize for the inconvenience. New item will be sent immediately.', time: new Date(Date.now() - 4.9*24*60*60*1000) },
+      ]
+    },
+    {
+      id: 4,
+      order_id: 'ORD-2025-004',
+      store_name: 'Home Essentials',
+      product_name: 'Bed Sheets (King Size)',
+      total_amount: 12500,
+      status: 'refunded',
+      reason: 'quality_issue',
+      description: 'Poor stitching quality, threads coming loose from seams.',
+      created_at: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
+      seller_response: 'Full refund approved. Thank you for your patience.',
+      messages: [
+        { type: 'buyer', text: 'The stitching is terrible', time: new Date(Date.now() - 10*24*60*60*1000) },
+        { type: 'seller', text: 'We are deeply sorry. Full refund has been processed.', time: new Date(Date.now() - 9.9*24*60*60*1000) },
+      ]
+    },
+    {
+      id: 5,
+      order_id: 'ORD-2025-005',
+      store_name: 'Beauty Corner',
+      product_name: 'Skincare Set',
+      total_amount: 7200,
+      status: 'rejected',
+      reason: 'expired_product',
+      description: 'Product has already expired according to the expiration date on the box.',
+      created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
+      seller_response: 'This case is under investigation. We will provide an update soon.',
+      messages: [
+        { type: 'buyer', text: 'This product is expired!', time: new Date(Date.now() - 3*24*60*60*1000) },
+      ]
+    }
+  ];
+
   function checkAuth() {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) {
@@ -456,249 +854,192 @@
     return token;
   }
 
-  // Show/Hide Loading
-  function showLoading(show = true) {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.style.display = show ? 'flex' : 'none';
-  }
+  document.addEventListener('DOMContentLoaded', async () => {
+    checkAuth();
+    currentReports = sampleReports;
+    renderReports(currentReports);
+    setupEventListeners();
+  });
 
-  // Show error message
-  function showError(message) {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.innerText = typeof message === 'string' ? message : JSON.stringify(message);
-    errorDiv.style.display = 'block';
-    setTimeout(() => {
-      errorDiv.style.display = 'none';
-    }, 5000);
-  }
-
-  // Show notification
-  function notify(message, type = 'info') {
-    const notification = document.getElementById('notification');
-    notification.innerText = message;
-    notification.style.borderLeft = type === 'error' ? '4px solid #c00' : '4px solid #F97316';
-    notification.classList.add('show');
-    setTimeout(() => {
-      notification.classList.remove('show');
-    }, 4000);
-  }
-
-  // Format date
-  function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  function setupEventListeners() {
+    document.getElementById('statusFilter').addEventListener('change', filterReports);
+    document.getElementById('searchInput').addEventListener('input', searchReports);
+    document.getElementById('chatCloseBtn').addEventListener('click', closeChat);
+    document.getElementById('chatOverlay').addEventListener('click', closeChat);
+    document.getElementById('sendChatBtn').addEventListener('click', sendMessage);
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
     });
   }
 
-  // Format currency
-  function formatCurrency(amount) {
-    return `₦${parseFloat(amount || 0).toFixed(2)}`;
-  }
-
-  // Load reports
-  async function loadReports(page = 1) {
-    const token = checkAuth();
-    if (!token) return;
-
-    showLoading(true);
-
-    try {
-      const params = new URLSearchParams({
-        page: page,
-        limit: 10
-      });
-
-      if (currentFilter) {
-        params.append('status', currentFilter);
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/orders/reports?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          sessionStorage.clear();
-          localStorage.clear();
-          window.location.replace('login for buyers.html');
-          return;
-        }
-        throw new Error(`Failed to load reports: HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'success') {
-        const reports = data.data.reports || [];
-        const pagination = data.data.pagination || {};
-
-        currentPage = pagination.currentPage || 1;
-        totalPages = pagination.totalPages || 1;
-
-        await renderReports(reports);
-        updatePagination();
-        updateDashboard(reports);
-      } else {
-        throw new Error(data.message || 'Failed to load reports');
-      }
-    } catch (error) {
-      console.error('Error loading reports:', error);
-      showError(error.message || 'Failed to load reports. Please try again.');
-    } finally {
-      showLoading(false);
-    }
-  }
-
-  // Render reports
-  async function renderReports(reports) {
-    const container = document.getElementById('reportsContainer');
+  function renderReports(reports) {
+    const container = document.getElementById('returnsTableBody');
     const emptyState = document.getElementById('emptyState');
 
-    container.innerHTML = '';
-
     if (!reports || reports.length === 0) {
+      container.innerHTML = '';
       emptyState.style.display = 'block';
       return;
     }
 
     emptyState.style.display = 'none';
-
-    reports.forEach(report => {
-      const reportCard = document.createElement('div');
-      reportCard.className = `report-card ${report.status}`;
-
-      const date = formatDate(report.created_at);
-      const orderAmount = formatCurrency(report.total_amount);
-
-      let html = `
-        <div class="report-header">
-          <div class="report-id">Report #${report.id} - Order #${report.order_id}</div>
-          <span class="status-badge ${report.status}">${report.status.replace(/_/g, ' ')}</span>
+    container.innerHTML = reports.map(report => `
+      <div class="table-row">
+        <div class="col-store">${report.store_name}</div>
+        <div class="col-product">${report.product_name}</div>
+        <div class="col-order">${report.order_id}</div>
+        <div class="col-amount">₦${formatCurrency(report.total_amount)}</div>
+        <div class="col-status">
+          <span class="status-badge ${report.status}">
+            ${report.status.replace(/_/g, ' ')}
+          </span>
         </div>
-        
-        <div class="report-details">
-          <div class="detail-row">
-            <span class="detail-label">Submitted:</span>
-            <span class="detail-value">${date}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Reason:</span>
-            <span class="reason-badge">${report.reason.replace(/_/g, ' ')}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Order Amount:</span>
-            <span class="detail-value">${orderAmount}</span>
-          </div>
+        <div class="col-date">${formatDate(report.created_at)}</div>
+        <div class="col-action">
+          <button class="btn-action" onclick="viewDetails(${report.id})">
+            <i class="fas fa-eye"></i> View
+          </button>
         </div>
-        
-        <div class="report-description">
-          <strong>Issue Description:</strong><br>
-          ${escapeHtml(report.description)}
+        <div class="col-chat">
+          <button class="btn-chat" onclick="openChat(${report.id})">
+            <i class="fas fa-comments"></i> Chat
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function filterReports() {
+    const status = document.getElementById('statusFilter').value;
+    const filtered = status === 'all' 
+      ? currentReports 
+      : currentReports.filter(r => r.status === status);
+    renderReports(filtered);
+  }
+
+  function searchReports() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = currentReports.filter(r =>
+      r.store_name.toLowerCase().includes(searchTerm) ||
+      r.order_id.toLowerCase().includes(searchTerm)
+    );
+    renderReports(filtered);
+  }
+
+  function openChat(reportId) {
+    const report = currentReports.find(r => r.id === reportId);
+    if (!report) return;
+
+    currentChatData = report;
+    
+    document.getElementById('chatStoreName').textContent = `Chat with ${report.store_name}`;
+    document.getElementById('chatOrderId').textContent = `Order ID: ${report.order_id}`;
+    
+    const statusElement = document.getElementById('chatResolutionStatus');
+    statusElement.className = `resolution-status ${report.status}`;
+    statusElement.innerHTML = `<i class="fas fa-circle"></i> ${report.status.replace(/_/g, ' ').toUpperCase()}`;
+
+    loadChatMessages(report);
+
+    document.getElementById('chatPanel').classList.add('active');
+    document.getElementById('chatOverlay').classList.add('active');
+  }
+
+  function loadChatMessages(report) {
+    const messagesContainer = document.getElementById('chatMessages');
+    
+    let html = '';
+    
+    if (report.seller_response) {
+      html += `
+        <div class="chat-message system">
+          <p>
+            <strong>Seller Response:</strong> ${report.seller_response}
+          </p>
         </div>
       `;
+    }
 
-      if (report.evidence_url) {
-        html += `
-          <div class="evidence-section">
-            <a href="${escapeHtml(report.evidence_url)}" class="evidence-link" target="_blank">
-              <i class="fas fa-paperclip"></i> View Evidence
-            </a>
+    if (report.messages && report.messages.length > 0) {
+      html += report.messages.map(msg => `
+        <div class="chat-message ${msg.type}">
+          <div class="message-content">
+            <div class="message-text">${msg.text}</div>
+            <div class="message-time">${formatTime(msg.time)}</div>
           </div>
-        `;
-      }
+        </div>
+      `).join('');
+    } else {
+      html += `
+        <div class="chat-message system">
+          <p>No messages yet. Start a conversation with the seller.</p>
+        </div>
+      `;
+    }
 
-      if (report.seller_response) {
-        html += `
-          <div class="response-section">
-            <div class="response-label">Seller Response:</div>
-            <div class="response-text">${escapeHtml(report.seller_response)}</div>
-            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
-              Updated: ${formatDate(report.resolution_date)}
-            </div>
-          </div>
-        `;
-      }
+    messagesContainer.innerHTML = html;
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
 
-      reportCard.innerHTML = html;
-      container.appendChild(reportCard);
+  function closeChat() {
+    document.getElementById('chatPanel').classList.remove('active');
+    document.getElementById('chatOverlay').classList.remove('active');
+    document.getElementById('chatInput').value = '';
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+
+    if (!text || !currentChatData) return;
+
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message seller';
+    messageDiv.innerHTML = `
+      <div class="message-content">
+        <div class="message-text">${text}</div>
+        <div class="message-time">${formatTime(new Date())}</div>
+      </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    input.value = '';
+  }
+
+  function formatCurrency(amount) {
+    return parseFloat(amount || 0).toLocaleString('en-NG');
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   }
 
-  // Update dashboard
-  function updateDashboard(reports) {
-    const totalReports = reports.length;
-    const pendingCount = reports.filter(r => r.status === 'pending').length;
-    const resolvedCount = reports.filter(r => r.status === 'resolved').length;
-    const refundedCount = reports.filter(r => r.status === 'refunded').length;
-
-    document.getElementById('totalReports').innerText = totalReports;
-    document.getElementById('pendingReports').innerText = pendingCount;
-    document.getElementById('resolvedReports').innerText = resolvedCount;
-    document.getElementById('refundedReports').innerText = refundedCount;
+  function formatTime(dateOrString) {
+    const date = typeof dateOrString === 'string' ? new Date(dateOrString) : dateOrString;
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
-  // Update pagination
-  function updatePagination() {
-    const paginationDiv = document.getElementById('pagination');
-    const pageInfo = document.getElementById('pageInfo');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-
-    if (totalPages > 1) {
-      paginationDiv.style.display = 'flex';
-      pageInfo.innerText = `Page ${currentPage} of ${totalPages}`;
-      prevBtn.disabled = currentPage === 1;
-      nextBtn.disabled = currentPage === totalPages;
-    } else {
-      paginationDiv.style.display = 'none';
+  function viewDetails(reportId) {
+    const report = currentReports.find(r => r.id === reportId);
+    if (report) {
+      alert(`Report Details:\n\nStore: ${report.store_name}\nProduct: ${report.product_name}\nOrder: ${report.order_id}\nReason: ${report.reason}\n\nDescription:\n${report.description}`);
     }
   }
-
-  // Change page
-  function changePage(direction) {
-    const newPage = currentPage + direction;
-    if (newPage >= 1 && newPage <= totalPages) {
-      loadReports(newPage);
-    }
-  }
-
-  // Apply filters
-  function applyFilters() {
-    currentFilter = document.getElementById('statusFilter').value;
-    currentPage = 1;
-    loadReports(1);
-  }
-
-  // HTML escape
-  function escapeHtml(unsafe) {
-    if (!unsafe && unsafe !== 0) return '';
-    return String(unsafe)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  // Initialize on page load
-  document.addEventListener('DOMContentLoaded', () => {
-    loadReports(1);
-  });
 </script>
-
-<footer>
-  © MarketMix 2025
-</footer>
 
 </body>
 </html>
