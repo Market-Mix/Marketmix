@@ -206,6 +206,139 @@
     cursor: not-allowed;
   }
 
+  .action-buttons-container {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .confirm-delivery-btn, .report-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: 0.3s;
+  }
+
+  .confirm-delivery-btn {
+    background: #10B981;
+  }
+
+  .confirm-delivery-btn:hover:not([disabled]) {
+    background: #059669;
+  }
+
+  .report-btn {
+    background: #EF4444;
+  }
+
+  .report-btn:hover:not([disabled]) {
+    background: #DC2626;
+  }
+
+  .confirm-delivery-btn[disabled], .report-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Modal Styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  .modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #333;
+  }
+
+  .close-modal {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+  }
+
+  .close-modal:hover {
+    color: #333;
+  }
+
+  .modal-body {
+    margin-bottom: 20px;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .modal-footer button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: 0.3s;
+  }
+
+  .btn-primary {
+    background: #F97316;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #EA580C;
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #333;
+  }
+
+  .btn-secondary:hover {
+    background: #d1d5db;
+  }
+
   .product-list-inline { 
     display:flex;
     flex-direction:column;
@@ -396,6 +529,79 @@
 
 <!-- Notification Center -->
 <div class="notifications" id="notificationCenter"></div>
+
+<!-- Delivery Confirmation Modal -->
+<div id="deliveryConfirmModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Confirm Delivery</h2>
+      <button class="close-modal" onclick="closeModal('deliveryConfirmModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="color: #666; line-height: 1.6;">
+        <strong>⚠️ Please Confirm Delivery</strong><br><br>
+        Are you sure you have received this product in good condition? 
+        Once you confirm delivery, you will have 24 hours to report any issues or request a return/refund.
+      </p>
+      <div id="deliveryOrderInfo" style="background: #f9f9f9; padding: 15px; border-radius: 6px; margin-top: 15px; font-size: 0.9em;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('deliveryConfirmModal')">Cancel</button>
+      <button class="btn-primary" onclick="submitDeliveryConfirmation()">Confirm Delivery</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report/Return Modal -->
+<div id="reportModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Report Issue / Request Return</h2>
+      <button class="close-modal" onclick="closeModal('reportModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="reportForm">
+        <div style="margin-bottom: 15px;">
+          <label for="reportOrderId" style="display: block; margin-bottom: 5px; font-weight: 600;">Order ID</label>
+          <input type="text" id="reportOrderId" readonly style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; background: #f9f9f9;">
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label for="reportReason" style="display: block; margin-bottom: 5px; font-weight: 600;">Reason for Report *</label>
+          <select id="reportReason" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+            <option value="">-- Select a reason --</option>
+            <option value="damaged">Item Received Damaged</option>
+            <option value="defective">Item is Defective</option>
+            <option value="not_as_described">Not As Described</option>
+            <option value="wrong_item">Wrong Item Delivered</option>
+            <option value="missing_items">Missing Items from Order</option>
+            <option value="other">Other Issue</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label for="reportDescription" style="display: block; margin-bottom: 5px; font-weight: 600;">Description *</label>
+          <textarea id="reportDescription" required placeholder="Please describe the issue in detail..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; min-height: 100px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label for="reportEvidence" style="display: block; margin-bottom: 5px; font-weight: 600;">Evidence (Image/Video) *</label>
+          <input type="file" id="reportEvidence" accept="image/*,video/*" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+          <small style="color: #777; display: block; margin-top: 5px;">Accepted formats: JPG, PNG, GIF, MP4 (Max 20MB)</small>
+        </div>
+
+        <div style="background: #FFF7ED; border-left: 4px solid #F97316; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+          <strong style="color: #666;">⏱️ Important:</strong>
+          <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">You have 24 hours from delivery confirmation to submit a report.</p>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('reportModal')">Cancel</button>
+      <button class="btn-primary" onclick="submitReport()">Submit Report</button>
+    </div>
+  </div>
+</div>
 
 
 <script>
@@ -845,45 +1051,228 @@ function enhancePurchaseRows() {
     if (!statusCell) return;
 
     const statusText = statusCell.innerText.trim().toLowerCase();
-    if (statusText !== 'delivered' && statusText !== 'completed') return;
-
     const orderId = row.dataset.orderId || '';
     const productId = row.dataset.productId || '';
     const nameCell = row.querySelector('[data-label="Name"]') || row.querySelector('.product-cell');
     if (!nameCell) return;
 
-    // Avoid duplicating button
-    if (nameCell.querySelector('.drop-review-inline-btn')) return;
+    // Avoid duplicating buttons
+    if (nameCell.querySelector('.action-buttons-container')) return;
 
-    if (productId) {
-      const btn = document.createElement('button');
-      btn.className = 'drop-review-inline-btn';
-      btn.innerHTML = '<i class="fas fa-star"></i> Review';
-      btn.dataset.orderId = orderId;
-      btn.dataset.productId = productId;
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.justifyContent = 'space-between';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '8px';
 
-      btn.addEventListener('click', () => {
-        window.location.href = `reviews ratings.html?product=${encodeURIComponent(productId)}&order=${encodeURIComponent(orderId)}`;
-      });
+    const textSpan = document.createElement('span');
+    textSpan.innerHTML = nameCell.innerHTML;
+    wrapper.appendChild(textSpan);
 
-      // append the button after the product name
-      nameCell.style.display = 'flex';
-      nameCell.style.justifyContent = 'space-between';
-      nameCell.style.alignItems = 'center';
-      const wrapper = document.createElement('div');
-      wrapper.style.display = 'flex';
-      wrapper.style.alignItems = 'center';
-      wrapper.style.gap = '8px';
+    // Create action buttons container
+    const actionsContainer = document.createElement('div');
+    actionsContainer.className = 'action-buttons-container';
 
-      const textSpan = document.createElement('span');
-      textSpan.innerHTML = nameCell.innerHTML;
-      wrapper.appendChild(textSpan);
-      wrapper.appendChild(btn);
-
-      nameCell.innerHTML = '';
-      nameCell.appendChild(wrapper);
+    // Add CONFIRM DELIVERY button for shipped orders
+    if (statusText === 'shipped' || statusText === 'processing') {
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'confirm-delivery-btn';
+      confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm';
+      confirmBtn.dataset.orderId = orderId;
+      confirmBtn.onclick = (e) => {
+        e.preventDefault();
+        openDeliveryConfirmModal(orderId);
+      };
+      actionsContainer.appendChild(confirmBtn);
     }
+
+    // Add REPORT button for delivered orders (within 24 hours)
+    if (statusText === 'delivered' || statusText === 'completed') {
+      const reportBtn = document.createElement('button');
+      reportBtn.className = 'report-btn';
+      reportBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Report';
+      reportBtn.dataset.orderId = orderId;
+      reportBtn.onclick = (e) => {
+        e.preventDefault();
+        openReportModal(orderId);
+      };
+      actionsContainer.appendChild(reportBtn);
+
+      // Add REVIEW button for delivered/completed orders
+      if (productId) {
+        const reviewBtn = document.createElement('button');
+        reviewBtn.className = 'drop-review-inline-btn';
+        reviewBtn.innerHTML = '<i class="fas fa-star"></i> Review';
+        reviewBtn.dataset.orderId = orderId;
+        reviewBtn.dataset.productId = productId;
+        reviewBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          window.location.href = `reviews ratings.html?product=${encodeURIComponent(productId)}&order=${encodeURIComponent(orderId)}`;
+        });
+        actionsContainer.appendChild(reviewBtn);
+      }
+    }
+
+    wrapper.appendChild(actionsContainer);
+    nameCell.innerHTML = '';
+    nameCell.appendChild(wrapper);
   });
+}
+
+// Modal Functions
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.add('active');
+  }
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove('active');
+  }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+  const deliveryModal = document.getElementById('deliveryConfirmModal');
+  const reportModal = document.getElementById('reportModal');
+  
+  if (e.target === deliveryModal) {
+    closeModal('deliveryConfirmModal');
+  }
+  if (e.target === reportModal) {
+    closeModal('reportModal');
+  }
+});
+
+// Delivery Confirmation Functions
+function openDeliveryConfirmModal(orderId) {
+  const token = checkAuth();
+  if (!token) return;
+  
+  const modal = document.getElementById('deliveryConfirmModal');
+  modal.dataset.orderId = orderId;
+  
+  // Fetch order details to show in modal
+  const orderInfo = document.getElementById('deliveryOrderInfo');
+  orderInfo.innerHTML = `<p>Order ID: <strong>#${orderId}</strong></p><p style="color: #10B981;">⏱️ You will have 24 hours to report any issues after confirmation.</p>`;
+  
+  openModal('deliveryConfirmModal');
+}
+
+async function submitDeliveryConfirmation() {
+  const modal = document.getElementById('deliveryConfirmModal');
+  const orderId = modal.dataset.orderId;
+  const token = checkAuth();
+  
+  if (!orderId || !token) {
+    alert('Error: Order ID or token not found');
+    return;
+  }
+
+  showLoading(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/confirm-delivery`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      notify('✅ Delivery confirmed successfully! You now have 24 hours to report any issues.', 'success');
+      closeModal('deliveryConfirmModal');
+      
+      // Reload orders to update status
+      setTimeout(() => {
+        loadOrders(currentPage);
+      }, 1000);
+    } else {
+      showError(data.message || 'Failed to confirm delivery');
+    }
+  } catch (error) {
+    console.error('Error confirming delivery:', error);
+    showError('Error confirming delivery. Please try again.');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Report Functions
+function openReportModal(orderId) {
+  const token = checkAuth();
+  if (!token) return;
+
+  const modal = document.getElementById('reportModal');
+  modal.dataset.orderId = orderId;
+
+  document.getElementById('reportOrderId').value = `#${orderId}`;
+  document.getElementById('reportForm').reset();
+  
+  openModal('reportModal');
+}
+
+async function submitReport() {
+  const modal = document.getElementById('reportModal');
+  const orderId = modal.dataset.orderId;
+  const token = checkAuth();
+  const reason = document.getElementById('reportReason').value;
+  const description = document.getElementById('reportDescription').value;
+  const evidenceFile = document.getElementById('reportEvidence').files[0];
+
+  if (!reason || !description || !evidenceFile) {
+    alert('Please fill in all required fields and select an evidence file');
+    return;
+  }
+
+  if (evidenceFile.size > 20 * 1024 * 1024) {
+    alert('File size exceeds 20MB limit');
+    return;
+  }
+
+  showLoading(true);
+
+  try {
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('reason', reason);
+    formData.append('description', description);
+    formData.append('evidence', evidenceFile);
+
+    const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/report`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      notify('✅ Report submitted successfully! You will receive an auto-reply shortly.', 'success');
+      
+      // Show auto-reply message
+      setTimeout(() => {
+        alert('📧 Auto Reply from MarketMix:\n\nThank you for reporting this issue. We are patient while the seller reviews and responds to your case. We will keep you updated on the progress.\n\nReport ID: ' + (data.reportId || orderId));
+        closeModal('reportModal');
+        loadOrders(currentPage);
+      }, 1000);
+    } else {
+      showError(data.message || 'Failed to submit report');
+    }
+  } catch (error) {
+    console.error('Error submitting report:', error);
+    showError('Error submitting report. Please try again.');
+  } finally {
+    showLoading(false);
+  }
 }
 
 // Initialize on page load
