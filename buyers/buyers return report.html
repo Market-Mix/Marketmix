@@ -348,41 +348,50 @@
     }
 
     .chat-message.buyer {
-      justify-content: flex-start;
-    }
-
-    .chat-message.seller {
       justify-content: flex-end;
     }
 
+    .chat-message.seller {
+      justify-content: flex-start;
+    }
+
     .chat-message.system {
-      justify-content: center;
-    }
-
-    .chat-message.system p {
-      background: #e8f4f8;
-      color: #0c5460;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      text-align: center;
-      margin: 0;
-      max-width: 90%;
-    }
-
-    .message-content {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      max-width: 85%;
+      justify-content: flex-start;
     }
 
     .chat-message.buyer .message-content {
-      align-items: flex-start;
+      align-items: flex-end;
     }
 
     .chat-message.seller .message-content {
-      align-items: flex-end;
+      align-items: flex-start;
+    }
+
+    .message-sender {
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+
+    .chat-message.seller .message-sender {
+      color: #F97316;
+    }
+
+    .chat-message.system .message-sender {
+      color: #0066cc;
+    }
+
+    .chat-message.system p {
+      background: #e3f2fd;
+      color: #0066cc;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      text-align: left;
+      margin: 0;
+      max-width: 85%;
+      border-left: 4px solid #0066cc;
     }
 
     .message-text {
@@ -394,13 +403,27 @@
     }
 
     .chat-message.buyer .message-text {
+      background: #007bff;
+      color: white;
+    }
+
+    .chat-message.seller .message-text {
       background: #e9ecef;
       color: #333;
     }
 
-    .chat-message.seller .message-text {
-      background: #F97316;
-      color: white;
+    .message-media {
+      margin-top: 0.5rem;
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 200px;
+    }
+
+    .message-media img,
+    .message-media video {
+      width: 100%;
+      height: auto;
+      display: block;
     }
 
     .message-time {
@@ -1058,7 +1081,7 @@
       
       <div class="form-group">
         <label>Upload Image/Video</label>
-        <input type="file" id="evidenceFile" accept="image/*,video/*" required>
+        <input type="file" id="evidenceFile" accept="image/*,video/*">
       </div>
       
       <div class="form-group">
@@ -1304,7 +1327,7 @@
         <div class="col-status">
           ${statusHtml}
         </div>
-        <div class="col-date">${formatDate(report.created_at)}</div>
+        <div class="col-date">${complaintStarted ? formatDate(report.evidence_submitted_at || report.created_at) : ''}</div>
         <div class="col-action">
           ${viewBtnHtml}
         </div>
@@ -1391,6 +1414,9 @@
 
     closeEvidenceModal();
     openChatPanel(currentChatData);
+    
+    // Update the table row to reflect the new state
+    renderReports(currentReports);
   }
 
   function openChatPanel(report) {
@@ -1435,27 +1461,43 @@
     
     if (report.seller_response) {
       html += `
-        <div class="chat-message system">
-          <p>
-            <strong>Seller Response:</strong> ${report.seller_response}
-          </p>
+        <div class="chat-message seller">
+          <div class="message-content">
+            <span class="message-sender">Seller</span>
+            <div class="message-text">${report.seller_response}</div>
+            <div class="message-time">${formatTime(new Date())}</div>
+          </div>
         </div>
       `;
     }
 
     if (report.messages && report.messages.length > 0) {
-      html += report.messages.map(msg => `
+      html += report.messages.map(msg => {
+        let senderLabel = '';
+        let messageClass = msg.type;
+        if (msg.type === 'system') {
+          senderLabel = '<span class="message-sender">MarketMix</span>';
+        } else if (msg.type === 'seller') {
+          senderLabel = '<span class="message-sender">Seller</span>';
+        }
+        return `
         <div class="chat-message ${msg.type}">
           <div class="message-content">
+            ${senderLabel}
             <div class="message-text">${msg.text}</div>
+            ${msg.media ? `<div class="message-media">${msg.media}</div>` : ''}
             <div class="message-time">${formatTime(msg.time)}</div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     } else {
       html += `
         <div class="chat-message system">
-          <p>No messages yet. Start a conversation with the seller.</p>
+          <div class="message-content">
+            <span class="message-sender">MarketMix</span>
+            <p>No messages yet. Start a conversation with the seller.</p>
+          </div>
         </div>
       `;
     }
@@ -1472,23 +1514,49 @@
 
   function sendMessage() {
     const input = document.getElementById('chatInput');
+    const fileInput = document.getElementById('chatFileInput');
     const text = input.value.trim();
 
-    if (!text || !currentChatData) return;
+    if (!text && !fileInput.files.length) return;
 
     const messagesContainer = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message seller';
-    messageDiv.innerHTML = `
-      <div class="message-content">
-        <div class="message-text">${text}</div>
-        <div class="message-time">${formatTime(new Date())}</div>
-      </div>
-    `;
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    messageDiv.className = 'chat-message buyer';
+    
+    let mediaHtml = '';
+    if (fileInput.files.length > 0) {
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (file.type.startsWith('image/')) {
+          mediaHtml = `<div class="message-media"><img src="${e.target.result}" alt="uploaded image"></div>`;
+        } else if (file.type.startsWith('video/')) {
+          mediaHtml = `<div class="message-media"><video controls style="width:100%;"><source src="${e.target.result}" type="${file.type}"></video></div>`;
+        }
+        messageDiv.innerHTML = `
+          <div class="message-content">
+            <div class="message-text">${text || '[Media shared]'}</div>
+            ${mediaHtml}
+            <div class="message-time">${formatTime(new Date())}</div>
+          </div>
+        `;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      messageDiv.innerHTML = `
+        <div class="message-content">
+          <div class="message-text">${text}</div>
+          <div class="message-time">${formatTime(new Date())}</div>
+        </div>
+      `;
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 
     input.value = '';
+    fileInput.value = '';
   }
 
   function formatCurrency(amount) {
