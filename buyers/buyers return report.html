@@ -1102,6 +1102,7 @@
   const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
   let currentReports = [];
   let currentChatData = null;
+  let evidenceRequired = false;
 
   // =====================================================
   // SAMPLE/DEMO DATA
@@ -1375,10 +1376,16 @@
     document.getElementById('evidenceProductName').value = report.product_name;
     document.getElementById('evidenceDescription').value = '';
     document.getElementById('evidenceFile').value = '';
+    evidenceRequired = true;
     document.getElementById('evidenceModal').classList.add('active');
   }
 
   function closeEvidenceModal() {
+    // If closing without submitting evidence, also close chat
+    if (evidenceRequired) {
+      closeChat();
+    }
+    evidenceRequired = false;
     document.getElementById('evidenceModal').classList.remove('active');
   }
 
@@ -1399,6 +1406,9 @@
       text: `[Evidence Submitted]\nDescription: ${description}`,
       time: new Date()
     });
+    
+    // Mark that evidence was successfully submitted
+    evidenceRequired = false;
     
     // Auto-reply from MarketMix
     setTimeout(() => {
