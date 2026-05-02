@@ -1014,6 +1014,14 @@
         <span class="detail-value" id="detailsOrderId">---</span>
       </div>
       <div class="detail-row">
+        <span class="detail-label">Status:</span>
+        <span class="detail-value" id="detailsStatus">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">MarketMix Decision:</span>
+        <span class="detail-value" id="detailsDecision">---</span>
+      </div>
+      <div class="detail-row">
         <span class="detail-label">Reason:</span>
         <span class="detail-value" id="detailsReason">---</span>
       </div>
@@ -1125,6 +1133,7 @@
       purchase_date: new Date(Date.now() - 8*24*60*60*1000).toISOString(), // older than 5 days, button disabled
       created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
       evidence_submitted_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
+      marketmix_reason: 'Resolved: replacement approved because the product was not as described.',
       seller_response: 'We sincerely apologize. A replacement has been shipped to you.',
       messages: [
         { type: 'buyer', text: '[Evidence Submitted]\nDescription: This cable looks used', time: new Date(Date.now() - 5*24*60*60*1000) },
@@ -1143,6 +1152,7 @@
       purchase_date: new Date(Date.now() - 15*24*60*60*1000).toISOString(),
       created_at: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
       evidence_submitted_at: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
+      marketmix_reason: 'Refund approved after review due to quality issue.',
       seller_response: 'Full refund approved. Thank you for your patience.',
       messages: [
         { type: 'buyer', text: '[Evidence Submitted]\nDescription: The stitching is terrible', time: new Date(Date.now() - 10*24*60*60*1000) },
@@ -1161,6 +1171,7 @@
       purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(), // within 5 days, no messages yet
       created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
       evidence_submitted_at: null,
+      marketmix_reason: 'Rejected: request denied because the product was already expired when delivered.',
       seller_response: null,
       messages: [] // No messages, so it will trigger the evidence modal
     }
@@ -1471,6 +1482,8 @@
       document.getElementById('detailsStore').textContent = report.store_name;
       document.getElementById('detailsProduct').textContent = report.product_name;
       document.getElementById('detailsOrderId').textContent = report.order_id;
+      document.getElementById('detailsStatus').textContent = report.status.replace(/_/g, ' ').toUpperCase();
+      document.getElementById('detailsDecision').textContent = report.marketmix_reason || (['resolved','rejected','refunded'].includes(report.status) ? 'MarketMix decision recorded.' : 'Awaiting MarketMix review.');
       document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
       document.getElementById('detailsDescription').textContent = report.description;
       document.getElementById('detailsModal').classList.add('active');
