@@ -499,6 +499,138 @@
       gap: 0.4rem;
     }
 
+    /* ========== EVIDENCE MODAL ========== */
+    .evidence-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2500;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .evidence-modal.active {
+      display: flex;
+    }
+
+    .evidence-modal-content {
+      background: white;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .evidence-header {
+      padding: 1.2rem 1.5rem;
+      background: #F97316;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .evidence-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .evidence-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .evidence-body {
+      padding: 1.5rem;
+    }
+
+    .evidence-info {
+      margin-bottom: 1.5rem;
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #333;
+      font-size: 0.9rem;
+    }
+
+    .form-group input[type="text"],
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: inherit;
+      background: #f8f9fa;
+    }
+
+    .form-group input[type="text"]:not([readonly]),
+    .form-group textarea,
+    .form-group input[type="file"] {
+      background: white;
+    }
+
+    .form-group input[type="file"] {
+      width: 100%;
+      padding: 0.5rem 0;
+    }
+
+    .btn-submit-evidence {
+      width: 100%;
+      padding: 0.8rem;
+      background: #F97316;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 1rem;
+    }
+
+    .btn-submit-evidence:hover {
+      background: #EA580C;
+    }
+
+    /* 42 HOURS COUNTDOWN BANNER */
+    .chat-countdown-banner {
+      background: #ffebee;
+      color: #c62828;
+      padding: 0.75rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-bottom: 1px solid #ffcdd2;
+      display: none;
+    }
+
+    .chat-countdown-banner.active {
+      display: block;
+    }
+
     /* Chat Overlay */
     .chat-overlay {
       display: none;
@@ -635,6 +767,114 @@
     .scrollbar-thin::-webkit-scrollbar-thumb:hover {
       background: #EA580C;
     }
+
+    /* ========== DETAILS MODAL ========== */
+    .details-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2800;
+      justify-content: center;
+      align-items: center;
+      overflow-y: auto;
+    }
+
+    .details-modal.active {
+      display: flex;
+    }
+
+    .details-modal-content {
+      background: white;
+      width: 90%;
+      max-width: 600px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      animation: modalSlideIn 0.3s ease;
+      margin: auto;
+    }
+
+    .details-header {
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .details-header h2 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+
+    .details-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.3s;
+    }
+
+    .details-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .details-body {
+      padding: 1.5rem;
+    }
+
+    .detail-row {
+      display: flex;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 1rem;
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      font-weight: 600;
+      color: #F97316;
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+
+    .detail-value {
+      color: #333;
+      word-break: break-word;
+    }
+
+    .details-close-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #F97316;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 1rem;
+    }
+
+    .details-close-btn:hover {
+      background: #EA580C;
+    }
   </style>
 </head>
 <body>
@@ -710,6 +950,9 @@
     </span>
   </div>
 
+  <!-- 42 Hours Countdown Banner -->
+  <div id="chatCountdownBanner" class="chat-countdown-banner"></div>
+
   <!-- Chat Messages -->
   <div class="chat-messages scrollbar-thin" id="chatMessages">
     <!-- Messages populated by JS -->
@@ -750,6 +993,74 @@
 <!-- Chat Overlay -->
 <div class="chat-overlay" id="chatOverlay"></div>
 
+<!-- Details Modal (for View action) -->
+<div class="details-modal" id="detailsModal">
+  <div class="details-modal-content">
+    <div class="details-header">
+      <h2>Return Report Details</h2>
+      <button class="details-close" id="detailsCloseBtn">&times;</button>
+    </div>
+    <div class="details-body">
+      <div class="detail-row">
+        <span class="detail-label">Store:</span>
+        <span class="detail-value" id="detailsStore">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Product:</span>
+        <span class="detail-value" id="detailsProduct">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Order ID:</span>
+        <span class="detail-value" id="detailsOrderId">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Reason:</span>
+        <span class="detail-value" id="detailsReason">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Description:</span>
+        <span class="detail-value" id="detailsDescription" style="white-space: pre-wrap; line-height: 1.6;">---</span>
+      </div>
+      <button class="details-close-btn" id="detailsCloseActionBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Evidence Form Modal -->
+<div class="evidence-modal" id="evidenceModal">
+  <div class="evidence-modal-content">
+    <div class="evidence-header">
+      <h2>Submit Evidence</h2>
+      <button class="evidence-close" id="evidenceCloseBtn">&times;</button>
+    </div>
+    <div class="evidence-body">
+      <p class="evidence-info">Please provide evidence for your return request before chatting.</p>
+      
+      <div class="form-group">
+        <label>Order ID</label>
+        <input type="text" id="evidenceOrderId" readonly>
+      </div>
+      
+      <div class="form-group">
+        <label>Product Name</label>
+        <input type="text" id="evidenceProductName" readonly>
+      </div>
+      
+      <div class="form-group">
+        <label>Upload Image/Video</label>
+        <input type="file" id="evidenceFile" accept="image/*,video/*" required>
+      </div>
+      
+      <div class="form-group">
+        <label>Description of Problem</label>
+        <textarea id="evidenceDescription" rows="4" placeholder="Describe the issue in detail..." required></textarea>
+      </div>
+      
+      <button class="btn-submit-evidence" id="submitEvidenceBtn">Submit & Start Chat</button>
+    </div>
+  </div>
+</div>
+
 <footer>
   © MarketMix 2025
 </footer>
@@ -772,10 +1083,13 @@
       status: 'pending',
       reason: 'defective',
       description: 'The headphones stopped working after 2 days of use. The left ear is completely silent.',
+      purchase_date: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
       created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+      evidence_submitted_at: new Date(Date.now() - 1.5*24*60*60*1000).toISOString(),
       seller_response: null,
       messages: [
-        { type: 'buyer', text: 'Hi, I received defective headphones. Can you help?', time: new Date(Date.now() - 1.5*24*60*60*1000) },
+        { type: 'buyer', text: '[Evidence Submitted]\nDescription: The headphones stopped working after 2 days of use. The left ear is completely silent.', time: new Date(Date.now() - 1.5*24*60*60*1000) },
+        { type: 'system', text: 'Please be patient while the store attends to you.', time: new Date(Date.now() - 1.49*24*60*60*1000) },
         { type: 'seller', text: 'We are very sorry to hear that. Let me check your order details.', time: new Date(Date.now() - 1.4*24*60*60*1000) }
       ]
     },
@@ -788,10 +1102,13 @@
       status: 'under_review',
       reason: 'wrong_item',
       description: 'Received a size M instead of the ordered size L. The tag shows a different brand.',
+      purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
       created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+      evidence_submitted_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
       seller_response: 'We apologize for this mistake. We will send you the correct size immediately.',
       messages: [
-        { type: 'buyer', text: 'I ordered size L but received M', time: new Date(Date.now() - 1*24*60*60*1000) },
+        { type: 'buyer', text: '[Evidence Submitted]\nDescription: Received a size M instead of the ordered size L.', time: new Date(Date.now() - 1*24*60*60*1000) },
+        { type: 'system', text: 'Please be patient while the store attends to you.', time: new Date(Date.now() - 0.9*24*60*60*1000) },
         { type: 'seller', text: 'My sincere apologies! I will expedite the correct size to you.', time: new Date(Date.now() - 0.8*24*60*60*1000) },
         { type: 'buyer', text: 'Thank you! When can I expect it?', time: new Date(Date.now() - 0.7*24*60*60*1000) },
       ]
@@ -805,10 +1122,12 @@
       status: 'resolved',
       reason: 'not_as_described',
       description: 'The cable appears to be used/damaged. The connector has visible scratches.',
+      purchase_date: new Date(Date.now() - 8*24*60*60*1000).toISOString(), // older than 5 days, button disabled
       created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
+      evidence_submitted_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
       seller_response: 'We sincerely apologize. A replacement has been shipped to you.',
       messages: [
-        { type: 'buyer', text: 'This cable looks used', time: new Date(Date.now() - 5*24*60*60*1000) },
+        { type: 'buyer', text: '[Evidence Submitted]\nDescription: This cable looks used', time: new Date(Date.now() - 5*24*60*60*1000) },
         { type: 'seller', text: 'We apologize for the inconvenience. New item will be sent immediately.', time: new Date(Date.now() - 4.9*24*60*60*1000) },
       ]
     },
@@ -821,10 +1140,12 @@
       status: 'refunded',
       reason: 'quality_issue',
       description: 'Poor stitching quality, threads coming loose from seams.',
+      purchase_date: new Date(Date.now() - 15*24*60*60*1000).toISOString(),
       created_at: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
+      evidence_submitted_at: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
       seller_response: 'Full refund approved. Thank you for your patience.',
       messages: [
-        { type: 'buyer', text: 'The stitching is terrible', time: new Date(Date.now() - 10*24*60*60*1000) },
+        { type: 'buyer', text: '[Evidence Submitted]\nDescription: The stitching is terrible', time: new Date(Date.now() - 10*24*60*60*1000) },
         { type: 'seller', text: 'We are deeply sorry. Full refund has been processed.', time: new Date(Date.now() - 9.9*24*60*60*1000) },
       ]
     },
@@ -837,11 +1158,11 @@
       status: 'rejected',
       reason: 'expired_product',
       description: 'Product has already expired according to the expiration date on the box.',
-      created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
-      seller_response: 'This case is under investigation. We will provide an update soon.',
-      messages: [
-        { type: 'buyer', text: 'This product is expired!', time: new Date(Date.now() - 3*24*60*60*1000) },
-      ]
+      purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(), // within 5 days, no messages yet
+      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+      evidence_submitted_at: null,
+      seller_response: null,
+      messages: [] // No messages, so it will trigger the evidence modal
     }
   ];
 
@@ -873,6 +1194,11 @@
         sendMessage();
       }
     });
+    
+    document.getElementById('evidenceCloseBtn').addEventListener('click', closeEvidenceModal);
+    document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
+    document.getElementById('detailsCloseBtn').addEventListener('click', closeDetailsModal);
+    document.getElementById('detailsCloseActionBtn').addEventListener('click', closeDetailsModal);
   }
 
   function renderReports(reports) {
@@ -886,7 +1212,38 @@
     }
 
     emptyState.style.display = 'none';
-    container.innerHTML = reports.map(report => `
+    container.innerHTML = reports.map(report => {
+      let chatBtnHtml = '';
+      if (report.purchase_date) {
+        const purchaseTime = new Date(report.purchase_date).getTime();
+        const now = Date.now();
+        const expiryTime = purchaseTime + (5 * 24 * 60 * 60 * 1000);
+        const timeLeft = expiryTime - now;
+
+        if (timeLeft > 0) {
+          const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+          const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          chatBtnHtml = `
+            <button class="btn-chat" onclick="openChat(${report.id})">
+              <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+            </button>
+          `;
+        } else {
+          chatBtnHtml = `
+            <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat expired (5 days after purchase)">
+              <i class="fas fa-comments"></i> Expired
+            </button>
+          `;
+        }
+      } else {
+        chatBtnHtml = `
+          <button class="btn-chat" onclick="openChat(${report.id})">
+            <i class="fas fa-comments"></i> Chat
+          </button>
+        `;
+      }
+
+      return `
       <div class="table-row">
         <div class="col-store">${report.store_name}</div>
         <div class="col-product">${report.product_name}</div>
@@ -904,12 +1261,11 @@
           </button>
         </div>
         <div class="col-chat">
-          <button class="btn-chat" onclick="openChat(${report.id})">
-            <i class="fas fa-comments"></i> Chat
-          </button>
+          ${chatBtnHtml}
         </div>
       </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   function filterReports() {
@@ -935,12 +1291,88 @@
 
     currentChatData = report;
     
+    // Check if evidence has been submitted (or if this is the first time chatting)
+    if (!report.evidence_submitted_at && (!report.messages || report.messages.length === 0)) {
+      openEvidenceModal(report);
+      return;
+    }
+
+    openChatPanel(report);
+  }
+
+  function openEvidenceModal(report) {
+    document.getElementById('evidenceOrderId').value = report.order_id;
+    document.getElementById('evidenceProductName').value = report.product_name;
+    document.getElementById('evidenceDescription').value = '';
+    document.getElementById('evidenceFile').value = '';
+    document.getElementById('evidenceModal').classList.add('active');
+  }
+
+  function closeEvidenceModal() {
+    document.getElementById('evidenceModal').classList.remove('active');
+  }
+
+  function submitEvidence() {
+    const description = document.getElementById('evidenceDescription').value.trim();
+    if (!description) {
+      alert('Please provide a description of the problem.');
+      return;
+    }
+
+    // In a real app, you would upload the file and send to backend
+    // For demo, we just update the currentChatData
+    currentChatData.evidence_submitted_at = new Date().toISOString();
+    if (!currentChatData.messages) currentChatData.messages = [];
+    
+    currentChatData.messages.push({
+      type: 'buyer',
+      text: `[Evidence Submitted]\nDescription: ${description}`,
+      time: new Date()
+    });
+    
+    // Auto-reply from MarketMix
+    setTimeout(() => {
+      currentChatData.messages.push({
+        type: 'system',
+        text: 'Please be patient while the store attends to you.',
+        time: new Date()
+      });
+      if (document.getElementById('chatPanel').classList.contains('active')) {
+        loadChatMessages(currentChatData);
+      }
+    }, 500);
+
+    closeEvidenceModal();
+    openChatPanel(currentChatData);
+  }
+
+  function openChatPanel(report) {
     document.getElementById('chatStoreName').textContent = `Chat with ${report.store_name}`;
     document.getElementById('chatOrderId').textContent = `Order ID: ${report.order_id}`;
     
     const statusElement = document.getElementById('chatResolutionStatus');
     statusElement.className = `resolution-status ${report.status}`;
     statusElement.innerHTML = `<i class="fas fa-circle"></i> ${report.status.replace(/_/g, ' ').toUpperCase()}`;
+
+    // Update 42 hours countdown banner
+    const countdownBanner = document.getElementById('chatCountdownBanner');
+    if (report.evidence_submitted_at) {
+      const evidenceTime = new Date(report.evidence_submitted_at).getTime();
+      const decisionTime = evidenceTime + (42 * 60 * 60 * 1000);
+      const timeLeft = decisionTime - Date.now();
+      
+      if (timeLeft > 0) {
+        const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+        const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        countdownBanner.textContent = `The store has ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
+        countdownBanner.classList.add('active');
+      } else {
+        countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
+        countdownBanner.classList.add('active');
+      }
+    } else {
+      countdownBanner.classList.remove('active');
+    }
 
     loadChatMessages(report);
 
@@ -1036,8 +1468,17 @@
   function viewDetails(reportId) {
     const report = currentReports.find(r => r.id === reportId);
     if (report) {
-      alert(`Report Details:\n\nStore: ${report.store_name}\nProduct: ${report.product_name}\nOrder: ${report.order_id}\nReason: ${report.reason}\n\nDescription:\n${report.description}`);
+      document.getElementById('detailsStore').textContent = report.store_name;
+      document.getElementById('detailsProduct').textContent = report.product_name;
+      document.getElementById('detailsOrderId').textContent = report.order_id;
+      document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
+      document.getElementById('detailsDescription').textContent = report.description;
+      document.getElementById('detailsModal').classList.add('active');
     }
+  }
+
+  function closeDetailsModal() {
+    document.getElementById('detailsModal').classList.remove('active');
   }
 </script>
 
