@@ -997,7 +997,7 @@
 <div class="details-modal" id="detailsModal">
   <div class="details-modal-content">
     <div class="details-header">
-      <h2>Return Report Details</h2>
+      <h2>Return Report Details & MarketMix Decision</h2>
       <button class="details-close" id="detailsCloseBtn">&times;</button>
     </div>
     <div class="details-body">
@@ -1013,14 +1013,7 @@
         <span class="detail-label">Order ID:</span>
         <span class="detail-value" id="detailsOrderId">---</span>
       </div>
-      <div class="detail-row">
-        <span class="detail-label">Status:</span>
-        <span class="detail-value" id="detailsStatus">---</span>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">MarketMix Decision:</span>
-        <span class="detail-value" id="detailsDecision">---</span>
-      </div>
+    
       <div class="detail-row">
         <span class="detail-label">Reason:</span>
         <span class="detail-value" id="detailsReason">---</span>
@@ -1028,6 +1021,15 @@
       <div class="detail-row">
         <span class="detail-label">Description:</span>
         <span class="detail-value" id="detailsDescription" style="white-space: pre-wrap; line-height: 1.6;">---</span>
+      </div>
+
+        <div class="detail-row">
+        <span class="detail-label">Status:</span>
+        <span class="detail-value" id="detailsStatus">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">MarketMix Decision:</span>
+        <span class="detail-value" id="detailsDecision">---</span>
       </div>
       <button class="details-close-btn" id="detailsCloseActionBtn">Close</button>
     </div>
@@ -1174,6 +1176,22 @@
       marketmix_reason: 'Rejected: request denied because the product was already expired when delivered.',
       seller_response: null,
       messages: [] // No messages, so it will trigger the evidence modal
+    },
+    {
+      id: 6,
+      order_id: 'ORD-2025-006',
+      store_name: 'Kitchen Co',
+      product_name: 'Chef Knife Set',
+      total_amount: 12000,
+      status: 'purchased',
+      reason: '',
+      description: '',
+      purchase_date: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+      evidence_submitted_at: null,
+      marketmix_reason: null,
+      seller_response: null,
+      messages: []
     }
   ];
 
@@ -1224,19 +1242,48 @@
 
     emptyState.style.display = 'none';
     container.innerHTML = reports.map(report => {
+      const complaintStarted = report.status && report.status !== 'purchased';
+      const isRejected = report.status === 'rejected';
+      let statusHtml = '';
+      let viewBtnHtml = `
+          <button class="btn-action" style="background: #ccc; cursor: not-allowed;" disabled>
+            <i class="fas fa-eye"></i> View
+          </button>
+        `;
       let chatBtnHtml = '';
+
+      if (complaintStarted) {
+        statusHtml = `
+          <span class="status-badge ${report.status}">
+            ${report.status.replace(/_/g, ' ')}
+          </span>
+        `;
+        viewBtnHtml = `
+          <button class="btn-action" onclick="viewDetails(${report.id})">
+            <i class="fas fa-eye"></i> View
+          </button>
+        `;
+      }
+
       if (report.purchase_date) {
         const purchaseTime = new Date(report.purchase_date).getTime();
         const now = Date.now();
         const expiryTime = purchaseTime + (5 * 24 * 60 * 60 * 1000);
         const timeLeft = expiryTime - now;
 
-        if (timeLeft > 0) {
+        if (timeLeft > 0 && !isRejected) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const label = complaintStarted ? `Chat (${daysLeft}d ${hoursLeft}h)` : `Start Complaint (${daysLeft}d ${hoursLeft}h)`;
           chatBtnHtml = `
             <button class="btn-chat" onclick="openChat(${report.id})">
-              <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+              <i class="fas fa-comments"></i> ${label}
+            </button>
+          `;
+        } else if (isRejected) {
+          chatBtnHtml = `
+            <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat disabled for rejected orders">
+              <i class="fas fa-comments"></i> Rejected
             </button>
           `;
         } else {
@@ -1246,12 +1293,6 @@
             </button>
           `;
         }
-      } else {
-        chatBtnHtml = `
-          <button class="btn-chat" onclick="openChat(${report.id})">
-            <i class="fas fa-comments"></i> Chat
-          </button>
-        `;
       }
 
       return `
@@ -1261,15 +1302,11 @@
         <div class="col-order">${report.order_id}</div>
         <div class="col-amount">₦${formatCurrency(report.total_amount)}</div>
         <div class="col-status">
-          <span class="status-badge ${report.status}">
-            ${report.status.replace(/_/g, ' ')}
-          </span>
+          ${statusHtml}
         </div>
         <div class="col-date">${formatDate(report.created_at)}</div>
         <div class="col-action">
-          <button class="btn-action" onclick="viewDetails(${report.id})">
-            <i class="fas fa-eye"></i> View
-          </button>
+          ${viewBtnHtml}
         </div>
         <div class="col-chat">
           ${chatBtnHtml}
@@ -1299,16 +1336,15 @@
   function openChat(reportId) {
     const report = currentReports.find(r => r.id === reportId);
     if (!report) return;
+    if (report.status === 'rejected') return;
 
     currentChatData = report;
-    
-    // Check if evidence has been submitted (or if this is the first time chatting)
+    openChatPanel(report);
+
+    // On first complaint attempt, show evidence modal over the chat panel.
     if (!report.evidence_submitted_at && (!report.messages || report.messages.length === 0)) {
       openEvidenceModal(report);
-      return;
     }
-
-    openChatPanel(report);
   }
 
   function openEvidenceModal(report) {
@@ -1382,7 +1418,8 @@
         countdownBanner.classList.add('active');
       }
     } else {
-      countdownBanner.classList.remove('active');
+      countdownBanner.textContent = 'Submit your evidence to begin chat. After you send it, the store will have 42 hours to resolve the issue.';
+      countdownBanner.classList.add('active');
     }
 
     loadChatMessages(report);
@@ -1478,16 +1515,16 @@
 
   function viewDetails(reportId) {
     const report = currentReports.find(r => r.id === reportId);
-    if (report) {
-      document.getElementById('detailsStore').textContent = report.store_name;
-      document.getElementById('detailsProduct').textContent = report.product_name;
-      document.getElementById('detailsOrderId').textContent = report.order_id;
-      document.getElementById('detailsStatus').textContent = report.status.replace(/_/g, ' ').toUpperCase();
-      document.getElementById('detailsDecision').textContent = report.marketmix_reason || (['resolved','rejected','refunded'].includes(report.status) ? 'MarketMix decision recorded.' : 'Awaiting MarketMix review.');
-      document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
-      document.getElementById('detailsDescription').textContent = report.description;
-      document.getElementById('detailsModal').classList.add('active');
-    }
+    if (!report || report.status === 'purchased') return;
+
+    document.getElementById('detailsStore').textContent = report.store_name;
+    document.getElementById('detailsProduct').textContent = report.product_name;
+    document.getElementById('detailsOrderId').textContent = report.order_id;
+    document.getElementById('detailsStatus').textContent = report.status.replace(/_/g, ' ').toUpperCase();
+    document.getElementById('detailsDecision').textContent = report.marketmix_reason || (['resolved','rejected','refunded'].includes(report.status) ? 'MarketMix decision recorded.' : 'Awaiting MarketMix review.');
+    document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
+    document.getElementById('detailsDescription').textContent = report.description;
+    document.getElementById('detailsModal').classList.add('active');
   }
 
   function closeDetailsModal() {
