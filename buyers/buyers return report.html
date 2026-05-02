@@ -1399,6 +1399,13 @@
     // In a real app, you would upload the file and send to backend
     // For demo, we just update the currentChatData
     currentChatData.evidence_submitted_at = new Date().toISOString();
+    
+    // If status is still 'purchased', change it to 'pending' to mark complaint as started
+    if (currentChatData.status === 'purchased') {
+      currentChatData.status = 'pending';
+      currentChatData.reason = 'complaint';
+    }
+    
     if (!currentChatData.messages) currentChatData.messages = [];
     
     currentChatData.messages.push({
