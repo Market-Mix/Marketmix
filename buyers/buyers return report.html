@@ -1290,10 +1290,21 @@
       }
 
       if (report.purchase_date) {
-        const purchaseTime = new Date(report.purchase_date).getTime();
         const now = Date.now();
-        const expiryTime = purchaseTime + (5 * 24 * 60 * 60 * 1000);
-        const timeLeft = expiryTime - now;
+        let expiryTime;
+        let timeLeft;
+
+        // If evidence has been submitted, countdown from 2 days after submission
+        if (report.evidence_submitted_at) {
+          const evidenceTime = new Date(report.evidence_submitted_at).getTime();
+          expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
+          timeLeft = expiryTime - now;
+        } else {
+          // Otherwise, countdown from 5 days after purchase
+          const purchaseTime = new Date(report.purchase_date).getTime();
+          expiryTime = purchaseTime + (5 * 24 * 60 * 60 * 1000);
+          timeLeft = expiryTime - now;
+        }
 
         if (timeLeft > 0 && !isRejected) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
