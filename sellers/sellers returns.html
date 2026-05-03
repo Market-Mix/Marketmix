@@ -216,6 +216,9 @@
     </span>
   </div>
 
+  <!-- 42 Hours Countdown Banner -->
+  <div id="chatCountdownBanner" class="chat-countdown-banner"></div>
+
   <!-- Chat Messages -->
   <div class="chat-messages" id="chatMessages">
     <!-- Messages populated by JS -->
@@ -226,7 +229,7 @@
     <!-- Attachment preview -->
     <div id="attachmentPreview" class="attachment-preview" style="display: none;">
       <div class="preview-item">
-        <img id="previewImage" src="" alt="Preview" />
+        <div id="previewContent"></div>
         <button class="remove-attachment" onclick="removeAttachment()">
           <i class="fas fa-times"></i>
         </button>
@@ -242,13 +245,13 @@
         rows="3"
       ></textarea>
       <div class="input-actions">
-        <label class="file-upload-label" title="Attach image or file">
+        <label class="file-upload-label" title="Attach image, video or file">
           <i class="fas fa-paperclip"></i>
           <input 
             type="file" 
             id="chatFileInput" 
             hidden 
-            accept="image/*,.pdf,.doc,.docx"
+            accept="image/*,video/*,.pdf,.doc,.docx,.docm,.xlsx,.pptx"
           />
         </label>
         <button class="btn-send-chat" id="sendChatBtn">

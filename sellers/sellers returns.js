@@ -10,6 +10,12 @@ const returnsData = [
     productImage: 'https://via.placeholder.com/200?text=Wireless+Headphones',
     amount: 89.99,
     status: 'Pending',
+    purchase_date: new Date(Date.now() - 1.5*24*60*60*1000).toISOString(),
+    evidence_submitted_at: new Date(Date.now() - 10*60*60*1000).toISOString(),
+    messages: [
+      { sender: 'buyer', text: 'I received the speaker with a broken casing.', timestamp: new Date(Date.now() - 10*60*60*1000).toISOString(), read: false, file: null },
+      { sender: 'seller', text: 'I am sorry to hear that. Can you share a photo of the damage?', timestamp: new Date(Date.now() - 9*60*60*1000).toISOString(), read: true, file: null }
+    ],
     date: '2024-06-15'
   },
   {
@@ -46,7 +52,28 @@ const returnsData = [
     productImage: 'https://via.placeholder.com/200?text=Phone+Case',
     amount: 24.99,
     status: 'Pending',
+    purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+    evidence_submitted_at: new Date(Date.now() - 26*60*60*1000).toISOString(),
+    messages: [
+      { sender: 'buyer', text: 'The case looks cheap and not like the photos.', timestamp: new Date(Date.now() - 26*60*60*1000).toISOString(), read: false, file: null }
+    ],
     date: '2024-06-22'
+  },
+  {
+    id: 5,
+    buyerName: 'Emma Gray',
+    productName: 'Smartwatch Strap',
+    orderId: 'ORD-12349',
+    reason: 'Color Mismatch',
+    notes: 'The strap color looks different from the product photo.',
+    productImage: 'https://via.placeholder.com/200?text=Smartwatch+Strap',
+    amount: 12.99,
+    status: 'Pending',
+    purchase_date: new Date(Date.now() - 3.5*24*60*60*1000).toISOString(),
+    messages: [
+      { sender: 'buyer', text: 'I received the wrong strap color.', timestamp: new Date(Date.now() - 3.5*24*60*60*1000).toISOString(), read: false, file: null }
+    ],
+    date: '2024-06-23'
   }
 ];
 
@@ -74,6 +101,17 @@ async function apiFetch(path, opts = {}) {
     throw new Error('Unauthorized');
   }
   return res.json();
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return 'N/A';
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 }
 
 // Profile Image
@@ -162,16 +200,70 @@ function renderTable(data = returnsData) {
     row.className = 'table-row';
     
     const statusClass = item.status.toLowerCase();
-    
+    const now = Date.now();
+    let chatBtnHtml = '';
+    let chatDate = item.date;
+
+    const pending = item.status.toLowerCase() === 'pending';
+    const hasEvidence = !!item.evidence_submitted_at;
+
+    if (pending && hasEvidence) {
+      const evidenceTime = new Date(item.evidence_submitted_at).getTime();
+      const expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
+      const timeLeft = expiryTime - now;
+      const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      chatDate = formatDate(item.evidence_submitted_at);
+      if (timeLeft > 0) {
+        chatBtnHtml = `
+          <button class="btn-chat" onclick="openChat(${item.id})">
+            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+          </button>
+        `;
+      } else {
+        chatBtnHtml = `
+          <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
+            <i class="fas fa-comments"></i> Expired
+          </button>
+        `;
+      }
+    } else if (pending) {
+      const purchaseTime = new Date(item.purchase_date).getTime();
+      const expiryTime = purchaseTime + (5 * 24 * 60 * 60 * 1000);
+      const timeLeft = expiryTime - now;
+      const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      chatDate = formatDate(item.purchase_date);
+      if (timeLeft > 0) {
+        chatBtnHtml = `
+          <button class="btn-chat" onclick="openChat(${item.id})">
+            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+          </button>
+        `;
+      } else {
+        chatBtnHtml = `
+          <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
+            <i class="fas fa-comments"></i> Expired
+          </button>
+        `;
+      }
+    } else {
+      chatBtnHtml = `
+        <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
+          <i class="fas fa-comments"></i> ${item.status}
+        </button>
+      `;
+    }
+
     row.innerHTML = `
       <div class="col-buyer">${item.buyerName}</div>
       <div class="col-product">${item.productName}</div>
       <div class="col-order">${item.orderId}</div>
       <div class="col-amount">$${item.amount.toFixed(2)}</div>
       <div class="col-status"><span class="status-badge ${statusClass}">${item.status}</span></div>
-      <div class="col-date">${item.date}</div>
+      <div class="col-date">${chatDate}</div>
       <div class="col-action"><button class="btn-action" onclick="openModal(${item.id})">View</button></div>
-      <div class="col-chat"><button class="btn-chat" onclick="openChat(${item.id})" title="Open chat with buyer"><i class="fas fa-comments"></i> Chat</button></div>
+      <div class="col-chat">${chatBtnHtml}</div>
     `;
     
     returnsTableBody.appendChild(row);
@@ -290,6 +382,8 @@ function openChat(returnId) {
   statusElement.className = `resolution-status ${statusClass}`;
   statusElement.innerHTML = `<i class="fas fa-circle"></i> ${returnItem.status}`;
 
+  updateChatCountdown(returnItem);
+
   // Load and display chat history
   loadChatMessages(returnId);
 
@@ -316,7 +410,8 @@ function closeChat() {
 // Load Chat Messages
 function loadChatMessages(returnId) {
   const storageKey = getChatStorageKey(returnId);
-  const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const savedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const messages = savedMessages.length ? savedMessages : (currentChatData?.messages || []);
 
   chatMessages.innerHTML = '';
 
@@ -331,7 +426,7 @@ function loadChatMessages(returnId) {
 
   messages.forEach((msg, idx) => {
     const msgEl = document.createElement('div');
-    msgEl.className = `chat-message ${msg.sender === 'seller' ? 'seller' : 'buyer'}`;
+    msgEl.className = `chat-message ${msg.sender === 'seller' ? 'seller' : msg.sender === 'buyer' ? 'buyer' : 'system'}`;
 
     const timestamp = new Date(msg.timestamp);
     const timeStr = timestamp.toLocaleTimeString('en-US', { 
@@ -348,8 +443,10 @@ function loadChatMessages(returnId) {
     if (msg.file) {
       if (msg.file.type === 'image') {
         content += `<img src="${msg.file.data}" class="message-image" alt="Uploaded image" />`;
+      } else if (msg.file.type === 'video') {
+        content += `<video controls class="message-video"><source src="${msg.file.data}" type="video/mp4">Your browser does not support this video.</video>`;
       } else {
-        content += `<a href="${msg.file.data}" class="message-file" download><i class="fas fa-file"></i> ${msg.file.name}</a>`;
+        content += `<a href="${msg.file.data}" class="message-file" download><i class="fas fa-file"></i> ${escapeHtml(msg.file.name)}</a>`;
       }
     }
 
@@ -370,6 +467,33 @@ function loadChatMessages(returnId) {
 
   // Mark messages as read
   setTimeout(() => markMessagesAsRead(returnId), 500);
+}
+
+function updateChatCountdown(returnItem) {
+  const countdownBanner = document.getElementById('chatCountdownBanner');
+  if (!returnItem) {
+    countdownBanner.classList.remove('active');
+    return;
+  }
+
+  if (returnItem.evidence_submitted_at) {
+    const evidenceTime = new Date(returnItem.evidence_submitted_at).getTime();
+    const decisionTime = evidenceTime + (42 * 60 * 60 * 1000);
+    const timeLeft = decisionTime - Date.now();
+
+    if (timeLeft > 0) {
+      const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+      const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      countdownBanner.textContent = `The seller and buyer have ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
+      countdownBanner.classList.add('active');
+    } else {
+      countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
+      countdownBanner.classList.add('active');
+    }
+  } else {
+    countdownBanner.textContent = 'Awaiting buyer evidence to start the 42-hour resolution countdown.';
+    countdownBanner.classList.add('active');
+  }
 }
 
 // Mark Messages as Read
@@ -465,17 +589,37 @@ chatFileInput.addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = (event) => {
     const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
     attachedFile = {
       name: file.name,
-      type: isImage ? 'image' : 'file',
+      type: isImage ? 'image' : isVideo ? 'video' : 'file',
       data: event.target.result
     };
 
-    // Show preview
+    const previewContent = document.getElementById('previewContent');
+    if (!previewContent) return;
+    previewContent.innerHTML = '';
+
     if (isImage) {
-      document.getElementById('previewImage').src = event.target.result;
-      attachmentPreview.style.display = 'flex';
+      const img = document.createElement('img');
+      img.id = 'previewImage';
+      img.src = event.target.result;
+      img.alt = 'Attachment preview';
+      previewContent.appendChild(img);
+    } else if (isVideo) {
+      const video = document.createElement('video');
+      video.id = 'previewVideo';
+      video.src = event.target.result;
+      video.controls = true;
+      previewContent.appendChild(video);
+    } else {
+      const fileLabel = document.createElement('div');
+      fileLabel.className = 'preview-file-label';
+      fileLabel.textContent = file.name;
+      previewContent.appendChild(fileLabel);
     }
+
+    attachmentPreview.style.display = 'flex';
   };
   reader.readAsDataURL(file);
 });
