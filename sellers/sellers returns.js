@@ -209,7 +209,7 @@ function renderTable(data = returnsData) {
 
     if (pending && hasEvidence) {
       const evidenceTime = new Date(item.evidence_submitted_at).getTime();
-      const expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
+      const expiryTime = evidenceTime + (42 * 60 * 60 * 1000);
       const timeLeft = expiryTime - now;
       const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -411,7 +411,11 @@ function closeChat() {
 function loadChatMessages(returnId) {
   const storageKey = getChatStorageKey(returnId);
   const savedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
-  const messages = savedMessages.length ? savedMessages : (currentChatData?.messages || []);
+  let messages = savedMessages.length ? savedMessages : (currentChatData?.messages || []);
+
+  if (!savedMessages.length && currentChatData?.messages?.length) {
+    localStorage.setItem(storageKey, JSON.stringify(messages));
+  }
 
   chatMessages.innerHTML = '';
 
@@ -522,7 +526,8 @@ function sendChatMessage() {
   if (!currentChatId) return;
 
   const storageKey = getChatStorageKey(currentChatId);
-  const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const existingMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const messages = existingMessages.length ? existingMessages : (currentChatData?.messages || []);
 
   const message = {
     id: Date.now(),
@@ -662,7 +667,7 @@ chatInput.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     sendChatMessage();
   }
-}
+});
 
 // Notification
 function showNotification(message, type = 'success') {
@@ -696,8 +701,3 @@ function showNotification(message, type = 'success') {
   }, 3000);
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  loadProfile();
-  renderTable();
-});
