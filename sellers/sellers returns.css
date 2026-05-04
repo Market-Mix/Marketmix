@@ -48,14 +48,14 @@
 .returns-table {
   background: white;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .table-header,
 .table-row {
   display: grid;
-  grid-template-columns: 150px 220px 120px 100px 120px 120px 110px 140px;
+  grid-template-columns: 140px 200px 110px 90px 110px 110px 100px 240px;
   gap: 1rem;
   align-items: center;
   padding: 1rem;
@@ -122,6 +122,8 @@
 .col-chat {
   display: flex;
   justify-content: flex-end;
+  overflow: visible;
+  min-width: 0;
 }
 
 .chat-store {
@@ -829,6 +831,8 @@
   align-items: center;
   gap: 0.5rem;
   white-space: nowrap;
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 .btn-chat:hover {
