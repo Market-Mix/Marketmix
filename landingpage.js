@@ -463,6 +463,48 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
+// ===== SELLERS (Featured Brands + Popular Shops) =====
+async function loadSellers() {
+  try {
+    const r = await fetch(`${API}/seller/public?limit=8`);
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    const sellers = d.data?.sellers || [];
+    if (!sellers.length) return;
+
+    // Featured Brands carousel
+    const carousel = document.getElementById('brandCarousel');
+    if (carousel) {
+      carousel.innerHTML = sellers.map(s => {
+        const logo = s.storeLogo || s.featuredProductImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.businessName||'S')}&background=e6eef8&color=2B6CB0&size=100`;
+        const featImg = s.featuredProductImage || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300';
+        const cat = s.category || 'General';
+        return `<a href="./buyers/store-id.html?id=${s.sellerId}" class="brand-card">
+          <img src="${esc(logo)}" alt="${esc(s.businessName)}" class="brand-logo" onerror="this.src='https://ui-avatars.com/api/?name=S&background=e6eef8&color=2B6CB0&size=100'">
+          <h3>${esc(s.businessName)}</h3>
+          <p class="muted">${esc(cat)}</p>
+          ${s.isVerified ? '<span style="font-size:11px;color:#10b981;font-weight:700">✓ Verified</span>' : ''}
+          <img src="${esc(featImg)}" alt="${esc(s.businessName)} product" class="featured-product" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300'">
+        </a>`;
+      }).join('');
+    }
+
+    // Popular Shops strip
+    const strip = document.getElementById('shopStrip');
+    if (strip) {
+      strip.innerHTML = sellers.map(s => {
+        const logo = s.storeLogo || s.featuredProductImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.businessName||'S')}&background=e6eef8&color=2B6CB0&size=150`;
+        return `<a href="./buyers/store-id.html?id=${s.sellerId}" title="${esc(s.businessName)}">
+          <img src="${esc(logo)}" alt="${esc(s.businessName)}" onerror="this.src='https://ui-avatars.com/api/?name=S&background=e6eef8&color=2B6CB0&size=150'">
+        </a>`;
+      }).join('');
+    }
+  } catch(e) {
+    console.warn('Could not load sellers:', e);
+    // Static fallback already in HTML — do nothing
+  }
+}
+
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   injectStyles();
@@ -475,13 +517,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initBackToTop();
   syncCartCount();
 
-  // Load data
-  loadCategories();
-  loadProducts().then(() => {
-    // Build category dropdowns after products + filter buttons are ready
-    buildCategoryDropdown('best-selling-section', 'best-selling-filter');
-    buildCategoryDropdown('new-arrivals-section', 'new-arrivals-filter');
-  });
+  // Load data in parallel
+  Promise.all([
+    loadCategories(),
+    loadSellers(),
+    loadProducts().then(() => {
+      buildCategoryDropdown('best-selling-section', 'best-selling-filter');
+      buildCategoryDropdown('new-arrivals-section', 'new-arrivals-filter');
+    })
+  ]);
 
   // Hide original filter rows (keep in DOM for dropdown to read, but collapse)
   document.querySelectorAll('.filter-row').forEach(r => {
