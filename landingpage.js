@@ -479,7 +479,7 @@ async function loadSellers() {
         const logo = s.storeLogo || s.featuredProductImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.businessName||'S')}&background=e6eef8&color=2B6CB0&size=100`;
         const featImg = s.featuredProductImage || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300';
         const cat = s.category || 'General';
-        return `<a href="./buyers/store-id.html?id=${s.sellerId}" class="brand-card">
+        return `<a href="./buyers/store-id.html?seller=${s.sellerId}" class="brand-card">
           <img src="${esc(logo)}" alt="${esc(s.businessName)}" class="brand-logo" onerror="this.src='https://ui-avatars.com/api/?name=S&background=e6eef8&color=2B6CB0&size=100'">
           <h3>${esc(s.businessName)}</h3>
           <p class="muted">${esc(cat)}</p>
@@ -494,7 +494,7 @@ async function loadSellers() {
     if (strip) {
       strip.innerHTML = sellers.map(s => {
         const logo = s.storeLogo || s.featuredProductImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.businessName||'S')}&background=e6eef8&color=2B6CB0&size=150`;
-        return `<a href="./buyers/store-id.html?id=${s.sellerId}" title="${esc(s.businessName)}">
+        return `<a href="./buyers/store-id.html?seller=${s.sellerId}" title="${esc(s.businessName)}">
           <img src="${esc(logo)}" alt="${esc(s.businessName)}" onerror="this.src='https://ui-avatars.com/api/?name=S&background=e6eef8&color=2B6CB0&size=150'">
         </a>`;
       }).join('');
