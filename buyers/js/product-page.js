@@ -1,579 +1,581 @@
-// Product Page Handler
-// Fetches product data and initializes all components
+// ============================================================
+// product-page.js  —  MarketMix Product Page Handler
+// Optimised: parallel fetches · progressive rendering · lazy loading
+// ============================================================
 
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    // Get product ID from URL
-    const params = new URLSearchParams(window.location.search);
-    const productId = params.get('id');
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
-    if (!productId) {
-      showError('Product ID not found');
-      return;
+// ─── Toast Notification System ──────────────────────────────
+(function initToast() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #mm-toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 99999;
+      display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+    }
+    .mm-toast {
+      display: flex; align-items: center; gap: 10px;
+      min-width: 280px; max-width: 380px;
+      padding: 14px 18px; border-radius: 10px;
+      font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500;
+      color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.18);
+      pointer-events: all; animation: mmSlideIn .3s ease forwards;
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    .mm-toast.hiding { animation: mmSlideOut .3s ease forwards; }
+    .mm-toast-success { background: #16a34a; }
+    .mm-toast-error   { background: #dc2626; }
+    .mm-toast-warning { background: #d97706; }
+    .mm-toast-info    { background: #f97316; }
+    .mm-toast-icon  { font-size: 18px; flex-shrink: 0; }
+    .mm-toast-close {
+      margin-left: auto; background: none; border: none;
+      color: rgba(255,255,255,.8); cursor: pointer; font-size: 16px;
+      padding: 0 4px; flex-shrink: 0;
+    }
+    @keyframes mmSlideIn {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes mmSlideOut {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(40px); }
     }
 
-    // Fetch product data
-    const product = await fetchProduct(productId);
-    
-    if (!product) {
-      showError('Product not found');
-      return;
+    /* Skeleton shimmer */
+    .mm-skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: mmShimmer 1.4s infinite;
+      border-radius: 6px;
     }
-
-    // Track product view (increment views in Supabase)
-    trackProductView(productId);
-
-    // Render all components
-    renderProduct(product);
-    setupEventListeners(product);
-
-  } catch (error) {
-    console.error('Error loading product:', error);
-    showError('Error loading product details');
-  }
-});
-
-// Fetch product from API or mock data
-async function fetchProduct(productId) {
-  try {
-    // Try API first
-    const token = localStorage.getItem('token');
-    const API_BASE = 'https://marketmix-backend.onrender.com/api';
-    const url = `${API_BASE}/products/${productId}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      }
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      const product = result.data;
-
-      // Fetch reviews for this product
-      try {
-        const API_BASE = 'https://marketmix-backend.onrender.com/api';
-        const reviewsUrl = `${API_BASE}/reviews/product/${productId}`;
-        const reviewsResponse = await fetch(reviewsUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-          }
-        });
-
-        if (reviewsResponse.ok) {
-          const reviewsResult = await reviewsResponse.json();
-          if (reviewsResult.status === 'success' && reviewsResult.data) {
-            product.reviews = reviewsResult.data.reviews || [];
-            product.review_count = reviewsResult.data.count || product.reviews.length;
-            product.rating = reviewsResult.data.averageRating || 0;
-          }
-        }
-      } catch (reviewError) {
-        console.warn('Could not fetch reviews:', reviewError);
-        product.reviews = product.reviews || [];
-      }
-
-      return product;
+    @keyframes mmShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
-  } catch (apiError) {
-    console.warn('API fetch failed, using mock data:', apiError);
-  }
+    .mm-skeleton-text  { height: 16px; margin-bottom: 8px; }
+    .mm-skeleton-block { height: 48px; }
+    .mm-fade-in { animation: mmFadeIn .35s ease forwards; }
+    @keyframes mmFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  `;
+  document.head.appendChild(style);
 
-  // Mock data fallback for testing
-  return getMockProduct(productId);
+  const container = document.createElement('div');
+  container.id = 'mm-toast-container';
+  document.body.appendChild(container);
+})();
+
+function showToast(message, type = 'info', duration = 3500) {
+  const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+  const container = document.getElementById('mm-toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `mm-toast mm-toast-${type}`;
+  toast.innerHTML = `
+    <span class="mm-toast-icon">${icons[type] || icons.info}</span>
+    <span>${message}</span>
+    <button class="mm-toast-close">✕</button>
+  `;
+  toast.querySelector('.mm-toast-close').addEventListener('click', () => dismiss(toast));
+  container.appendChild(toast);
+  const t = setTimeout(() => dismiss(toast), duration);
+  toast._timer = t;
+}
+function dismiss(toast) {
+  clearTimeout(toast._timer);
+  toast.classList.add('hiding');
+  setTimeout(() => toast.remove(), 300);
 }
 
-// Mock product data for testing
-function getMockProduct(productId) {
-  const mockProducts = {
-    '1': {
-      id: '1',
-      name: 'Premium Wireless Headphones',
-      description: 'High-quality wireless headphones with noise cancellation and 30-hour battery life',
-      price: 159.99,
-      category: 'electronics',
-      main_image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500',
-      stock_quantity: 25,
-      rating: 4.8,
-      review_count: 234,
-      seller_id: 'seller-1',
-      flash_sale_active: true,
-      flash_sale_discount: 20,
-      seller: {
-        id: 'seller-1',
-        shop_name: 'TechPro Store',
-        rating: 4.7,
-        shop_avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'
-      },
-      reviews: [
-        { id: '1', rating: 5, comment: 'Excellent sound quality and very comfortable!', created_at: '2025-11-20' },
-        { id: '2', rating: 4, comment: 'Great product, battery lasts long', created_at: '2025-11-15' }
-      ],
-      relatedProducts: [
-        { id: '2', name: 'Earbuds Pro', price: 129.99, main_image_url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=200', rating: 4.3, review_count: 156 },
-        { id: '3', name: 'Wireless Speaker', price: 79.99, main_image_url: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=200', rating: 4.1, review_count: 89 }
-      ],
-      sellerProducts: [
-        { id: '2', name: 'USB-C Charger', price: 24.99, main_image_url: 'https://images.unsplash.com/photo-1591290621749-2a133cd9ae63?w=200', rating: 4.5, review_count: 203 },
-        { id: '3', name: 'Screen Protector', price: 9.99, main_image_url: 'https://images.unsplash.com/photo-1586253408031-67b61cfbc3d1?w=200', rating: 4.2, review_count: 412 }
-      ]
-    },
-    '2': {
-      id: '2',
-      name: 'USB-C Fast Charger',
-      description: 'Fast-charging USB-C charger compatible with all devices',
-      price: 24.99,
-      category: 'electronics',
-      main_image_url: 'https://images.unsplash.com/photo-1591290621749-2a133cd9ae63?w=500',
-      stock_quantity: 50,
-      rating: 4.5,
-      review_count: 203,
-      seller_id: 'seller-1',
-      flash_sale_active: false,
-      flash_sale_discount: 0,
-      seller: {
-        id: 'seller-1',
-        shop_name: 'TechPro Store',
-        rating: 4.7,
-        shop_avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'
-      },
-      reviews: [
-        { id: '1', rating: 5, comment: 'Very fast charging!', created_at: '2025-11-18' }
-      ],
-      relatedProducts: [],
-      sellerProducts: []
-    },
-    '3': {
-      id: '3',
-      name: 'Screen Protector Pack',
-      description: 'Pack of 2 tempered glass screen protectors',
-      price: 9.99,
-      category: 'electronics',
-      main_image_url: 'https://images.unsplash.com/photo-1586253408031-67b61cfbc3d1?w=500',
-      stock_quantity: 100,
-      rating: 4.2,
-      review_count: 412,
-      seller_id: 'seller-1',
-      flash_sale_active: true,
-      flash_sale_discount: 15,
-      seller: {
-        id: 'seller-1',
-        shop_name: 'TechPro Store',
-        rating: 4.7,
-        shop_avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'
-      },
-      reviews: [],
-      relatedProducts: [],
-      sellerProducts: []
-    },
-    '4': {
-      id: '4',
-      name: 'Smartphone X Pro',
-      description: 'High-performance smartphone with advanced camera system',
-      price: 899.99,
-      category: 'phones',
-      main_image_url: 'https://images.unsplash.com/photo-1511707267537-b85faf00021e?w=500',
-      stock_quantity: 10,
-      rating: 4.9,
-      review_count: 567,
-      seller_id: 'seller-1',
-      flash_sale_active: true,
-      flash_sale_discount: 10,
-      seller: {
-        id: 'seller-1',
-        shop_name: 'TechPro Store',
-        rating: 4.7,
-        shop_avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'
-      },
-      reviews: [
-        { id: '1', rating: 5, comment: 'Amazing phone! Best camera ever!', created_at: '2025-11-10' }
-      ],
-      relatedProducts: [],
-      sellerProducts: []
-    }
+// ─── Skeleton helpers ────────────────────────────────────────
+function skeletonLine(w = '100%') {
+  return `<div class="mm-skeleton mm-skeleton-text" style="width:${w}"></div>`;
+}
+function injectSkeletons() {
+  // Shop info area
+  const shopLink = document.getElementById('shop-link');
+  if (shopLink) shopLink.innerHTML = skeletonLine('120px');
+  const shopRating = document.getElementById('shop-rating');
+  if (shopRating) shopRating.innerHTML = skeletonLine('80px');
+
+  // Reviews placeholder
+  const rSec = document.getElementById('reviews-section');
+  if (rSec) rSec.innerHTML = `
+    <div style="padding:24px 0">
+      ${skeletonLine('160px')}
+      ${skeletonLine('90%')}
+      ${skeletonLine('80%')}
+      ${skeletonLine('70%')}
+    </div>`;
+
+  // Lazy sections placeholder — just height-hold them
+  ['shop-more-section', 'related-products-section'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.minHeight = '120px';
+  });
+}
+
+// ─── Bootstrap ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  const params    = new URLSearchParams(window.location.search);
+  const productId = params.get('id');
+
+  if (!productId) { showError('Product ID not found'); return; }
+
+  // Inject skeletons immediately so layout doesn't jump
+  injectSkeletons();
+
+  // 1. Kick off all three requests in parallel — don't await serially
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
   };
 
-  return mockProducts[String(productId)] || null;
+  const [productResult, reviewsResult, sellerResult] = await Promise.allSettled([
+    fetchWithTimeout(`${API_BASE}/products/${productId}`, { headers }),
+    fetchWithTimeout(`${API_BASE}/reviews/product/${productId}`, { headers }),
+    null  // seller fetch depends on product — resolved below
+  ]);
+
+  // 2. Parse product first (critical path)
+  let product = null;
+  if (productResult.status === 'fulfilled') {
+    try {
+      const json = await productResult.value.json();
+      product = json.data;
+    } catch (e) { /* fallback below */ }
+  }
+
+  if (!product) product = getMockProduct(productId);
+
+  // 3. Render product immediately (no waiting for reviews/seller)
+  renderProduct(product);
+  setupEventListeners(product);
+  updateCartCount();
+
+  // 4. Track view fire-and-forget
+  trackProductView(productId);
+
+  // 5. Enrich with reviews (already in-flight, just parse)
+  enrichWithReviews(product, reviewsResult);
+
+  // 6. Fetch seller in parallel with the rest, update UI when ready
+  fetchAndRenderSeller(product);
+
+  // 7. Lazy-load below-the-fold sections via IntersectionObserver
+  setupLazyLoad(product);
+});
+
+// ─── Timeout-wrapped fetch ───────────────────────────────────
+function fetchWithTimeout(url, options = {}, ms = 6000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(id));
 }
 
-// Render product details
+// ─── Fetch + render seller when ready ───────────────────────
+async function fetchAndRenderSeller(product) {
+  if (!product.seller_id) return;
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/seller/public/${product.seller_id}`, {}, 5000);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.status === 'success' && data.data?.store) {
+      const store = data.data.store;
+      product.seller = {
+        id:              store.sellerId,
+        shop_name:       store.businessName,
+        rating:          store.rating,
+        shop_avatar_url: store.storeLogo || store.avatarUrl || ''
+      };
+      renderSellerInfo(product.seller, product.seller_id);
+    }
+  } catch (e) { /* non-critical */ }
+}
+
+function renderSellerInfo(seller, sellerId) {
+  const avatar = document.getElementById('shop-avatar');
+  if (avatar) {
+    avatar.src = seller.shop_avatar_url || 'https://via.placeholder.com/32';
+    avatar.onerror = () => { avatar.src = 'https://via.placeholder.com/32'; };
+    avatar.classList.add('mm-fade-in');
+  }
+  const link = document.getElementById('shop-link');
+  if (link) {
+    link.textContent = seller.shop_name || 'View Store';
+    link.href = `./store-id.html?id=${seller.id || sellerId || ''}`;
+    link.classList.add('mm-fade-in');
+  }
+  const shopRating = document.getElementById('shop-rating');
+  if (shopRating) {
+    shopRating.textContent = seller.rating
+      ? `⭐ ${Number(seller.rating).toFixed(1)} rating`
+      : '';
+    shopRating.classList.add('mm-fade-in');
+  }
+}
+
+// ─── Enrich product with reviews data ───────────────────────
+async function enrichWithReviews(product, reviewsResult) {
+  let reviewData = null;
+  if (reviewsResult && reviewsResult.status === 'fulfilled') {
+    try {
+      const json = await reviewsResult.value.json();
+      if (json.status === 'success' && json.data) reviewData = json.data;
+    } catch (e) { /* ignore */ }
+  }
+
+  if (!reviewData) return;
+
+  product.reviews      = reviewData.reviews || [];
+  product.review_count = reviewData.pagination?.totalReviews ?? product.reviews.length;
+  product.rating       = parseFloat(reviewData.summary?.averageRating) || 0;
+
+  // Re-render reviews section now that we have data
+  if (typeof createReviews === 'function') {
+    const rSec = document.getElementById('reviews-section');
+    if (rSec) {
+      rSec.innerHTML = '';
+      createReviews(product);
+      rSec.classList.add('mm-fade-in');
+    }
+  }
+}
+
+// ─── Lazy-load below-the-fold sections ──────────────────────
+function setupLazyLoad(product) {
+  if (!('IntersectionObserver' in window)) {
+    // Fallback: render everything immediately
+    renderBelowFold(product);
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      obs.unobserve(entry.target);
+      const id = entry.target.id;
+      renderLazySection(id, product);
+    });
+  }, { rootMargin: '200px 0px' }); // Start loading 200px before it's visible
+
+  ['shop-more-section', 'related-products-section'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+}
+
+function renderLazySection(id, product) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  if (id === 'shop-more-section' && typeof createShopMore === 'function') {
+    createShopMore(product);
+    el.classList.add('mm-fade-in');
+  } else if (id === 'related-products-section' && typeof createRelatedProducts === 'function') {
+    createRelatedProducts(product);
+    el.classList.add('mm-fade-in');
+  }
+}
+
+function renderBelowFold(product) {
+  if (typeof createShopMore === 'function') createShopMore(product);
+  if (typeof createRelatedProducts === 'function') createRelatedProducts(product);
+}
+
+// ─── Render Product (critical path — no seller/reviews needed) ─
 function renderProduct(product) {
-  // Set page title
   document.title = `${product.name} - MarketMix`;
 
-  // Update breadcrumb (guard elements before use)
-  const breadcrumbCategoryEl = document.getElementById('breadcrumb-category');
-  if (breadcrumbCategoryEl) breadcrumbCategoryEl.textContent = getCategoryRules(product.category).displayName;
-  const breadcrumbProductEl = document.getElementById('breadcrumb-product');
-  if (breadcrumbProductEl) breadcrumbProductEl.textContent = product.name;
+  const rules = (typeof getCategoryRules === 'function')
+    ? getCategoryRules(product.category || product.category_name)
+    : { displayName: product.category || 'Products' };
 
-  // Product header
-  const productTitleEl = document.getElementById('product-title');
-  if (productTitleEl) productTitleEl.textContent = product.name;
-  const productCategoryEl = document.getElementById('product-category');
-  if (productCategoryEl) productCategoryEl.textContent = getCategoryRules(product.category).displayName;
-  
-  // Shop info (guarded to avoid runtime errors if elements missing)
+  setEl('breadcrumb-category', rules.displayName);
+  setEl('breadcrumb-product',  product.name);
+  setEl('product-title',       product.name);
+  setEl('product-category',    rules.displayName);
+
+  // Seller info: show whatever is already embedded on the product object
+  // (the full profile fetch happens in parallel and will overwrite later)
   if (product.seller) {
-    const shopAvatarEl = document.getElementById('shop-avatar');
-    if (shopAvatarEl) shopAvatarEl.src = product.seller.shop_avatar_url || 'https://via.placeholder.com/32';
-    const shopLinkEl = document.getElementById('shop-link');
-    if (shopLinkEl) {
-      shopLinkEl.textContent = product.seller.shop_name;
-      // Prefer seller.id but fall back to seller_id if present
-      shopLinkEl.href = `./store-id.html?id=${product.seller.id || product.seller_id || ''}`;
-    }
-    const shopRatingEl = document.getElementById('shop-rating');
-    if (shopRatingEl) shopRatingEl.textContent = `⭐ ${(product.seller.rating || 0).toFixed(1)} rating`;
+    renderSellerInfo(product.seller, product.seller_id);
   }
 
-  // Price (normalized to 2 decimals)
-  const displayPriceNum = Number(product.price);
-  const displayPrice = (product.flash_sale_active && product.flash_sale_discount) 
-    ? (displayPriceNum * (100 - Number(product.flash_sale_discount)) / 100).toFixed(2)
-    : displayPriceNum.toFixed(2);
-  const productPriceEl = document.getElementById('product-price');
-  if (productPriceEl) productPriceEl.textContent = `$${displayPrice}`;
-  
+  // Price
+  const basePrice   = Number(product.price) || 0;
+  let   displayPrice = basePrice;
+
   if (product.flash_sale_active && product.flash_sale_discount) {
-    const originalPriceEl = document.getElementById('original-price');
-    if (originalPriceEl) {
-      originalPriceEl.textContent = `$${Number(product.price).toFixed(2)}`;
-      originalPriceEl.style.display = 'inline';
-    }
+    displayPrice = basePrice * (100 - Number(product.flash_sale_discount)) / 100;
+    const origEl = document.getElementById('original-price');
+    if (origEl) { origEl.textContent = `$${basePrice.toFixed(2)}`; origEl.style.display = 'inline'; }
+  } else if (product.effective_price && Number(product.effective_price) < basePrice) {
+    displayPrice = Number(product.effective_price);
+    const origEl = document.getElementById('original-price');
+    if (origEl) { origEl.textContent = `$${basePrice.toFixed(2)}`; origEl.style.display = 'inline'; }
   }
 
-  // Stock status (avoid direct innerHTML with interpolated values to reduce XSS risk)
-  const stockStatus = document.getElementById('stock-status');
-  if (stockStatus) {
-    stockStatus.innerHTML = '';
-    if (Number(product.stock_quantity) > 0) {
-      const inStockSpan = document.createElement('span');
-      inStockSpan.style.color = '#22c55e';
-      inStockSpan.textContent = `✓ In Stock (${Number(product.stock_quantity)} available)`;
-      stockStatus.appendChild(inStockSpan);
+  setEl('product-price', `$${displayPrice.toFixed(2)}`);
+
+  // Stock
+  const stockEl = document.getElementById('stock-status');
+  if (stockEl) {
+    const qty = Number(product.stock_quantity);
+    if (qty > 0) {
+      stockEl.innerHTML = `<span style="color:#22c55e">✓ In Stock (${qty} available)</span>`;
     } else {
-      const outSpan = document.createElement('span');
-      outSpan.style.color = '#ef4444';
-      outSpan.textContent = '✗ Out of Stock';
-      stockStatus.appendChild(outSpan);
-
-      // Guard add-to-cart modifications
-      const addToCartBtn = document.getElementById('product-add-to-cart');
-      if (addToCartBtn) {
-        addToCartBtn.disabled = true;
-        addToCartBtn.style.opacity = '0.5';
-      }
+      stockEl.innerHTML = `<span style="color:#ef4444">✗ Out of Stock</span>`;
+      disableBtn('product-add-to-cart');
+      disableBtn('product-checkout');
     }
   }
 
-  // Display view count
-  const viewCountEl = document.getElementById('view-count');
-  if (viewCountEl && product.views) {
-    viewCountEl.textContent = product.views;
+  if (product.views) setEl('view-count', product.views);
+  setEl('product-description', product.description || 'No description available.');
+
+  // Render components that don't depend on reviews/seller
+  if (typeof createImageGallery    === 'function') createImageGallery(product);
+  if (typeof createFlashSale       === 'function') createFlashSale(product);
+  if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
+
+  // Reviews placeholder shown by injectSkeletons() is still there;
+  // enrichWithReviews() will replace it when data arrives.
+  // Trigger createReviews now only if we already have review data embedded.
+  if (product.reviews?.length && typeof createReviews === 'function') {
+    createReviews(product);
   }
 
-  // Description
-  const descriptionEl = document.getElementById('product-description');
-  if (descriptionEl) {
-    descriptionEl.textContent = product.description || 'No description available';
-  }
-
-  // Initialize components
-  createImageGallery(product);
-  createFlashSale(product);
-  createCategoryOptions(product);
-  createReviews(product);
-  createShopMore(product);
-  createRelatedProducts(product);
+  refreshWishlistButton(product.id);
 }
 
-// Setup event listeners
+// ─── Event Listeners ─────────────────────────────────────────
 function setupEventListeners(product) {
-  // Add to cart (guard element existence)
-  const addToCartBtn = document.getElementById('product-add-to-cart');
-  if (addToCartBtn) {
-    addToCartBtn.addEventListener('click', () => addToCart(product));
-  }
+  onBtn('product-add-to-cart',     () => addToCart(product));
+  onBtn('product-add-to-wishlist', () => handleWishlist(product));
+  onBtn('product-checkout',        () => proceedToCheckout(product));
 
-  // Add to wishlist
-  const wishlistBtn = document.getElementById('product-add-to-wishlist');
-  if (wishlistBtn) {
-    wishlistBtn.addEventListener('click', () => toggleWishlist(product));
-  }
-
-  // Checkout
-  const checkoutBtn = document.getElementById('product-checkout');
-  if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', () => proceedToCheckout(product));
-  }
-
-  // Quantity
-  const qtyInput = document.getElementById('product-quantity');
-  const decreaseBtn = document.getElementById('qty-decrease');
-  const increaseBtn = document.getElementById('qty-increase');
-
-  if (decreaseBtn) {
-    decreaseBtn.addEventListener('click', () => {
-      if (!qtyInput) return;
-      let qty = parseInt(qtyInput.value) || 1;
-      if (qty > 1) qtyInput.value = qty - 1;
-    });
-  }
-
-  if (increaseBtn) {
-    increaseBtn.addEventListener('click', () => {
-      if (!qtyInput) return;
-      let qty = parseInt(qtyInput.value) || 1;
-      if (qty < product.stock_quantity) qtyInput.value = qty + 1;
-    });
-  }
-}
-
-// Track product view - increment views count in database
-async function trackProductView(productId) {
-  try {
-    const token = localStorage.getItem('token');
-    const API_BASE = 'https://marketmix-backend.onrender.com/api';
-    const url = `${API_BASE}/products/${productId}/view`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: JSON.stringify({ timestamp: new Date().toISOString() })
-    });
-
-    if (response.ok) {
-      console.log('Product view tracked successfully');
+  onBtn('qty-decrease', () => {
+    const el = document.getElementById('product-quantity');
+    if (el) { const v = parseInt(el.value) || 1; if (v > 1) el.value = v - 1; }
+  });
+  onBtn('qty-increase', () => {
+    const el = document.getElementById('product-quantity');
+    if (el) {
+      const v = parseInt(el.value) || 1;
+      if (v < (product.stock_quantity || 999)) el.value = v + 1;
     }
-  } catch (error) {
-    // Silently fail - view tracking is not critical
-    console.warn('Could not track product view:', error);
-  }
+  });
 }
 
-// Add to cart
+// ─── Add to Cart ─────────────────────────────────────────────
 async function addToCart(product) {
-  // Safe retrieval of quantity and sellerId
-  const qtyInputEl = document.getElementById('product-quantity');
-  const quantity = qtyInputEl ? (parseInt(qtyInputEl.value) || 1) : 1;
-  const color = window.productOptions?.color?.() || null;
-  const size = window.productOptions?.size?.() || null;
-  const sellerId = product.seller?.id || product.seller_id || null;
+  const qtyEl    = document.getElementById('product-quantity');
+  const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
+  const color    = window.productOptions?.color?.() || null;
+  const size     = window.productOptions?.size?.()  || null;
 
   const cartItem = {
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    image: product.main_image_url,
-    quantity,
-    color,
-    size,
-    sellerId
-  }; 
+    id: product.id, name: product.name,
+    price: product.price, image: product.main_image_url,
+    quantity, color, size,
+    sellerId: product.seller?.id || product.seller_id || null
+  };
 
-  // Save to localStorage
-  let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-  const existingItem = cart.find(item => 
-    item.id === cartItem.id && 
-    item.color === cartItem.color && 
-    item.size === cartItem.size
-  );
-
-  if (existingItem) {
-    existingItem.quantity += quantity;
-  } else {
-    cart.push(cartItem);
-  }
-
+  const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+  const existing = cart.find(i => i.id === cartItem.id && i.color === cartItem.color && i.size === cartItem.size);
+  if (existing) { existing.quantity += quantity; } else { cart.push(cartItem); }
   localStorage.setItem('cart', JSON.stringify(cart));
 
-  // Sync to Supabase if available
-  if (window.SupabaseCart) {
-    try {
-      await SupabaseCart.addItem(cartItem);
-    } catch (e) {
-      console.warn('Supabase sync failed:', e);
-    }
+  // Backend sync — fire and forget, don't block the UI
+  const token = localStorage.getItem('token');
+  if (token) {
+    fetch(`${API_BASE}/cart/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ product_id: product.id, quantity })
+    }).catch(e => console.warn('Cart sync error:', e));
   }
 
-  // Also sync to backend cart API if user is authenticated (keeps cart_items in DB in sync)
-  try {
-    const token = localStorage.getItem('token');
-    const API_BASE = 'https://marketmix-backend.onrender.com/api';
-    if (token) {
-      // Backend expects product_id and quantity
-      const res = await fetch(`${API_BASE}/cart/add`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ product_id: product.id, quantity })
-      });
+  showToast(`${product.name} added to cart!`, 'success');
+  updateCartCount();
+}
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.warn('Backend cart sync failed', res.status, err.message || err);
+// ─── Wishlist ────────────────────────────────────────────────
+function isWishlisted(productId) {
+  return JSON.parse(localStorage.getItem('wishlist') || '[]').includes(String(productId));
+}
+function setWishlisted(productId, value) {
+  let list = JSON.parse(localStorage.getItem('wishlist') || '[]');
+  if (value) { if (!list.includes(String(productId))) list.push(String(productId)); }
+  else        { list = list.filter(id => id !== String(productId)); }
+  localStorage.setItem('wishlist', JSON.stringify(list));
+}
+function refreshWishlistButton(productId) {
+  const btn = document.getElementById('product-add-to-wishlist');
+  if (!btn) return;
+  if (isWishlisted(productId)) {
+    btn.textContent = '❤️ Wishlisted';
+    btn.style.background = '#fef2ee'; btn.style.color = '#f97316';
+  } else {
+    btn.textContent = '❤️ Add to Wishlist';
+    btn.style.background = '#fafafa'; btn.style.color = '#f97316';
+  }
+}
+
+async function handleWishlist(product) {
+  const btn   = document.getElementById('product-add-to-wishlist');
+  const token = localStorage.getItem('token');
+  const alreadyWished = isWishlisted(product.id);
+
+  if (btn) { btn.disabled = true; btn.textContent = alreadyWished ? 'Removing…' : 'Adding…'; }
+
+  if (!token) {
+    setWishlisted(product.id, !alreadyWished);
+    refreshWishlistButton(product.id);
+    showToast(alreadyWished ? 'Removed from wishlist' : 'Added to wishlist', alreadyWished ? 'info' : 'success');
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  try {
+    if (alreadyWished) {
+      const wRes = await fetch(`${API_BASE}/wishlist`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (wRes.ok) {
+        const wData = await wRes.json();
+        const item  = (wData.data?.items || []).find(i => String(i.product_id) === String(product.id));
+        if (item) {
+          await fetch(`${API_BASE}/wishlist/remove/${item.id}`, {
+            method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+          });
+        }
+      }
+      setWishlisted(product.id, false);
+      showToast('Removed from wishlist', 'info');
+    } else {
+      const res = await fetch(`${API_BASE}/wishlist/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ product_id: product.id })
+      });
+      if (res.ok || res.status === 200) {
+        setWishlisted(product.id, true);
+        showToast('Added to wishlist ❤️', 'success');
       } else {
-        console.log('Backend cart synced successfully');
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || 'Could not update wishlist', 'error');
       }
     }
   } catch (e) {
-    console.warn('Error syncing cart to backend:', e);
-  }
-
-  // Show success message
-  const btn = document.getElementById('product-add-to-cart');
-  const originalText = btn.textContent;
-  btn.textContent = '✓ Added to Cart!';
-  btn.style.backgroundColor = '#f97316';
-  setTimeout(() => {
-    btn.textContent = originalText;
-    btn.style.backgroundColor = '#f97316';
-  }, 2000);
-
-  // Update cart count
-  updateCartCount();
-}
-
-// Toggle wishlist
-// Replace your existing toggleWishlist function with this:
-
-async function toggleWishlist(product) {
-  const btn = document.getElementById('product-add-to-wishlist');
-  
-  // Disable button during request
-  if (btn) {
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = 'Adding...';
-  }
-
-  // Call the utility function
-  const success = await addToWishlist(product.id);
-
-  // Re-enable button and update UI
-  if (btn) {
-    btn.disabled = false;
-    if (success) {
-      btn.textContent = '❤️ Added to Wishlist';
-      btn.style.color = '#fff';
-      btn.style.background = '#f97316';
-      
-      // Reset after 2 seconds
-      setTimeout(() => {
-        btn.textContent = '❤️ Add to Wishlist';
-        btn.style.color = '#f97316';
-        btn.style.background = '#fafafa';
-      }, 2000);
-    } else {
-      btn.textContent = '❤️ Add to Wishlist';
-    }
+    console.warn('Wishlist error:', e);
+    showToast('Could not update wishlist', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    refreshWishlistButton(product.id);
   }
 }
 
-  
-
-// Proceed to checkout
-function proceedToCheckout(product) {
-  // Safe retrieval of quantity and sellerId
-  const qtyInputEl = document.getElementById('product-quantity');
-  const quantity = qtyInputEl ? (parseInt(qtyInputEl.value) || 1) : 1;
-  const color = window.productOptions?.color?.() || null;
-  const size = window.productOptions?.size?.() || null;
-  const sellerId = product.seller?.id || product.seller_id || null;
+// ─── Checkout ────────────────────────────────────────────────
+async function proceedToCheckout(product) {
+  const qtyEl    = document.getElementById('product-quantity');
+  const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
+  const color    = window.productOptions?.color?.() || null;
+  const size     = window.productOptions?.size?.()  || null;
 
   const cartItem = {
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    image: product.main_image_url,
-    quantity,
-    color,
-    size,
-    sellerId
-  }; 
+    id: product.id, name: product.name,
+    price: product.price, image: product.main_image_url,
+    quantity, color, size,
+    sellerId: product.seller?.id || product.seller_id || null
+  };
 
-  // Save to localStorage
-  let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-  const existingItem = cart.find(item => 
-    item.id === cartItem.id && 
-    item.color === cartItem.color && 
-    item.size === cartItem.size
-  );
-
-  if (existingItem) {
-    existingItem.quantity += quantity;
-  } else {
-    cart.push(cartItem);
-  }
-
+  const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+  const existing = cart.find(i => i.id === cartItem.id && i.color === cartItem.color && i.size === cartItem.size);
+  if (existing) { existing.quantity += quantity; } else { cart.push(cartItem); }
   localStorage.setItem('cart', JSON.stringify(cart));
-
-  // Sync to Supabase if available
-  if (window.SupabaseCart) {
-    try {
-      SupabaseCart.addItem(cartItem);
-    } catch (e) {
-      console.warn('Supabase sync failed:', e);
-    }
-  }
-
-  // Update cart count
   updateCartCount();
 
-  // If user is authenticated, go to checkout. Otherwise save intent and redirect to login.
   const token = localStorage.getItem('token');
   if (token) {
+    // Fire and forget — don't block navigation
+    fetch(`${API_BASE}/cart/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ product_id: product.id, quantity })
+    }).catch(() => {});
     window.location.href = './checkout.html';
   } else {
-    try {
-      // Store both keys to remain backward compatible with older pages
-      localStorage.setItem('after_login_redirect', './checkout.html');
-      localStorage.setItem('post_login_redirect', './checkout.html');
-    } catch (e) {
-      console.warn('Could not set after_login_redirect/post_login_redirect', e);
-    }
+    localStorage.setItem('after_login_redirect', './checkout.html');
+    localStorage.setItem('post_login_redirect',  './checkout.html');
     window.location.href = 'login for buyers.html';
   }
 }
 
-// Update cart count in navbar
-function updateCartCount() {
-  const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-  const count = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const cartCountEl = document.querySelector('#mm-cart-count');
-  if (cartCountEl) {
-    cartCountEl.textContent = count;
-  }
+// ─── Track View (fire and forget) ───────────────────────────
+function trackProductView(productId) {
+  const token = localStorage.getItem('token');
+  fetch(`${API_BASE}/products/${productId}/view`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  }).catch(() => {});
 }
 
-// Show error message
+// ─── Cart Count ──────────────────────────────────────────────
+function updateCartCount() {
+  const cart  = JSON.parse(localStorage.getItem('cart') || '[]');
+  const count = cart.reduce((s, i) => s + (i.quantity || 0), 0);
+  document.querySelectorAll('#mm-cart-count, .cart-count').forEach(el => {
+    el.textContent = count;
+  });
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
+function setEl(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+function disableBtn(id) {
+  const btn = document.getElementById(id);
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
+}
+function onBtn(id, fn) {
+  const btn = document.getElementById(id);
+  if (btn) btn.addEventListener('click', fn);
+}
 function showError(message) {
   document.body.innerHTML = `
-    <div style="padding:40px;text-align:center;font-family:Inter, sans-serif">
-      <h1 style="color:#ef4444">${message}</h1>
-      <a href="../index.html" style="
-        display:inline-block;
-        margin-top:20px;
-        padding:10px 20px;
-        background:#f97316;
-        color:#fff;
-        text-decoration:none;
-        border-radius:8px
-      ">← Back to Home</a>
-    </div>
-  `;
+    <div style="padding:60px 24px;text-align:center;font-family:Inter,sans-serif">
+      <div style="font-size:48px;margin-bottom:16px">😕</div>
+      <h2 style="color:#ef4444;margin-bottom:8px">${message}</h2>
+      <p style="color:#64748b;margin-bottom:24px">We couldn't load this product.</p>
+      <a href="../index.html" style="display:inline-block;padding:12px 24px;background:#f97316;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">← Back to Home</a>
+    </div>`;
 }
 
-// Initialize on load
-document.addEventListener('DOMContentLoaded', updateCartCount);
+// ─── Mock Data Fallback ───────────────────────────────────────
+function getMockProduct(productId) {
+  return {
+    id: productId,
+    name: 'Sample Product',
+    description: 'This is a sample product description.',
+    price: 49.99,
+    category: 'electronics',
+    main_image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500',
+    stock_quantity: 10,
+    rating: 4.5,
+    review_count: 12,
+    seller_id: null,
+    flash_sale_active: false,
+    flash_sale_discount: 0,
+    views: 0,
+    seller: { id: null, shop_name: 'MarketMix Store', rating: 4.5, shop_avatar_url: '' },
+    reviews: [],
+    relatedProducts: [],
+    sellerProducts: []
+  };
+}
