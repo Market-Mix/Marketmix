@@ -55,7 +55,7 @@
 .table-header,
 .table-row {
   display: grid;
-  grid-template-columns: 150px 200px 120px 100px 120px 120px 100px 90px;
+  grid-template-columns: 150px 220px 120px 100px 120px 120px 110px 140px;
   gap: 1rem;
   align-items: center;
   padding: 1rem;
@@ -117,6 +117,33 @@
 .btn-action:hover {
   background: #5568d3;
   transform: translateY(-2px);
+}
+
+.col-chat {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chat-store {
+  margin: 0.25rem 0 0.4rem;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.92);
+  opacity: 0.95;
+}
+
+.message-sender {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.25rem;
+}
+
+.marketmix-reason {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  color: #333;
 }
 
 /* Modal Styles */
@@ -271,7 +298,7 @@
 @media (max-width: 900px) {
   .table-header,
   .table-row {
-    grid-template-columns: 120px 150px 100px 80px 100px 80px 80px;
+    grid-template-columns: 120px 150px 100px 80px 100px 80px 100px 120px;
     gap: 0.75rem;
     padding: 0.75rem;
     font-size: 0.85rem;
@@ -554,6 +581,20 @@
 
 .chat-message.buyer .message-content {
   align-items: flex-start;
+}
+
+.chat-message.marketmix {
+  justify-content: flex-start;
+}
+
+.chat-message.marketmix .message-content {
+  align-items: flex-start;
+}
+
+.chat-message.marketmix .message-text {
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid #d1d5db;
 }
 
 .message-text {
