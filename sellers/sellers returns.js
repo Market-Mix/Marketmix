@@ -457,6 +457,22 @@ function loadChatMessages(returnId) {
       senderLabel = '<span class="message-sender">MarketMix</span>';
     }
 
+    // Determine message status
+    let statusIcon = '';
+    let statusTitle = '';
+    if (msg.sender === 'seller') {
+      if (msg.status === 'seen') {
+        statusIcon = '<i class="fas fa-check-double"></i>';
+        statusTitle = 'Seen';
+      } else if (msg.status === 'delivered') {
+        statusIcon = '<i class="fas fa-check-double"></i>';
+        statusTitle = 'Delivered';
+      } else {
+        statusIcon = '<i class="fas fa-check"></i>';
+        statusTitle = 'Sent';
+      }
+    }
+
     let content = `
       <div class="message-content">
         ${senderLabel}
@@ -475,9 +491,13 @@ function loadChatMessages(returnId) {
 
     content += `
         <span class="message-time">${timeStr}</span>
-        <span class="read-status" title="${msg.read ? 'Read' : 'Sent'}">
-          ${msg.read ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-check"></i>'}
-        </span>
+    `;
+
+    if (msg.sender === 'seller') {
+      content += `<span class="read-status" title="${statusTitle}">${statusIcon}</span>`;
+    }
+
+    content += `
       </div>
     `;
 
@@ -526,8 +546,14 @@ function markMessagesAsRead(returnId) {
   let updated = false;
 
   messages.forEach(msg => {
-    if (msg.sender === 'buyer' && !msg.read) {
-      msg.read = true;
+    // Mark buyer messages as read when seller opens chat
+    if (msg.sender === 'buyer' && !msg.status) {
+      msg.status = 'delivered';
+      updated = true;
+    }
+    // Mark seller messages as seen (already delivered)
+    if (msg.sender === 'seller' && msg.status === 'sent') {
+      msg.status = 'delivered';
       updated = true;
     }
   });
@@ -553,7 +579,7 @@ function sendChatMessage() {
     sender: 'seller',
     text: text,
     timestamp: new Date().toISOString(),
-    read: false,
+    status: 'sent',
     file: attachedFile ? { ...attachedFile } : null
   };
 
@@ -566,6 +592,17 @@ function sendChatMessage() {
 
   // Reload messages
   loadChatMessages(currentChatId);
+
+  // Simulate message delivery after 1 second
+  setTimeout(() => {
+    const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const lastMsg = updatedMessages[updatedMessages.length - 1];
+    if (lastMsg && lastMsg.status === 'sent') {
+      lastMsg.status = 'delivered';
+      localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+      loadChatMessages(currentChatId);
+    }
+  }, 1000);
 
   // Simulate buyer response after 3 seconds (for demo)
   if (Math.random() > 0.5) {
@@ -596,13 +633,26 @@ function simulateBuyerResponse(returnId) {
     sender: 'buyer',
     text: responses[Math.floor(Math.random() * responses.length)],
     timestamp: new Date().toISOString(),
-    read: false,
+    status: 'sent',
     file: null
   };
 
   messages.push(message);
   localStorage.setItem(storageKey, JSON.stringify(messages));
   loadChatMessages(returnId);
+
+  // Simulate buyer message delivery after 1 second
+  setTimeout(() => {
+    const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const lastMsg = updatedMessages[updatedMessages.length - 1];
+    if (lastMsg && lastMsg.status === 'sent') {
+      lastMsg.status = 'delivered';
+      localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+      if (currentChatId === returnId) {
+        loadChatMessages(returnId);
+      }
+    }
+  }, 1000);
 }
 
 // Handle File Upload

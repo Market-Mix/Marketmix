@@ -432,6 +432,32 @@
       margin-top: 0.25rem;
     }
 
+    .read-status {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .read-status i {
+      font-size: 0.7rem;
+    }
+
+    .read-status[title="Sent"] i {
+      color: #999;
+    }
+
+    .read-status[title="Delivered"] i {
+      color: #F97316;
+    }
+
+    .read-status[title="Seen"] i {
+      color: #007bff;
+      font-weight: bold;
+    }
+
     /* Chat Input Area */
     .chat-input-area {
       padding: 1rem;
@@ -1484,37 +1510,51 @@
 
   function loadChatMessages(report) {
     const messagesContainer = document.getElementById('chatMessages');
+    const storageKey = `mm_buyer_return_chat_${report.id}`;
+    const savedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const messages = savedMessages.length ? savedMessages : (report.messages || []);
     
-    let html = '';
-    
-    if (report.seller_response) {
-      html += `
-        <div class="chat-message seller">
-          <div class="message-content">
-            <span class="message-sender">Seller</span>
-            <div class="message-text">${report.seller_response}</div>
-            <div class="message-time">${formatTime(new Date())}</div>
-          </div>
-        </div>
-      `;
+    if (!savedMessages.length && report.messages?.length) {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
     }
 
-    if (report.messages && report.messages.length > 0) {
-      html += report.messages.map(msg => {
+    let html = '';
+
+    if (messages && messages.length > 0) {
+      html += messages.map(msg => {
         let senderLabel = '';
         let messageClass = msg.type;
-        if (msg.type === 'system') {
+        let statusIcon = '';
+        
+        if (msg.type === 'system' || msg.type === 'marketmix') {
           senderLabel = '<span class="message-sender">MarketMix</span>';
         } else if (msg.type === 'seller') {
           senderLabel = '<span class="message-sender">Seller</span>';
+        } else if (msg.type === 'buyer') {
+          senderLabel = '<span class="message-sender">You</span>';
         }
+
+        // Add status indicator for buyer messages
+        if (msg.type === 'buyer') {
+          if (msg.status === 'seen') {
+            statusIcon = '<span class="read-status" title="Seen"><i class="fas fa-check-double"></i></span>';
+          } else if (msg.status === 'delivered') {
+            statusIcon = '<span class="read-status" title="Delivered"><i class="fas fa-check-double"></i></span>';
+          } else {
+            statusIcon = '<span class="read-status" title="Sent"><i class="fas fa-check"></i></span>';
+          }
+        }
+
+        const timeStr = msg.time ? formatTime(msg.time) : formatTime(new Date());
+
         return `
         <div class="chat-message ${msg.type}">
           <div class="message-content">
             ${senderLabel}
             <div class="message-text">${msg.text}</div>
             ${msg.media ? `<div class="message-media">${msg.media}</div>` : ''}
-            <div class="message-time">${formatTime(msg.time)}</div>
+            <div class="message-time">${timeStr}</div>
+            ${statusIcon}
           </div>
         </div>
       `;
@@ -1532,6 +1572,35 @@
 
     messagesContainer.innerHTML = html;
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Mark seller messages as seen when buyer opens chat
+    setTimeout(() => {
+      markMessagesAsSeenByBuyer(report);
+    }, 500);
+  }
+
+  function markMessagesAsSeenByBuyer(report) {
+    const storageKey = `mm_buyer_return_chat_${report.id}`;
+    const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    let updated = false;
+
+    messages.forEach(msg => {
+      // Mark seller messages as seen when buyer opens chat
+      if (msg.type === 'seller' && msg.status === 'delivered') {
+        msg.status = 'seen';
+        updated = true;
+      }
+      // Mark system messages as seen
+      if ((msg.type === 'system' || msg.type === 'marketmix') && !msg.status) {
+        msg.status = 'seen';
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+      loadChatMessages(report);
+    }
   }
 
   function closeChat() {
@@ -1546,45 +1615,102 @@
     const text = input.value.trim();
 
     if (!text && !fileInput.files.length) return;
+    if (!currentChatData) return;
 
-    const messagesContainer = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message buyer';
-    
-    let mediaHtml = '';
+    const storageKey = `mm_buyer_return_chat_${currentChatData.id}`;
+    const existingMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const messages = existingMessages.length ? existingMessages : (currentChatData.messages || []);
+
+    const message = {
+      type: 'buyer',
+      text: text || '[Media shared]',
+      time: new Date(),
+      status: 'sent'
+    };
+
     if (fileInput.files.length > 0) {
       const file = fileInput.files[0];
       const reader = new FileReader();
       reader.onload = (e) => {
         if (file.type.startsWith('image/')) {
-          mediaHtml = `<div class="message-media"><img src="${e.target.result}" alt="uploaded image"></div>`;
+          message.media = `<img src="${e.target.result}" alt="uploaded image">`;
         } else if (file.type.startsWith('video/')) {
-          mediaHtml = `<div class="message-media"><video controls style="width:100%;"><source src="${e.target.result}" type="${file.type}"></video></div>`;
+          message.media = `<video controls style="width:100%;"><source src="${e.target.result}" type="${file.type}"></video>`;
         }
-        messageDiv.innerHTML = `
-          <div class="message-content">
-            <div class="message-text">${text || '[Media shared]'}</div>
-            ${mediaHtml}
-            <div class="message-time">${formatTime(new Date())}</div>
-          </div>
-        `;
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        messages.push(message);
+        localStorage.setItem(storageKey, JSON.stringify(messages));
+        loadChatMessages(currentChatData);
+
+        // Simulate message delivery after 1 second
+        setTimeout(() => {
+          const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          const lastMsg = updatedMessages[updatedMessages.length - 1];
+          if (lastMsg && lastMsg.status === 'sent') {
+            lastMsg.status = 'delivered';
+            localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+            loadChatMessages(currentChatData);
+          }
+        }, 1000);
       };
       reader.readAsDataURL(file);
     } else {
-      messageDiv.innerHTML = `
-        <div class="message-content">
-          <div class="message-text">${text}</div>
-          <div class="message-time">${formatTime(new Date())}</div>
-        </div>
-      `;
-      messagesContainer.appendChild(messageDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      messages.push(message);
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+      loadChatMessages(currentChatData);
+
+      // Simulate message delivery after 1 second
+      setTimeout(() => {
+        const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const lastMsg = updatedMessages[updatedMessages.length - 1];
+        if (lastMsg && lastMsg.status === 'sent') {
+          lastMsg.status = 'delivered';
+          localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+          loadChatMessages(currentChatData);
+        }
+      }, 1000);
     }
 
     input.value = '';
     fileInput.value = '';
+
+    // Simulate seller response after 3 seconds
+    if (Math.random() > 0.5) {
+      setTimeout(() => {
+        const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const sellerMsg = {
+          type: 'seller',
+          text: [
+            'Thank you for reaching out! We are investigating your case.',
+            'We sincerely apologize for the inconvenience. A replacement will be sent shortly.',
+            'I am looking into your complaint and will get back to you soon.',
+            'We appreciate your patience. Our team is working on a resolution.',
+            'Thank you for providing the details. We are expediting a solution.'
+          ][Math.floor(Math.random() * 5)],
+          time: new Date(),
+          status: 'sent'
+        };
+        updatedMessages.push(sellerMsg);
+        localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+
+        if (document.getElementById('chatPanel').classList.contains('active')) {
+          loadChatMessages(currentChatData);
+
+          // Seller message delivered after 1 second
+          setTimeout(() => {
+            const finalMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const lastMsg = finalMessages[finalMessages.length - 1];
+            if (lastMsg && lastMsg.status === 'sent') {
+              lastMsg.status = 'delivered';
+              localStorage.setItem(storageKey, JSON.stringify(finalMessages));
+              if (document.getElementById('chatPanel').classList.contains('active')) {
+                loadChatMessages(currentChatData);
+              }
+            }
+          }, 1000);
+        }
+      }, 3000);
+    }
   }
 
   function formatCurrency(amount) {

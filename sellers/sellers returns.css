@@ -674,6 +674,19 @@
   font-size: 0.7rem;
 }
 
+.read-status[title="Sent"] i {
+  color: #999;
+}
+
+.read-status[title="Delivered"] i {
+  color: #17a2b8;
+}
+
+.read-status[title="Seen"] i {
+  color: #667eea;
+  font-weight: bold;
+}
+
 /* Chat Input Area */
 .chat-input-area {
   padding: 1rem;
