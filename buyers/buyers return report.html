@@ -426,6 +426,63 @@
       display: block;
     }
 
+    .attachment-preview {
+      margin: 0.75rem 0;
+      padding: 0.85rem;
+      background: #f8fafc;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .preview-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    #previewContent img,
+    #previewContent video {
+      max-width: 120px;
+      max-height: 120px;
+      border-radius: 10px;
+      display: block;
+    }
+
+    .preview-file-label {
+      padding: 0.75rem 1rem;
+      background: #e5e7eb;
+      color: #374151;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      max-width: calc(100% - 40px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remove-attachment {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .remove-attachment:hover {
+      background: #dc2626;
+    }
+
     .message-time {
       font-size: 0.75rem;
       color: #999;
@@ -1007,6 +1064,16 @@
     <!-- Messages populated by JS -->
   </div>
 
+  <!-- Attachment preview -->
+  <div id="attachmentPreview" class="attachment-preview" style="display: none;">
+    <div class="preview-item">
+      <div id="previewContent"></div>
+      <button class="remove-attachment" id="removeAttachmentBtn" type="button">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+
   <!-- Chat Input Area -->
   <div class="chat-input-area">
     <div class="input-row">
@@ -1275,6 +1342,7 @@
       }
     });
     document.getElementById('chatFileInput').addEventListener('change', handleChatFileChange);
+    document.getElementById('removeAttachmentBtn').addEventListener('click', removeBuyerAttachment);
     
     document.getElementById('evidenceCloseBtn').addEventListener('click', closeEvidenceModal);
     document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
@@ -1609,9 +1677,53 @@
     const file = event.target.files[0];
     if (!file) {
       buyerAttachedFile = null;
+      hideAttachmentPreview();
       return;
     }
     buyerAttachedFile = file;
+    renderAttachmentPreview(file);
+  }
+
+  function renderAttachmentPreview(file) {
+    const preview = document.getElementById('attachmentPreview');
+    const previewContent = document.getElementById('previewContent');
+    let content = '';
+
+    if (file.type.startsWith('image/')) {
+      content = `<img src="" id="previewImage" alt="attachment preview" />`;
+    } else if (file.type.startsWith('video/')) {
+      content = `<video controls id="previewVideo" style="width:100%; max-height:220px;"><source src="" type="${file.type}"></video>`;
+    } else {
+      content = `<div class="preview-file-label">${file.name}</div>`;
+    }
+
+    previewContent.innerHTML = content;
+    preview.style.display = 'flex';
+
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.getElementById('previewImage');
+        const video = document.getElementById('previewVideo');
+        if (img) img.src = e.target.result;
+        if (video) video.querySelector('source').src = e.target.result;
+        if (video) video.load();
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function hideAttachmentPreview() {
+    const preview = document.getElementById('attachmentPreview');
+    const previewContent = document.getElementById('previewContent');
+    preview.style.display = 'none';
+    previewContent.innerHTML = '';
+  }
+
+  function removeBuyerAttachment() {
+    buyerAttachedFile = null;
+    document.getElementById('chatFileInput').value = '';
+    hideAttachmentPreview();
   }
 
   function closeChat() {
@@ -1619,6 +1731,7 @@
     document.getElementById('chatOverlay').classList.remove('active');
     document.getElementById('chatInput').value = '';
     buyerAttachedFile = null;
+    hideAttachmentPreview();
   }
 
   function sendMessage() {
@@ -1641,35 +1754,13 @@
       status: 'sent'
     };
 
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (file.type.startsWith('image/')) {
-          message.media = `<img src="${e.target.result}" alt="uploaded image">`;
-        } else if (file.type.startsWith('video/')) {
-          message.media = `<video controls style="width:100%;"><source src="${e.target.result}" type="${file.type}"></video>`;
-        }
-
-        messages.push(message);
-        localStorage.setItem(storageKey, JSON.stringify(messages));
-        loadChatMessages(currentChatData);
-
-        // Simulate message delivery after 1 second
-        setTimeout(() => {
-          const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          const lastMsg = updatedMessages[updatedMessages.length - 1];
-          if (lastMsg && lastMsg.status === 'sent') {
-            lastMsg.status = 'delivered';
-            localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
-            loadChatMessages(currentChatData);
-          }
-        }, 1000);
-      };
-      reader.readAsDataURL(file);
-    } else {
+    const finalizeMessage = () => {
       messages.push(message);
       localStorage.setItem(storageKey, JSON.stringify(messages));
       loadChatMessages(currentChatData);
+      buyerAttachedFile = null;
+      fileInput.value = '';
+      hideAttachmentPreview();
 
       // Simulate message delivery after 1 second
       setTimeout(() => {
@@ -1681,10 +1772,24 @@
           loadChatMessages(currentChatData);
         }
       }, 1000);
-    }
+    };
 
-    input.value = '';
-    fileInput.value = '';
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (file.type.startsWith('image/')) {
+          message.media = `<img src="${e.target.result}" alt="uploaded image">`;
+        } else if (file.type.startsWith('video/')) {
+          message.media = `<video controls style="width:100%;"><source src="${e.target.result}" type="${file.type}"></video>`;
+        } else {
+          message.media = `<div class="preview-file-label">${file.name}</div>`;
+        }
+        finalizeMessage();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      finalizeMessage();
+    }
 
     // Simulate seller response after 3 seconds
     if (Math.random() > 0.5) {
