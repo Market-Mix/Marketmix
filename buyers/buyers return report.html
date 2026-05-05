@@ -1129,6 +1129,7 @@
   let currentReports = [];
   let currentChatData = null;
   let evidenceRequired = false;
+  let buyerAttachedFile = null;
 
   // =====================================================
   // SAMPLE/DEMO DATA
@@ -1273,6 +1274,7 @@
         sendMessage();
       }
     });
+    document.getElementById('chatFileInput').addEventListener('change', handleChatFileChange);
     
     document.getElementById('evidenceCloseBtn').addEventListener('click', closeEvidenceModal);
     document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
@@ -1603,18 +1605,29 @@
     }
   }
 
+  function handleChatFileChange(event) {
+    const file = event.target.files[0];
+    if (!file) {
+      buyerAttachedFile = null;
+      return;
+    }
+    buyerAttachedFile = file;
+  }
+
   function closeChat() {
     document.getElementById('chatPanel').classList.remove('active');
     document.getElementById('chatOverlay').classList.remove('active');
     document.getElementById('chatInput').value = '';
+    buyerAttachedFile = null;
   }
 
   function sendMessage() {
     const input = document.getElementById('chatInput');
     const fileInput = document.getElementById('chatFileInput');
     const text = input.value.trim();
+    const file = buyerAttachedFile || (fileInput.files.length ? fileInput.files[0] : null);
 
-    if (!text && !fileInput.files.length) return;
+    if (!text && !file) return;
     if (!currentChatData) return;
 
     const storageKey = `mm_buyer_return_chat_${currentChatData.id}`;
@@ -1628,8 +1641,7 @@
       status: 'sent'
     };
 
-    if (fileInput.files.length > 0) {
-      const file = fileInput.files[0];
+    if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (file.type.startsWith('image/')) {
