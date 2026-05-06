@@ -721,6 +721,109 @@
       background: #EA580C;
     }
 
+    /* ========== ACCOUNT MODAL ========== */
+    .account-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2600;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .account-modal.active {
+      display: flex;
+    }
+
+    .account-modal-content {
+      background: white;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      animation: modalSlideIn 0.3s ease;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .account-header {
+      padding: 1.2rem 1.5rem;
+      background: #F97316;
+      color: white;
+    }
+
+    .account-header h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.2rem;
+    }
+
+    .account-info {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .account-body {
+      padding: 1.5rem;
+    }
+
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: inherit;
+      background: white;
+    }
+
+    .payment-fields {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .btn-save-account,
+    .btn-skip-account {
+      flex: 1;
+      padding: 0.8rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .btn-save-account {
+      background: #F97316;
+      color: white;
+    }
+
+    .btn-save-account:hover {
+      background: #EA580C;
+    }
+
+    .btn-skip-account {
+      background: #f8f9fa;
+      color: #666;
+      border: 1px solid #ddd;
+    }
+
+    .btn-skip-account:hover {
+      background: #e9ecef;
+    }
+
     /* 42 HOURS COUNTDOWN BANNER */
     .chat-countdown-banner {
       background: #ffebee;
@@ -1147,6 +1250,55 @@
         <span class="detail-label">MarketMix Decision:</span>
         <span class="detail-value" id="detailsDecision">---</span>
       </div>
+
+      <!-- Account Details Section -->
+      <div class="account-details-section" id="accountDetailsSection" style="display: none;">
+        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #333;">Refund Account Details</h3>
+        <div class="detail-row">
+          <span class="detail-label">Payment Method:</span>
+          <span class="detail-value" id="detailsPaymentMethod">---</span>
+        </div>
+        <div id="detailsBankInfo" style="display: none;">
+          <div class="detail-row">
+            <span class="detail-label">Bank Name:</span>
+            <span class="detail-value" id="detailsBankName">---</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Account Holder:</span>
+            <span class="detail-value" id="detailsAccountHolder">---</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Account Number:</span>
+            <span class="detail-value" id="detailsAccountNumber">---</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Routing Number:</span>
+            <span class="detail-value" id="detailsRoutingNumber">---</span>
+          </div>
+        </div>
+        <div id="detailsPaypalInfo" style="display: none;">
+          <div class="detail-row">
+            <span class="detail-label">PayPal Email:</span>
+            <span class="detail-value" id="detailsPaypalEmail">---</span>
+          </div>
+        </div>
+        <div id="detailsCardInfo" style="display: none;">
+          <div class="detail-row">
+            <span class="detail-label">Card Number:</span>
+            <span class="detail-value" id="detailsCardNumber">---</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Expiry:</span>
+            <span class="detail-value" id="detailsCardExpiry">---</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Cardholder Name:</span>
+            <span class="detail-value" id="detailsCardHolder">---</span>
+          </div>
+        </div>
+        <button class="btn-edit-account" id="editAccountBtn" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit Account Details</button>
+      </div>
+
       <button class="details-close-btn" id="detailsCloseActionBtn">Close</button>
     </div>
   </div>
@@ -1187,6 +1339,77 @@
   </div>
 </div>
 
+<!-- Account Details Modal -->
+<div class="account-modal" id="accountModal">
+  <div class="account-modal-content">
+    <div class="account-header">
+      <h2>Refund Account Details</h2>
+      <p class="account-info">Please provide your account details for potential refunds. This information is securely stored and only used if your return is approved.</p>
+    </div>
+    <div class="account-body">
+      <div class="form-group">
+        <label>Payment Method</label>
+        <select id="paymentMethod" required>
+          <option value="">Select payment method</option>
+          <option value="bank">Bank Transfer</option>
+          <option value="paypal">PayPal</option>
+          <option value="card">Credit/Debit Card</option>
+        </select>
+      </div>
+      
+      <div id="bankFields" class="payment-fields" style="display: none;">
+        <div class="form-group">
+          <label>Bank Name</label>
+          <input type="text" id="bankName" placeholder="Enter your bank name">
+        </div>
+        <div class="form-group">
+          <label>Account Holder Name</label>
+          <input type="text" id="accountHolderName" placeholder="Full name on account">
+        </div>
+        <div class="form-group">
+          <label>Account Number</label>
+          <input type="text" id="accountNumber" placeholder="Enter account number">
+        </div>
+        <div class="form-group">
+          <label>Routing Number (if applicable)</label>
+          <input type="text" id="routingNumber" placeholder="Enter routing number">
+        </div>
+      </div>
+      
+      <div id="paypalFields" class="payment-fields" style="display: none;">
+        <div class="form-group">
+          <label>PayPal Email</label>
+          <input type="email" id="paypalEmail" placeholder="your@email.com">
+        </div>
+      </div>
+      
+      <div id="cardFields" class="payment-fields" style="display: none;">
+        <div class="form-group">
+          <label>Card Number</label>
+          <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456">
+        </div>
+        <div class="form-group">
+          <label>Expiry Date</label>
+          <input type="text" id="cardExpiry" placeholder="MM/YY">
+        </div>
+        <div class="form-group">
+          <label>CVV</label>
+          <input type="text" id="cardCvv" placeholder="123">
+        </div>
+        <div class="form-group">
+          <label>Cardholder Name</label>
+          <input type="text" id="cardHolderName" placeholder="Full name on card">
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <button class="btn-save-account" id="saveAccountBtn">Save Details</button>
+        <button class="btn-skip-account" id="skipAccountBtn">Skip for Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <footer>
   © MarketMix 2025
 </footer>
@@ -1197,6 +1420,78 @@
   let currentChatData = null;
   let evidenceRequired = false;
   let buyerAttachedFile = null;
+  let buyerMediaCache = {}; // session-only preview cache for attachments
+  let buyerAccountDetails = null; // stored account details for refunds
+
+  // =====================================================
+  // ACCOUNT DETAILS FUNCTIONS
+  // =====================================================
+  function checkAndShowAccountModal() {
+    const stored = localStorage.getItem('mm_buyer_account_details');
+    if (stored) {
+      buyerAccountDetails = JSON.parse(stored);
+      return;
+    }
+    showAccountModal();
+  }
+
+  function showAccountModal() {
+    document.getElementById('accountModal').classList.add('active');
+  }
+
+  function hideAccountModal() {
+    document.getElementById('accountModal').classList.remove('active');
+  }
+
+  function saveAccountDetails() {
+    const method = document.getElementById('paymentMethod').value;
+    if (!method) {
+      alert('Please select a payment method');
+      return;
+    }
+
+    const details = { method };
+
+    if (method === 'bank') {
+      details.bankName = document.getElementById('bankName').value.trim();
+      details.accountHolderName = document.getElementById('accountHolderName').value.trim();
+      details.accountNumber = document.getElementById('accountNumber').value.trim();
+      details.routingNumber = document.getElementById('routingNumber').value.trim();
+
+      if (!details.bankName || !details.accountHolderName || !details.accountNumber) {
+        alert('Please fill in all required bank details');
+        return;
+      }
+    } else if (method === 'paypal') {
+      details.paypalEmail = document.getElementById('paypalEmail').value.trim();
+      if (!details.paypalEmail) {
+        alert('Please enter your PayPal email');
+        return;
+      }
+    } else if (method === 'card') {
+      details.cardNumber = document.getElementById('cardNumber').value.trim();
+      details.cardExpiry = document.getElementById('cardExpiry').value.trim();
+      details.cardCvv = document.getElementById('cardCvv').value.trim();
+      details.cardHolderName = document.getElementById('cardHolderName').value.trim();
+
+      if (!details.cardNumber || !details.cardExpiry || !details.cardCvv || !details.cardHolderName) {
+        alert('Please fill in all card details');
+        return;
+      }
+    }
+
+    buyerAccountDetails = details;
+    localStorage.setItem('mm_buyer_account_details', JSON.stringify(details));
+    hideAccountModal();
+    alert('Account details saved successfully!');
+  }
+
+  function togglePaymentFields() {
+    const method = document.getElementById('paymentMethod').value;
+    document.getElementById('bankFields').style.display = method === 'bank' ? 'block' : 'none';
+    document.getElementById('paypalFields').style.display = method === 'paypal' ? 'block' : 'none';
+    document.getElementById('cardFields').style.display = method === 'card' ? 'block' : 'none';
+  }
 
   // =====================================================
   // SAMPLE/DEMO DATA
@@ -1348,6 +1643,35 @@
     document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
     document.getElementById('detailsCloseBtn').addEventListener('click', closeDetailsModal);
     document.getElementById('detailsCloseActionBtn').addEventListener('click', closeDetailsModal);
+
+    // Account modal event listeners
+    document.getElementById('paymentMethod').addEventListener('change', togglePaymentFields);
+    document.getElementById('saveAccountBtn').addEventListener('click', saveAccountDetails);
+    document.getElementById('skipAccountBtn').addEventListener('click', hideAccountModal);
+    document.getElementById('editAccountBtn').addEventListener('click', () => {
+      showAccountModal();
+      // Pre-populate fields if details exist
+      if (buyerAccountDetails) {
+        document.getElementById('paymentMethod').value = buyerAccountDetails.method;
+        togglePaymentFields();
+        if (buyerAccountDetails.method === 'bank') {
+          document.getElementById('bankName').value = buyerAccountDetails.bankName || '';
+          document.getElementById('accountHolderName').value = buyerAccountDetails.accountHolderName || '';
+          document.getElementById('accountNumber').value = buyerAccountDetails.accountNumber || '';
+          document.getElementById('routingNumber').value = buyerAccountDetails.routingNumber || '';
+        } else if (buyerAccountDetails.method === 'paypal') {
+          document.getElementById('paypalEmail').value = buyerAccountDetails.paypalEmail || '';
+        } else if (buyerAccountDetails.method === 'card') {
+          document.getElementById('cardNumber').value = buyerAccountDetails.cardNumber || '';
+          document.getElementById('cardExpiry').value = buyerAccountDetails.cardExpiry || '';
+          document.getElementById('cardCvv').value = buyerAccountDetails.cardCvv || '';
+          document.getElementById('cardHolderName').value = buyerAccountDetails.cardHolderName || '';
+        }
+      }
+    });
+
+    // Check and show account modal on page load
+    checkAndShowAccountModal();
   }
 
   function renderReports(reports) {
@@ -1616,13 +1940,36 @@
         }
 
         const timeStr = msg.time ? formatTime(msg.time) : formatTime(new Date());
+        let mediaMarkup = '';
+
+        if (msg.media) {
+          if (typeof msg.media === 'string') {
+            mediaMarkup = `<div class="message-media">${msg.media}</div>`;
+          } else if (msg.media.type === 'image') {
+            const src = buyerMediaCache[msg.id];
+            if (src) {
+              mediaMarkup = `<div class="message-media"><img src="${src}" alt="uploaded image"></div>`;
+            } else {
+              mediaMarkup = `<div class="message-media preview-file-label">${msg.media.name}</div>`;
+            }
+          } else if (msg.media.type === 'video') {
+            const src = buyerMediaCache[msg.id];
+            if (src) {
+              mediaMarkup = `<div class="message-media"><video controls style="width:100%;"><source src="${src}" type="${msg.media.mime}"></video></div>`;
+            } else {
+              mediaMarkup = `<div class="message-media preview-file-label">${msg.media.name}</div>`;
+            }
+          } else {
+            mediaMarkup = `<div class="message-media preview-file-label">${msg.media.name}</div>`;
+          }
+        }
 
         return `
         <div class="chat-message ${msg.type}">
           <div class="message-content">
             ${senderLabel}
             <div class="message-text">${msg.text}</div>
-            ${msg.media ? `<div class="message-media">${msg.media}</div>` : ''}
+            ${mediaMarkup}
             <div class="message-time">${timeStr}</div>
             ${statusIcon}
           </div>
@@ -1748,6 +2095,7 @@
     const messages = existingMessages.length ? existingMessages : (currentChatData.messages || []);
 
     const message = {
+      id: Date.now(),
       type: 'buyer',
       text: text || '[Media shared]',
       time: new Date(),
@@ -1777,13 +2125,14 @@
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (file.type.startsWith('image/')) {
-          message.media = `<img src="${e.target.result}" alt="uploaded image">`;
-        } else if (file.type.startsWith('video/')) {
-          message.media = `<video controls style="width:100%;"><source src="${e.target.result}" type="${file.type}"></video>`;
-        } else {
-          message.media = `<div class="preview-file-label">${file.name}</div>`;
-        }
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        message.media = {
+          type: isImage ? 'image' : isVideo ? 'video' : 'file',
+          name: file.name,
+          mime: file.type
+        };
+        buyerMediaCache[message.id] = e.target.result;
         finalizeMessage();
       };
       reader.readAsDataURL(file);
@@ -1863,6 +2212,37 @@
     document.getElementById('detailsDecision').textContent = report.marketmix_reason || (['resolved','rejected','refunded'].includes(report.status) ? 'MarketMix decision recorded.' : 'Awaiting MarketMix review.');
     document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
     document.getElementById('detailsDescription').textContent = report.description;
+
+    // Show account details if available
+    const accountSection = document.getElementById('accountDetailsSection');
+    if (buyerAccountDetails) {
+      accountSection.style.display = 'block';
+      document.getElementById('detailsPaymentMethod').textContent = buyerAccountDetails.method.toUpperCase();
+
+      // Hide all payment info sections first
+      document.getElementById('detailsBankInfo').style.display = 'none';
+      document.getElementById('detailsPaypalInfo').style.display = 'none';
+      document.getElementById('detailsCardInfo').style.display = 'none';
+
+      if (buyerAccountDetails.method === 'bank') {
+        document.getElementById('detailsBankInfo').style.display = 'block';
+        document.getElementById('detailsBankName').textContent = buyerAccountDetails.bankName;
+        document.getElementById('detailsAccountHolder').textContent = buyerAccountDetails.accountHolderName;
+        document.getElementById('detailsAccountNumber').textContent = '****' + buyerAccountDetails.accountNumber.slice(-4);
+        document.getElementById('detailsRoutingNumber').textContent = buyerAccountDetails.routingNumber || 'N/A';
+      } else if (buyerAccountDetails.method === 'paypal') {
+        document.getElementById('detailsPaypalInfo').style.display = 'block';
+        document.getElementById('detailsPaypalEmail').textContent = buyerAccountDetails.paypalEmail;
+      } else if (buyerAccountDetails.method === 'card') {
+        document.getElementById('detailsCardInfo').style.display = 'block';
+        document.getElementById('detailsCardNumber').textContent = '**** **** **** ' + buyerAccountDetails.cardNumber.slice(-4);
+        document.getElementById('detailsCardExpiry').textContent = buyerAccountDetails.cardExpiry;
+        document.getElementById('detailsCardHolder').textContent = buyerAccountDetails.cardHolderName;
+      }
+    } else {
+      accountSection.style.display = 'none';
+    }
+
     document.getElementById('detailsModal').classList.add('active');
   }
 
