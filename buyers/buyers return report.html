@@ -814,14 +814,46 @@
       background: #EA580C;
     }
 
-    .btn-skip-account {
-      background: #f8f9fa;
-      color: #666;
-      border: 1px solid #ddd;
+    .toast-notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      pointer-events: none;
+      width: calc(100% - 2rem);
+      max-width: 420px;
     }
 
-    .btn-skip-account:hover {
-      background: #e9ecef;
+    .toast-message {
+      padding: 0.95rem 1rem;
+      border-radius: 10px;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+      opacity: 0;
+      animation: toastSlide 0.4s ease forwards;
+      pointer-events: auto;
+    }
+
+    .toast-success {
+      background: #16a34a;
+    }
+
+    .toast-error {
+      background: #dc2626;
+    }
+
+    .toast-info {
+      background: #2563eb;
+    }
+
+    @keyframes toastSlide {
+      from { transform: translate(-50%, -10px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
     }
 
     /* 42 HOURS COUNTDOWN BANNER */
@@ -1255,48 +1287,26 @@
       <div class="account-details-section" id="accountDetailsSection" style="display: none;">
         <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #333;">Refund Account Details</h3>
         <div class="detail-row">
-          <span class="detail-label">Payment Method:</span>
-          <span class="detail-value" id="detailsPaymentMethod">---</span>
+          <span class="detail-label">Refund Method:</span>
+          <span class="detail-value">BANK TRANSFER</span>
         </div>
-        <div id="detailsBankInfo" style="display: none;">
-          <div class="detail-row">
-            <span class="detail-label">Bank Name:</span>
-            <span class="detail-value" id="detailsBankName">---</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Account Holder:</span>
-            <span class="detail-value" id="detailsAccountHolder">---</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Account Number:</span>
-            <span class="detail-value" id="detailsAccountNumber">---</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Routing Number:</span>
-            <span class="detail-value" id="detailsRoutingNumber">---</span>
-          </div>
+        <div class="detail-row">
+          <span class="detail-label">Bank Name:</span>
+          <span class="detail-value" id="detailsBankName">---</span>
         </div>
-        <div id="detailsPaypalInfo" style="display: none;">
-          <div class="detail-row">
-            <span class="detail-label">PayPal Email:</span>
-            <span class="detail-value" id="detailsPaypalEmail">---</span>
-          </div>
+        <div class="detail-row">
+          <span class="detail-label">Account Holder:</span>
+          <span class="detail-value" id="detailsAccountHolder">---</span>
         </div>
-        <div id="detailsCardInfo" style="display: none;">
-          <div class="detail-row">
-            <span class="detail-label">Card Number:</span>
-            <span class="detail-value" id="detailsCardNumber">---</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Expiry:</span>
-            <span class="detail-value" id="detailsCardExpiry">---</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Cardholder Name:</span>
-            <span class="detail-value" id="detailsCardHolder">---</span>
-          </div>
+        <div class="detail-row">
+          <span class="detail-label">Account Number:</span>
+          <span class="detail-value" id="detailsAccountNumber">---</span>
         </div>
-        <button class="btn-edit-account" id="editAccountBtn" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit Account Details</button>
+        <div class="detail-row">
+          <span class="detail-label">Routing Number:</span>
+          <span class="detail-value" id="detailsRoutingNumber">---</span>
+        </div>
+        <button class="btn-edit-account" id="editAccountBtn" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit Bank Details</button>
       </div>
 
       <button class="details-close-btn" id="detailsCloseActionBtn">Close</button>
@@ -1348,67 +1358,35 @@
     </div>
     <div class="account-body">
       <div class="form-group">
-        <label>Payment Method</label>
-        <select id="paymentMethod" required>
-          <option value="">Select payment method</option>
-          <option value="bank">Bank Transfer</option>
-          <option value="paypal">PayPal</option>
-          <option value="card">Credit/Debit Card</option>
-        </select>
+        <label>Refund method</label>
+        <input type="text" value="Bank Transfer" readonly style="background:#f8f9fa;" />
       </div>
       
-      <div id="bankFields" class="payment-fields" style="display: none;">
-        <div class="form-group">
-          <label>Bank Name</label>
-          <input type="text" id="bankName" placeholder="Enter your bank name">
-        </div>
-        <div class="form-group">
-          <label>Account Holder Name</label>
-          <input type="text" id="accountHolderName" placeholder="Full name on account">
-        </div>
-        <div class="form-group">
-          <label>Account Number</label>
-          <input type="text" id="accountNumber" placeholder="Enter account number">
-        </div>
-        <div class="form-group">
-          <label>Routing Number (if applicable)</label>
-          <input type="text" id="routingNumber" placeholder="Enter routing number">
-        </div>
+      <div class="form-group">
+        <label>Bank Name</label>
+        <input type="text" id="bankName" placeholder="Enter your bank name">
       </div>
-      
-      <div id="paypalFields" class="payment-fields" style="display: none;">
-        <div class="form-group">
-          <label>PayPal Email</label>
-          <input type="email" id="paypalEmail" placeholder="your@email.com">
-        </div>
+      <div class="form-group">
+        <label>Account Holder Name</label>
+        <input type="text" id="accountHolderName" placeholder="Full name on account">
       </div>
-      
-      <div id="cardFields" class="payment-fields" style="display: none;">
-        <div class="form-group">
-          <label>Card Number</label>
-          <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456">
-        </div>
-        <div class="form-group">
-          <label>Expiry Date</label>
-          <input type="text" id="cardExpiry" placeholder="MM/YY">
-        </div>
-        <div class="form-group">
-          <label>CVV</label>
-          <input type="text" id="cardCvv" placeholder="123">
-        </div>
-        <div class="form-group">
-          <label>Cardholder Name</label>
-          <input type="text" id="cardHolderName" placeholder="Full name on card">
-        </div>
+      <div class="form-group">
+        <label>Account Number</label>
+        <input type="text" id="accountNumber" placeholder="Enter account number">
+      </div>
+      <div class="form-group">
+        <label>Routing Number</label>
+        <input type="text" id="routingNumber" placeholder="Enter routing number">
       </div>
       
       <div class="form-actions">
-        <button class="btn-save-account" id="saveAccountBtn">Save Details</button>
-        <button class="btn-skip-account" id="skipAccountBtn">Skip for Now</button>
+        <button class="btn-save-account" id="saveAccountBtn">Save Bank Details</button>
       </div>
     </div>
   </div>
 </div>
+
+<div id="toastNotification" class="toast-notification"></div>
 
 <footer>
   © MarketMix 2025
@@ -1422,6 +1400,23 @@
   let buyerAttachedFile = null;
   let buyerMediaCache = {}; // session-only preview cache for attachments
   let buyerAccountDetails = null; // stored account details for refunds
+
+  function showNotification(message, type = 'success') {
+    const container = document.getElementById('toastNotification');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast-message toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 3200);
+  }
 
   // =====================================================
   // ACCOUNT DETAILS FUNCTIONS
@@ -1444,53 +1439,23 @@
   }
 
   function saveAccountDetails() {
-    const method = document.getElementById('paymentMethod').value;
-    if (!method) {
-      alert('Please select a payment method');
+    const details = {
+      method: 'bank',
+      bankName: document.getElementById('bankName').value.trim(),
+      accountHolderName: document.getElementById('accountHolderName').value.trim(),
+      accountNumber: document.getElementById('accountNumber').value.trim(),
+      routingNumber: document.getElementById('routingNumber').value.trim()
+    };
+
+    if (!details.bankName || !details.accountHolderName || !details.accountNumber) {
+      showNotification('Please fill in all required bank details.', 'error');
       return;
-    }
-
-    const details = { method };
-
-    if (method === 'bank') {
-      details.bankName = document.getElementById('bankName').value.trim();
-      details.accountHolderName = document.getElementById('accountHolderName').value.trim();
-      details.accountNumber = document.getElementById('accountNumber').value.trim();
-      details.routingNumber = document.getElementById('routingNumber').value.trim();
-
-      if (!details.bankName || !details.accountHolderName || !details.accountNumber) {
-        alert('Please fill in all required bank details');
-        return;
-      }
-    } else if (method === 'paypal') {
-      details.paypalEmail = document.getElementById('paypalEmail').value.trim();
-      if (!details.paypalEmail) {
-        alert('Please enter your PayPal email');
-        return;
-      }
-    } else if (method === 'card') {
-      details.cardNumber = document.getElementById('cardNumber').value.trim();
-      details.cardExpiry = document.getElementById('cardExpiry').value.trim();
-      details.cardCvv = document.getElementById('cardCvv').value.trim();
-      details.cardHolderName = document.getElementById('cardHolderName').value.trim();
-
-      if (!details.cardNumber || !details.cardExpiry || !details.cardCvv || !details.cardHolderName) {
-        alert('Please fill in all card details');
-        return;
-      }
     }
 
     buyerAccountDetails = details;
     localStorage.setItem('mm_buyer_account_details', JSON.stringify(details));
     hideAccountModal();
-    alert('Account details saved successfully!');
-  }
-
-  function togglePaymentFields() {
-    const method = document.getElementById('paymentMethod').value;
-    document.getElementById('bankFields').style.display = method === 'bank' ? 'block' : 'none';
-    document.getElementById('paypalFields').style.display = method === 'paypal' ? 'block' : 'none';
-    document.getElementById('cardFields').style.display = method === 'card' ? 'block' : 'none';
+    showNotification('Bank account details saved successfully.', 'success');
   }
 
   // =====================================================
@@ -1645,28 +1610,14 @@
     document.getElementById('detailsCloseActionBtn').addEventListener('click', closeDetailsModal);
 
     // Account modal event listeners
-    document.getElementById('paymentMethod').addEventListener('change', togglePaymentFields);
     document.getElementById('saveAccountBtn').addEventListener('click', saveAccountDetails);
-    document.getElementById('skipAccountBtn').addEventListener('click', hideAccountModal);
     document.getElementById('editAccountBtn').addEventListener('click', () => {
       showAccountModal();
-      // Pre-populate fields if details exist
       if (buyerAccountDetails) {
-        document.getElementById('paymentMethod').value = buyerAccountDetails.method;
-        togglePaymentFields();
-        if (buyerAccountDetails.method === 'bank') {
-          document.getElementById('bankName').value = buyerAccountDetails.bankName || '';
-          document.getElementById('accountHolderName').value = buyerAccountDetails.accountHolderName || '';
-          document.getElementById('accountNumber').value = buyerAccountDetails.accountNumber || '';
-          document.getElementById('routingNumber').value = buyerAccountDetails.routingNumber || '';
-        } else if (buyerAccountDetails.method === 'paypal') {
-          document.getElementById('paypalEmail').value = buyerAccountDetails.paypalEmail || '';
-        } else if (buyerAccountDetails.method === 'card') {
-          document.getElementById('cardNumber').value = buyerAccountDetails.cardNumber || '';
-          document.getElementById('cardExpiry').value = buyerAccountDetails.cardExpiry || '';
-          document.getElementById('cardCvv').value = buyerAccountDetails.cardCvv || '';
-          document.getElementById('cardHolderName').value = buyerAccountDetails.cardHolderName || '';
-        }
+        document.getElementById('bankName').value = buyerAccountDetails.bankName || '';
+        document.getElementById('accountHolderName').value = buyerAccountDetails.accountHolderName || '';
+        document.getElementById('accountNumber').value = buyerAccountDetails.accountNumber || '';
+        document.getElementById('routingNumber').value = buyerAccountDetails.routingNumber || '';
       }
     });
 
@@ -2217,28 +2168,11 @@
     const accountSection = document.getElementById('accountDetailsSection');
     if (buyerAccountDetails) {
       accountSection.style.display = 'block';
-      document.getElementById('detailsPaymentMethod').textContent = buyerAccountDetails.method.toUpperCase();
-
-      // Hide all payment info sections first
-      document.getElementById('detailsBankInfo').style.display = 'none';
-      document.getElementById('detailsPaypalInfo').style.display = 'none';
-      document.getElementById('detailsCardInfo').style.display = 'none';
-
-      if (buyerAccountDetails.method === 'bank') {
-        document.getElementById('detailsBankInfo').style.display = 'block';
         document.getElementById('detailsBankName').textContent = buyerAccountDetails.bankName;
-        document.getElementById('detailsAccountHolder').textContent = buyerAccountDetails.accountHolderName;
-        document.getElementById('detailsAccountNumber').textContent = '****' + buyerAccountDetails.accountNumber.slice(-4);
-        document.getElementById('detailsRoutingNumber').textContent = buyerAccountDetails.routingNumber || 'N/A';
-      } else if (buyerAccountDetails.method === 'paypal') {
-        document.getElementById('detailsPaypalInfo').style.display = 'block';
-        document.getElementById('detailsPaypalEmail').textContent = buyerAccountDetails.paypalEmail;
-      } else if (buyerAccountDetails.method === 'card') {
-        document.getElementById('detailsCardInfo').style.display = 'block';
-        document.getElementById('detailsCardNumber').textContent = '**** **** **** ' + buyerAccountDetails.cardNumber.slice(-4);
-        document.getElementById('detailsCardExpiry').textContent = buyerAccountDetails.cardExpiry;
-        document.getElementById('detailsCardHolder').textContent = buyerAccountDetails.cardHolderName;
-      }
+      document.getElementById('detailsAccountHolder').textContent = buyerAccountDetails.accountHolderName;
+      document.getElementById('detailsAccountNumber').textContent = '****' + buyerAccountDetails.accountNumber.slice(-4);
+      document.getElementById('detailsRoutingNumber').textContent = buyerAccountDetails.routingNumber || 'N/A';
+      accountSection.style.display = 'block';
     } else {
       accountSection.style.display = 'none';
     }
