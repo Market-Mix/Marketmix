@@ -171,13 +171,11 @@ body {
   position: relative;
 }
 
-.quick-links,
-.popular-categories,
-.best-selling,
-.new-arrivals {
-  position: relative;
-  z-index: 10;
-  overflow: visible !important;
+#quickLinksContainer-list,
+#categoriesContainer-list,
+#bestSellingFilterContainer-drop-list,
+#newArrivalsFilterContainer-drop-list {
+  z-index: 9999 !important;
 }
 
 .links-wrapper {
