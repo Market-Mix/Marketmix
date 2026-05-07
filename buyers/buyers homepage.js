@@ -274,8 +274,6 @@ function makeFloatingList(btn, items) {
     const cats = await getCategories();
     const cc = document.getElementById('categoriesContainer');
     if (cc) cc.innerHTML = cats.map(c=>`<a href="buyers-category.html?id=${c.id}" class="category-card"><div class="category-icon">${catIcons[c.name]||'📦'}</div><div class="category-name">${c.name}</div></a>`).join('');
-    const ql = document.getElementById('quickLinksContainer');
-    if (ql) ql.innerHTML = cats.map(c=>`<a href="buyers-category.html?id=${c.id}" class="link-card"><img src="marketplace.png" alt="${c.name}"><p>${c.name}</p></a>`).join('');
   }
 
   async function loadBrands() {
@@ -364,7 +362,6 @@ function makeFloatingList(btn, items) {
     });
   })();
 
-  buildCategoryDropdown('quickLinksContainer', 'Browse Categories', 'buyers-category.html?id={id}');
   buildCategoryDropdown('categoriesContainer', 'All Categories', 'buyers-category.html?id={id}');
   buildFilterDropdown('bestSellingFilterContainer', 'best-selling', loadAllProducts);
   buildFilterDropdown('newArrivalsFilterContainer', 'new-arrivals', loadAllProducts);
