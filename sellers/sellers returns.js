@@ -10,9 +10,11 @@ const returnsData = [
     productImage: 'https://via.placeholder.com/200?text=Wireless+Headphones',
     amount: 89.99,
     status: 'Pending',
+    marketMixReason: 'MarketMix is reviewing the evidence and seller response.',
     purchase_date: new Date(Date.now() - 1.5*24*60*60*1000).toISOString(),
     evidence_submitted_at: new Date(Date.now() - 10*60*60*1000).toISOString(),
     messages: [
+      { sender: 'marketmix', text: 'MarketMix has joined the conversation and will review the issue shortly.', timestamp: new Date(Date.now() - 10.5*60*60*1000).toISOString(), read: true, file: null },
       { sender: 'buyer', text: 'I received the speaker with a broken casing.', timestamp: new Date(Date.now() - 10*60*60*1000).toISOString(), read: false, file: null },
       { sender: 'seller', text: 'I am sorry to hear that. Can you share a photo of the damage?', timestamp: new Date(Date.now() - 9*60*60*1000).toISOString(), read: true, file: null }
     ],
@@ -28,6 +30,7 @@ const returnsData = [
     productImage: 'https://via.placeholder.com/200?text=Bluetooth+Speaker',
     amount: 49.99,
     status: 'Approved',
+    marketMixReason: 'Return approved after verification of delivery and item condition.',
     date: '2024-06-18'
   },
   {
@@ -40,6 +43,7 @@ const returnsData = [
     productImage: 'https://via.placeholder.com/200?text=USB-C+Cable',
     amount: 15.99,
     status: 'Denied',
+    marketMixReason: 'Return denied due to policy mismatch and insufficient grounds.',
     date: '2024-06-20'
   },
   {
@@ -52,6 +56,7 @@ const returnsData = [
     productImage: 'https://via.placeholder.com/200?text=Phone+Case',
     amount: 24.99,
     status: 'Pending',
+    marketMixReason: 'MarketMix is reviewing buyer evidence and will decide soon.',
     purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
     evidence_submitted_at: new Date(Date.now() - 26*60*60*1000).toISOString(),
     messages: [
@@ -69,6 +74,7 @@ const returnsData = [
     productImage: 'https://via.placeholder.com/200?text=Smartwatch+Strap',
     amount: 12.99,
     status: 'Pending',
+    marketMixReason: 'Awaiting additional evidence before MarketMix can make a final decision.',
     purchase_date: new Date(Date.now() - 3.5*24*60*60*1000).toISOString(),
     messages: [
       { sender: 'buyer', text: 'I received the wrong strap color.', timestamp: new Date(Date.now() - 3.5*24*60*60*1000).toISOString(), read: false, file: null }
@@ -209,7 +215,7 @@ function renderTable(data = returnsData) {
 
     if (pending && hasEvidence) {
       const evidenceTime = new Date(item.evidence_submitted_at).getTime();
-      const expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
+      const expiryTime = evidenceTime + (42 * 60 * 60 * 1000);
       const timeLeft = expiryTime - now;
       const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -294,6 +300,7 @@ function openModal(returnId) {
   const adminDecisionElement = document.getElementById('adminDecision');
   adminDecisionElement.textContent = returnItem.status;
   adminDecisionElement.className = `status-badge ${returnItem.status.toLowerCase()}`;
+  document.getElementById('adminReason').textContent = returnItem.marketMixReason || 'Awaiting final review.';
 
   // Show modal
   modalBackdrop.classList.add('active');
@@ -374,6 +381,7 @@ function openChat(returnId) {
 
   // Update chat header
   document.getElementById('chatBuyerName').textContent = `Chat with ${returnItem.buyerName}`;
+  document.getElementById('chatStoreName').textContent = `Store: MarketMix Store`;
   document.getElementById('chatOrderId').textContent = `Order ID: ${returnItem.orderId}`;
 
   // Update resolution status
@@ -411,7 +419,11 @@ function closeChat() {
 function loadChatMessages(returnId) {
   const storageKey = getChatStorageKey(returnId);
   const savedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
-  const messages = savedMessages.length ? savedMessages : (currentChatData?.messages || []);
+  let messages = savedMessages.length ? savedMessages : (currentChatData?.messages || []);
+
+  if (!savedMessages.length && currentChatData?.messages?.length) {
+    localStorage.setItem(storageKey, JSON.stringify(messages));
+  }
 
   chatMessages.innerHTML = '';
 
@@ -425,8 +437,9 @@ function loadChatMessages(returnId) {
   }
 
   messages.forEach((msg, idx) => {
+    const senderType = msg.sender === 'seller' ? 'seller' : msg.sender === 'buyer' ? 'buyer' : msg.sender === 'marketmix' ? 'marketmix' : 'system';
     const msgEl = document.createElement('div');
-    msgEl.className = `chat-message ${msg.sender === 'seller' ? 'seller' : msg.sender === 'buyer' ? 'buyer' : 'system'}`;
+    msgEl.className = `chat-message ${senderType}`;
 
     const timestamp = new Date(msg.timestamp);
     const timeStr = timestamp.toLocaleTimeString('en-US', { 
@@ -435,8 +448,34 @@ function loadChatMessages(returnId) {
       hour12: true 
     });
 
+    let senderLabel = '';
+    if (msg.sender === 'seller') {
+      senderLabel = '<span class="message-sender">Seller</span>';
+    } else if (msg.sender === 'buyer') {
+      senderLabel = '<span class="message-sender">Buyer</span>';
+    } else if (msg.sender === 'marketmix' || msg.sender === 'system') {
+      senderLabel = '<span class="message-sender">MarketMix</span>';
+    }
+
+    // Determine message status
+    let statusIcon = '';
+    let statusTitle = '';
+    if (msg.sender === 'seller') {
+      if (msg.status === 'seen') {
+        statusIcon = '<i class="fas fa-check-double"></i>';
+        statusTitle = 'Seen';
+      } else if (msg.status === 'delivered') {
+        statusIcon = '<i class="fas fa-check-double"></i>';
+        statusTitle = 'Delivered';
+      } else {
+        statusIcon = '<i class="fas fa-check"></i>';
+        statusTitle = 'Sent';
+      }
+    }
+
     let content = `
       <div class="message-content">
+        ${senderLabel}
         <p class="message-text">${escapeHtml(msg.text)}</p>
     `;
 
@@ -452,9 +491,13 @@ function loadChatMessages(returnId) {
 
     content += `
         <span class="message-time">${timeStr}</span>
-        <span class="read-status" title="${msg.read ? 'Read' : 'Sent'}">
-          ${msg.read ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-check"></i>'}
-        </span>
+    `;
+
+    if (msg.sender === 'seller') {
+      content += `<span class="read-status" title="${statusTitle}">${statusIcon}</span>`;
+    }
+
+    content += `
       </div>
     `;
 
@@ -484,14 +527,14 @@ function updateChatCountdown(returnItem) {
     if (timeLeft > 0) {
       const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
       const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      countdownBanner.textContent = `The seller and buyer have ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
+      countdownBanner.textContent = `You have ${hLeft}h ${mLeft}m to resolve the issue with the buyer before MarketMix takes a decision.`;
       countdownBanner.classList.add('active');
     } else {
       countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
       countdownBanner.classList.add('active');
     }
   } else {
-    countdownBanner.textContent = 'Awaiting buyer evidence to start the 42-hour resolution countdown.';
+    countdownBanner.textContent = 'Awaiting buyer evidence. Once it is submitted, you will have 2 days to resolve the issue with the buyer before MarketMix takes a decision.';
     countdownBanner.classList.add('active');
   }
 }
@@ -503,8 +546,14 @@ function markMessagesAsRead(returnId) {
   let updated = false;
 
   messages.forEach(msg => {
-    if (msg.sender === 'buyer' && !msg.read) {
-      msg.read = true;
+    // Mark buyer messages as read when seller opens chat
+    if (msg.sender === 'buyer' && !msg.status) {
+      msg.status = 'delivered';
+      updated = true;
+    }
+    // Mark seller messages as seen (already delivered)
+    if (msg.sender === 'seller' && msg.status === 'sent') {
+      msg.status = 'delivered';
       updated = true;
     }
   });
@@ -522,14 +571,15 @@ function sendChatMessage() {
   if (!currentChatId) return;
 
   const storageKey = getChatStorageKey(currentChatId);
-  const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const existingMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const messages = existingMessages.length ? existingMessages : (currentChatData?.messages || []);
 
   const message = {
     id: Date.now(),
     sender: 'seller',
     text: text,
     timestamp: new Date().toISOString(),
-    read: false,
+    status: 'sent',
     file: attachedFile ? { ...attachedFile } : null
   };
 
@@ -542,6 +592,17 @@ function sendChatMessage() {
 
   // Reload messages
   loadChatMessages(currentChatId);
+
+  // Simulate message delivery after 1 second
+  setTimeout(() => {
+    const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const lastMsg = updatedMessages[updatedMessages.length - 1];
+    if (lastMsg && lastMsg.status === 'sent') {
+      lastMsg.status = 'delivered';
+      localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+      loadChatMessages(currentChatId);
+    }
+  }, 1000);
 
   // Simulate buyer response after 3 seconds (for demo)
   if (Math.random() > 0.5) {
@@ -572,13 +633,26 @@ function simulateBuyerResponse(returnId) {
     sender: 'buyer',
     text: responses[Math.floor(Math.random() * responses.length)],
     timestamp: new Date().toISOString(),
-    read: false,
+    status: 'sent',
     file: null
   };
 
   messages.push(message);
   localStorage.setItem(storageKey, JSON.stringify(messages));
   loadChatMessages(returnId);
+
+  // Simulate buyer message delivery after 1 second
+  setTimeout(() => {
+    const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const lastMsg = updatedMessages[updatedMessages.length - 1];
+    if (lastMsg && lastMsg.status === 'sent') {
+      lastMsg.status = 'delivered';
+      localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+      if (currentChatId === returnId) {
+        loadChatMessages(returnId);
+      }
+    }
+  }, 1000);
 }
 
 // Handle File Upload
@@ -662,7 +736,7 @@ chatInput.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     sendChatMessage();
   }
-}
+});
 
 // Notification
 function showNotification(message, type = 'success') {
@@ -696,8 +770,3 @@ function showNotification(message, type = 'success') {
   }, 3000);
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  loadProfile();
-  renderTable();
-});

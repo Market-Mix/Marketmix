@@ -72,12 +72,12 @@
     .table-header,
     .table-row {
       display: grid;
-      grid-template-columns: 140px 160px 110px 100px 100px 110px 90px 80px;
-      gap: 1rem;
+      grid-template-columns: 110px 130px 90px 85px 90px 90px 85px 120px;
+      gap: 0.75rem;
       align-items: center;
-      padding: 1rem;
+      padding: 0.9rem;
       border-bottom: 1px solid #eee;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
     .table-header {
@@ -134,16 +134,16 @@
     /* ========== ACTION BUTTONS ========== */
     .btn-action,
     .btn-chat {
-      padding: 0.5rem 1rem;
+      padding: 0.4rem 0.75rem;
       border: none;
-      border-radius: 6px;
+      border-radius: 5px;
       cursor: pointer;
       font-weight: 600;
       transition: all 0.3s;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.35rem;
       white-space: nowrap;
     }
 
@@ -426,10 +426,93 @@
       display: block;
     }
 
+    .attachment-preview {
+      margin: 0.75rem 0;
+      padding: 0.85rem;
+      background: #f8fafc;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .preview-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    #previewContent img,
+    #previewContent video {
+      max-width: 120px;
+      max-height: 120px;
+      border-radius: 10px;
+      display: block;
+    }
+
+    .preview-file-label {
+      padding: 0.75rem 1rem;
+      background: #e5e7eb;
+      color: #374151;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      max-width: calc(100% - 40px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remove-attachment {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .remove-attachment:hover {
+      background: #dc2626;
+    }
+
     .message-time {
       font-size: 0.75rem;
       color: #999;
       margin-top: 0.25rem;
+    }
+
+    .read-status {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .read-status i {
+      font-size: 0.7rem;
+    }
+
+    .read-status[title="Sent"] i {
+      color: #999;
+    }
+
+    .read-status[title="Delivered"] i {
+      color: #F97316;
+    }
+
+    .read-status[title="Seen"] i {
+      color: #007bff;
+      font-weight: bold;
     }
 
     /* Chat Input Area */
@@ -638,6 +721,141 @@
       background: #EA580C;
     }
 
+    /* ========== ACCOUNT MODAL ========== */
+    .account-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2600;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .account-modal.active {
+      display: flex;
+    }
+
+    .account-modal-content {
+      background: white;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      animation: modalSlideIn 0.3s ease;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .account-header {
+      padding: 1.2rem 1.5rem;
+      background: #F97316;
+      color: white;
+    }
+
+    .account-header h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.2rem;
+    }
+
+    .account-info {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .account-body {
+      padding: 1.5rem;
+    }
+
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: inherit;
+      background: white;
+    }
+
+    .payment-fields {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .btn-save-account,
+    .btn-skip-account {
+      flex: 1;
+      padding: 0.8rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .btn-save-account {
+      background: #F97316;
+      color: white;
+    }
+
+    .btn-save-account:hover {
+      background: #EA580C;
+    }
+
+    .toast-notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      pointer-events: none;
+      width: calc(100% - 2rem);
+      max-width: 420px;
+    }
+
+    .toast-message {
+      padding: 0.95rem 1rem;
+      border-radius: 10px;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+      opacity: 0;
+      animation: toastSlide 0.4s ease forwards;
+      pointer-events: auto;
+    }
+
+    .toast-success {
+      background: #16a34a;
+    }
+
+    .toast-error {
+      background: #dc2626;
+    }
+
+    .toast-info {
+      background: #2563eb;
+    }
+
+    @keyframes toastSlide {
+      from { transform: translate(-50%, -10px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+
     /* 42 HOURS COUNTDOWN BANNER */
     .chat-countdown-banner {
       background: #ffebee;
@@ -708,9 +926,9 @@
     @media (max-width: 1024px) {
       .table-header,
       .table-row {
-        grid-template-columns: 120px 140px 100px 90px 90px 100px 80px 70px;
-        gap: 0.75rem;
-        padding: 0.75rem;
+        grid-template-columns: 100px 120px 85px 75px 80px 80px 75px 100px;
+        gap: 0.6rem;
+        padding: 0.8rem;
         font-size: 0.85rem;
       }
     }
@@ -981,6 +1199,16 @@
     <!-- Messages populated by JS -->
   </div>
 
+  <!-- Attachment preview -->
+  <div id="attachmentPreview" class="attachment-preview" style="display: none;">
+    <div class="preview-item">
+      <div id="previewContent"></div>
+      <button class="remove-attachment" id="removeAttachmentBtn" type="button">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+
   <!-- Chat Input Area -->
   <div class="chat-input-area">
     <div class="input-row">
@@ -991,13 +1219,13 @@
         rows="3"
       ></textarea>
       <div class="input-actions">
-        <label class="file-upload-label" title="Attach image or file">
+        <label class="file-upload-label" title="Attach image, video or file">
           <i class="fas fa-paperclip"></i>
           <input 
             type="file" 
             id="chatFileInput" 
             hidden 
-            accept="image/*,.pdf,.doc,.docx"
+            accept="image/*,video/*,.pdf,.doc,.docx"
           />
         </label>
         <button class="btn-send-chat" id="sendChatBtn">
@@ -1054,6 +1282,33 @@
         <span class="detail-label">MarketMix Decision:</span>
         <span class="detail-value" id="detailsDecision">---</span>
       </div>
+
+      <!-- Account Details Section -->
+      <div class="account-details-section" id="accountDetailsSection" style="display: none;">
+        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #333;">Refund Account Details</h3>
+        <div class="detail-row">
+          <span class="detail-label">Refund Method:</span>
+          <span class="detail-value">BANK TRANSFER</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Bank Name:</span>
+          <span class="detail-value" id="detailsBankName">---</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Account Holder:</span>
+          <span class="detail-value" id="detailsAccountHolder">---</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Account Number:</span>
+          <span class="detail-value" id="detailsAccountNumber">---</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Routing Number:</span>
+          <span class="detail-value" id="detailsRoutingNumber">---</span>
+        </div>
+        <button class="btn-edit-account" id="editAccountBtn" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit Bank Details</button>
+      </div>
+
       <button class="details-close-btn" id="detailsCloseActionBtn">Close</button>
     </div>
   </div>
@@ -1094,6 +1349,45 @@
   </div>
 </div>
 
+<!-- Account Details Modal -->
+<div class="account-modal" id="accountModal">
+  <div class="account-modal-content">
+    <div class="account-header">
+      <h2>Refund Account Details</h2>
+      <p class="account-info">Please provide your account details for potential refunds. This information is securely stored and only used if your return is approved.</p>
+    </div>
+    <div class="account-body">
+      <div class="form-group">
+        <label>Refund method</label>
+        <input type="text" value="Bank Transfer" readonly style="background:#f8f9fa;" />
+      </div>
+      
+      <div class="form-group">
+        <label>Bank Name</label>
+        <input type="text" id="bankName" placeholder="Enter your bank name">
+      </div>
+      <div class="form-group">
+        <label>Account Holder Name</label>
+        <input type="text" id="accountHolderName" placeholder="Full name on account">
+      </div>
+      <div class="form-group">
+        <label>Account Number</label>
+        <input type="text" id="accountNumber" placeholder="Enter account number">
+      </div>
+      <div class="form-group">
+        <label>Routing Number</label>
+        <input type="text" id="routingNumber" placeholder="Enter routing number">
+      </div>
+      
+      <div class="form-actions">
+        <button class="btn-save-account" id="saveAccountBtn">Save Bank Details</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastNotification" class="toast-notification"></div>
+
 <footer>
   © MarketMix 2025
 </footer>
@@ -1103,6 +1397,66 @@
   let currentReports = [];
   let currentChatData = null;
   let evidenceRequired = false;
+  let buyerAttachedFile = null;
+  let buyerMediaCache = {}; // session-only preview cache for attachments
+  let buyerAccountDetails = null; // stored account details for refunds
+
+  function showNotification(message, type = 'success') {
+    const container = document.getElementById('toastNotification');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast-message toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 3200);
+  }
+
+  // =====================================================
+  // ACCOUNT DETAILS FUNCTIONS
+  // =====================================================
+  function checkAndShowAccountModal() {
+    const stored = localStorage.getItem('mm_buyer_account_details');
+    if (stored) {
+      buyerAccountDetails = JSON.parse(stored);
+      return;
+    }
+    showAccountModal();
+  }
+
+  function showAccountModal() {
+    document.getElementById('accountModal').classList.add('active');
+  }
+
+  function hideAccountModal() {
+    document.getElementById('accountModal').classList.remove('active');
+  }
+
+  function saveAccountDetails() {
+    const details = {
+      method: 'bank',
+      bankName: document.getElementById('bankName').value.trim(),
+      accountHolderName: document.getElementById('accountHolderName').value.trim(),
+      accountNumber: document.getElementById('accountNumber').value.trim(),
+      routingNumber: document.getElementById('routingNumber').value.trim()
+    };
+
+    if (!details.bankName || !details.accountHolderName || !details.accountNumber) {
+      showNotification('Please fill in all required bank details.', 'error');
+      return;
+    }
+
+    buyerAccountDetails = details;
+    localStorage.setItem('mm_buyer_account_details', JSON.stringify(details));
+    hideAccountModal();
+    showNotification('Bank account details saved successfully.', 'success');
+  }
 
   // =====================================================
   // SAMPLE/DEMO DATA
@@ -1247,11 +1601,28 @@
         sendMessage();
       }
     });
+    document.getElementById('chatFileInput').addEventListener('change', handleChatFileChange);
+    document.getElementById('removeAttachmentBtn').addEventListener('click', removeBuyerAttachment);
     
     document.getElementById('evidenceCloseBtn').addEventListener('click', closeEvidenceModal);
     document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
     document.getElementById('detailsCloseBtn').addEventListener('click', closeDetailsModal);
     document.getElementById('detailsCloseActionBtn').addEventListener('click', closeDetailsModal);
+
+    // Account modal event listeners
+    document.getElementById('saveAccountBtn').addEventListener('click', saveAccountDetails);
+    document.getElementById('editAccountBtn').addEventListener('click', () => {
+      showAccountModal();
+      if (buyerAccountDetails) {
+        document.getElementById('bankName').value = buyerAccountDetails.bankName || '';
+        document.getElementById('accountHolderName').value = buyerAccountDetails.accountHolderName || '';
+        document.getElementById('accountNumber').value = buyerAccountDetails.accountNumber || '';
+        document.getElementById('routingNumber').value = buyerAccountDetails.routingNumber || '';
+      }
+    });
+
+    // Check and show account modal on page load
+    checkAndShowAccountModal();
   }
 
   function renderReports(reports) {
@@ -1484,37 +1855,74 @@
 
   function loadChatMessages(report) {
     const messagesContainer = document.getElementById('chatMessages');
+    const storageKey = `mm_buyer_return_chat_${report.id}`;
+    const savedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const messages = savedMessages.length ? savedMessages : (report.messages || []);
     
-    let html = '';
-    
-    if (report.seller_response) {
-      html += `
-        <div class="chat-message seller">
-          <div class="message-content">
-            <span class="message-sender">Seller</span>
-            <div class="message-text">${report.seller_response}</div>
-            <div class="message-time">${formatTime(new Date())}</div>
-          </div>
-        </div>
-      `;
+    if (!savedMessages.length && report.messages?.length) {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
     }
 
-    if (report.messages && report.messages.length > 0) {
-      html += report.messages.map(msg => {
+    let html = '';
+
+    if (messages && messages.length > 0) {
+      html += messages.map(msg => {
         let senderLabel = '';
         let messageClass = msg.type;
-        if (msg.type === 'system') {
+        let statusIcon = '';
+        
+        if (msg.type === 'system' || msg.type === 'marketmix') {
           senderLabel = '<span class="message-sender">MarketMix</span>';
         } else if (msg.type === 'seller') {
           senderLabel = '<span class="message-sender">Seller</span>';
+        } else if (msg.type === 'buyer') {
+          senderLabel = '<span class="message-sender">You</span>';
         }
+
+        // Add status indicator for buyer messages
+        if (msg.type === 'buyer') {
+          if (msg.status === 'seen') {
+            statusIcon = '<span class="read-status" title="Seen"><i class="fas fa-check-double"></i></span>';
+          } else if (msg.status === 'delivered') {
+            statusIcon = '<span class="read-status" title="Delivered"><i class="fas fa-check-double"></i></span>';
+          } else {
+            statusIcon = '<span class="read-status" title="Sent"><i class="fas fa-check"></i></span>';
+          }
+        }
+
+        const timeStr = msg.time ? formatTime(msg.time) : formatTime(new Date());
+        let mediaMarkup = '';
+
+        if (msg.media) {
+          if (typeof msg.media === 'string') {
+            mediaMarkup = `<div class="message-media">${msg.media}</div>`;
+          } else if (msg.media.type === 'image') {
+            const src = buyerMediaCache[msg.id];
+            if (src) {
+              mediaMarkup = `<div class="message-media"><img src="${src}" alt="uploaded image"></div>`;
+            } else {
+              mediaMarkup = `<div class="message-media preview-file-label">${msg.media.name}</div>`;
+            }
+          } else if (msg.media.type === 'video') {
+            const src = buyerMediaCache[msg.id];
+            if (src) {
+              mediaMarkup = `<div class="message-media"><video controls style="width:100%;"><source src="${src}" type="${msg.media.mime}"></video></div>`;
+            } else {
+              mediaMarkup = `<div class="message-media preview-file-label">${msg.media.name}</div>`;
+            }
+          } else {
+            mediaMarkup = `<div class="message-media preview-file-label">${msg.media.name}</div>`;
+          }
+        }
+
         return `
         <div class="chat-message ${msg.type}">
           <div class="message-content">
             ${senderLabel}
             <div class="message-text">${msg.text}</div>
-            ${msg.media ? `<div class="message-media">${msg.media}</div>` : ''}
-            <div class="message-time">${formatTime(msg.time)}</div>
+            ${mediaMarkup}
+            <div class="message-time">${timeStr}</div>
+            ${statusIcon}
           </div>
         </div>
       `;
@@ -1532,59 +1940,194 @@
 
     messagesContainer.innerHTML = html;
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Mark seller messages as seen when buyer opens chat
+    setTimeout(() => {
+      markMessagesAsSeenByBuyer(report);
+    }, 500);
+  }
+
+  function markMessagesAsSeenByBuyer(report) {
+    const storageKey = `mm_buyer_return_chat_${report.id}`;
+    const messages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    let updated = false;
+
+    messages.forEach(msg => {
+      // Mark seller messages as seen when buyer opens chat
+      if (msg.type === 'seller' && msg.status === 'delivered') {
+        msg.status = 'seen';
+        updated = true;
+      }
+      // Mark system messages as seen
+      if ((msg.type === 'system' || msg.type === 'marketmix') && !msg.status) {
+        msg.status = 'seen';
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+      loadChatMessages(report);
+    }
+  }
+
+  function handleChatFileChange(event) {
+    const file = event.target.files[0];
+    if (!file) {
+      buyerAttachedFile = null;
+      hideAttachmentPreview();
+      return;
+    }
+    buyerAttachedFile = file;
+    renderAttachmentPreview(file);
+  }
+
+  function renderAttachmentPreview(file) {
+    const preview = document.getElementById('attachmentPreview');
+    const previewContent = document.getElementById('previewContent');
+    let content = '';
+
+    if (file.type.startsWith('image/')) {
+      content = `<img src="" id="previewImage" alt="attachment preview" />`;
+    } else if (file.type.startsWith('video/')) {
+      content = `<video controls id="previewVideo" style="width:100%; max-height:220px;"><source src="" type="${file.type}"></video>`;
+    } else {
+      content = `<div class="preview-file-label">${file.name}</div>`;
+    }
+
+    previewContent.innerHTML = content;
+    preview.style.display = 'flex';
+
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.getElementById('previewImage');
+        const video = document.getElementById('previewVideo');
+        if (img) img.src = e.target.result;
+        if (video) video.querySelector('source').src = e.target.result;
+        if (video) video.load();
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function hideAttachmentPreview() {
+    const preview = document.getElementById('attachmentPreview');
+    const previewContent = document.getElementById('previewContent');
+    preview.style.display = 'none';
+    previewContent.innerHTML = '';
+  }
+
+  function removeBuyerAttachment() {
+    buyerAttachedFile = null;
+    document.getElementById('chatFileInput').value = '';
+    hideAttachmentPreview();
   }
 
   function closeChat() {
     document.getElementById('chatPanel').classList.remove('active');
     document.getElementById('chatOverlay').classList.remove('active');
     document.getElementById('chatInput').value = '';
+    buyerAttachedFile = null;
+    hideAttachmentPreview();
   }
 
   function sendMessage() {
     const input = document.getElementById('chatInput');
     const fileInput = document.getElementById('chatFileInput');
     const text = input.value.trim();
+    const file = buyerAttachedFile || (fileInput.files.length ? fileInput.files[0] : null);
 
-    if (!text && !fileInput.files.length) return;
+    if (!text && !file) return;
+    if (!currentChatData) return;
 
-    const messagesContainer = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message buyer';
-    
-    let mediaHtml = '';
-    if (fileInput.files.length > 0) {
-      const file = fileInput.files[0];
+    const storageKey = `mm_buyer_return_chat_${currentChatData.id}`;
+    const existingMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const messages = existingMessages.length ? existingMessages : (currentChatData.messages || []);
+
+    const message = {
+      id: Date.now(),
+      type: 'buyer',
+      text: text || '[Media shared]',
+      time: new Date(),
+      status: 'sent'
+    };
+
+    const finalizeMessage = () => {
+      messages.push(message);
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+      loadChatMessages(currentChatData);
+      buyerAttachedFile = null;
+      fileInput.value = '';
+      hideAttachmentPreview();
+
+      // Simulate message delivery after 1 second
+      setTimeout(() => {
+        const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const lastMsg = updatedMessages[updatedMessages.length - 1];
+        if (lastMsg && lastMsg.status === 'sent') {
+          lastMsg.status = 'delivered';
+          localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+          loadChatMessages(currentChatData);
+        }
+      }, 1000);
+    };
+
+    if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (file.type.startsWith('image/')) {
-          mediaHtml = `<div class="message-media"><img src="${e.target.result}" alt="uploaded image"></div>`;
-        } else if (file.type.startsWith('video/')) {
-          mediaHtml = `<div class="message-media"><video controls style="width:100%;"><source src="${e.target.result}" type="${file.type}"></video></div>`;
-        }
-        messageDiv.innerHTML = `
-          <div class="message-content">
-            <div class="message-text">${text || '[Media shared]'}</div>
-            ${mediaHtml}
-            <div class="message-time">${formatTime(new Date())}</div>
-          </div>
-        `;
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        message.media = {
+          type: isImage ? 'image' : isVideo ? 'video' : 'file',
+          name: file.name,
+          mime: file.type
+        };
+        buyerMediaCache[message.id] = e.target.result;
+        finalizeMessage();
       };
       reader.readAsDataURL(file);
     } else {
-      messageDiv.innerHTML = `
-        <div class="message-content">
-          <div class="message-text">${text}</div>
-          <div class="message-time">${formatTime(new Date())}</div>
-        </div>
-      `;
-      messagesContainer.appendChild(messageDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      finalizeMessage();
     }
 
-    input.value = '';
-    fileInput.value = '';
+    // Simulate seller response after 3 seconds
+    if (Math.random() > 0.5) {
+      setTimeout(() => {
+        const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const sellerMsg = {
+          type: 'seller',
+          text: [
+            'Thank you for reaching out! We are investigating your case.',
+            'We sincerely apologize for the inconvenience. A replacement will be sent shortly.',
+            'I am looking into your complaint and will get back to you soon.',
+            'We appreciate your patience. Our team is working on a resolution.',
+            'Thank you for providing the details. We are expediting a solution.'
+          ][Math.floor(Math.random() * 5)],
+          time: new Date(),
+          status: 'sent'
+        };
+        updatedMessages.push(sellerMsg);
+        localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+
+        if (document.getElementById('chatPanel').classList.contains('active')) {
+          loadChatMessages(currentChatData);
+
+          // Seller message delivered after 1 second
+          setTimeout(() => {
+            const finalMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const lastMsg = finalMessages[finalMessages.length - 1];
+            if (lastMsg && lastMsg.status === 'sent') {
+              lastMsg.status = 'delivered';
+              localStorage.setItem(storageKey, JSON.stringify(finalMessages));
+              if (document.getElementById('chatPanel').classList.contains('active')) {
+                loadChatMessages(currentChatData);
+              }
+            }
+          }, 1000);
+        }
+      }, 3000);
+    }
   }
 
   function formatCurrency(amount) {
@@ -1620,6 +2163,20 @@
     document.getElementById('detailsDecision').textContent = report.marketmix_reason || (['resolved','rejected','refunded'].includes(report.status) ? 'MarketMix decision recorded.' : 'Awaiting MarketMix review.');
     document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
     document.getElementById('detailsDescription').textContent = report.description;
+
+    // Show account details if available
+    const accountSection = document.getElementById('accountDetailsSection');
+    if (buyerAccountDetails) {
+      accountSection.style.display = 'block';
+        document.getElementById('detailsBankName').textContent = buyerAccountDetails.bankName;
+      document.getElementById('detailsAccountHolder').textContent = buyerAccountDetails.accountHolderName;
+      document.getElementById('detailsAccountNumber').textContent = '****' + buyerAccountDetails.accountNumber.slice(-4);
+      document.getElementById('detailsRoutingNumber').textContent = buyerAccountDetails.routingNumber || 'N/A';
+      accountSection.style.display = 'block';
+    } else {
+      accountSection.style.display = 'none';
+    }
+
     document.getElementById('detailsModal').classList.add('active');
   }
 

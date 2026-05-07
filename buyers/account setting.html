@@ -622,6 +622,38 @@
       </div>
     </div>
 
+    <!-- Refund Bank Details Section -->
+    <div class="settings-section">
+      <h3><i class="fas fa-university"></i> Refund Bank Details</h3>
+      <p class="input-hint">Save your bank account details so refunds can be processed quickly if a return is approved.</p>
+
+      <div class="settings-group">
+        <label for="bankName">Bank Name</label>
+        <input type="text" id="bankName" placeholder="Example: First Bank" />
+      </div>
+
+      <div class="settings-group">
+        <label for="accountHolderName">Account Holder Name</label>
+        <input type="text" id="accountHolderName" placeholder="Full name on account" />
+      </div>
+
+      <div class="settings-group">
+        <label for="accountNumber">Account Number</label>
+        <input type="text" id="accountNumber" placeholder="Enter account number" />
+      </div>
+
+      <div class="settings-group">
+        <label for="routingNumber">Routing Number</label>
+        <input type="text" id="routingNumber" placeholder="Routing / Sort code" />
+      </div>
+
+      <div class="section-actions">
+        <button class="btn btn-primary" id="saveBankDetailsBtn">
+          <i class="fas fa-save"></i> Save Bank Details
+        </button>
+      </div>
+    </div>
+
     <!-- Notification Preferences Section -->
     <div class="settings-section">
       <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
@@ -783,6 +815,18 @@
         if (user.postalCode) document.getElementById('postalCode').value = user.postalCode;
         if (user.country) document.getElementById('country').value = user.country;
 
+        // Load bank details
+        let bankDetails = JSON.parse(localStorage.getItem('mm_buyer_account_details') || 'null');
+        if (!bankDetails && user.bankDetails) {
+          bankDetails = user.bankDetails;
+        }
+        if (bankDetails) {
+          document.getElementById('bankName').value = bankDetails.bankName || '';
+          document.getElementById('accountHolderName').value = bankDetails.accountHolderName || '';
+          document.getElementById('accountNumber').value = bankDetails.accountNumber || '';
+          document.getElementById('routingNumber').value = bankDetails.routingNumber || '';
+        }
+
         // Load notification preferences
         if (user.notificationPreferences) {
           const prefs = user.notificationPreferences;
@@ -804,25 +848,38 @@
           const data = await response.json();
           if (data.status === 'success' && data.data.user) {
             const freshUser = data.data.user;
+            const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+            const mergedUser = {
+              ...freshUser,
+              bankDetails: storedUser.bankDetails || freshUser.bankDetails
+            };
             
             // Update localStorage
-            localStorage.setItem('user', JSON.stringify(freshUser));
+            localStorage.setItem('user', JSON.stringify(mergedUser));
 
             // Update form fields
-            if (freshUser.firstName) document.getElementById('firstName').value = freshUser.firstName;
-            if (freshUser.lastName) document.getElementById('lastName').value = freshUser.lastName;
-            if (freshUser.email) document.getElementById('email').value = freshUser.email;
+            if (mergedUser.firstName) document.getElementById('firstName').value = mergedUser.firstName;
+            if (mergedUser.lastName) document.getElementById('lastName').value = mergedUser.lastName;
+            if (mergedUser.email) document.getElementById('email').value = mergedUser.email;
             
+            // Update bank details if available
+            if (mergedUser.bankDetails) {
+              document.getElementById('bankName').value = mergedUser.bankDetails.bankName || '';
+              document.getElementById('accountHolderName').value = mergedUser.bankDetails.accountHolderName || '';
+              document.getElementById('accountNumber').value = mergedUser.bankDetails.accountNumber || '';
+              document.getElementById('routingNumber').value = mergedUser.bankDetails.routingNumber || '';
+            }
+
             // Update address
-            if (freshUser.address) document.getElementById('address').value = freshUser.address;
-            if (freshUser.city) document.getElementById('city').value = freshUser.city;
-            if (freshUser.state) document.getElementById('state').value = freshUser.state;
-            if (freshUser.postalCode) document.getElementById('postalCode').value = freshUser.postalCode;
-            if (freshUser.country) document.getElementById('country').value = freshUser.country;
+            if (mergedUser.address) document.getElementById('address').value = mergedUser.address;
+            if (mergedUser.city) document.getElementById('city').value = mergedUser.city;
+            if (mergedUser.state) document.getElementById('state').value = mergedUser.state;
+            if (mergedUser.postalCode) document.getElementById('postalCode').value = mergedUser.postalCode;
+            if (mergedUser.country) document.getElementById('country').value = mergedUser.country;
 
             // Update notifications
-            if (freshUser.notificationPreferences) {
-              const prefs = freshUser.notificationPreferences;
+            if (mergedUser.notificationPreferences) {
+              const prefs = mergedUser.notificationPreferences;
               document.getElementById('emailNotifications').checked = prefs.email !== false;
               document.getElementById('smsNotifications').checked = prefs.sms === true;
               document.getElementById('inAppNotifications').checked = prefs.inApp !== false;
@@ -1017,6 +1074,36 @@ if (response.ok && data.status === 'success') {
     }
 
     // =====================================================
+    // SAVE BANK DETAILS
+    // =====================================================
+    function saveBankDetails() {
+      const bankName = document.getElementById('bankName').value.trim();
+      const accountHolderName = document.getElementById('accountHolderName').value.trim();
+      const accountNumber = document.getElementById('accountNumber').value.trim();
+      const routingNumber = document.getElementById('routingNumber').value.trim();
+
+      if (!bankName || !accountHolderName || !accountNumber) {
+        showAlert('error', 'Please fill in your bank name, account holder name, and account number');
+        return;
+      }
+
+      const bankDetails = {
+        bankName,
+        accountHolderName,
+        accountNumber,
+        routingNumber
+      };
+
+      localStorage.setItem('mm_buyer_account_details', JSON.stringify(bankDetails));
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      user.bankDetails = bankDetails;
+      localStorage.setItem('user', JSON.stringify(user));
+
+      showAlert('success', 'Refund bank details saved successfully!');
+    }
+
+    // =====================================================
     // SAVE NOTIFICATION PREFERENCES
     // =====================================================
     async function saveNotifications() {
@@ -1139,6 +1226,9 @@ if (response.ok && data.status === 'success') {
 
       // Save address button
       document.getElementById('saveAddressBtn').addEventListener('click', saveAddress);
+
+      // Save refund bank details button
+      document.getElementById('saveBankDetailsBtn').addEventListener('click', saveBankDetails);
 
       // Save notifications button
       document.getElementById('saveNotificationsBtn').addEventListener('click', saveNotifications);
