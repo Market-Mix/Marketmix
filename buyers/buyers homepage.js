@@ -129,67 +129,90 @@ window.addEventListener('DOMContentLoaded', () => {
     'Jewelry':'💍','Pet Supplies':'🐾'
   };
 
-  function buildCategoryDropdown(containerId, label, linkTemplate) {
-    const wrap = document.getElementById(containerId);
-    if (!wrap) return;
-    wrap.innerHTML = `<div style="position:relative;display:inline-block">
-      <button id="${containerId}-btn" style="background:#F97316;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px">
-        ${label} <span style="font-size:10px">▼</span></button>
-      <div id="${containerId}-list" style="display:none;position:absolute;top:110%;left:0;background:white;border:1px solid #ddd;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:999;min-width:200px;max-height:300px;overflow-y:auto">
-      </div></div>`;
-    const btn = document.getElementById(`${containerId}-btn`);
-    const list = document.getElementById(`${containerId}-list`);
-    btn.addEventListener('click', e => { e.stopPropagation(); list.style.display = list.style.display==='none'?'block':'none'; });
-    document.addEventListener('click', () => { if(list) list.style.display='none'; });
-    getCategories().then(cats => {
-      list.innerHTML = cats.map(c => `<a href="${linkTemplate.replace('{id}',c.id)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;text-decoration:none;color:#333;border-bottom:1px solid #f0f0f0;font-size:14px" onmouseover="this.style.background='#fff7ed'" onmouseout="this.style.background=''">${catIcons[c.name]||'📦'} ${c.name}</a>`).join('');
-    });
+  function makeFloatingList(btn, items) {
+  let list = document.getElementById('floating-cat-list');
+  if (!list) {
+    list = document.createElement('div');
+    list.id = 'floating-cat-list';
+    list.style.cssText = 'position:fixed;background:white;border:1px solid #ddd;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.18);z-index:99999;min-width:200px;max-height:300px;overflow-y:auto;display:none';
+    document.body.appendChild(list);
+  }
+  list.innerHTML = items;
+
+  function position() {
+    const r = btn.getBoundingClientRect();
+    list.style.top = (r.bottom + 6) + 'px';
+    list.style.left = r.left + 'px';
   }
 
-  function buildFilterDropdown(sectionId, section, loadFn) {
-    const wrap = document.getElementById(sectionId);
-    if (!wrap) return;
-    const allBtn = wrap.querySelector('[data-category="all"]');
-    if (!allBtn) return;
-    const dropWrap = document.createElement('div');
-    dropWrap.style.cssText = 'position:relative;display:inline-block';
-    dropWrap.innerHTML = `<button id="${sectionId}-drop-btn" class="filter-btn" style="display:flex;align-items:center;gap:6px">
-      Category <span style="font-size:10px">▼</span></button>
-      <div id="${sectionId}-drop-list" style="display:none;position:absolute;top:110%;left:0;background:white;border:1px solid #ddd;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:999;min-width:180px;max-height:280px;overflow-y:auto"></div>`;
-    wrap.appendChild(dropWrap);
-    const btn = document.getElementById(`${sectionId}-drop-btn`);
-    const list = document.getElementById(`${sectionId}-drop-list`);
-    btn.addEventListener('click', e => { e.stopPropagation(); list.style.display = list.style.display==='none'?'block':'none'; });
-    document.addEventListener('click', () => { if(list) list.style.display='none'; });
-    allBtn.addEventListener('click', () => { allBtn.classList.add('active'); btn.classList.remove('active'); loadFn(); });
+  if (list.style.display === 'none') {
+    position();
+    list.style.display = 'block';
+    setTimeout(() => {
+      document.addEventListener('click', function hide(e) {
+        if (!list.contains(e.target) && e.target !== btn) {
+          list.style.display = 'none';
+          document.removeEventListener('click', hide);
+        }
+      });
+    }, 0);
+  } else {
+    list.style.display = 'none';
+  }
+}
+  function buildCategoryDropdown(containerId, label, linkTemplate) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.innerHTML = `<button id="${containerId}-btn" style="background:#F97316;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px">${label} <span style="font-size:10px">▼</span></button>`;
+  const btn = document.getElementById(`${containerId}-btn`);
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
     getCategories().then(cats => {
-      list.innerHTML = cats.map(c => `<div data-cat="${normCat(c.name)}" style="padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fff7ed'" onmouseout="this.style.background=''">${catIcons[c.name]||'📦'} ${c.name}</div>`).join('');
-      list.querySelectorAll('[data-cat]').forEach(item => {
+      const html = cats.map(c => `<a href="${linkTemplate.replace('{id}',c.id)}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;text-decoration:none;color:#333;border-bottom:1px solid #f0f0f0;font-size:14px" onmouseover="this.style.background='#fff7ed'" onmouseout="this.style.background=''">${catIcons[c.name]||'📦'} ${c.name}</a>`).join('');
+      makeFloatingList(btn, html);
+    });
+  });
+}
+  function buildFilterDropdown(sectionId, section, loadFn) {
+  const wrap = document.getElementById(sectionId);
+  if (!wrap) return;
+  const allBtn = wrap.querySelector('[data-category="all"]');
+  if (!allBtn) return;
+  const dropBtn = document.createElement('button');
+  dropBtn.className = 'filter-btn';
+  dropBtn.innerHTML = 'Category <span style="font-size:10px">▼</span>';
+  wrap.appendChild(dropBtn);
+
+  allBtn.addEventListener('click', () => { allBtn.classList.add('active'); dropBtn.classList.remove('active'); loadFn(); });
+
+  dropBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    getCategories().then(cats => {
+      const html = cats.map(c => `<div data-cat="${normCat(c.name)}" style="padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fff7ed'" onmouseout="this.style.background=''">${catIcons[c.name]||'📦'} ${c.name}</div>`).join('');
+      makeFloatingList(dropBtn, html);
+      document.getElementById('floating-cat-list').querySelectorAll('[data-cat]').forEach(item => {
         item.addEventListener('click', () => {
-          list.style.display='none';
-          btn.classList.add('active'); allBtn.classList.remove('active');
+          document.getElementById('floating-cat-list').style.display = 'none';
+          dropBtn.classList.add('active'); allBtn.classList.remove('active');
           const cat = item.dataset.cat;
           const grid = document.querySelector(`.${section}-grid`);
           if (!grid) return;
           const cards = grid.querySelectorAll('.product-card');
           let found = 0;
-          cards.forEach(card => {
-            const show = normCat(card.dataset.category||'')=== cat;
-            card.style.display = show ? '' : 'none';
-            if (show) found++;
-          });
+          cards.forEach(card => { const show = normCat(card.dataset.category||'')=== cat; card.style.display=show?'':'none'; if(show)found++; });
           if (!found) {
-            grid.innerHTML = `<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No products in this category</div>`;
+            grid.innerHTML = `<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">Loading...</div>`;
             fetch(`${API}/products?limit=200`).then(r=>r.json()).then(d=>{
               const items=(d.data||[]).filter(p=>normCat(p.category||p.category_name||'')=== cat);
               grid.innerHTML = items.length ? items.map(p=>renderCard(p)).join('') : `<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No products found</div>`;
               attachCardClicks(grid); attachCartListeners();
-            }).catch(()=>{});
+            });
           }
         });
       });
     });
-  }
+  });
+}
 
   async function loadFlashProducts() {
     const container = document.getElementById('flashProducts');
