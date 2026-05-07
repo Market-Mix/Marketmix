@@ -177,7 +177,14 @@ body {
 #newArrivalsFilterContainer-drop-list {
   z-index: 9999 !important;
 }
-
+.quick-links,
+.popular-categories,
+.best-selling,
+.new-arrivals {
+  position: relative;
+  z-index: 10;
+  overflow: visible !important;
+}
 .links-wrapper {
   display: flex;
   overflow-x: auto;
