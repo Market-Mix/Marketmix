@@ -61,7 +61,7 @@
     <div class="nav-actions"></div>
     <div class="icon-container">
       <div class="profile-container">
-        <img id="sellerProfileImage" src="" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()">
+        <img id="sellerProfileImageMobile" src="" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()">
         <div class="nav-list">
           <li><a style="text-decoration:none;color:white;" href="view profile.html">View Profile</a></li>
           <li><a style="text-decoration:none;color:white;" href="sellers setting.html">Account Settings</a></li>
@@ -108,6 +108,11 @@
 
         <label for="newProductName">Product Name <span class="req">*</span></label>
         <input type="text" id="newProductName" placeholder="e.g. Classic Leather Bag" required>
+
+        <label for="newProductCategory">Category</label>
+        <select id="newProductCategory">
+          <option value="">— Select a category —</option>
+        </select>
 
         <label for="newProductPrice">Price (₦) <span class="req">*</span></label>
         <input type="text" id="newProductPrice" placeholder="0" inputmode="numeric" required>
@@ -158,6 +163,11 @@
 
         <label>Product Name <span class="req">*</span></label>
         <input type="text" id="editName" required>
+
+        <label for="editCategory">Category</label>
+        <select id="editCategory">
+          <option value="">— Select a category —</option>
+        </select>
 
         <label>Price (₦) <span class="req">*</span></label>
         <input type="text" id="editPrice" inputmode="numeric" required>
