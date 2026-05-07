@@ -114,19 +114,29 @@ function makeFloatingList(btn, items) {
     document.body.appendChild(list);
   }
   list.innerHTML = items;
+
   if (list.style.display === 'none') {
-    const r = btn.getBoundingClientRect();
-    list.style.top = (r.bottom+6)+'px';
-    list.style.left = r.left+'px';
+    function reposition() {
+      const r = btn.getBoundingClientRect();
+      list.style.top = (r.bottom + 6) + 'px';
+      list.style.left = r.left + 'px';
+    }
+    reposition();
     list.style.display = 'block';
+    window.addEventListener('scroll', reposition);
     setTimeout(() => {
       document.addEventListener('click', function hide(e) {
-        if (!list.contains(e.target) && e.target !== btn) { list.style.display='none'; document.removeEventListener('click',hide); }
+        if (!list.contains(e.target) && e.target !== btn) {
+          list.style.display = 'none';
+          window.removeEventListener('scroll', reposition);
+          document.removeEventListener('click', hide);
+        }
       });
     }, 0);
-  } else { list.style.display='none'; }
+  } else {
+    list.style.display = 'none';
+  }
 }
-
 function buildFilterDropdown(sectionId, section, loadFn) {
   const wrap = document.getElementById(sectionId);
   if (!wrap) return;

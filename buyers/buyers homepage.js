@@ -129,7 +129,7 @@ window.addEventListener('DOMContentLoaded', () => {
     'Jewelry':'💍','Pet Supplies':'🐾'
   };
 
-  function makeFloatingList(btn, items) {
+function makeFloatingList(btn, items) {
   let list = document.getElementById('floating-cat-list');
   if (!list) {
     list = document.createElement('div');
@@ -139,19 +139,20 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   list.innerHTML = items;
 
-  function position() {
-    const r = btn.getBoundingClientRect();
-    list.style.top = (r.bottom + 6) + 'px';
-    list.style.left = r.left + 'px';
-  }
-
   if (list.style.display === 'none') {
-    position();
+    function reposition() {
+      const r = btn.getBoundingClientRect();
+      list.style.top = (r.bottom + 6) + 'px';
+      list.style.left = r.left + 'px';
+    }
+    reposition();
     list.style.display = 'block';
+    window.addEventListener('scroll', reposition);
     setTimeout(() => {
       document.addEventListener('click', function hide(e) {
         if (!list.contains(e.target) && e.target !== btn) {
           list.style.display = 'none';
+          window.removeEventListener('scroll', reposition);
           document.removeEventListener('click', hide);
         }
       });
