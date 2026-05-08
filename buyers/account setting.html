@@ -499,6 +499,24 @@
         justify-content: center;
       }
     }
+
+    /* Notification Badge */
+    .notification-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #e63946;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: 2px solid white;
+    }
   </style>
 </head>
 <body>
@@ -650,6 +668,18 @@
       <div class="section-actions">
         <button class="btn btn-primary" id="saveBankDetailsBtn">
           <i class="fas fa-save"></i> Save Bank Details
+        </button>
+      </div>
+    </div>
+
+    <!-- Returns & Refunds Section -->
+    <div class="settings-section">
+      <h3><i class="fas fa-undo"></i> Returns & Refunds</h3>
+      <p class="input-hint">Track your returns and manage refund requests.</p>
+      <div class="section-actions">
+        <button class="btn btn-primary" id="returnsRefundsBtn" onclick="window.location.href='buyers return report.html'" style="position: relative;">
+          <i class="fas fa-undo"></i> View Returns & Refunds
+          <span class="notification-badge" id="returnsNotificationBadge" style="display: none;"></span>
         </button>
       </div>
     </div>
@@ -1264,6 +1294,19 @@ if (response.ok && data.status === 'success') {
         }
       });
     });
+
+    // =====================================================
+    // NOTIFICATION INTEGRATION
+    // =====================================================
+    window.updateReturnsNotification = function(count) {
+      const badge = document.getElementById('returnsNotificationBadge');
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    };
   </script>
 
 </body>

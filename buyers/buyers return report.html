@@ -828,6 +828,28 @@
       max-width: 420px;
     }
 
+    /* Notification Badge */
+    .notification-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #e63946;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: 2px solid white;
+    }
+
+    .btn-chat {
+      position: relative;
+    }
+
     .toast-message {
       padding: 0.95rem 1rem;
       border-radius: 10px;
@@ -1400,6 +1422,44 @@
   let buyerAttachedFile = null;
   let buyerMediaCache = {}; // session-only preview cache for attachments
   let buyerAccountDetails = null; // stored account details for refunds
+  let unreadCounts = {}; // track unread messages per report
+
+  function getUnreadCount(reportId) {
+    const key = `mm_report_unread_${reportId}`;
+    const count = localStorage.getItem(key);
+    return count ? parseInt(count) : 0;
+  }
+
+  function setUnreadCount(reportId, count) {
+    const key = `mm_report_unread_${reportId}`;
+    if (count > 0) {
+      localStorage.setItem(key, count.toString());
+    } else {
+      localStorage.removeItem(key);
+    }
+    updateNotificationBadges();
+  }
+
+  function incrementUnreadCount(reportId) {
+    const current = getUnreadCount(reportId);
+    setUnreadCount(reportId, current + 1);
+  }
+
+  function getTotalUnreadCount() {
+    let total = 0;
+    currentReports.forEach(report => {
+      total += getUnreadCount(report.id);
+    });
+    return total;
+  }
+
+  function updateNotificationBadges() {
+    const total = getTotalUnreadCount();
+    // Update returns button badges on account page
+    window.updateReturnsNotification?.(total);
+    // Update account nav badge on homepage
+    window.updateAccountNotification?.(total);
+  }
 
   function showNotification(message, type = 'success') {
     const container = document.getElementById('toastNotification');
@@ -1636,7 +1696,16 @@
     }
 
     emptyState.style.display = 'none';
-    container.innerHTML = reports.map(report => {
+
+    // Sort reports: unread first, then by date
+    const sortedReports = [...reports].sort((a, b) => {
+      const aUnread = getUnreadCount(a.id);
+      const bUnread = getUnreadCount(b.id);
+      if (aUnread !== bUnread) return bUnread - aUnread; // Unread first
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0); // Then by date
+    });
+
+    container.innerHTML = sortedReports.map(report => {
       const complaintStarted = report.status && report.status !== 'purchased';
       const isRejected = report.status === 'rejected';
       let statusHtml = '';
@@ -1681,9 +1750,11 @@
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
           const label = complaintStarted ? `Chat (${daysLeft}d ${hoursLeft}h)` : `Start Complaint (${daysLeft}d ${hoursLeft}h)`;
+          const unreadCount = getUnreadCount(report.id);
           chatBtnHtml = `
-            <button class="btn-chat" onclick="openChat(${report.id})">
+            <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat(${report.id})" style="position: relative;">
               <i class="fas fa-comments"></i> ${label}
+              ${unreadCount > 0 ? `<span class="notification-badge">${unreadCount}</span>` : ''}
             </button>
           `;
         } else if (isRejected) {
@@ -1863,6 +1934,9 @@
       localStorage.setItem(storageKey, JSON.stringify(messages));
     }
 
+    // Mark messages as read when opening chat
+    setUnreadCount(report.id, 0);
+
     let html = '';
 
     if (messages && messages.length > 0) {
@@ -1892,6 +1966,9 @@
 
         const timeStr = msg.time ? formatTime(msg.time) : formatTime(new Date());
         let mediaMarkup = '';
+
+        // If this is a seller message, mark as unread (will be cleared when chat opens)
+        // This allows badge to show new seller responses
 
         if (msg.media) {
           if (typeof msg.media === 'string') {
@@ -2123,6 +2200,19 @@
               if (document.getElementById('chatPanel').classList.contains('active')) {
                 loadChatMessages(currentChatData);
               }
+            }
+          }, 1000);
+        } else {
+          // Chat is not open - mark message as unread
+          incrementUnreadCount(currentChatData.id);
+          
+          // Still deliver the message after 1 second
+          setTimeout(() => {
+            const finalMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const lastMsg = finalMessages[finalMessages.length - 1];
+            if (lastMsg && lastMsg.status === 'sent') {
+              lastMsg.status = 'delivered';
+              localStorage.setItem(storageKey, JSON.stringify(finalMessages));
             }
           }, 1000);
         }
