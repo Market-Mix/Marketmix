@@ -109,6 +109,7 @@ async function loadDashboardData() {
   renderProgressTracker(profile);
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
+  renderStoreShareLink(profile);
 }
 
 // ─── Nav Toggle ───────────────────────────────────────────────────────────────
@@ -172,6 +173,62 @@ function renderWelcome(profile) {
   if (!el) return;
   const name = profile?.firstName || profile?.profile?.businessName || "Seller";
   el.textContent = `Welcome, ${name}!`;
+}
+
+
+// ─── Store Share Link ──────────────────────────────────────────────────────────
+function renderStoreShareLink(profile) {
+  // Get seller ID from stored user object
+  let sellerId = null;
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    sellerId = user.id;
+  } catch (_) {}
+
+  if (!sellerId) return;
+
+  // Build the store URL — adjust base URL to match your frontend deployment
+  const baseUrl = window.location.origin;
+  const storeUrl = `${baseUrl}/buyers/store-id.html?seller=${sellerId}`;
+
+  const input = document.getElementById('storeLinkInput');
+  const openBtn = document.getElementById('openStoreBtn');
+
+  if (input) input.value = storeUrl;
+  if (openBtn) openBtn.href = storeUrl;
+}
+
+function copyStoreLink() {
+  const input = document.getElementById('storeLinkInput');
+  const successEl = document.getElementById('copySuccess');
+  const copyBtn = document.getElementById('copyLinkBtn');
+
+  if (!input || !input.value || input.value === 'Generating your link...') return;
+
+  navigator.clipboard.writeText(input.value).then(() => {
+    // Show success
+    if (successEl) {
+      successEl.style.display = 'block';
+      setTimeout(() => { successEl.style.display = 'none'; }, 3000);
+    }
+    // Flash the button
+    if (copyBtn) {
+      copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      copyBtn.style.background = '#16a34a';
+      setTimeout(() => {
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+        copyBtn.style.background = '';
+      }, 2500);
+    }
+  }).catch(() => {
+    // Fallback for older browsers
+    input.select();
+    document.execCommand('copy');
+    if (successEl) {
+      successEl.style.display = 'block';
+      setTimeout(() => { successEl.style.display = 'none'; }, 3000);
+    }
+  });
 }
 
 // ─── Profile Image ────────────────────────────────────────────────────────────
