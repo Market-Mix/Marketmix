@@ -93,19 +93,6 @@
       </div>
     </section>
 
-    <!-- ⚡ Quick Links Section -->
-<section class="quick-links">
-  <h2 class="section-title">Quick Links</h2>
-  <div class="quick-links-container">
-    <div class="links-wrapper" id="quickLinksContainer">
-      <!-- Quick Links will be populated by JavaScript from Supabase -->
-      <div class="category-skeleton" style="display: flex; align-items: center; justify-content: center; height: 120px; background: #f0f0f0; border-radius: 10px; color: #999;">
-        Loading categories...
-      </div>
-    </div>
-  </div>
-</section>
-
 
     <!-- ⚡ Flash Sales Section -->
 <section class="flash-sales">
@@ -238,20 +225,19 @@
   </div>
 </section>
 
-    <!-- POPULAR SHOPS (copied from landing, colors adapted via buyers CSS) -->
-    <section class="section popular-shops">
-      <h2 class="center">Popular Shops</h2>
-      <div class="shop-strip" id="shopStrip">
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=150" alt="TechPro"></a>
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=150" alt="StyleHub"></a>
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=150" alt="HomeDecor"></a>
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=150" alt="FitGear"></a>
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="BeautyBox"></a>
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="mobile"></a>
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="Accessories"></a>
-        <a href="./store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="Guns"></a>
-      </div>
-    </section>
+    <!-- following shops -->
+    <section class="section following-shops">
+  <div class="following-header">
+    <h2>Shops You Follow</h2>
+    <a href="following-shops.html" class="view-all-btn">View All <i class="fas fa-arrow-right"></i></a>
+  </div>
+  <div class="shop-strip" id="shopStrip">
+    <div class="following-empty" id="followingEmpty" style="display:none">
+      <p>You're not following any shops yet.</p>
+      <a href="sellers.html" class="browse-shops-btn">Browse Shops</a>
+    </div>
+  </div>
+</section>
 
 
 <!-- 📰 Blog Section -->

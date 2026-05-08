@@ -1047,3 +1047,92 @@ body.dark-mode #darkModeBtn:hover {
 .welcome-section h2{
  padding: 20px;
 }
+
+/* ========== Share Store Section ========== */
+.share-store-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #2563eb;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.share-store-section h3 {
+  font-size: 1rem;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+
+.share-store-section p {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.store-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.store-link-row input {
+  flex: 1;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  background: #f8fafc;
+  color: #334155;
+  cursor: text;
+}
+
+#copyLinkBtn {
+  padding: 9px 16px;
+  background: #1e40af;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+  width: auto;
+  margin-top: 0;
+}
+
+#copyLinkBtn:hover { background: #1d4ed8; }
+
+.open-store-btn {
+  padding: 9px 12px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e0;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.open-store-btn:hover { background: #e2e8f0; }
+
+.copy-success {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .store-link-row { flex-direction: column; }
+  .store-link-row input { min-width: unset; width: 100%; }
+  #copyLinkBtn, .open-store-btn { width: 100%; justify-content: center; }
+}

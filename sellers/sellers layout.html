@@ -130,6 +130,23 @@
     <p>Here's an overview of your shop today.</p>
   </section>
  
+  <!-- Share Store Link -->
+<section class="share-store-section" id="shareStoreSection">
+  <h3><i class="fas fa-share-alt"></i> Your Store Link</h3>
+  <p>Share this link with buyers to let them visit your store.</p>
+  <div class="store-link-row">
+    <input type="text" id="storeLinkInput" readonly placeholder="Generating your link..." />
+    <button id="copyLinkBtn" onclick="copyStoreLink()" title="Copy link">
+      <i class="fas fa-copy"></i> Copy
+    </button>
+    <a id="openStoreBtn" href="#" target="_blank" class="open-store-btn" title="Preview store">
+      <i class="fas fa-external-link-alt"></i>
+    </a>
+  </div>
+  <div id="copySuccess" class="copy-success" style="display:none;">
+    <i class="fas fa-check-circle"></i> Link copied to clipboard!
+  </div>
+</section>
 
   <!-- Progress Tracker -->
 <section class="progress-tracker">

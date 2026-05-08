@@ -27,15 +27,15 @@ async function apiFetch(path, opts = {}) {
 
 // ─── Profile Image ─────────────────────────────────────────────────────────────
 function renderProfileImage(profile) {
-  const img = document.getElementById('sellerProfileImage');
-  if (!img) return;
-  const logo = profile?.profile?.storeLogo;
-  if (logo) {
-    img.src = logo;
-    img.onerror = () => {
-      img.src = '';
-    };
-  }
+  ['sellerProfileImage', 'sellerProfileImageMobile'].forEach(id => {
+    const img = document.getElementById(id);
+    if (!img) return;
+    const logo = profile?.profile?.storeLogo;
+    if (logo) {
+      img.src = logo;
+      img.onerror = () => { img.src = ''; };
+    }
+  });
 }
 
 // ─── Logout ────────────────────────────────────────────────────────────────────
@@ -45,9 +45,7 @@ async function handleLogout() {
       method: 'POST',
       headers: authHeaders(),
     });
-  } catch (_) {
-    /* ignore network errors on logout */
-  }
+  } catch (_) { /* ignore */ }
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   window.location.href = 'login.html';
@@ -55,6 +53,7 @@ async function handleLogout() {
 
 // ─── State ─────────────────────────────────────────────────────────────────────
 let allProducts = [];
+let allCategories = [];
 let editingProductId = null;
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
@@ -104,8 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
   setupImagePreview('newProductImage', 'addImagePreview');
   setupImagePreview('editProductImage', 'editImagePreview');
 
-  // Load profile and products from API
+  // Load data
   loadProfile();
+  loadCategories();
   loadProducts();
 });
 
@@ -121,12 +121,38 @@ async function loadProfile() {
   try {
     const data = await apiFetch('/seller/profile');
     const profile = data?.data?.seller;
-    if (profile) {
-      renderProfileImage(profile);
-    }
+    if (profile) renderProfileImage(profile);
   } catch (err) {
     console.error('Error loading profile:', err);
   }
+}
+
+// ─── Load Categories ───────────────────────────────────────────────────────────
+async function loadCategories() {
+  try {
+    const res = await fetch(`${API_BASE}/categories`);
+    const data = await res.json();
+    allCategories = data?.data || [];
+    populateCategorySelects();
+  } catch (err) {
+    console.error('Error loading categories:', err);
+  }
+}
+
+function populateCategorySelects() {
+  const selects = ['newProductCategory', 'editCategory'];
+  selects.forEach(id => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    // Keep the placeholder option, remove previous category options
+    while (select.options.length > 1) select.remove(1);
+    allCategories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      select.appendChild(opt);
+    });
+  });
 }
 
 // ─── Image preview ─────────────────────────────────────────────────────────────
@@ -175,7 +201,6 @@ async function loadProducts() {
   } catch (err) {
     console.error('loadProducts:', err);
     showToast('Failed to load products: ' + err.message, 'error');
-    // Show empty state
     allProducts = [];
     renderProducts();
   } finally {
@@ -198,9 +223,9 @@ function renderProducts() {
     const ss = p.stockStatus || getStockStatus(p.stock_quantity);
     const matchesStatus =
       statusFilter === 'all' ||
-      (statusFilter === 'in-stock'     && ss === 'In Stock') ||
-      (statusFilter === 'low-stock'    && ss === 'Low Stock') ||
-      (statusFilter === 'out-of-stock' && ss === 'Out of Stock');
+      (statusFilter === 'in-stock'      && ss === 'In Stock') ||
+      (statusFilter === 'low-stock'     && ss === 'Low Stock') ||
+      (statusFilter === 'out-of-stock'  && ss === 'Out of Stock');
     return matchesSearch && matchesStatus;
   });
 
@@ -273,11 +298,12 @@ function closeAddModal() {
 }
 
 async function addProduct() {
-  const name         = document.getElementById('newProductName').value.trim();
-  const price        = document.getElementById('newProductPrice').value.trim();
-  const stock        = document.getElementById('newProductStock').value.trim();
-  const description  = document.getElementById('newProductDescription').value.trim();
-  const imageFile    = document.getElementById('newProductImage').files[0];
+  const name        = document.getElementById('newProductName').value.trim();
+  const price       = document.getElementById('newProductPrice').value.trim();
+  const stock       = document.getElementById('newProductStock').value.trim();
+  const description = document.getElementById('newProductDescription').value.trim();
+  const categoryId  = document.getElementById('newProductCategory').value;
+  const imageFile   = document.getElementById('newProductImage').files[0];
 
   if (!name || !price) {
     showToast('Product name and price are required.', 'error');
@@ -294,7 +320,8 @@ async function addProduct() {
     formData.append('price', parsePriceInput(price));
     formData.append('stock_quantity', stock || '0');
     formData.append('description', description);
-    if (imageFile) formData.append('image', imageFile);
+    if (categoryId) formData.append('category_id', categoryId);
+    if (imageFile)  formData.append('image', imageFile);
 
     const res = await fetch(`${API_BASE}/seller/products`, {
       method: 'POST',
@@ -325,18 +352,15 @@ function openEditModal(id) {
 
   editingProductId = id;
 
-  const fields = {
-    editId:          id,
-    editName:        product.name,
-    editPrice:       parseFloat(product.price).toLocaleString('en-US'),
-    editStock:       product.stock_quantity,
-    editDescription: product.description || '',
-  };
+  document.getElementById('editId').value          = id;
+  document.getElementById('editName').value         = product.name;
+  document.getElementById('editPrice').value        = parseFloat(product.price).toLocaleString('en-US');
+  document.getElementById('editStock').value        = product.stock_quantity;
+  document.getElementById('editDescription').value  = product.description || '';
 
-  Object.entries(fields).forEach(([fieldId, value]) => {
-    const el = document.getElementById(fieldId);
-    if (el) el.value = value;
-  });
+  // Set category select — works even if categories loaded after products
+  const editCat = document.getElementById('editCategory');
+  if (editCat) editCat.value = product.category_id || '';
 
   const currentImg = document.getElementById('editCurrentImage');
   if (currentImg) {
@@ -365,6 +389,7 @@ async function handleEditSubmit(e) {
   const price       = document.getElementById('editPrice').value.trim();
   const stock       = document.getElementById('editStock').value.trim();
   const description = document.getElementById('editDescription').value.trim();
+  const categoryId  = document.getElementById('editCategory').value;
   const imageFile   = document.getElementById('editProductImage').files[0];
 
   if (!name || !price) {
@@ -379,10 +404,11 @@ async function handleEditSubmit(e) {
   try {
     const formData = new FormData();
     formData.append('name', name);
-    formData.append('price', parsePriceInput(document.getElementById('editPrice').value));
+    formData.append('price', parsePriceInput(price));
     formData.append('stock_quantity', stock || '0');
     formData.append('description', description);
-    if (imageFile) formData.append('image', imageFile);
+    if (categoryId) formData.append('category_id', categoryId);
+    if (imageFile)  formData.append('image', imageFile);
 
     const res = await fetch(`${API_BASE}/seller/products/${editingProductId}`, {
       method: 'PUT',
@@ -474,7 +500,6 @@ function showToast(message, type = 'info') {
   `;
   toast.textContent = message;
 
-  // Add animation keyframes if not present
   if (!document.getElementById('toastStyle')) {
     const style = document.createElement('style');
     style.id = 'toastStyle';
@@ -499,16 +524,10 @@ function escapeHtml(str) {
 
 // ─── Price formatting ──────────────────────────────────────────────────────────
 function formatPriceInput(input) {
-  // Strip everything except digits
   let raw = input.value.replace(/[^0-9]/g, '');
-  
-  // Format with commas
-  if (raw) {
-    input.value = parseInt(raw, 10).toLocaleString('en-US');
-  }
+  if (raw) input.value = parseInt(raw, 10).toLocaleString('en-US');
 }
 
-// Get the clean number back before submitting
 function parsePriceInput(value) {
   return parseFloat(value.replace(/,/g, '')) || 0;
 }
