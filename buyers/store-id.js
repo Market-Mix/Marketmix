@@ -331,16 +331,18 @@ async function toggleFollow() {
       method: isFollowing ? 'DELETE' : 'POST',
       headers: { Authorization: `Bearer ${authToken}` }
     });
+    const data = await res.json();
     if (res.ok) {
       updateFollowBtn(!isFollowing);
       showToast(isFollowing ? 'Unfollowed store' : 'You are now following this store');
+    } else {
+      showToast(data.message || 'Something went wrong');
     }
   } catch (e) {
     showToast('Something went wrong');
   }
   btn.disabled = false;
 }
-
 function updateFollowBtn(isFollowing) {
   const btn = document.getElementById('followBtn');
   if (!btn) return;
