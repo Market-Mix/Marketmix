@@ -308,39 +308,50 @@ function viewProduct(productId) {
   window.location.href = `product-detail.html?id=${productId}`;
 }
 
+
 // ─── Follow Store ─────────────────────────────────────────────────────────────
-// Stored in localStorage (no follow table in DB yet)
-function getFollowedStores() {
-  try { return JSON.parse(localStorage.getItem('followedStores') || '[]'); }
-  catch { return []; }
+async function syncFollowState() {
+  if (!authToken || !SELLER_ID) return;
+  try {
+    const res = await fetch(`${API}/shops/following/${SELLER_ID}/status`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    const data = await res.json();
+    updateFollowBtn(data?.data?.isFollowing);
+  } catch (e) {}
 }
 
-function syncFollowState() {
-  const followed = getFollowedStores();
+async function toggleFollow() {
+  if (!authToken) { window.location.href = 'login for buyers.html'; return; }
   const btn = document.getElementById('followBtn');
-  if (followed.includes(SELLER_ID)) {
+  const isFollowing = btn.classList.contains('following');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/shops/following/${SELLER_ID}`, {
+      method: isFollowing ? 'DELETE' : 'POST',
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    if (res.ok) {
+      updateFollowBtn(!isFollowing);
+      showToast(isFollowing ? 'Unfollowed store' : 'You are now following this store');
+    }
+  } catch (e) {
+    showToast('Something went wrong');
+  }
+  btn.disabled = false;
+}
+
+function updateFollowBtn(isFollowing) {
+  const btn = document.getElementById('followBtn');
+  if (!btn) return;
+  if (isFollowing) {
     btn.innerHTML = '<i class="fa-solid fa-heart"></i> Following';
     btn.classList.add('following');
-  }
-}
-
-function toggleFollow() {
-  let followed = getFollowedStores();
-  const btn = document.getElementById('followBtn');
-  if (followed.includes(SELLER_ID)) {
-    followed = followed.filter(id => id !== SELLER_ID);
+  } else {
     btn.innerHTML = '<i class="fa-regular fa-heart"></i> Follow';
     btn.classList.remove('following');
-    showToast('Unfollowed store');
-  } else {
-    followed.push(SELLER_ID);
-    btn.innerHTML = '<i class="fa-solid fa-heart"></i> Following';
-    btn.classList.add('following');
-    showToast('You are now following this store');
   }
-  localStorage.setItem('followedStores', JSON.stringify(followed));
 }
-
 // ─── Contact Seller ───────────────────────────────────────────────────────────
 function contactSeller() {
   if (storeData?.businessEmail) {

@@ -294,19 +294,46 @@ function makeFloatingList(btn, items) {
     } catch(e) {}
   }
 
-  async function loadShops() {
-    const container = document.getElementById('shopStrip');
-    if (!container) return;
-    try {
-      const r = await fetch(`${API}/seller/public?limit=12`);
-      const d = await r.json();
-      if (!r.ok||!d.data?.sellers?.length) return;
-      container.innerHTML = d.data.sellers.map(s => {
-        const logo = s.storeLogo||`https://ui-avatars.com/api/?name=${encodeURIComponent(s.businessName)}&background=F97316&color=fff&size=150`;
-        return `<a href="store-id.html?seller=${s.sellerId}" title="${escapeHtml(s.businessName)}"><img src="${logo}" alt="${escapeHtml(s.businessName)}"></a>`;
-      }).join('');
-    } catch(e) {}
+ async function loadFollowedShops() {
+  const container = document.getElementById('shopStrip');
+  const emptyMsg = document.getElementById('followingEmpty');
+  if (!container) return;
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    container.innerHTML = '';
+    if (emptyMsg) emptyMsg.style.display = 'flex';
+    return;
   }
+
+  try {
+    const r = await fetch(`${API}/shops/following?limit=6`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const d = await r.json();
+    const shops = d?.data?.shops || [];
+
+    if (!shops.length) {
+      container.innerHTML = '';
+      if (emptyMsg) emptyMsg.style.display = 'flex';
+      return;
+    }
+
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    container.innerHTML = shops.map(s => {
+      const logo = s.store_logo ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(s.business_name)}&background=F97316&color=fff&size=150`;
+      return `<a href="store-id.html?seller=${s.seller_id}" title="${escapeHtml(s.business_name)}" class="following-shop-item">
+        <img src="${escapeHtml(logo)}" alt="${escapeHtml(s.business_name)}"
+          onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.business_name)}&background=F97316&color=fff&size=150'">
+        <span class="shop-name">${escapeHtml(s.business_name)}</span>
+        ${s.is_verified ? '<span class="verified-badge" title="Verified">✓</span>' : ''}
+      </a>`;
+    }).join('');
+  } catch (e) {
+    console.error('loadFollowedShops', e);
+  }
+}
 
   const searchInput = document.getElementById('searchInput');
   const searchAC = document.getElementById('searchAutocomplete');
@@ -366,7 +393,7 @@ function makeFloatingList(btn, items) {
   buildFilterDropdown('bestSellingFilterContainer', 'best-selling', loadAllProducts);
   buildFilterDropdown('newArrivalsFilterContainer', 'new-arrivals', loadAllProducts);
 
-  Promise.all([loadFlashProducts(), loadAllProducts(), loadCategories(), loadBrands(), loadShops()]);
+  Promise.all([loadFlashProducts(), loadAllProducts(), loadCategories(), loadBrands(), loadFollowedShops()]);
 
   if(flashRefreshInterval) clearInterval(flashRefreshInterval);
   flashRefreshInterval = setInterval(loadFlashProducts, 60000);
