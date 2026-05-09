@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Returns & Refunds - MarketMix</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * {
       margin: 0;
@@ -1416,6 +1418,186 @@
 
 <script>
   const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
+  
+  // =====================================================
+  // SUPABASE INITIALIZATION
+  // =====================================================
+  const SUPABASE_URL = 'https://supabase.com/dashboard/project/zfyoxmwwuwgvaevwlgzn'; // Replace with your Supabase URL
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0'; // Replace with your Supabase anon key
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // =====================================================
+  // SUPABASE HELPER FUNCTIONS
+  // =====================================================
+  
+  /**
+   * Create a refund case in Supabase
+   */
+  async function createRefundCase(caseData) {
+    try {
+      const { data, error } = await supabase
+        .from('refund_cases')
+        .insert([{
+          order_id: caseData.order_id,
+          product_name: caseData.product_name,
+          complaint_text: caseData.complaint_text,
+          buyer_id: caseData.buyer_id,
+          seller_id: caseData.seller_id,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          evidence_url: caseData.evidence_url || null,
+          evidence_file_name: caseData.evidence_file_name || null
+        }])
+        .select();
+      
+      if (error) {
+        console.error('Error creating refund case:', error);
+        throw error;
+      }
+      
+      return data?.[0];
+    } catch (err) {
+      console.error('Failed to create refund case:', err);
+      showNotification('Failed to create refund case. Please try again.', 'error');
+      return null;
+    }
+  }
+  
+  /**
+   * Upload evidence file to Supabase Storage
+   */
+  async function uploadEvidenceFile(file, caseId) {
+    try {
+      if (!file) return null;
+      
+      const fileName = `${caseId}-${Date.now()}-${file.name}`;
+      const filePath = `refund-evidence/${fileName}`;
+      
+      const { data, error: uploadError } = await supabase.storage
+        .from('refund-evidence')
+        .upload(filePath, file);
+      
+      if (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        throw uploadError;
+      }
+      
+      // Get public URL
+      const { data: publicData } = supabase.storage
+        .from('refund-evidence')
+        .getPublicUrl(filePath);
+      
+      return {
+        url: publicData?.publicUrl,
+        fileName: fileName
+      };
+    } catch (err) {
+      console.error('Failed to upload evidence file:', err);
+      showNotification('Failed to upload file. Please try again.', 'error');
+      return null;
+    }
+  }
+  
+  /**
+   * Create buyer notification in Supabase
+   */
+  async function createBuyerNotification(notificationData) {
+    try {
+      const { data, error } = await supabase
+        .from('buyer_notifications')
+        .insert([{
+          buyer_id: notificationData.buyer_id,
+          refund_case_id: notificationData.refund_case_id,
+          type: notificationData.type || 'refund_created',
+          title: notificationData.title,
+          message: notificationData.message,
+          is_read: false,
+          created_at: new Date().toISOString()
+        }])
+        .select();
+      
+      if (error) {
+        console.error('Error creating notification:', error);
+        throw error;
+      }
+      
+      return data?.[0];
+    } catch (err) {
+      console.error('Failed to create notification:', err);
+      return null;
+    }
+  }
+  
+  /**
+   * Fetch all refund cases for a buyer from Supabase
+   */
+  async function fetchRefundCases(buyerId) {
+    try {
+      const { data, error } = await supabase
+        .from('refund_cases')
+        .select('*')
+        .eq('buyer_id', buyerId)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching refund cases:', error);
+        throw error;
+      }
+      
+      return data || [];
+    } catch (err) {
+      console.error('Failed to fetch refund cases:', err);
+      showNotification('Failed to load refund cases.', 'error');
+      return [];
+    }
+  }
+  
+  /**
+   * Fetch refund messages for a specific case
+   */
+  async function fetchRefundMessages(caseId) {
+    try {
+      const { data, error } = await supabase
+        .from('refund_messages')
+        .select('*')
+        .eq('refund_case_id', caseId)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching messages:', error);
+        throw error;
+      }
+      
+      return data || [];
+    } catch (err) {
+      console.error('Failed to fetch refund messages:', err);
+      return [];
+    }
+  }
+  
+  /**
+   * Update refund case status
+   */
+  async function updateRefundCaseStatus(caseId, status) {
+    try {
+      const { data, error } = await supabase
+        .from('refund_cases')
+        .update({ status: status, updated_at: new Date().toISOString() })
+        .eq('id', caseId)
+        .select();
+      
+      if (error) {
+        console.error('Error updating case status:', error);
+        throw error;
+      }
+      
+      return data?.[0];
+    } catch (err) {
+      console.error('Failed to update case status:', err);
+      return null;
+    }
+  }
+  
   let currentReports = [];
   let currentChatData = null;
   let evidenceRequired = false;
@@ -1643,8 +1825,50 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    checkAuth();
-    currentReports = sampleReports;
+    const token = checkAuth();
+    
+    // Get user ID from token/auth
+    let userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    
+    // Try to fetch from Supabase first
+    if (userId) {
+      try {
+        const refundCases = await fetchRefundCases(userId);
+        
+        if (refundCases && refundCases.length > 0) {
+          // Convert Supabase format to UI format
+          currentReports = refundCases.map(caseData => ({
+            id: caseData.id,
+            order_id: caseData.order_id,
+            product_name: caseData.product_name,
+            total_amount: caseData.total_amount || 0,
+            status: caseData.status,
+            reason: caseData.reason || '',
+            description: caseData.complaint_text || '',
+            purchase_date: caseData.purchase_date,
+            created_at: caseData.created_at,
+            evidence_submitted_at: caseData.evidence_submitted_at,
+            evidence_url: caseData.evidence_url,
+            seller_response: caseData.seller_response,
+            marketmix_reason: caseData.marketmix_reason,
+            store_name: caseData.store_name || 'Store',
+            seller_id: caseData.seller_id,
+            messages: [] // Will load on demand
+          }));
+        } else {
+          // No Supabase data, use sample data as fallback
+          currentReports = sampleReports;
+        }
+      } catch (err) {
+        console.error('Failed to load from Supabase, using sample data:', err);
+        // Fallback to sample data on Supabase error
+        currentReports = sampleReports;
+      }
+    } else {
+      // No user ID, use sample data
+      currentReports = sampleReports;
+    }
+    
     renderReports(currentReports);
     setupEventListeners();
   });
@@ -1842,50 +2066,107 @@
     document.getElementById('evidenceModal').classList.remove('active');
   }
 
-  function submitEvidence() {
+  async function submitEvidence() {
     const description = document.getElementById('evidenceDescription').value.trim();
     if (!description) {
-      alert('Please provide a description of the problem.');
+      showNotification('Please provide a description of the problem.', 'error');
       return;
     }
 
-    // In a real app, you would upload the file and send to backend
-    // For demo, we just update the currentChatData
-    currentChatData.evidence_submitted_at = new Date().toISOString();
-    
-    // If status is still 'purchased', change it to 'pending' to mark complaint as started
-    if (currentChatData.status === 'purchased') {
-      currentChatData.status = 'pending';
-      currentChatData.reason = 'complaint';
-    }
-    
-    if (!currentChatData.messages) currentChatData.messages = [];
-    
-    currentChatData.messages.push({
-      type: 'buyer',
-      text: `[Evidence Submitted]\nDescription: ${description}`,
-      time: new Date()
-    });
-    
-    // Mark that evidence was successfully submitted
-    evidenceRequired = false;
-    
-    // Auto-reply from MarketMix
-    setTimeout(() => {
+    // Show loading state
+    const submitBtn = document.getElementById('submitEvidenceBtn');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
+
+    try {
+      // Get current user info
+      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+      if (!userId) {
+        showNotification('User not authenticated.', 'error');
+        return;
+      }
+
+      // Upload evidence file if present
+      let evidenceData = { url: null, fileName: null };
+      const fileInput = document.getElementById('evidenceFile');
+      if (fileInput && fileInput.files.length > 0) {
+        evidenceData = await uploadEvidenceFile(fileInput.files[0], currentChatData.id) || { url: null, fileName: null };
+      }
+
+      // Create refund case in Supabase
+      const refundCase = await createRefundCase({
+        order_id: currentChatData.order_id,
+        product_name: currentChatData.product_name,
+        complaint_text: description,
+        buyer_id: userId,
+        seller_id: currentChatData.seller_id || null,
+        evidence_url: evidenceData.url,
+        evidence_file_name: evidenceData.fileName
+      });
+
+      if (!refundCase) {
+        showNotification('Failed to submit evidence. Please try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        return;
+      }
+
+      // Create notification for buyer
+      await createBuyerNotification({
+        buyer_id: userId,
+        refund_case_id: refundCase.id,
+        title: 'Refund Case Created',
+        message: `Your refund case for order ${currentChatData.order_id} has been created successfully.`
+      });
+
+      // Update local data for UI consistency
+      currentChatData.evidence_submitted_at = new Date().toISOString();
+      currentChatData.supabase_case_id = refundCase.id;
+      
+      // If status is still 'purchased', change it to 'pending' to mark complaint as started
+      if (currentChatData.status === 'purchased') {
+        currentChatData.status = 'pending';
+        currentChatData.reason = 'complaint';
+      }
+      
+      if (!currentChatData.messages) currentChatData.messages = [];
+      
       currentChatData.messages.push({
-        type: 'system',
-        text: 'Please be patient while the store attends to you.',
+        type: 'buyer',
+        text: `[Evidence Submitted]\nDescription: ${description}`,
         time: new Date()
       });
-      if (document.getElementById('chatPanel').classList.contains('active')) {
-        loadChatMessages(currentChatData);
-      }
-    }, 500);
+      
+      // Mark that evidence was successfully submitted
+      evidenceRequired = false;
+      
+      // Auto-reply from MarketMix
+      setTimeout(() => {
+        currentChatData.messages.push({
+          type: 'system',
+          text: 'Please be patient while the store attends to you.',
+          time: new Date()
+        });
+        if (document.getElementById('chatPanel').classList.contains('active')) {
+          loadChatMessages(currentChatData);
+        }
+      }, 500);
 
-    closeEvidenceModal();
-    openChatPanel(currentChatData);
-    
-    // Update the table row to reflect the new state
+      closeEvidenceModal();
+      openChatPanel(currentChatData);
+      
+      // Update the table row to reflect the new state
+      renderReports(currentReports);
+      
+      showNotification('Evidence submitted successfully!', 'success');
+    } catch (err) {
+      console.error('Error submitting evidence:', err);
+      showNotification('An error occurred while submitting evidence. Please try again.', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
     renderReports(currentReports);
   }
 
