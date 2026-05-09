@@ -1170,6 +1170,11 @@
       </select>
     </div>
 
+    <!-- TEMP DEV TESTING ONLY: hidden by default; remove before production -->
+    <button type="button" id="devCreateMockRefundBtn" class="btn-action" style="display: none;" onclick="createMockRefundCase()">
+      <i class="fas fa-flask"></i> Create Mock Refund
+    </button>
+
     <!-- Returns Table -->
     <div class="returns-table">
       <div class="table-header">
@@ -1597,6 +1602,143 @@
       return null;
     }
   }
+
+  // =====================================================
+  // TEMP DEV TESTING HOOKS - remove before production
+  // =====================================================
+  function mapRefundCaseToReport(caseData) {
+    return {
+      id: caseData.id,
+      order_id: caseData.order_id,
+      product_name: caseData.product_name,
+      total_amount: caseData.total_amount || 0,
+      status: caseData.status,
+      reason: caseData.reason || '',
+      description: caseData.complaint_text || '',
+      purchase_date: caseData.purchase_date,
+      created_at: caseData.created_at,
+      evidence_submitted_at: caseData.evidence_submitted_at,
+      evidence_url: caseData.evidence_url,
+      seller_response: caseData.seller_response,
+      marketmix_reason: caseData.marketmix_reason,
+      store_name: caseData.store_name || 'Store',
+      seller_id: caseData.seller_id,
+      messages: []
+    };
+  }
+
+  async function refreshRefundTableFromSupabase() {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    if (!userId) return;
+
+    const refundCases = await fetchRefundCases(userId);
+    currentReports = refundCases.map(mapRefundCaseToReport);
+    renderReports(currentReports);
+  }
+
+  async function createTestRefundMessage(refundCaseId, messageText) {
+    try {
+      const { data, error } = await supabase
+        .from('refund_messages')
+        .insert([{
+          refund_case_id: refundCaseId,
+          sender_type: 'buyer',
+          message_text: messageText,
+          file_url: null,
+          created_at: new Date().toISOString()
+        }])
+        .select();
+
+      if (error) throw error;
+      return data?.[0];
+    } catch (err) {
+      console.error('Failed to create test refund message:', err);
+      return null;
+    }
+  }
+
+  async function createMockRefundCase(options = {}) {
+    const buyerId = options.buyer_id || localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    if (!buyerId) {
+      showNotification('Dev test failed: buyer_id is missing. Log in first or pass buyer_id in options.', 'error');
+      return null;
+    }
+
+    const shouldCreateNotification = options.createNotification !== false;
+    const shouldCreateMessage = options.createMessage !== false;
+    const createdAt = new Date().toISOString();
+
+    const mockRefund = {
+      order_id: options.order_id || `DEV-ORD-${Date.now()}`,
+      product_name: options.product_name || 'MarketMix Test Wireless Blender',
+      complaint_text: options.complaint_text || 'The product arrived with realistic test damage: cracked packaging, a missing charger, and it stopped working during first use.',
+      buyer_id: buyerId,
+      seller_id: options.seller_id || '11111111-1111-4111-8111-111111111111',
+      status: options.status || 'pending',
+      store_name: options.store_name || 'Dev Test Seller Store',
+      total_amount: options.total_amount || 18450,
+      reason: options.reason || 'defective',
+      purchase_date: options.purchase_date || new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      evidence_submitted_at: options.evidence_submitted_at || createdAt,
+      created_at: createdAt,
+      updated_at: createdAt
+    };
+
+    try {
+      const button = document.getElementById('devCreateMockRefundBtn');
+      if (button) button.disabled = true;
+
+      const { data, error } = await supabase
+        .from('refund_cases')
+        .insert([mockRefund])
+        .select();
+
+      if (error) throw error;
+
+      const refundCase = data?.[0];
+      if (!refundCase) throw new Error('No refund case returned from Supabase.');
+
+      if (shouldCreateNotification) {
+        await createBuyerNotification({
+          buyer_id: buyerId,
+          refund_case_id: refundCase.id,
+          type: 'refund_created',
+          title: 'Dev Test Refund Created',
+          message: `A mock refund case was created for order ${mockRefund.order_id}.`
+        });
+      }
+
+      if (shouldCreateMessage) {
+        await createTestRefundMessage(
+          refundCase.id,
+          'Dev test message: buyer reports the item arrived damaged and is requesting a refund review.'
+        );
+      }
+
+      await refreshRefundTableFromSupabase();
+      showNotification('Dev mock refund case created.', 'success');
+      return refundCase;
+    } catch (err) {
+      console.error('Failed to create dev mock refund case:', err);
+      showNotification('Failed to create dev mock refund case. Check console for details.', 'error');
+      return null;
+    } finally {
+      const button = document.getElementById('devCreateMockRefundBtn');
+      if (button) button.disabled = false;
+    }
+  }
+
+  window.createMockRefundCase = createMockRefundCase;
+  window.showDevRefundButton = function showDevRefundButton() {
+    const button = document.getElementById('devCreateMockRefundBtn');
+    if (button) button.style.display = 'inline-flex';
+    return button;
+  };
+  window.hideDevRefundButton = function hideDevRefundButton() {
+    const button = document.getElementById('devCreateMockRefundBtn');
+    if (button) button.style.display = 'none';
+    return button;
+  };
   
   let currentReports = [];
   let currentChatData = null;
