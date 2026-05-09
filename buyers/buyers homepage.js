@@ -3,6 +3,19 @@ window.addEventListener('DOMContentLoaded', () => {
   let cart = JSON.parse(localStorage.getItem('cart')) || [];
   let cachedCategories = null;
   let flashCountdownInterval = null;
+
+  // =====================================================
+  // NOTIFICATION INTEGRATION
+  // =====================================================
+  window.updateAccountNotification = function(count) {
+    const badge = document.getElementById('accountNotificationBadge');
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  };
   let flashRefreshInterval = null;
 
   function escapeHtml(t) {
