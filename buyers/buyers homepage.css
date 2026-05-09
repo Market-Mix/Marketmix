@@ -979,6 +979,23 @@ body {
   display: none; /* hide if 0 */
 }
 
+/* Account notification badge */
+.account-notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -15px;
+  background: #e63946;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 2px 2px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1;
+  display: none; /* hide if 0 */
+}
+
 /* Active & hover */
 .bottom-nav .nav-link:hover,
 .bottom-nav .nav-link.active {
