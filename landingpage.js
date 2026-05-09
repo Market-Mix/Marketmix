@@ -78,6 +78,16 @@ async function addToCartHandler(productId, name, price, image) {
 }
 
 // ===== PRODUCT CARD =====
+function renderStars(avg) {
+  // avg is 0–5, render 5 stars with partial fill via color
+  const full  = Math.floor(avg);
+  const half  = avg - full >= 0.4 ? 1 : 0;
+  const empty = 5 - full - half;
+  return '★'.repeat(full) +
+    (half ? '<span style="opacity:.5">★</span>' : '') +
+    '<span style="color:#e2e8f0">' + '★'.repeat(empty) + '</span>';
+}
+
 function renderCard(p) {
   const img = p.main_image_url || p.image || 'https://via.placeholder.com/300x200?text=No+Image';
   const cat = normCat(p.category || p.category_name || '');
@@ -85,6 +95,15 @@ function renderCard(p) {
   const orig  = Number(p.price || 0);
   const hasFlash = p.flash_sale_active && price < orig;
   const disc = p.flash_sale_discount_percent ? Math.round(p.flash_sale_discount_percent) : 0;
+
+  // The product list endpoint hardcodes rating:4.5 and review_count:0.
+  // Trust review_count as the source of truth — if it's 0, there are no reviews.
+  const reviewCount = parseInt(p.review_count || 0, 10);
+  const avgRating   = reviewCount > 0 ? parseFloat(p.avg_rating || 0) : 0;
+  const ratingHtml  = avgRating > 0
+    ? `<div class="mm-prod-rating">${renderStars(avgRating)} <span>(${reviewCount})</span></div>`
+    : `<div class="mm-prod-rating" style="color:#94a3b8;font-size:.78rem">No reviews yet</div>`;
+
   return `<div class="mm-prod-card" data-product-id="${p.id}" data-category="${esc(cat)}" data-name="${esc(p.name)}">
     <div class="mm-prod-img-wrap">
       <img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
@@ -94,7 +113,7 @@ function renderCard(p) {
     <div class="mm-prod-body">
       <div class="mm-prod-seller">${esc(cat || 'MarketMix')}</div>
       <div class="mm-prod-name">${esc(p.name)}</div>
-      <div class="mm-prod-rating">★★★★<span style="color:#e2e8f0">★</span> <span>(${Math.floor(Math.random()*200)+10})</span></div>
+      ${ratingHtml}
       <div class="mm-prod-footer">
         <div>
           <span class="mm-prod-price">${fmtPrice(price)}</span>
@@ -108,6 +127,7 @@ function renderCard(p) {
 
 // ===== PRODUCTS CACHE & FETCH =====
 let productsCache = null;
+
 async function fetchProducts(limit=16) {
   if (productsCache && productsCache.length >= limit) return productsCache.slice(0, limit);
   const r = await fetch(`${API}/products?limit=${limit}`);
@@ -115,6 +135,42 @@ async function fetchProducts(limit=16) {
   const d = await r.json();
   productsCache = d.data || [];
   return productsCache;
+}
+
+// Enrich up to `ids` products with real avg_rating & review_count from the single-product endpoint.
+// We do this lazily after first render so the page doesn't block.
+async function enrichWithRatings(productIds) {
+  const results = await Promise.allSettled(
+    productIds.map(id => fetch(`${API}/products/${id}`).then(r => r.ok ? r.json() : null))
+  );
+  results.forEach((res, i) => {
+    if (res.status !== 'fulfilled' || !res.value?.data) return;
+    const p   = res.value.data;
+    const id  = productIds[i];
+
+    // reviews is the actual array from the DB join — use its length as truth.
+    // The top-level `rating: 4.5` is hardcoded in the route, so we ignore it.
+    const reviews = Array.isArray(p.reviews) ? p.reviews : [];
+    const count   = reviews.length;
+    // Calculate real average from the review objects if present
+    const avg = count > 0
+      ? reviews.reduce((s, r) => s + (parseFloat(r.rating) || 0), 0) / count
+      : 0;
+
+    // Update cache
+    if (productsCache) {
+      const cached = productsCache.find(x => x.id === id);
+      if (cached) { cached.avg_rating = avg; cached.review_count = count; }
+    }
+
+    // Update DOM
+    const el = document.querySelector(`.mm-prod-card[data-product-id="${id}"] .mm-prod-rating`);
+    if (!el) return;
+    el.style.color = '#f59e0b';
+    el.innerHTML = count > 0
+      ? `${renderStars(avg)} <span>(${count})</span>`
+      : `<span style="color:#94a3b8;font-size:.78rem">No reviews yet</span>`;
+  });
 }
 
 // ===== PRODUCT TABS =====
@@ -146,6 +202,47 @@ function renderProductTab(tab) {
   grid.innerHTML = items.length
     ? items.map(renderCard).join('')
     : '<p style="color:#94a3b8;padding:20px;grid-column:1/-1">No products available.</p>';
+  // Enrich visible cards with real ratings (non-blocking)
+  const ids = items.map(p => p.id);
+  setTimeout(() => enrichWithRatings(ids), 0);
+}
+
+// ===== TRUST STATS (real backend data) =====
+async function loadTrustStats() {
+  const statEls = {
+    sellers:  document.querySelector('.mm-stat-num[data-target="20000"]'),
+    products: document.querySelector('.mm-stat-num[data-target="120000"]'),
+    buyers:   document.querySelector('.mm-stat-num[data-target="1200000"]'),
+    sat:      document.querySelector('.mm-stat-num[data-target="98"]'),
+  };
+
+  try {
+    // Fetch sellers list for real seller count + total sales aggregate
+    const [sellersRes, productsRes] = await Promise.allSettled([
+      fetch(`${API}/seller/public?limit=1`).then(r => r.ok ? r.json() : null),
+      fetch(`${API}/products?limit=1`).then(r => r.ok ? r.json() : null),
+    ]);
+
+    // Real seller count from pagination total
+    if (sellersRes.status === 'fulfilled' && sellersRes.value?.data) {
+      const total = sellersRes.value.data.total || 0;
+      if (total > 0 && statEls.sellers) {
+        statEls.sellers.dataset.target = total;
+      }
+    }
+
+    // Real product count from pagination total
+    if (productsRes.status === 'fulfilled' && productsRes.value?.pagination) {
+      const total = productsRes.value.pagination.total || 0;
+      if (total > 0 && statEls.products) {
+        statEls.products.dataset.target = total;
+      }
+    }
+  } catch(e) {
+    // Fall back to placeholder values already in HTML
+  }
+  // Always animate whatever target values are set
+  animateCounters();
 }
 
 function initProductTabs() {
@@ -247,7 +344,10 @@ async function loadSellers() {
 }
 
 // ===== ANIMATED STAT COUNTERS =====
+let countersInit = false;
 function animateCounters() {
+  if (countersInit) return; // only run once
+  countersInit = true;
   const els = document.querySelectorAll('.mm-stat-num[data-target]');
   if (!els.length) return;
 
@@ -581,12 +681,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initProductTabs();
   initHowItWorks();
   initFAQ();
-  animateCounters();
   initRevealOnScroll();
   syncCartCount();
 
-  // Load data in parallel
+  // Load data in parallel — trust stats updates targets then fires counters
   Promise.allSettled([
+    loadTrustStats(),
     loadCategories(),
     loadFeaturedProducts(),
     loadSellers(),
