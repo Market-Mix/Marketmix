@@ -149,152 +149,399 @@
       </div>
     </header>
 
-    <!-- BRANDS CAROUSEL -->
-    <section class="section">
-      <h2 class="center">Featured Brands</h2>
-      <div class="brand-carousel-wrap">
-        <div class="brand-carousel" id="brandCarousel">
-          <a href="./buyers/store-id.html" class="brand-card">
-            <img src="https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=100" alt="TechPro" class="brand-logo">
-            <h3>TechPro</h3>
-            <p class="muted">Electronics</p>
-            <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300" alt="Headphones" class="featured-product">
-          </a>
 
-          <a href="./buyers/store-id.html" class="brand-card">
-            <img src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=100" alt="StyleHub" class="brand-logo">
-            <h3>StyleHub</h3>
-            <p class="muted">Fashion</p>
-            <img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=300" alt="Clothing" class="featured-product">
-          </a>
+  
+<!-- ─── TRUST / SOCIAL PROOF ─────────────────────────────────── -->
+<section class="mm-trust-section" aria-label="Platform statistics">
+  <div class="mm-container">
+    <div class="mm-trust-header">
+      <div class="mm-trust-badge"><i class="fas fa-shield-alt"></i> Trusted Platform</div>
+      <h2>Built for Buyers & Sellers Who Mean Business</h2>
+      <p>Thousands of verified sellers and happy buyers transact safely on MarketMix every day.</p>
+    </div>
 
-          <a href="./buyers/store-id.html" class="brand-card">
-            <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=100" alt="HomeDecor" class="brand-logo">
-            <h3>HomeDecor</h3>
-            <p class="muted">Home</p>
-            <img src="https://images.unsplash.com/photo-1556911220-bff31c812dba?w=300" alt="Kitchen" class="featured-product">
-          </a>
+    <div class="mm-stats-grid">
+      <div class="mm-stat-card">
+        <div class="mm-stat-icon"><i class="fas fa-store"></i></div>
+        <div class="mm-stat-num" data-target="20000">0</div>
+        <div class="mm-stat-label">Active Sellers</div>
+      </div>
+      <div class="mm-stat-card">
+        <div class="mm-stat-icon"><i class="fas fa-box-open"></i></div>
+        <div class="mm-stat-num" data-target="120000">0</div>
+        <div class="mm-stat-label">Products Listed</div>
+      </div>
+      <div class="mm-stat-card">
+        <div class="mm-stat-icon"><i class="fas fa-users"></i></div>
+        <div class="mm-stat-num" data-target="1200000">0</div>
+        <div class="mm-stat-label">Registered Buyers</div>
+      </div>
+      <div class="mm-stat-card">
+        <div class="mm-stat-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="mm-stat-num" data-target="98">0</div>
+        <div class="mm-stat-label" style="font-size:.85rem">% Satisfaction Rate</div>
+      </div>
+    </div>
 
-          <a href="./buyers/store-id.html" class="brand-card">
-            <img src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=100" alt="FitGear" class="brand-logo">
-            <h3>FitGear</h3>
-            <p class="muted">Sports</p>
-            <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300" alt="Fitness" class="featured-product">
-          </a>
+    <div class="mm-trust-badges">
+      <div class="mm-trust-pill"><i class="fas fa-lock"></i> SSL Secured</div>
+      <div class="mm-trust-pill"><i class="fas fa-user-check"></i> Verified Sellers</div>
+      <div class="mm-trust-pill"><i class="fas fa-shield-alt"></i> Buyer Protection</div>
+      <div class="mm-trust-pill"><i class="fas fa-headset"></i> 24/7 Support</div>
+      <div class="mm-trust-pill"><i class="fas fa-undo"></i> Easy Returns</div>
+    </div>
+  </div>
+</section>
 
-           <a href="./buyers/store-id.html" class="brand-card">
-            <img src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=100" alt="FitGear" class="brand-logo">
-            <h3>Drugs</h3>
-            <p class="muted">Drugs</p>
-            <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300" alt="Fitness" class="featured-product">
-          </a>
+<!-- ─── CATEGORY SHOWCASE ─────────────────────────────────────── -->
+<section class="mm-categories-section" id="mm-categories" aria-label="Product categories">
+  <div class="mm-container">
+    <div class="mm-section-header">
+      <h2>Explore Every Category</h2>
+      <p>From electronics to handcrafted goods — find it all in one place.</p>
+    </div>
+    <div class="mm-cat-grid" id="mmCatGrid">
+      <!-- Skeleton loaders -->
+      <div class="mm-cat-skeleton"></div>
+      <div class="mm-cat-skeleton"></div>
+      <div class="mm-cat-skeleton"></div>
+      <div class="mm-cat-skeleton"></div>
+      <div class="mm-cat-skeleton"></div>
+      <div class="mm-cat-skeleton"></div>
+      <div class="mm-cat-skeleton"></div>
+      <div class="mm-cat-skeleton"></div>
+    </div>
+    <div style="text-align:center;margin-top:28px">
+      <a href="./buyers/categories.html" class="mm-btn-outline">View All Categories <i class="fas fa-arrow-right"></i></a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FEATURED PRODUCTS ──────────────────────────────────────── -->
+<section class="mm-products-section" id="mm-featured-products" aria-label="Featured products">
+  <div class="mm-container">
+    <div class="mm-section-header mm-section-header--row">
+      <div>
+        <h2>Featured Products</h2>
+        <p>Curated picks from top-rated sellers on MarketMix.</p>
+      </div>
+      <a href="./buyers/buyers homepage.html" class="mm-btn-outline mm-btn-sm">Browse All <i class="fas fa-arrow-right"></i></a>
+    </div>
+
+    <div class="mm-product-tabs">
+      <button class="mm-tab active" data-tab="trending">🔥 Trending</button>
+      <button class="mm-tab" data-tab="new">✨ New Arrivals</button>
+      <button class="mm-tab" data-tab="flash">⚡ Flash Sales</button>
+    </div>
+
+    <div class="mm-products-grid" id="mmProductsGrid">
+      <!-- Skeleton loaders -->
+      <div class="mm-prod-skeleton"></div>
+      <div class="mm-prod-skeleton"></div>
+      <div class="mm-prod-skeleton"></div>
+      <div class="mm-prod-skeleton"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FEATURED SELLERS ───────────────────────────────────────── -->
+<section class="mm-sellers-section" id="mm-featured-sellers" aria-label="Featured sellers">
+  <div class="mm-container">
+    <div class="mm-section-header">
+      <h2>Meet Top Sellers</h2>
+      <p>Browse verified stores with proven track records and thousands of happy customers.</p>
+    </div>
+    <div class="mm-sellers-grid" id="mmSellersGrid">
+      <div class="mm-seller-skeleton"></div>
+      <div class="mm-seller-skeleton"></div>
+      <div class="mm-seller-skeleton"></div>
+      <div class="mm-seller-skeleton"></div>
+    </div>
+    <div style="text-align:center;margin-top:28px">
+      <a href="./buyers/sellers.html" class="mm-btn-primary">Explore All Stores <i class="fas fa-store"></i></a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ───────────────────────────────────────────── -->
+<section class="mm-how-section" aria-label="How MarketMix works">
+  <div class="mm-container">
+    <div class="mm-section-header">
+      <h2>How MarketMix Works</h2>
+      <p>Get started in minutes — whether you're buying or selling.</p>
+    </div>
+
+    <div class="mm-how-tabs">
+      <button class="mm-how-tab active" data-how="buyer">I'm a Buyer</button>
+      <button class="mm-how-tab" data-how="seller">I'm a Seller</button>
+    </div>
+
+    <div class="mm-how-steps" id="mmHowSteps">
+      <!-- Buyer steps (default) -->
+      <div class="mm-step" data-index="1">
+        <div class="mm-step-icon buyer"><i class="fas fa-user-plus"></i></div>
+        <div class="mm-step-line"></div>
+        <h4>Create Account</h4>
+        <p>Sign up free in under a minute. No credit card required to start browsing.</p>
+      </div>
+      <div class="mm-step" data-index="2">
+        <div class="mm-step-icon buyer"><i class="fas fa-search"></i></div>
+        <div class="mm-step-line"></div>
+        <h4>Discover Products</h4>
+        <p>Browse thousands of products across categories with smart search and filters.</p>
+      </div>
+      <div class="mm-step" data-index="3">
+        <div class="mm-step-icon buyer"><i class="fas fa-shopping-cart"></i></div>
+        <div class="mm-step-line"></div>
+        <h4>Add to Cart & Pay</h4>
+        <p>Secure checkout with multiple payment options. Your order is protected end-to-end.</p>
+      </div>
+      <div class="mm-step" data-index="4">
+        <div class="mm-step-icon buyer"><i class="fas fa-box"></i></div>
+        <h4>Receive & Review</h4>
+        <p>Track your delivery live. Confirm receipt and leave a review for the seller.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SELLER BENEFITS ────────────────────────────────────────── -->
+<section class="mm-benefits-section" aria-label="Seller benefits">
+  <div class="mm-container mm-benefits-layout">
+    <div class="mm-benefits-text">
+      <div class="mm-trust-badge" style="margin-bottom:16px"><i class="fas fa-rocket"></i> For Sellers</div>
+      <h2>Everything You Need to Grow Your Business</h2>
+      <p>MarketMix gives you a powerful storefront, real-time analytics, and a built-in audience — all in one place.</p>
+
+      <ul class="mm-benefits-list">
+        <li><i class="fas fa-chart-line"></i><div><strong>Analytics Dashboard</strong><span>Track views, orders, revenue and conversion rates in real time.</span></div></li>
+        <li><i class="fas fa-bolt"></i><div><strong>Fast Payouts</strong><span>Withdraw your earnings to your bank account quickly and securely.</span></div></li>
+        <li><i class="fas fa-lock"></i><div><strong>Secure Transactions</strong><span>All payments are protected. Buyer-seller disputes are handled fairly.</span></div></li>
+        <li><i class="fas fa-palette"></i><div><strong>Storefront Customization</strong><span>Upload your logo, set your brand colors, and build your store identity.</span></div></li>
+        <li><i class="fas fa-clipboard-list"></i><div><strong>Order Management</strong><span>Manage orders, update statuses, and communicate with buyers from one dashboard.</span></div></li>
+        <li><i class="fas fa-search"></i><div><strong>Marketplace Visibility</strong><span>Get discovered by thousands of buyers browsing MarketMix daily.</span></div></li>
+      </ul>
+
+      <a href="./sellers/signup-sellers.html" class="mm-btn-primary" style="margin-top:20px">Start Selling Free <i class="fas fa-arrow-right"></i></a>
+    </div>
+
+    <div class="mm-dashboard-mockup" aria-hidden="true">
+      <div class="mm-mock-bar">
+        <span class="mm-mock-dot" style="background:#ff5f57"></span>
+        <span class="mm-mock-dot" style="background:#febc2e"></span>
+        <span class="mm-mock-dot" style="background:#28c840"></span>
+        <span style="font-size:11px;color:#999;margin-left:8px">seller dashboard — marketmix.com</span>
+      </div>
+      <div class="mm-mock-body">
+        <div class="mm-mock-sidebar">
+          <div class="mm-mock-nav active"><i class="fas fa-home"></i></div>
+          <div class="mm-mock-nav"><i class="fas fa-box"></i></div>
+          <div class="mm-mock-nav"><i class="fas fa-receipt"></i></div>
+          <div class="mm-mock-nav"><i class="fas fa-chart-bar"></i></div>
+          <div class="mm-mock-nav"><i class="fas fa-cog"></i></div>
+        </div>
+        <div class="mm-mock-main">
+          <div class="mm-mock-greeting">Good morning, Sarah 👋</div>
+          <div class="mm-mock-cards">
+            <div class="mm-mock-card mm-mock-card--blue">
+              <div class="mm-mock-card-label">Revenue</div>
+              <div class="mm-mock-card-value">₦1.25M</div>
+              <div class="mm-mock-card-trend"><i class="fas fa-arrow-up"></i> 18%</div>
+            </div>
+            <div class="mm-mock-card mm-mock-card--green">
+              <div class="mm-mock-card-label">Orders</div>
+              <div class="mm-mock-card-value">342</div>
+              <div class="mm-mock-card-trend"><i class="fas fa-arrow-up"></i> 7%</div>
+            </div>
+            <div class="mm-mock-card mm-mock-card--orange">
+              <div class="mm-mock-card-label">Products</div>
+              <div class="mm-mock-card-value">58</div>
+              <div class="mm-mock-card-trend"><i class="fas fa-arrow-up"></i> 3 new</div>
+            </div>
+          </div>
+          <div class="mm-mock-chart">
+            <div class="mm-mock-chart-label">Monthly Sales</div>
+            <div class="mm-mock-bars">
+              <div class="mm-mock-bar-item" style="height:40%"></div>
+              <div class="mm-mock-bar-item" style="height:65%"></div>
+              <div class="mm-mock-bar-item" style="height:50%"></div>
+              <div class="mm-mock-bar-item" style="height:80%"></div>
+              <div class="mm-mock-bar-item" style="height:70%"></div>
+              <div class="mm-mock-bar-item mm-mock-bar-item--active" style="height:90%"></div>
+            </div>
+          </div>
+          <div class="mm-mock-orders-label">Recent Orders</div>
+          <div class="mm-mock-order"><div class="mm-mock-order-dot mm-mock-order-dot--green"></div><span>Order #4521</span><span class="mm-mock-order-status">Delivered</span></div>
+          <div class="mm-mock-order"><div class="mm-mock-order-dot mm-mock-order-dot--blue"></div><span>Order #4520</span><span class="mm-mock-order-status">Shipped</span></div>
+          <div class="mm-mock-order"><div class="mm-mock-order-dot mm-mock-order-dot--yellow"></div><span>Order #4519</span><span class="mm-mock-order-status">Pending</span></div>
         </div>
       </div>
-    </section>
+    </div>
+  </div>
+</section>
 
-    <!-- POPULAR CATEGORIES -->
-    <section id="popular-categories-section" class="section">
-      <h2 class="center">Popular Categories</h2>
-      <div class="categories-grid" id="categoriesContainer">
-        <!-- Categories will be populated by JavaScript -->
-        <div class="category-skeleton" style="display: flex; align-items: center; justify-content: center; height: 160px; background: #f0f0f0; border-radius: 10px; color: #999;">
-          Loading categories...
+<!-- ─── MARKETPLACE FEATURES ───────────────────────────────────── -->
+<section class="mm-features-section" aria-label="Platform features">
+  <div class="mm-container">
+    <div class="mm-section-header">
+      <h2>A Complete Marketplace Platform</h2>
+      <p>Everything buyers and sellers need — built right in.</p>
+    </div>
+    <div class="mm-features-grid">
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#2B6CB0"><i class="fas fa-search"></i></div>
+        <h4>Smart Search</h4>
+        <p>Find products by name, category, price range, or seller. Instant autocomplete suggestions.</p>
+      </div>
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#16a34a"><i class="fas fa-lock"></i></div>
+        <h4>Secure Checkout</h4>
+        <p>End-to-end encrypted payments. Multiple payment options with buyer protection on every order.</p>
+      </div>
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#dc2626"><i class="fas fa-bell"></i></div>
+        <h4>Real-time Notifications</h4>
+        <p>Instant alerts for orders, messages, offers, and delivery updates — never miss a thing.</p>
+      </div>
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#7c3aed"><i class="fas fa-map-marker-alt"></i></div>
+        <h4>Order Tracking</h4>
+        <p>Track your orders from seller dispatch to your doorstep with live status updates.</p>
+      </div>
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#ea580c"><i class="fas fa-shopping-cart"></i></div>
+        <h4>Smart Cart System</h4>
+        <p>Save items, merge guest carts on login, and pick up right where you left off.</p>
+      </div>
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#0891b2"><i class="fas fa-chart-bar"></i></div>
+        <h4>Seller Analytics</h4>
+        <p>Track product views, revenue trends, top performers, and customer behavior in real time.</p>
+      </div>
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#be185d"><i class="fas fa-user-circle"></i></div>
+        <h4>Buyer Profiles</h4>
+        <p>Manage your orders, wishlist, addresses, and payment methods from one clean dashboard.</p>
+      </div>
+      <div class="mm-feature-card">
+        <div class="mm-feature-icon" style="--ic:#854d0e"><i class="fas fa-star"></i></div>
+        <h4>Reviews & Ratings</h4>
+        <p>Verified purchase reviews build trust. Sellers with top ratings get featured placement.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TESTIMONIALS ───────────────────────────────────────────── -->
+<section class="mm-testimonials-section" aria-label="Customer testimonials">
+  <div class="mm-container">
+    <div class="mm-section-header">
+      <h2>What Our Community Says</h2>
+      <p>Real stories from real buyers and sellers on MarketMix.</p>
+    </div>
+    <div class="mm-testimonials-grid">
+      <div class="mm-testimonial-card">
+        <div class="mm-testi-stars">★★★★★</div>
+        <p class="mm-testi-text">"I opened my store on MarketMix three months ago and already made over ₦400,000 in sales. The dashboard is so easy to use and payments arrive fast."</p>
+        <div class="mm-testi-user">
+          <div class="mm-testi-avatar" style="background:linear-gradient(135deg,#2B6CB0,#1e4e8c)">AO</div>
+          <div>
+            <strong>Adaeze O.</strong>
+            <span>Fashion Seller, Lagos</span>
+          </div>
+          <div class="mm-testi-badge"><i class="fas fa-check-circle"></i> Verified Seller</div>
         </div>
       </div>
-    </section>
-
-    <!-- BEST SELLING -->
-    <section id="best-selling-section" class="section">
-      <h2>Best Sellers</h2>
-      <div class="filter-row best-selling-filter" role="tablist">
-        <button class="filter-btn active" data-category="all" data-section="best-selling">All</button>
-        <button class="filter-btn" data-category="electronics" data-section="best-selling">Electronics</button>
-        <button class="filter-btn" data-category="fashion" data-section="best-selling">Fashion</button>
-        <button class="filter-btn" data-category="home & garden" data-section="best-selling">Home & Garden</button>
-        <button class="filter-btn" data-category="sports & outdoors" data-section="best-selling">Sports & Outdoors</button>
-        <button class="filter-btn" data-category="books & media" data-section="best-selling">Books & Media</button>
-        <button class="filter-btn" data-category="toys & games" data-section="best-selling">Toys & Games</button>
-        <button class="filter-btn" data-category="health & beauty" data-section="best-selling">Health & Beauty</button>
-        <button class="filter-btn" data-category="automotive" data-section="best-selling">Automotive</button>
-        <button class="filter-btn" data-category="jewelry" data-section="best-selling">Jewelry</button>
-        <button class="filter-btn" data-category="pet supplies" data-section="best-selling">Pet Supplies</button>
+      <div class="mm-testimonial-card mm-testimonial-card--featured">
+        <div class="mm-testi-stars">★★★★★</div>
+        <p class="mm-testi-text">"Shopping on MarketMix is smooth and safe. I love that I can track my orders in real time and the return process was handled in 24 hours."</p>
+        <div class="mm-testi-user">
+          <div class="mm-testi-avatar" style="background:linear-gradient(135deg,#ea580c,#dc2626)">KE</div>
+          <div>
+            <strong>Kelechi E.</strong>
+            <span>Regular Buyer, Abuja</span>
+          </div>
+          <div class="mm-testi-badge mm-testi-badge--buyer"><i class="fas fa-user-check"></i> Verified Buyer</div>
+        </div>
       </div>
-
-      <div class="grid best-selling-grid">
-        <!-- Best sellers will be populated by JavaScript from API -->
+      <div class="mm-testimonial-card">
+        <div class="mm-testi-stars">★★★★★</div>
+        <p class="mm-testi-text">"The analytics on my seller dashboard are incredible. I can see exactly which products perform best and adjust my pricing accordingly. Game changer."</p>
+        <div class="mm-testi-user">
+          <div class="mm-testi-avatar" style="background:linear-gradient(135deg,#16a34a,#15803d)">TS</div>
+          <div>
+            <strong>Tunde S.</strong>
+            <span>Electronics Seller, PH</span>
+          </div>
+          <div class="mm-testi-badge"><i class="fas fa-check-circle"></i> Verified Seller</div>
+        </div>
       </div>
-    </section>
+    </div>
+  </div>
+</section>
 
-    <!-- NEW ARRIVALS -->
-    <section id="new-arrivals-section" class="section">
-      <h2>New Arrivals</h2>
-      <div class="filter-row new-arrivals-filter">
-        <button class="filter-btn active" data-category="all" data-section="new-arrivals">All</button>
-        <button class="filter-btn" data-category="electronics" data-section="new-arrivals">Electronics</button>
-        <button class="filter-btn" data-category="fashion" data-section="new-arrivals">Fashion</button>
-        <button class="filter-btn" data-category="home & garden" data-section="new-arrivals">Home & Garden</button>
-        <button class="filter-btn" data-category="sports & outdoors" data-section="new-arrivals">Sports & Outdoors</button>
-        <button class="filter-btn" data-category="books & media" data-section="new-arrivals">Books & Media</button>
-        <button class="filter-btn" data-category="toys & games" data-section="new-arrivals">Toys & Games</button>
-        <button class="filter-btn" data-category="health & beauty" data-section="new-arrivals">Health & Beauty</button>
-        <button class="filter-btn" data-category="automotive" data-section="new-arrivals">Automotive</button>
-        <button class="filter-btn" data-category="jewelry" data-section="new-arrivals">Jewelry</button>
-        <button class="filter-btn" data-category="pet supplies" data-section="new-arrivals">Pet Supplies</button>
+<!-- ─── FAQ ────────────────────────────────────────────────────── -->
+<section class="mm-faq-section" aria-label="Frequently asked questions">
+  <div class="mm-container mm-faq-layout">
+    <div class="mm-faq-header">
+      <h2>Frequently Asked Questions</h2>
+      <p>Have questions? We've got answers. Can't find what you're looking for?</p>
+      <a href="./buyers/help center.html" class="mm-btn-outline">Visit Help Center <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <div class="mm-faq-list" id="mmFaqList">
+      <div class="mm-faq-item">
+        <button class="mm-faq-q" aria-expanded="false">How do I pay for orders on MarketMix? <i class="fas fa-chevron-down"></i></button>
+        <div class="mm-faq-a"><p>MarketMix supports multiple payment methods including bank transfers, card payments, and mobile money. All transactions are SSL-encrypted and protected by our buyer guarantee.</p></div>
       </div>
-
-      <div class="grid new-arrivals-grid">
-        <!-- New arrivals will be populated by JavaScript from API -->
+      <div class="mm-faq-item">
+        <button class="mm-faq-q" aria-expanded="false">When do sellers receive their payouts? <i class="fas fa-chevron-down"></i></button>
+        <div class="mm-faq-a"><p>Sellers can request withdrawals from their available balance at any time via the Earnings dashboard. Funds are typically processed within 1–3 business days depending on your bank.</p></div>
       </div>
-    </section>
-
-
-
-    <!-- SELL SECTION -->
-    <section class="section sell-section">
-      <div class="sell-content">
-        <h2>Sell on MarketMix Today!</h2>
-        <p>Reach millions of buyers and grow your business effortlessly.</p>
-        <a href="./sellers/signup-sellers.html" class="btn btn-sell" style="margin-top:10px;background:white;color:var(--primary);border-color:white">
-          <i class="fas fa-store"></i> Start Selling
-        </a>
+      <div class="mm-faq-item">
+        <button class="mm-faq-q" aria-expanded="false">How does seller KYC verification work? <i class="fas fa-chevron-down"></i></button>
+        <div class="mm-faq-a"><p>To become a verified seller, you'll need to complete our KYC process by submitting a valid government-issued ID and a selfie. Verification typically takes 24–48 hours and gives your store a trusted badge.</p></div>
       </div>
-    </section>
-
-    <!-- POPULAR SHOPS -->
-    <section class="section popular-shops">
-      <h2 class="center">Popular Shops</h2>
-      <div class="shop-strip" id="shopStrip">
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=150" alt="TechPro"></a>
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=150" alt="StyleHub"></a>
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=150" alt="HomeDecor"></a>
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=150" alt="FitGear"></a>
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="BeautyBox"></a>
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="mobile"></a>
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="Accessories"></a>
-        <a href="./buyers/store-id.html"><img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=150" alt="Guns"></a>
+      <div class="mm-faq-item">
+        <button class="mm-faq-q" aria-expanded="false">What happens if my order doesn't arrive? <i class="fas fa-chevron-down"></i></button>
+        <div class="mm-faq-a"><p>If your order doesn't arrive or isn't as described, you can submit a return/refund report within 24 hours of confirming delivery. Our support team reviews each case and resolves it fairly for both parties.</p></div>
       </div>
-    </section>
-
-    <!-- YOU WOULD LIKE -->
-    <section class="section you-would-like-section">
-      <h2 class="center">You Might Like</h2>
-      <div class="you-like-track" id="youLikeTrack">
-        <!-- You Might Like carousel will be populated by JavaScript from API -->
+      <div class="mm-faq-item">
+        <button class="mm-faq-q" aria-expanded="false">Are there platform fees for sellers? <i class="fas fa-chevron-down"></i></button>
+        <div class="mm-faq-a"><p>Creating a store on MarketMix is completely free. A small commission is applied on successful sales to maintain the platform and support services. Full fee details are available in your seller settings.</p></div>
       </div>
-    </section>
-
-    <!-- NEWSLETTER -->
-    <section class="newsletter section">
-      <div class="panel">
-        <h2>Subscribe for Deals!</h2>
-        <p>Get updates on new arrivals & exclusive discounts.</p>
-        <form class="newsletter-form" id="newsletterForm">
-          <input id="newsletterInput" type="email" placeholder="Your email" required>
-          <button type="submit">Subscribe</button>
-        </form>
-        <p class="newsletter-message" id="newsletterMessage"></p>
+      <div class="mm-faq-item">
+        <button class="mm-faq-q" aria-expanded="false">Is it safe to buy from any seller on the platform? <i class="fas fa-chevron-down"></i></button>
+        <div class="mm-faq-a"><p>Yes. All sellers go through account verification and our rating system tracks seller performance over time. Verified sellers display a trust badge. Buyer protection is active on all orders placed through MarketMix.</p></div>
       </div>
-    </section>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FINAL CTA ───────────────────────────────────────────────── -->
+<section class="mm-cta-section" aria-label="Call to action">
+  <div class="mm-container">
+    <div class="mm-cta-inner">
+      <div class="mm-cta-glow" aria-hidden="true"></div>
+      <div class="mm-cta-text">
+        <h2>Ready to Join MarketMix?</h2>
+        <p>Whether you're here to discover amazing products or build your own store — MarketMix is the place to grow.</p>
+        <div class="mm-cta-buttons">
+          <a href="./buyers/signup-buyers.html" class="mm-btn-primary mm-btn-lg">
+            <i class="fas fa-shopping-bag"></i> Start Shopping
+          </a>
+          <a href="./sellers/signup-sellers.html" class="mm-btn-white mm-btn-lg">
+            <i class="fas fa-store"></i> Open Your Store
+          </a>
+        </div>
+        <div class="mm-cta-trust">
+          <span><i class="fas fa-check-circle"></i> Free to join</span>
+          <span><i class="fas fa-check-circle"></i> No monthly fees</span>
+          <span><i class="fas fa-check-circle"></i> Verified community</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
     <!-- FOOTER -->
     <footer>
