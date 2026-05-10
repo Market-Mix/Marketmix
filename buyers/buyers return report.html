@@ -1427,9 +1427,20 @@
   // =====================================================
   // SUPABASE INITIALIZATION
   // =====================================================
-  window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co'; // Replace with your Supabase URL
-  window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0'; // Replace with your Supabase anon key
-  window.marketmixSupabaseClient = window.marketmixSupabaseClient || window.supabase.createClient(window.MARKETMIX_SUPABASE_URL, window.MARKETMIX_SUPABASE_ANON_KEY);
+  window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
+  window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0';
+
+  function getSupabaseClient() {
+    if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      throw new Error('Supabase client library is not loaded.');
+    }
+    window.marketmixSupabaseClient = window.supabase.createClient(
+      window.MARKETMIX_SUPABASE_URL,
+      window.MARKETMIX_SUPABASE_ANON_KEY
+    );
+    return window.marketmixSupabaseClient;
+  }
   
   // =====================================================
   // SUPABASE HELPER FUNCTIONS
@@ -1440,34 +1451,43 @@
    */
   async function createRefundCase(caseData) {
     try {
-      const { data, error } = await window.marketmixSupabaseClient
+      const createdAt = new Date().toISOString();
+      const refundCasePayload = {
+        order_id: caseData.order_id,
+        product_name: caseData.product_name,
+        complaint_text: caseData.complaint_text,
+        buyer_id: caseData.buyer_id,
+        seller_id: caseData.seller_id || null,
+        status: caseData.status || 'pending',
+        evidence_url: caseData.evidence_url || null,
+        evidence_file_name: caseData.evidence_file_name || null,
+        store_name: caseData.store_name || null,
+        total_amount: caseData.total_amount || null,
+        reason: caseData.reason || null,
+        purchase_date: caseData.purchase_date || null,
+        evidence_submitted_at: caseData.evidence_submitted_at || createdAt,
+        created_at: createdAt,
+        updated_at: createdAt
+      };
+
+      const { data, error } = await getSupabaseClient()
         .from('refund_cases')
-        .insert([{
-          order_id: caseData.order_id,
-          product_name: caseData.product_name,
-          complaint_text: caseData.complaint_text,
-          buyer_id: caseData.buyer_id,
-          seller_id: caseData.seller_id,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-          evidence_url: caseData.evidence_url || null,
-          evidence_file_name: caseData.evidence_file_name || null
-        }])
-        .select();
+        .insert([refundCasePayload])
+        .select()
+        .single();
       
       if (error) {
         console.error('Error creating refund case:', error);
         throw error;
       }
       
-      return data?.[0];
+      return data;
     } catch (err) {
       console.error('Failed to create refund case:', err);
       showNotification('Failed to create refund case. Please try again.', 'error');
       return null;
     }
   }
-  
   /**
    * Upload evidence file to Supabase Storage
    */
@@ -1478,7 +1498,7 @@
       const fileName = `${caseId}-${Date.now()}-${file.name}`;
       const filePath = `refund-evidence/${fileName}`;
       
-      const { data, error: uploadError } = await window.marketmixSupabaseClient.storage
+      const { data, error: uploadError } = await getSupabaseClient().storage
         .from('refund-evidence')
         .upload(filePath, file);
       
@@ -1488,7 +1508,7 @@
       }
       
       // Get public URL
-      const { data: publicData } = window.marketmixSupabaseClient.storage
+      const { data: publicData } = getSupabaseClient().storage
         .from('refund-evidence')
         .getPublicUrl(filePath);
       
@@ -1508,7 +1528,7 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
-      const { data, error } = await window.marketmixSupabaseClient
+      const { data, error } = await getSupabaseClient()
         .from('buyer_notifications')
         .insert([{
           buyer_id: notificationData.buyer_id,
@@ -1538,7 +1558,7 @@
    */
   async function fetchRefundCases(buyerId) {
     try {
-      const { data, error } = await window.marketmixSupabaseClient
+      const { data, error } = await getSupabaseClient()
         .from('refund_cases')
         .select('*')
         .eq('buyer_id', buyerId)
@@ -1562,7 +1582,7 @@
    */
   async function fetchRefundMessages(caseId) {
     try {
-      const { data, error } = await window.marketmixSupabaseClient
+      const { data, error } = await getSupabaseClient()
         .from('refund_messages')
         .select('*')
         .eq('refund_case_id', caseId)
@@ -1585,7 +1605,7 @@
    */
   async function updateRefundCaseStatus(caseId, status) {
     try {
-      const { data, error } = await window.marketmixSupabaseClient
+      const { data, error } = await getSupabaseClient()
         .from('refund_cases')
         .update({ status: status, updated_at: new Date().toISOString() })
         .eq('id', caseId)
@@ -1604,7 +1624,7 @@
   }
 
   // =====================================================
-  // TEMP DEV TESTING HOOKS - remove before production
+  // SUPABASE DATA MAPPING / REFRESH HELPERS
   // =====================================================
   function mapRefundCaseToReport(caseData) {
     return {
@@ -1636,9 +1656,12 @@
     renderReports(currentReports);
   }
 
+  // =====================================================
+  // TEMP DEV TESTING HOOKS - remove before production
+  // =====================================================
   async function createTestRefundMessage(refundCaseId, messageText) {
     try {
-      const { data, error } = await window.marketmixSupabaseClient
+      const { data, error } = await getSupabaseClient()
         .from('refund_messages')
         .insert([{
           refund_case_id: refundCaseId,
@@ -1688,7 +1711,7 @@
       const button = document.getElementById('devCreateMockRefundBtn');
       if (button) button.disabled = true;
 
-      const { data, error } = await window.marketmixSupabaseClient
+      const { data, error } = await getSupabaseClient()
         .from('refund_cases')
         .insert([mockRefund])
         .select();
@@ -1785,6 +1808,9 @@
     window.updateAccountNotification?.(total);
   }
 
+  function getInlineHandlerId(id) {
+    return String(id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
   function showNotification(message, type = 'success') {
     const container = document.getElementById('toastNotification');
     if (!container) return;
@@ -1972,42 +1998,17 @@
     // Get user ID from token/auth
     let userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
     
-    // Try to fetch from Supabase first
+    // Fetch refund cases from Supabase and render them in the existing table.
     if (userId) {
       try {
         const refundCases = await fetchRefundCases(userId);
-        
-        if (refundCases && refundCases.length > 0) {
-          // Convert Supabase format to UI format
-          currentReports = refundCases.map(caseData => ({
-            id: caseData.id,
-            order_id: caseData.order_id,
-            product_name: caseData.product_name,
-            total_amount: caseData.total_amount || 0,
-            status: caseData.status,
-            reason: caseData.reason || '',
-            description: caseData.complaint_text || '',
-            purchase_date: caseData.purchase_date,
-            created_at: caseData.created_at,
-            evidence_submitted_at: caseData.evidence_submitted_at,
-            evidence_url: caseData.evidence_url,
-            seller_response: caseData.seller_response,
-            marketmix_reason: caseData.marketmix_reason,
-            store_name: caseData.store_name || 'Store',
-            seller_id: caseData.seller_id,
-            messages: [] // Will load on demand
-          }));
-        } else {
-          // No Supabase data, use sample data as fallback
-          currentReports = sampleReports;
-        }
+        currentReports = refundCases.map(mapRefundCaseToReport);
       } catch (err) {
-        console.error('Failed to load from Supabase, using sample data:', err);
-        // Fallback to sample data on Supabase error
-        currentReports = sampleReports;
+        console.error('Failed to load refund cases from Supabase:', err);
+        currentReports = [];
       }
     } else {
-      // No user ID, use sample data
+      // No user ID, use sample data until the login redirect completes.
       currentReports = sampleReports;
     }
     
@@ -2089,7 +2090,7 @@
           </span>
         `;
         viewBtnHtml = `
-          <button class="btn-action" onclick="viewDetails(${report.id})">
+          <button class="btn-action" onclick="viewDetails('${getInlineHandlerId(report.id)}')">
             <i class="fas fa-eye"></i> View
           </button>
         `;
@@ -2118,7 +2119,7 @@
           const label = complaintStarted ? `Chat (${daysLeft}d ${hoursLeft}h)` : `Start Complaint (${daysLeft}d ${hoursLeft}h)`;
           const unreadCount = getUnreadCount(report.id);
           chatBtnHtml = `
-            <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat(${report.id})" style="position: relative;">
+            <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
               <i class="fas fa-comments"></i> ${label}
               ${unreadCount > 0 ? `<span class="notification-badge">${unreadCount}</span>` : ''}
             </button>
@@ -2170,14 +2171,14 @@
   function searchReports() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const filtered = currentReports.filter(r =>
-      r.store_name.toLowerCase().includes(searchTerm) ||
-      r.order_id.toLowerCase().includes(searchTerm)
+      (r.store_name || '').toLowerCase().includes(searchTerm) ||
+      (r.order_id || '').toLowerCase().includes(searchTerm)
     );
     renderReports(filtered);
   }
 
   function openChat(reportId) {
-    const report = currentReports.find(r => r.id === reportId);
+    const report = currentReports.find(r => String(r.id) === String(reportId));
     if (!report) return;
     if (report.status === 'rejected') return;
 
@@ -2243,6 +2244,12 @@
         complaint_text: description,
         buyer_id: userId,
         seller_id: currentChatData.seller_id || null,
+        status: 'pending',
+        store_name: currentChatData.store_name || null,
+        total_amount: currentChatData.total_amount || null,
+        reason: currentChatData.reason || 'complaint',
+        purchase_date: currentChatData.purchase_date || null,
+        evidence_submitted_at: new Date().toISOString(),
         evidence_url: evidenceData.url,
         evidence_file_name: evidenceData.fileName
       });
@@ -2298,8 +2305,8 @@
       closeEvidenceModal();
       openChatPanel(currentChatData);
       
-      // Update the table row to reflect the new state
-      renderReports(currentReports);
+      // Refresh the existing table with the row saved in Supabase.
+      await refreshRefundTableFromSupabase();
       
       showNotification('Evidence submitted successfully!', 'success');
     } catch (err) {
@@ -2309,7 +2316,6 @@
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalBtnText;
     }
-    renderReports(currentReports);
   }
 
   function openChatPanel(report) {
@@ -2666,7 +2672,7 @@
   }
 
   function viewDetails(reportId) {
-    const report = currentReports.find(r => r.id === reportId);
+    const report = currentReports.find(r => String(r.id) === String(reportId));
     if (!report || report.status === 'purchased') return;
 
     document.getElementById('detailsStore').textContent = report.store_name;
