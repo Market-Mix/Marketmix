@@ -1427,9 +1427,9 @@
   // =====================================================
   // SUPABASE INITIALIZATION
   // =====================================================
-  const SUPABASE_URL = 'https://supabase.com/dashboard/project/zfyoxmwwuwgvaevwlgzn'; // Replace with your Supabase URL
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0'; // Replace with your Supabase anon key
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co'; // Replace with your Supabase URL
+  window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0'; // Replace with your Supabase anon key
+  window.marketmixSupabaseClient = window.marketmixSupabaseClient || window.supabase.createClient(window.MARKETMIX_SUPABASE_URL, window.MARKETMIX_SUPABASE_ANON_KEY);
   
   // =====================================================
   // SUPABASE HELPER FUNCTIONS
@@ -1440,7 +1440,7 @@
    */
   async function createRefundCase(caseData) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.marketmixSupabaseClient
         .from('refund_cases')
         .insert([{
           order_id: caseData.order_id,
@@ -1478,7 +1478,7 @@
       const fileName = `${caseId}-${Date.now()}-${file.name}`;
       const filePath = `refund-evidence/${fileName}`;
       
-      const { data, error: uploadError } = await supabase.storage
+      const { data, error: uploadError } = await window.marketmixSupabaseClient.storage
         .from('refund-evidence')
         .upload(filePath, file);
       
@@ -1488,7 +1488,7 @@
       }
       
       // Get public URL
-      const { data: publicData } = supabase.storage
+      const { data: publicData } = window.marketmixSupabaseClient.storage
         .from('refund-evidence')
         .getPublicUrl(filePath);
       
@@ -1508,7 +1508,7 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.marketmixSupabaseClient
         .from('buyer_notifications')
         .insert([{
           buyer_id: notificationData.buyer_id,
@@ -1538,7 +1538,7 @@
    */
   async function fetchRefundCases(buyerId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.marketmixSupabaseClient
         .from('refund_cases')
         .select('*')
         .eq('buyer_id', buyerId)
@@ -1562,7 +1562,7 @@
    */
   async function fetchRefundMessages(caseId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.marketmixSupabaseClient
         .from('refund_messages')
         .select('*')
         .eq('refund_case_id', caseId)
@@ -1585,7 +1585,7 @@
    */
   async function updateRefundCaseStatus(caseId, status) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.marketmixSupabaseClient
         .from('refund_cases')
         .update({ status: status, updated_at: new Date().toISOString() })
         .eq('id', caseId)
@@ -1638,7 +1638,7 @@
 
   async function createTestRefundMessage(refundCaseId, messageText) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await window.marketmixSupabaseClient
         .from('refund_messages')
         .insert([{
           refund_case_id: refundCaseId,
@@ -1688,7 +1688,7 @@
       const button = document.getElementById('devCreateMockRefundBtn');
       if (button) button.disabled = true;
 
-      const { data, error } = await supabase
+      const { data, error } = await window.marketmixSupabaseClient
         .from('refund_cases')
         .insert([mockRefund])
         .select();
