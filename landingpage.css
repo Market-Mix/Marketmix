@@ -908,11 +908,22 @@
   padding: 72px 0;
   background: #fff;
 }
+/* Testimonials — horizontal scroll on all screens */
 .mm-testimonials-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
-  align-items: start;
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 16px;
+  scrollbar-width: none;
+}
+.mm-testimonials-grid::-webkit-scrollbar {
+  display: none;
+}
+.mm-testimonial-card {
+  flex: 0 0 340px;
+  scroll-snap-align: start;
 }
 .mm-testimonial-card {
   background: #f8fafc;
@@ -1075,7 +1086,6 @@
   .mm-sellers-grid { grid-template-columns: 1fr; }
   .mm-how-steps { grid-template-columns: 1fr; }
   .mm-features-grid { grid-template-columns: 1fr; }
-  .mm-testimonials-grid { grid-template-columns: 1fr; }
   .mm-cta-buttons { flex-direction: column; align-items: center; }
   .mm-btn-lg { width: 100%; justify-content: center; }
   .mm-how-tabs { max-width: 100%; }
