@@ -891,35 +891,209 @@
 .mm-mock-order-status { color: #94a3b8; font-size: 9px; }
 
 /* ─── 7. FEATURES SECTION ────────────────────────────────────── */
-.mm-features-section {
-  padding: 72px 0;
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
-}
+/* ─── DESKTOP: keep existing grid, unchanged ─────────────────── */
+.mm-features-section { padding: 72px 0; background: linear-gradient(180deg,#f8fafc 0%,#fff 100%); }
 .mm-features-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
 }
 .mm-feature-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 24px;
-  transition: all .2s;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+  padding: 24px; transition: all .2s;
 }
-.mm-feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(2,6,23,0.07); border-color: #cbd5e0; }
+.mm-feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(2,6,23,.07); border-color: #cbd5e0; }
 .mm-feature-icon {
   width: 48px; height: 48px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--ic) 15%, transparent), color-mix(in srgb, var(--ic) 6%, transparent));
+  background: color-mix(in srgb, var(--ic) 12%, transparent);
   border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
-  color: var(--ic);
-  margin-bottom: 14px;
+  font-size: 20px; color: var(--ic); margin-bottom: 14px;
 }
-.mm-feature-card h4 { font-size: 0.95rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
-.mm-feature-card p { font-size: 0.875rem; color: #64748b; line-height: 1.6; }
-
+.mm-feature-card h4 { font-size: .95rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.mm-feature-card p { font-size: .875rem; color: #64748b; line-height: 1.6; }
+.mm-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+.mm-section-header { text-align: center; margin-bottom: 40px; }
+.mm-section-header h2 { font-size: clamp(1.5rem,4vw,2.2rem); font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+.mm-section-header p { color: #64748b; font-size: clamp(.95rem,2.2vw,1.05rem); max-width: 540px; margin: 0 auto; line-height: 1.6; }
+ 
+/* ─── MOBILE: deck layout ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .mm-features-grid { display: none; }
+ 
+  /* wrapper */
+  .mm-deck-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 40px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+ 
+  /* progress dots */
+  .mm-deck-dots {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+  }
+  .mm-deck-dot {
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: #cbd5e0;
+    transition: width .3s, background .3s;
+  }
+  .mm-deck-dot.active {
+    width: 22px;
+    background: #2B6CB0;
+  }
+ 
+  /* stage */
+  .mm-deck-stage {
+    position: relative;
+    width: calc(100vw - 48px);
+    max-width: 360px;
+    height: 220px;
+    perspective: 1200px;
+  }
+ 
+  /* each card in deck mode */
+  .mm-deck-card {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    /* GPU layer */
+    will-change: transform, opacity;
+    transform-origin: center bottom;
+    transition:
+      transform .5s cubic-bezier(.32,.72,0,1),
+      opacity   .4s ease,
+      box-shadow .4s ease;
+    touch-action: pan-y;
+    cursor: grab;
+  }
+  .mm-deck-card:active { cursor: grabbing; }
+ 
+  /* active (front) card */
+  .mm-deck-card.is-active {
+    transform: translateY(0) scale(1) rotate(0deg) !important;
+    opacity: 1 !important;
+    z-index: 10;
+    box-shadow: 0 20px 60px rgba(43,108,176,.18), 0 6px 20px rgba(2,6,23,.08);
+  }
+ 
+  /* card-2 behind active */
+  .mm-deck-card.is-behind-1 {
+    transform: translateY(14px) scale(.95) !important;
+    opacity: .85 !important;
+    z-index: 9;
+  }
+ 
+  /* card-3 behind */
+  .mm-deck-card.is-behind-2 {
+    transform: translateY(26px) scale(.90) !important;
+    opacity: .6 !important;
+    z-index: 8;
+  }
+ 
+  /* card-4+ (hidden) */
+  .mm-deck-card.is-hidden {
+    transform: translateY(36px) scale(.86) !important;
+    opacity: 0 !important;
+    z-index: 7;
+    pointer-events: none;
+  }
+ 
+  /* exiting (swiped away) */
+  .mm-deck-card.is-exiting-left {
+    transform: translateX(-130%) rotate(-18deg) !important;
+    opacity: 0 !important;
+    transition: transform .4s cubic-bezier(.55,0,1,.45), opacity .35s ease !important;
+    pointer-events: none;
+  }
+  .mm-deck-card.is-exiting-right {
+    transform: translateX(130%) rotate(18deg) !important;
+    opacity: 0 !important;
+    transition: transform .4s cubic-bezier(.55,0,1,.45), opacity .35s ease !important;
+    pointer-events: none;
+  }
+ 
+  /* entering from bottom (cycling back) */
+  .mm-deck-card.is-entering {
+    transform: translateY(60px) scale(.8) !important;
+    opacity: 0 !important;
+    transition: none !important;
+  }
+ 
+  /* icon */
+  .mm-deck-card .mm-feature-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 0;
+    flex-shrink: 0;
+  }
+ 
+  .mm-deck-card .card-content { display: flex; flex-direction: column; gap: 5px; }
+  .mm-deck-card h4 { font-size: 1rem; font-weight: 800; color: #0f172a; }
+  .mm-deck-card p { font-size: .85rem; color: #64748b; line-height: 1.55; }
+ 
+  /* accent top-border on active */
+  .mm-deck-card.is-active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 24px; right: 24px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(90deg, #2B6CB0, #ea580c);
+    opacity: 1;
+    transition: opacity .3s;
+  }
+ 
+  /* hint arrows */
+  .mm-deck-hints {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 20px;
+  }
+  .mm-deck-hint-btn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #64748b;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 2px 8px rgba(2,6,23,.06);
+  }
+  .mm-deck-hint-btn:hover, .mm-deck-hint-btn:active {
+    border-color: #2B6CB0;
+    color: #2B6CB0;
+    box-shadow: 0 4px 14px rgba(43,108,176,.15);
+  }
+  .mm-deck-counter {
+    font-size: .8rem;
+    font-weight: 700;
+    color: #94a3b8;
+    min-width: 40px;
+    text-align: center;
+  }
+}
+ 
+/* hide deck on desktop */
+@media (min-width: 769px) {
+  .mm-deck-wrapper { display: none; }
+}
+ 
 /* ─── 8. TESTIMONIALS ─────────────────────────────────────────── */
 .mm-testimonials-section {
   padding: 72px 0;

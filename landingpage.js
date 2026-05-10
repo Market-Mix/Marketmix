@@ -669,6 +669,223 @@ function initRevealOnScroll() {
   sections.forEach(s => obs.observe(s));
 }
 
+
+const FEATURES = [
+    { icon: 'fa-search',       color: '#2B6CB0', title: 'Smart Search',             desc: 'Find products by name, category, price range, or seller with instant autocomplete.' },
+    { icon: 'fa-lock',         color: '#16a34a', title: 'Secure Checkout',           desc: 'End-to-end encrypted payments with buyer protection on every single order.' },
+    { icon: 'fa-bell',         color: '#dc2626', title: 'Real-time Notifications',   desc: 'Instant alerts for orders, messages, offers, and delivery updates.' },
+    { icon: 'fa-map-marker-alt', color: '#7c3aed', title: 'Order Tracking',          desc: 'Track orders from seller dispatch to your doorstep with live status updates.' },
+    { icon: 'fa-shopping-cart', color: '#ea580c', title: 'Smart Cart System',        desc: 'Save items, merge guest carts on login, and pick up right where you left off.' },
+    { icon: 'fa-chart-bar',    color: '#0891b2', title: 'Seller Analytics',          desc: 'Track views, revenue trends, top performers and customer behavior in real time.' },
+    { icon: 'fa-user-circle',  color: '#be185d', title: 'Buyer Profiles',            desc: 'Manage orders, wishlist, addresses and payment methods from one dashboard.' },
+    { icon: 'fa-star',         color: '#854d0e', title: 'Reviews & Ratings',         desc: 'Verified purchase reviews build trust. Top-rated sellers get featured placement.' },
+  ];
+ 
+  const AUTOPLAY_MS = 3200;
+  const MOBILE_BP  = 768;
+ 
+  let activeIdx   = 0;
+  let total       = FEATURES.length;
+  let cards       = [];
+  let autoTimer   = null;
+  let isDragging  = false;
+  let dragStartX  = 0;
+  let dragDeltaX  = 0;
+  let isMobile    = () => window.innerWidth <= MOBILE_BP;
+ 
+  /* ── Build DOM ────────────────────────────────────────── */
+  function build() {
+    const stage = document.getElementById('mmDeckStage');
+    const dots  = document.getElementById('mmDeckDots');
+    if (!stage) return;
+ 
+    stage.innerHTML = '';
+    dots && (dots.innerHTML = '');
+    cards = [];
+ 
+    FEATURES.forEach((f, i) => {
+      /* card */
+      const card = document.createElement('div');
+      card.className = 'mm-deck-card';
+      card.dataset.idx = i;
+      card.innerHTML = `
+        <div class="mm-feature-icon" style="--ic:${f.color};background:color-mix(in srgb,${f.color} 12%,transparent)">
+          <i class="fas ${f.icon}" style="color:${f.color}"></i>
+        </div>
+        <div class="card-content">
+          <h4>${f.title}</h4>
+          <p>${f.desc}</p>
+        </div>`;
+ 
+      /* touch / mouse drag */
+      attachDrag(card, i);
+      stage.appendChild(card);
+      cards.push(card);
+ 
+      /* dot */
+      if (dots) {
+        const dot = document.createElement('div');
+        dot.className = 'mm-deck-dot';
+        dot.dataset.idx = i;
+        dot.addEventListener('click', () => goTo(i));
+        dots.appendChild(dot);
+      }
+    });
+ 
+    render();
+    startAuto();
+  }
+ 
+  /* ── Position all cards ───────────────────────────────── */
+  function render() {
+    cards.forEach((card, i) => {
+      card.classList.remove('is-active','is-behind-1','is-behind-2','is-hidden',
+                            'is-exiting-left','is-exiting-right','is-entering');
+ 
+      const rel = (i - activeIdx + total) % total;
+      if      (rel === 0) card.classList.add('is-active');
+      else if (rel === 1) card.classList.add('is-behind-1');
+      else if (rel === 2) card.classList.add('is-behind-2');
+      else                card.classList.add('is-hidden');
+    });
+ 
+    /* dots */
+    document.querySelectorAll('.mm-deck-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === activeIdx);
+    });
+ 
+    /* counter */
+    const counter = document.getElementById('mmDeckCounter');
+    if (counter) counter.textContent = `${activeIdx + 1} / ${total}`;
+  }
+ 
+  /* ── Navigate ─────────────────────────────────────────── */
+  function next() {
+    const card = cards[activeIdx];
+    card.classList.add('is-exiting-left');
+    setTimeout(() => {
+      card.classList.remove('is-exiting-left');
+      activeIdx = (activeIdx + 1) % total;
+      render();
+    }, 380);
+  }
+ 
+  function prev() {
+    const card = cards[activeIdx];
+    card.classList.add('is-exiting-right');
+    setTimeout(() => {
+      card.classList.remove('is-exiting-right');
+      activeIdx = (activeIdx - 1 + total) % total;
+      render();
+    }, 380);
+  }
+ 
+  function goTo(idx) {
+    if (idx === activeIdx) return;
+    const dir = ((idx - activeIdx + total) % total) <= total / 2 ? 'left' : 'right';
+    const card = cards[activeIdx];
+    card.classList.add(dir === 'left' ? 'is-exiting-left' : 'is-exiting-right');
+    setTimeout(() => {
+      card.classList.remove('is-exiting-left', 'is-exiting-right');
+      activeIdx = idx;
+      render();
+    }, 380);
+  }
+ 
+  /* ── Autoplay ─────────────────────────────────────────── */
+  function startAuto() {
+    clearInterval(autoTimer);
+    autoTimer = setInterval(() => { if (!isDragging && isMobile()) next(); }, AUTOPLAY_MS);
+  }
+  function pauseAuto() { clearInterval(autoTimer); }
+  function resumeAuto() { startAuto(); }
+ 
+  /* ── Drag / Swipe ─────────────────────────────────────── */
+  function attachDrag(card) {
+    /* touch */
+    card.addEventListener('touchstart', onStart, { passive: true });
+    card.addEventListener('touchmove',  onMove,  { passive: true });
+    card.addEventListener('touchend',   onEnd,   { passive: true });
+    /* mouse */
+    card.addEventListener('mousedown',  onStart);
+    card.addEventListener('mousemove',  onMove);
+    card.addEventListener('mouseup',    onEnd);
+    card.addEventListener('mouseleave', onEnd);
+  }
+ 
+  function clientX(e) {
+    return e.touches ? e.touches[0].clientX : e.clientX;
+  }
+ 
+  function onStart(e) {
+    if (!isMobile() || +e.currentTarget.dataset.idx !== activeIdx) return;
+    isDragging = true;
+    dragStartX = clientX(e);
+    dragDeltaX = 0;
+    pauseAuto();
+  }
+ 
+  function onMove(e) {
+    if (!isDragging) return;
+    dragDeltaX = clientX(e) - dragStartX;
+    const active = cards[activeIdx];
+    const rotate = dragDeltaX * 0.06;
+    /* live drag feedback – bypass transition temporarily */
+    active.style.transition = 'none';
+    active.style.transform  = `translateX(${dragDeltaX}px) rotate(${rotate}deg) scale(1)`;
+    active.style.opacity    = String(Math.max(0.7, 1 - Math.abs(dragDeltaX) / 260));
+  }
+ 
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    const active = cards[activeIdx];
+    active.style.transition = '';
+    active.style.transform  = '';
+    active.style.opacity    = '';
+ 
+    const THRESHOLD = 60;
+    if      (dragDeltaX < -THRESHOLD) next();
+    else if (dragDeltaX >  THRESHOLD) prev();
+    else render(); /* snap back */
+ 
+    resumeAuto();
+    dragDeltaX = 0;
+  }
+ 
+  /* ── Buttons ──────────────────────────────────────────── */
+  document.getElementById('mmDeckPrev')?.addEventListener('click', () => { pauseAuto(); prev(); resumeAuto(); });
+  document.getElementById('mmDeckNext')?.addEventListener('click', () => { pauseAuto(); next(); resumeAuto(); });
+ 
+  /* ── Keyboard (accessibility) ─────────────────────────── */
+  document.addEventListener('keydown', e => {
+    if (!isMobile()) return;
+    if (e.key === 'ArrowRight') { pauseAuto(); next(); resumeAuto(); }
+    if (e.key === 'ArrowLeft')  { pauseAuto(); prev(); resumeAuto(); }
+  });
+ 
+  /* ── Init & resize ────────────────────────────────────── */
+  function init() {
+    if (isMobile()) build();
+  }
+ 
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(init, 200);
+  });
+ 
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+ 
+  /* pause when tab hidden */
+  document.addEventListener('visibilitychange', () => {
+    document.hidden ? pauseAuto() : resumeAuto();
+  });
+
 // ===== MAIN INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   injectStyles();
