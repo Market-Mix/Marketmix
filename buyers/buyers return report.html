@@ -1647,15 +1647,82 @@
     };
   }
 
-  async function refreshRefundTableFromSupabase() {
-    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-    if (!userId) return;
-
-    const refundCases = await fetchRefundCases(userId);
-    currentReports = refundCases.map(mapRefundCaseToReport);
-    renderReports(currentReports);
+  function getAuthHeaders() {
+    const token = getAuthToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  async function fetchBuyerOrdersForReturns() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders?limit=100`, {
+        headers: getAuthHeaders()
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to fetch buyer orders.');
+      }
+
+      return result.data?.orders || result.orders || [];
+    } catch (err) {
+      console.error('Failed to load buyer orders for returns:', err);
+      return [];
+    }
+  }
+
+  function mapOrderToComplaintReport(order) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const productNames = items
+      .map(item => item.product_name || item.name || item.productName)
+      .filter(Boolean);
+
+    return {
+      id: `order-${order.id}`,
+      order_id: order.id,
+      product_name: productNames.length ? productNames.join(', ') : 'Purchased item',
+      total_amount: order.total_amount || 0,
+      status: 'purchased',
+      reason: '',
+      description: '',
+      purchase_date: order.created_at,
+      created_at: order.created_at,
+      evidence_submitted_at: null,
+      evidence_url: null,
+      seller_response: null,
+      marketmix_reason: null,
+      store_name: order.store_name || order.seller_name || 'Store',
+      seller_id: items[0]?.seller_id || order.seller_id || null,
+      messages: []
+    };
+  }
+
+  function buildReturnReports(refundCases, buyerOrders) {
+    const refundReports = refundCases.map(mapRefundCaseToReport);
+    const reportedOrderIds = new Set(refundReports.map(report => String(report.order_id)));
+    const openOrderReports = buyerOrders
+      .filter(order => order?.id && !reportedOrderIds.has(String(order.id)))
+      .filter(order => !['cancelled', 'canceled', 'refunded'].includes(String(order.status || '').toLowerCase()))
+      .map(mapOrderToComplaintReport);
+
+    return [...refundReports, ...openOrderReports];
+  }
+
+  async function loadReturnReportsForCurrentBuyer() {
+    const userId = getCurrentBuyerId();
+    if (!userId) return [];
+
+    const [refundCases, buyerOrders] = await Promise.all([
+      fetchRefundCases(userId),
+      fetchBuyerOrdersForReturns()
+    ]);
+
+    return buildReturnReports(refundCases, buyerOrders);
+  }
+
+  async function refreshRefundTableFromSupabase() {
+    currentReports = await loadReturnReportsForCurrentBuyer();
+    renderReports(currentReports);
+  }
   // =====================================================
   // TEMP DEV TESTING HOOKS - remove before production
   // =====================================================
@@ -1681,7 +1748,7 @@
   }
 
   async function createMockRefundCase(options = {}) {
-    const buyerId = options.buyer_id || localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const buyerId = options.buyer_id || getCurrentBuyerId();
     if (!buyerId) {
       showNotification('Dev test failed: buyer_id is missing. Log in first or pass buyer_id in options.', 'error');
       return null;
@@ -1811,6 +1878,57 @@
   function getInlineHandlerId(id) {
     return String(id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
+
+  function getStoredAuthUser() {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null');
+      if (user) return user;
+    } catch (err) {
+      console.warn('Unable to parse stored user:', err);
+    }
+
+    try {
+      const authData = JSON.parse(localStorage.getItem('authData') || sessionStorage.getItem('authData') || 'null');
+      return authData?.user || null;
+    } catch (err) {
+      console.warn('Unable to parse stored auth data:', err);
+      return null;
+    }
+  }
+
+  function getAuthToken() {
+    return sessionStorage.getItem('token') || localStorage.getItem('token') || '';
+  }
+
+  function getTokenPayload() {
+    const token = getAuthToken();
+    if (!token || !token.includes('.')) return null;
+
+    try {
+      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(base64));
+    } catch (err) {
+      console.warn('Unable to decode auth token:', err);
+      return null;
+    }
+  }
+
+  function getCurrentBuyerId() {
+    const storedUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    if (storedUserId) return storedUserId;
+
+    const user = getStoredAuthUser();
+    const tokenPayload = getTokenPayload();
+    const buyerId = user?.id || user?._id || user?.userId || tokenPayload?.id || tokenPayload?.user_id || null;
+
+    if (buyerId) {
+      localStorage.setItem('userId', buyerId);
+      return buyerId;
+    }
+
+    return null;
+  }
+
   function showNotification(message, type = 'success') {
     const container = document.getElementById('toastNotification');
     if (!container) return;
@@ -1984,7 +2102,7 @@
   ];
 
   function checkAuth() {
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) {
       window.location.replace('login for buyers.html');
       return null;
@@ -1994,22 +2112,22 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     const token = checkAuth();
+    if (!token) return;
     
-    // Get user ID from token/auth
-    let userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    // Get buyer ID from the same auth data saved by the buyer login page.
+    let userId = getCurrentBuyerId();
     
-    // Fetch refund cases from Supabase and render them in the existing table.
+    // Fetch real buyer orders and Supabase refund cases, then render them in the existing table.
     if (userId) {
       try {
-        const refundCases = await fetchRefundCases(userId);
-        currentReports = refundCases.map(mapRefundCaseToReport);
+        currentReports = await loadReturnReportsForCurrentBuyer();
       } catch (err) {
-        console.error('Failed to load refund cases from Supabase:', err);
+        console.error('Failed to load returns data:', err);
         currentReports = [];
       }
     } else {
-      // No user ID, use sample data until the login redirect completes.
-      currentReports = sampleReports;
+      currentReports = [];
+      showNotification('Unable to identify your buyer account. Please log in again.', 'error');
     }
     
     renderReports(currentReports);
@@ -2224,7 +2342,7 @@
 
     try {
       // Get current user info
-      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+      const userId = getCurrentBuyerId();
       if (!userId) {
         showNotification('User not authenticated.', 'error');
         return;
@@ -2234,7 +2352,11 @@
       let evidenceData = { url: null, fileName: null };
       const fileInput = document.getElementById('evidenceFile');
       if (fileInput && fileInput.files.length > 0) {
-        evidenceData = await uploadEvidenceFile(fileInput.files[0], currentChatData.id) || { url: null, fileName: null };
+        evidenceData = await uploadEvidenceFile(fileInput.files[0], currentChatData.order_id);
+        if (!evidenceData) {
+          showNotification('Evidence upload failed. Please try again.', 'error');
+          return;
+        }
       }
 
       // Create refund case in Supabase
