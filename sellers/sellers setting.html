@@ -43,7 +43,7 @@
 
   <div class="profile-dropdown" id="profileDropdown">
     <a href="view profile.html">View Profile</a>
-    <a href="sellers setting.html">Account Settings</a>
+    <a href="sellers-account.html">Account Settings</a>
     <a href="sellers layout.html">View Store</a>
     <a href="help.html">Help & Support</a>
     <a href="logout.html">Logout</a>
@@ -79,11 +79,11 @@
       
         <div class="icon-container">
    <div class="profile-container">
-  <img id="sellerProfileImage" src="" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()">
+  <img id="sellerProfileImageMobile" src="" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()">
 
   <div class="nav-list">
        <li><a style="text-decoration: none; color: white;" href="view profile.html">View Profile</a></li>
-    <li><a style="text-decoration: none; color: white;" href="sellers setting.html">Account Settings</a></li>
+    <li><a style="text-decoration: none; color: white;" href="sellers-account.html">Account Settings</a></li>
     <li><a style="text-decoration: none; color: white;" href="help.html">Help & Support</a></li>
     <li><a style="text-decoration: none; color: white;" href="logout.html">Logout</a></li>
   </div>
@@ -109,7 +109,7 @@
         <input
           type="text"
           id="shop-name"
-          name="shopName"git status
+          name="business_name"
           placeholder="Your shop name"
           required
           aria-required="true"
@@ -117,60 +117,25 @@
       </div>
 
       <div class="form-group">
-        <label  for="shop-email">Email Address</label>
-        <input
-          type="email"
-          id="shop-email"
-          name="shopEmail"
-          placeholder="Email for customers"
-          required
-          aria-required="true"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="shop-phone">Phone Number</label>
-        <input
-          type="tel"
-          id="shop-phone"
-          name="shopPhone"
-          placeholder="Your contact number"
-          pattern="^\+?\d{7,15}$"
-          aria-describedby="phone-desc"
-        />
-        <small style="color: #555555;" id="phone-desc">Format: +23400000000</small>
-      </div>
-
-      <div class="form-group">
         <label for="shop-address">Shop Address</label>
         <textarea
           id="shop-address"
-          name="shopAddress"
+          name="business_address"
           rows="3"
           placeholder="Shop location/address"
         ></textarea>
       </div>
 
       <div class="form-group">
-        <label for="business-hours">Business Hours</label>
+        <label for="shop-logo-url">Shop Logo URL</label>
         <input
-          type="text"
-          id="business-hours"
-          name="businessHours"
-          placeholder="E.g. Mon-Fri 9am - 6pm"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="shop-logo">Shop Logo (PNG, JPG, max 5MB)</label>
-        <input
-          type="file"
-          id="shop-logo"
-          name="shopLogo"
-          accept="image/png, image/jpeg"
+          type="url"
+          id="shop-logo-url"
+          name="store_logo_url"
+          placeholder="https://example.com/logo.png"
           aria-describedby="logo-desc"
         />
-        <small id="logo-desc">Allowed types: PNG, JPG. Max size: 5MB</small>
+        <small id="logo-desc">This logo belongs only to the active shop.</small>
         <img id="logo-preview" alt="Shop Logo Preview" />
       </div>
 
@@ -179,7 +144,7 @@
         <input
           type="url"
           id="shop-instagram"
-          name="shopInstagram"
+          name="instagram"
           placeholder="https://instagram.com/yourshop"
         />
       </div>
@@ -189,7 +154,7 @@
         <input
           type="url"
           id="shop-facebook"
-          name="shopFacebook"
+          name="facebook"
           placeholder="https://facebook.com/yourshop"
         />
       </div>
@@ -199,44 +164,30 @@
         <input
           type="url"
           id="shop-twitter"
-          name="shopTwitter"
+          name="twitter"
           placeholder="https://twitter.com/yourshop"
         />
       </div>
 
-      <fieldset>
-        <small style="color: red;">Leave password fields blank if you don't want to change your password.</small> <br>
+      <div class="form-group">
+        <label for="shop-tiktok">TikTok URL</label>
+        <input
+          type="url"
+          id="shop-tiktok"
+          name="tiktok"
+          placeholder="https://www.tiktok.com/@yourshop"
+        />
+      </div>
 
-        <legend>Change Password</legend>
-        <div class="form-group">
-          <label for="current-password">Current Password</label>
-          <input
-            type="password"
-            id="current-password"
-            name="currentPassword"
-            autocomplete="current-password"
-          />
-        </div>
-        <div class="form-group">
-          <label for="new-password">New Password</label>
-          <input
-            type="password"
-            id="new-password"
-            name="newPassword"
-            autocomplete="new-password"
-            minlength="6"
-          />
-        </div>
-        <div class="form-group">
-          <label for="confirm-password">Confirm New Password</label>
-          <input
-            type="password"
-            id="confirm-password"
-            name="confirmPassword"
-            autocomplete="new-password"
-          />
-        </div>
-      </fieldset>
+      <div class="form-group">
+        <label for="shop-whatsapp">WhatsApp URL</label>
+        <input
+          type="url"
+          id="shop-whatsapp"
+          name="whatsapp"
+          placeholder="https://wa.me/23400000000"
+        />
+      </div>
 
       <div class="btn-group" style="margin-top: 15px;">
         <button type="submit" class="save-btn" aria-live="polite" aria-busy="false" aria-label="Save changes">

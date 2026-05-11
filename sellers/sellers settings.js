@@ -1,29 +1,24 @@
 /**
- * sellers settings.js — MarketMix Shop Settings
- * Settings are scoped to the ACTIVE STORE via StoreManager.
- * Saves to: PUT /api/seller/stores/:storeId
- * Logo upload: POST /api/seller/logo/upload
- * Password change: PUT /api/auth/change-password  (account-level, not store-level)
+ * MarketMix Shop Settings
+ * This page is store-scoped. Account settings live in sellers-account.html.
  */
 
-const API_BASE = 'https://marketmix-backend.onrender.com/api';
+const SOCIAL_KEYS = ['instagram', 'facebook', 'twitter', 'tiktok', 'whatsapp'];
 
-function getToken() {
-  return localStorage.getItem('token') || sessionStorage.getItem('token');
-}
-
-function showMessage(msg, type = 'info') {
+function showMessage(message, type = 'info') {
   const el = document.getElementById('form-message');
   if (!el) return;
-  el.textContent = msg;
+  el.textContent = message;
   el.style.color = type === 'success' ? 'green' : type === 'error' ? 'red' : '#000';
 }
 
 function setLoading(isLoading) {
   const saveBtn = document.querySelector('button.save-btn');
   if (!saveBtn) return;
+
   saveBtn.disabled = isLoading;
   saveBtn.setAttribute('aria-busy', String(isLoading));
+
   const spinner = saveBtn.querySelector('.loading-spinner');
   if (spinner) spinner.classList.toggle('hidden', !isLoading);
 }
@@ -33,285 +28,198 @@ function setValue(id, value) {
   if (el) el.value = value || '';
 }
 
-function renderProfileImage(storeLogoUrl) {
-  const img = document.getElementById('sellerProfileImage');
-  if (!img) return;
-  if (storeLogoUrl) {
-    img.src = storeLogoUrl;
-    img.onerror = () => { img.src = ''; };
+function getValue(form, name) {
+  return form.elements[name]?.value.trim() || '';
+}
+
+function getResponseStore(response) {
+  return response?.data?.store || response?.data || response?.store || response;
+}
+
+function throwIfApiFailed(response, fallbackMessage) {
+  if (response?.success === false || response?.error) {
+    throw new Error(response.message || response.error || fallbackMessage);
   }
 }
 
-// ── Load active store settings ─────────────────────────────────────────────────
-async function loadStoreSettings() {
-  const token = getToken();
-  if (!token) {
-    showMessage('Not logged in. Redirecting…', 'error');
-    setTimeout(() => { window.location.href = 'sellers login.html'; }, 1500);
-    return;
-  }
-
-  // Require active store; redirect to view-store.html if none
-  const store = await window.StoreManager.requireActiveStore();
-  if (!store) return;
-
-  // Show which store we're editing
-  const storeLabel = document.getElementById('activeStoreName');
-  if (storeLabel) storeLabel.textContent = store.business_name || 'Your Store';
-
-  // Populate fields from store object
-  setValue('shop-name',      store.business_name);
-  setValue('shop-email',     store.business_email);
-  setValue('shop-phone',     store.business_phone);
-  setValue('shop-address',   store.business_address);
-  setValue('shop-instagram', store.instagram);
-  setValue('shop-facebook',  store.facebook);
-  setValue('shop-twitter',   store.twitter);
-
-  // Show existing logo
-  const logoUrl = store.store_logo_url;
-  if (logoUrl) {
-    const preview = document.getElementById('logo-preview');
-    if (preview) { preview.src = logoUrl; preview.style.display = 'block'; }
-    renderProfileImage(logoUrl);
-  }
-
-  // Business hours stored in description as "Business Hours: ..."
-  if (store.business_description) {
-    const match = store.business_description.match(/Business Hours:\s*([^|]+)/);
-    if (match) setValue('business-hours', match[1].trim());
-  }
+function cacheActiveStore(store) {
+  localStorage.setItem('mm_active_store', JSON.stringify(store));
 }
 
-// ── Upload logo via backend proxy ──────────────────────────────────────────────
-async function uploadStoreLogo(file, token) {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const res = await fetch(`${API_BASE}/seller/logo/upload`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Logo upload failed');
-  return data.data.url;
-}
-
-// ── Save store settings ────────────────────────────────────────────────────────
-async function saveStoreSettings(fields, storeLogoUrl, storeId) {
-  const token = getToken();
-
-  const payload = {
-    storeName:        fields.shopName      || '',
-    businessEmail:    fields.shopEmail     || '',
-    businessPhone:    fields.shopPhone     || '',
-    businessAddress:  fields.shopAddress   || '',
-    storeDescription: fields.businessHours
-      ? `Business Hours: ${fields.businessHours}`
-      : '',
-    instagram: fields.shopInstagram || '',
-    facebook:  fields.shopFacebook  || '',
-    twitter:   fields.shopTwitter   || '',
-    tiktok:    '',
-    telegram:  '',
+function getSocialLinks(store) {
+  const socialLinks = store?.social_links || {};
+  return {
+    instagram: socialLinks.instagram || '',
+    facebook: socialLinks.facebook || '',
+    twitter: socialLinks.twitter || '',
+    tiktok: socialLinks.tiktok || '',
+    whatsapp: socialLinks.whatsapp || '',
   };
-  if (storeLogoUrl) payload.storeLogoUrl = storeLogoUrl;
+}
 
-  const res = await fetch(`${API_BASE}/seller/stores/${storeId}`, {
+function renderStoreLogo(storeLogoUrl) {
+  const preview = document.getElementById('logo-preview');
+  if (preview) {
+    preview.src = storeLogoUrl || '';
+    preview.style.display = storeLogoUrl ? 'block' : 'none';
+    preview.onerror = () => {
+      preview.removeAttribute('src');
+      preview.style.display = 'none';
+    };
+  }
+
+  document.querySelectorAll('#sellerProfileImage, #sellerProfileImageMobile').forEach((img) => {
+    img.src = storeLogoUrl || '';
+    img.onerror = () => { img.removeAttribute('src'); };
+  });
+}
+
+function buildPayload(form) {
+  const socialLinks = {};
+  SOCIAL_KEYS.forEach((key) => {
+    socialLinks[key] = getValue(form, key);
+  });
+
+  return {
+    business_name: getValue(form, 'business_name'),
+    business_address: getValue(form, 'business_address'),
+    store_logo_url: getValue(form, 'store_logo_url'),
+    social_links: socialLinks,
+  };
+}
+
+async function getActiveStoreOrRedirect() {
+  const token = window.StoreManager?.getToken?.();
+  if (!token) {
+    showMessage('Not logged in. Redirecting...', 'error');
+    setTimeout(() => { window.location.href = 'sellers login.html'; }, 1000);
+    return null;
+  }
+
+  const store = await window.StoreManager.requireActiveStore();
+  if (!store?.id) {
+    showMessage('No active store selected.', 'error');
+    return null;
+  }
+
+  return store;
+}
+
+async function loadStoreSettings() {
+  const activeStore = await getActiveStoreOrRedirect();
+  if (!activeStore) return;
+
+  showMessage('Loading shop settings...');
+
+  try {
+    const response = await window.StoreManager.apiFetch(`/seller/stores/${activeStore.id}`);
+    throwIfApiFailed(response, 'Failed to load shop settings.');
+    const store = getResponseStore(response) || activeStore;
+    const socialLinks = getSocialLinks(store);
+
+    setValue('shop-name', store.business_name);
+    setValue('shop-address', store.business_address);
+    setValue('shop-logo-url', store.store_logo_url);
+    SOCIAL_KEYS.forEach((key) => setValue(`shop-${key}`, socialLinks[key]));
+
+    renderStoreLogo(store.store_logo_url || '');
+    cacheActiveStore({ ...activeStore, ...store, social_links: socialLinks });
+    showMessage('');
+  } catch (err) {
+    console.error('Load store settings error:', err);
+    showMessage(err.message || 'Failed to load shop settings.', 'error');
+  }
+}
+
+async function saveStoreSettings(payload, storeId) {
+  return window.StoreManager.apiFetch(`/seller/stores/${storeId}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization:  `Bearer ${token}`,
-    },
     body: JSON.stringify(payload),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Failed to save settings');
-  return data;
 }
 
-// ── Change password (account-level) ───────────────────────────────────────────
-async function changePassword(currentPassword, newPassword) {
-  const token = getToken();
-  const res = await fetch(`${API_BASE}/auth/change-password`, {
-    method:  'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization:  `Bearer ${token}`,
-    },
-    body: JSON.stringify({ currentPassword, newPassword }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Failed to change password');
-  return data;
-}
-
-// ── DOM Ready ──────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const token = getToken();
-  if (!token) { window.location.href = 'sellers login.html'; return; }
-
-  // ── Navbar toggler ──
-  const toggler        = document.getElementById('navbar-toggler');
-  const offcanvasMenu  = document.getElementById('offcanvasMenu');
+function setupNavbar() {
+  const toggler = document.getElementById('navbar-toggler');
+  const offcanvasMenu = document.getElementById('offcanvasMenu');
   const offcanvasClose = document.getElementById('offcanvasClose');
 
-  toggler?.addEventListener('click',        () => offcanvasMenu?.classList.add('show'));
+  toggler?.addEventListener('click', () => offcanvasMenu?.classList.add('show'));
   offcanvasClose?.addEventListener('click', () => offcanvasMenu?.classList.remove('show'));
   document.addEventListener('click', (e) => {
-    if (offcanvasMenu && toggler &&
-        !offcanvasMenu.contains(e.target) && !toggler.contains(e.target)) {
+    if (offcanvasMenu && toggler && !offcanvasMenu.contains(e.target) && !toggler.contains(e.target)) {
       offcanvasMenu.classList.remove('show');
     }
   });
   offcanvasMenu?.addEventListener('click', (e) => e.stopPropagation());
-  document.querySelectorAll('.offcanvas-body a').forEach(l =>
-    l.addEventListener('click', () => offcanvasMenu?.classList.remove('show'))
-  );
+  document.querySelectorAll('.offcanvas-body a').forEach((link) => {
+    link.addEventListener('click', () => offcanvasMenu?.classList.remove('show'));
+  });
 
-  // ── Profile dropdown ──
   window.toggleProfileDropdown = function () {
-    const dd = document.getElementById('profileDropdown');
-    if (dd) dd.style.display = dd.style.display === 'flex' ? 'none' : 'flex';
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown) dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
   };
+
   document.addEventListener('click', (e) => {
-    const dd   = document.getElementById('profileDropdown');
+    const dropdown = document.getElementById('profileDropdown');
     const icon = document.querySelector('.profile-icon');
-    if (dd && icon && !dd.contains(e.target) && !icon.contains(e.target))
-      dd.style.display = 'none';
-  });
-
-  // ── Make email read-only ──
-  const emailInput = document.getElementById('shop-email');
-  if (emailInput) {
-    emailInput.setAttribute('readonly', true);
-    emailInput.style.backgroundColor = '#f0f0f0';
-    emailInput.style.cursor = 'not-allowed';
-    emailInput.title = 'Store email can only be changed from account settings';
-  }
-
-  // ── Logo preview ──
-  const shopLogoInput = document.getElementById('shop-logo');
-  const logoPreview   = document.getElementById('logo-preview');
-
-  shopLogoInput?.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) { if (logoPreview) logoPreview.style.display = 'none'; return; }
-    if (!['image/png','image/jpeg','image/webp','image/gif'].includes(file.type)) {
-      alert('Invalid file type. PNG, JPG, WebP or GIF only.');
-      shopLogoInput.value = ''; return;
+    if (dropdown && icon && !dropdown.contains(e.target) && !icon.contains(e.target)) {
+      dropdown.style.display = 'none';
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File too large. Max 5MB.'); shopLogoInput.value = ''; return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (logoPreview) { logoPreview.src = ev.target.result; logoPreview.style.display = 'block'; }
-    };
-    reader.readAsDataURL(file);
   });
+}
 
-  // ── Load store settings ──
-  loadStoreSettings();
+function setupLogoPreview() {
+  const logoInput = document.getElementById('shop-logo-url');
+  logoInput?.addEventListener('input', () => renderStoreLogo(logoInput.value.trim()));
+}
 
-  // ── Store change listener — reload if seller switches stores on this page ──
-  window.addEventListener('storeChanged', () => loadStoreSettings());
-
-  // ── Form submit ──
+function setupForm() {
   const form = document.getElementById('shop-settings');
-  form?.addEventListener('submit', async (e) => {
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     showMessage('');
 
-    const currentPassword = form.elements['currentPassword']?.value || '';
-    const newPassword     = form.elements['newPassword']?.value     || '';
-    const confirmPassword = form.elements['confirmPassword']?.value || '';
-
-    if (newPassword && newPassword !== confirmPassword) {
-      showMessage('New password and confirm password do not match.', 'error'); return;
-    }
-    if (newPassword && newPassword.length < 8) {
-      showMessage('New password must be at least 8 characters.', 'error'); return;
-    }
-    if (newPassword && !currentPassword) {
-      showMessage('Enter your current password to set a new one.', 'error'); return;
-    }
-
     const store = window.StoreManager.getActiveStore();
-    if (!store) {
-      showMessage('No active store selected. Please go to View Store first.', 'error'); return;
+    if (!store?.id) {
+      showMessage('No active store selected. Please select a store first.', 'error');
+      return;
     }
+
+    const payload = buildPayload(form);
 
     setLoading(true);
-    showMessage('Saving…');
+    showMessage('Saving shop settings...');
 
     try {
-      // 1. Upload logo if selected
-      let newLogoUrl = null;
-      const logoFile = shopLogoInput?.files?.[0];
-      if (logoFile) {
-        showMessage('Uploading logo…');
-        newLogoUrl = await uploadStoreLogo(logoFile, token);
-        // Update navbar image immediately
-        renderProfileImage(newLogoUrl);
-      }
-
-      // 2. Collect fields
-      const fields = {
-        shopName:      form.elements['shopName']?.value.trim()      || '',
-        shopEmail:     form.elements['shopEmail']?.value.trim()     || '',
-        shopPhone:     form.elements['shopPhone']?.value.trim()     || '',
-        shopAddress:   form.elements['shopAddress']?.value.trim()   || '',
-        businessHours: form.elements['businessHours']?.value.trim() || '',
-        shopInstagram: form.elements['shopInstagram']?.value.trim() || '',
-        shopFacebook:  form.elements['shopFacebook']?.value.trim()  || '',
-        shopTwitter:   form.elements['shopTwitter']?.value.trim()   || '',
+      const response = await saveStoreSettings(payload, store.id);
+      throwIfApiFailed(response, 'Failed to save shop settings.');
+      const savedStore = getResponseStore(response);
+      const updatedStore = {
+        ...store,
+        ...payload,
+        ...(savedStore && typeof savedStore === 'object' ? savedStore : {}),
       };
 
-      // 3. Save to the active store endpoint
-      showMessage('Saving store settings…');
-      const result = await saveStoreSettings(fields, newLogoUrl, store.id);
-
-      // 4. Update cached store in StoreManager
-      const updatedStore = result?.data?.store;
-      if (updatedStore) {
-        window.StoreManager.setActiveStore({ ...store, ...updatedStore });
-      }
-
-      // 5. Change password if provided
-      if (newPassword) {
-        showMessage('Updating password…');
-        await changePassword(currentPassword, newPassword);
-        form.elements['currentPassword'].value = '';
-        form.elements['newPassword'].value     = '';
-        form.elements['confirmPassword'].value = '';
-      }
-
-      showMessage('Settings saved successfully! ✓', 'success');
-
-      // Re-load to confirm saved values
-      await loadStoreSettings();
-
+      cacheActiveStore(updatedStore);
+      renderStoreLogo(updatedStore.store_logo_url || '');
+      showMessage('Shop settings saved successfully!', 'success');
     } catch (err) {
-      console.error('Save error:', err);
-      showMessage(err.message || 'An error occurred. Please try again.', 'error');
+      console.error('Save store settings error:', err);
+      showMessage(err.message || 'Failed to save shop settings.', 'error');
     } finally {
       setLoading(false);
     }
   });
 
-  // ── Reset button ──
   document.getElementById('reset-btn')?.addEventListener('click', () => {
-    if (confirm('Reset unsaved changes? Last saved settings will reload.')) {
-      showMessage('');
-      if (logoPreview)   { logoPreview.style.display = 'none'; logoPreview.src = ''; }
-      if (shopLogoInput) shopLogoInput.value = '';
+    if (confirm('Reset unsaved changes? Last saved shop settings will reload.')) {
       loadStoreSettings();
     }
   });
 
-  // ── Preview button ──
   document.getElementById('preview-btn')?.addEventListener('click', () => {
     const store = window.StoreManager.getActiveStore();
     if (store?.id) {
@@ -320,4 +228,12 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('No active store selected.');
     }
   });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupNavbar();
+  setupLogoPreview();
+  setupForm();
+  loadStoreSettings();
+  window.addEventListener('storeChanged', () => loadStoreSettings());
 });
