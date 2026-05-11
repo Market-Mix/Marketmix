@@ -1520,7 +1520,7 @@
   async function createBuyerNotification(notificationData) {
     try {
       const { data, error } = await getSupabaseClient()
-        .from('buyer_notifications')
+        .from('notification')
         .insert([{
           buyer_id: notificationData.buyer_id,
           refund_case_id: notificationData.refund_case_id,
