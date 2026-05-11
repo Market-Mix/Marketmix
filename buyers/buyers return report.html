@@ -1451,7 +1451,6 @@
    */
   async function createRefundCase(caseData) {
     try {
-      const createdAt = new Date().toISOString();
       const refundCasePayload = {
         order_id: caseData.order_id,
         product_name: caseData.product_name,
@@ -1459,14 +1458,7 @@
         buyer_id: caseData.buyer_id,
         seller_id: caseData.seller_id || null,
         status: caseData.status || 'pending',
-        evidence_url: caseData.evidence_url || null,
-        store_name: caseData.store_name || null,
-        total_amount: caseData.total_amount || null,
-        reason: caseData.reason || null,
-        purchase_date: caseData.purchase_date || null,
-        evidence_submitted_at: caseData.evidence_submitted_at || createdAt,
-        created_at: createdAt,
-        updated_at: createdAt
+        evidence_url: caseData.evidence_url || null
       };
 
       const { data, error } = await getSupabaseClient()
@@ -2392,11 +2384,6 @@
         buyer_id: userId,
         seller_id: currentChatData.seller_id || null,
         status: 'pending',
-        store_name: currentChatData.store_name || null,
-        total_amount: currentChatData.total_amount || null,
-        reason: currentChatData.reason || 'complaint',
-        purchase_date: currentChatData.purchase_date || null,
-        evidence_submitted_at: new Date().toISOString(),
         evidence_url: evidenceData.url
       });
 
