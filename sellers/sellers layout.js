@@ -1,52 +1,32 @@
 /* ============================================================
    sellers layout.js  —  MarketMix Seller Dashboard
-   Backend: https://marketmix-backend.onrender.com/api
+   All data calls are now scoped to the active store via
+   StoreManager.apiFetch() which auto-sends X-Store-Id header.
    ============================================================ */
 
-const API_BASE = "https://marketmix-backend.onrender.com/api";
-
-// ─── Auth helpers ─────────────────────────────────────────────────────────────
+// ─── Auth helpers (kept for logout which doesn't need store scope) ────────────
 function getToken() {
   return localStorage.getItem("token") || "";
 }
 
-function authHeaders() {
-  return {
-    Authorization: `Bearer ${getToken()}`,
-    "Content-Type": "application/json",
-  };
-}
-
-async function apiFetch(path, opts = {}) {
-  opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
-  const res = await fetch(`${API_BASE}${path}`, opts);
-  if (res.status === 401) {
-    handleLogout();
-    throw new Error("Unauthorized");
-  }
-  return res.json();
-}
-
-// ─── Logout ───────────────────────────────────────────────────────────────────
 async function handleLogout() {
   try {
-    await fetch(`${API_BASE}/auth/logout`, {
+    await fetch(`${StoreManager.API_BASE || 'https://marketmix-backend.onrender.com/api'}/auth/logout`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
     });
-  } catch (_) { /* ignore */ }
+  } catch (_) {}
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  localStorage.removeItem("mm_active_store");
+  localStorage.removeItem("mm_stores_cache");
   window.location.href = "login.html";
 }
 
 // Wire logout links
 document.querySelectorAll('a[href="#"]').forEach((a) => {
   if (a.textContent.trim().toLowerCase() === "logout") {
-    a.addEventListener("click", (e) => {
-      e.preventDefault();
-      handleLogout();
-    });
+    a.addEventListener("click", (e) => { e.preventDefault(); handleLogout(); });
   }
 });
 
@@ -59,22 +39,35 @@ document.addEventListener("DOMContentLoaded", async () => {
   initActivityModal();
   initModals();
 
-  // Clear static demo content immediately so users never see hardcoded numbers
+  // Clear static demo content immediately
   clearOverviewCards();
   clearActivityTicker();
+
+  // Ensure an active store is selected — redirects if none
+  const store = await StoreManager.requireActiveStore();
+  if (!store) return; // redirected
+
+  // Render store switcher badge in navbar
+  await StoreManager.renderStoreSwitcher('storeSwitcher');
 
   // Initial data load
   await loadDashboardData();
 
-  // Auto-refresh every 30 seconds — keeps ticker and cards live without a page reload
+  // Re-load when user switches stores on this page
+  window.addEventListener('storeChanged', async () => {
+    clearOverviewCards();
+    clearActivityTicker();
+    await loadDashboardData();
+    await StoreManager.renderStoreSwitcher('storeSwitcher');
+  });
+
+  // Auto-refresh every 30 seconds
   setInterval(loadDashboardData, 30_000);
 });
 
-// ─── Clear placeholder content before data loads ──────────────────────────────
+// ─── Clear placeholder content ────────────────────────────────────────────────
 function clearOverviewCards() {
-  // Set all 4 stat h3s to a loading dash immediately
-  const cards = document.querySelectorAll(".overview-card h3");
-  cards.forEach((h3) => {
+  document.querySelectorAll(".overview-card h3").forEach((h3) => {
     h3.textContent = "—";
   });
 }
@@ -82,34 +75,37 @@ function clearOverviewCards() {
 function clearActivityTicker() {
   const tickerList = document.getElementById("tickerList");
   if (tickerList) tickerList.innerHTML = "<li>Loading activity...</li>";
-
   const fullLog = document.querySelector(".full-log");
   if (fullLog) fullLog.innerHTML = "<li>Loading activity...</li>";
 }
 
-// ─── Central data loader (called on init + every 30s) ────────────────────────
+// ─── Central data loader ──────────────────────────────────────────────────────
 async function loadDashboardData() {
+  const store = StoreManager.getActiveStore();
+  if (!store) return;
+
+  // All calls go through StoreManager.apiFetch which auto-adds X-Store-Id
   const [profileRes, statsRes, earningsRes, activityRes] = await Promise.allSettled([
-    apiFetch("/seller/profile"),
-    apiFetch("/seller/orders/stats"),
-    apiFetch("/earnings"),
-    apiFetch("/seller/activity?limit=50"),
+    StoreManager.apiFetch("/seller/profile"),
+    StoreManager.apiFetch(`/seller/stores/${store.id}/stats`),
+    StoreManager.apiFetch("/earnings"),
+    StoreManager.apiFetch("/seller/activity?limit=50"),
   ]);
 
   const profile    = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller      : null;
-  const stats      = statsRes.status    === "fulfilled" ? statsRes.value?.data?.stats          : null;
-  const earnings   = earningsRes.status === "fulfilled" ? earningsRes.value?.data?.summary     : null;
+  const stats      = statsRes.status    === "fulfilled"  ? statsRes.value?.data?.stats          : null;
+  const earnings   = earningsRes.status === "fulfilled"  ? earningsRes.value?.data?.summary     : null;
   const activities = activityRes.status === "fulfilled"
     ? (activityRes.value?.data?.activities || [])
     : [];
 
-  renderWelcome(profile);
+  renderWelcome(store);
   renderProfileImage(profile);
-  renderOverviewCards(stats, earnings, profile);
-  renderProgressTracker(profile);
+  renderOverviewCards(stats, earnings, store);
+  renderProgressTracker(profile, store);
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
-  renderStoreShareLink(profile);
+  renderStoreShareLink(store);
 }
 
 // ─── Nav Toggle ───────────────────────────────────────────────────────────────
@@ -167,51 +163,54 @@ function initProfileDropdownClose() {
   });
 }
 
-// ─── Welcome Text ─────────────────────────────────────────────────────────────
-function renderWelcome(profile) {
+// ─── Welcome Text — shows active store name ───────────────────────────────────
+function renderWelcome(store) {
   const el = document.getElementById("welcomeText");
   if (!el) return;
-  const name = profile?.firstName || profile?.profile?.businessName || "Seller";
-  el.textContent = `Welcome, ${name}!`;
+  el.textContent = `Welcome to ${store?.business_name || 'Your Store'}!`;
 }
 
+// ─── Profile Image — shows active store logo ─────────────────────────────────
+function renderProfileImage(profile) {
+  const img = document.getElementById("sellerProfileImage");
+  if (!img) return;
 
-// ─── Store Share Link ──────────────────────────────────────────────────────────
-function renderStoreShareLink(profile) {
-  // Get seller ID from stored user object
-  let sellerId = null;
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    sellerId = user.id;
-  } catch (_) {}
+  // Prefer active store logo, fall back to seller avatar
+  const store = StoreManager.getActiveStore();
+  const logo  = store?.store_logo_url || profile?.avatarUrl || '';
 
-  if (!sellerId) return;
+  if (logo) {
+    img.src     = logo;
+    img.onerror = () => { img.src = ""; };
+  }
+}
 
-  // Build the store URL — adjust base URL to match your frontend deployment
-  const baseUrl = window.location.origin;
-  const storeUrl = `${baseUrl}/buyers/store-id.html?seller=${sellerId}`;
+// ─── Store Share Link — uses store.id not seller user id ─────────────────────
+function renderStoreShareLink(store) {
+  if (!store?.id) return;
 
-  const input = document.getElementById('storeLinkInput');
+  const baseUrl  = window.location.origin;
+  const storeUrl = `${baseUrl}/buyers/store-id.html?store=${store.id}`;
+
+  const input   = document.getElementById('storeLinkInput');
   const openBtn = document.getElementById('openStoreBtn');
 
-  if (input) input.value = storeUrl;
+  if (input)   input.value = storeUrl;
   if (openBtn) openBtn.href = storeUrl;
 }
 
-function copyStoreLink() {
-  const input = document.getElementById('storeLinkInput');
+window.copyStoreLink = function () {
+  const input     = document.getElementById('storeLinkInput');
   const successEl = document.getElementById('copySuccess');
-  const copyBtn = document.getElementById('copyLinkBtn');
+  const copyBtn   = document.getElementById('copyLinkBtn');
 
   if (!input || !input.value || input.value === 'Generating your link...') return;
 
   navigator.clipboard.writeText(input.value).then(() => {
-    // Show success
     if (successEl) {
       successEl.style.display = 'block';
       setTimeout(() => { successEl.style.display = 'none'; }, 3000);
     }
-    // Flash the button
     if (copyBtn) {
       copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
       copyBtn.style.background = '#16a34a';
@@ -221,7 +220,6 @@ function copyStoreLink() {
       }, 2500);
     }
   }).catch(() => {
-    // Fallback for older browsers
     input.select();
     document.execCommand('copy');
     if (successEl) {
@@ -229,26 +227,10 @@ function copyStoreLink() {
       setTimeout(() => { successEl.style.display = 'none'; }, 3000);
     }
   });
-}
+};
 
-// ─── Profile Image ────────────────────────────────────────────────────────────
-function renderProfileImage(profile) {
-  const img = document.getElementById("sellerProfileImage");
-  if (!img) return;
-  const logo = profile?.profile?.storeLogo;
-  if (logo) {
-    img.src     = logo;
-    img.onerror = () => { img.src = ""; };
-  }
-}
-
-// ─── Overview Cards ───────────────────────────────────────────────────────────
-/**
- * The HTML has 5 .overview-card elements (Orders, Products, Earnings, Returns,
- * Shop Settings). We target them by finding the card whose <p> text matches,
- * so the order in the HTML doesn't matter and won't break if cards are reordered.
- */
-function renderOverviewCards(stats, earnings, profile) {
+// ─── Overview Cards — store-scoped stats ─────────────────────────────────────
+function renderOverviewCards(stats, earnings, store) {
   function setCard(labelText, value) {
     const cards = document.querySelectorAll(".overview-card");
     for (const card of cards) {
@@ -261,14 +243,12 @@ function renderOverviewCards(stats, earnings, profile) {
     }
   }
 
-  // Orders
   setCard("Orders", stats?.totalOrders ?? "—");
 
-  // Products
-  setCard("Products", profile?.productCount ?? "—");
+  // Product count from store object (updated by stats endpoint)
+  setCard("Products", stats?.productCount ?? store?.product_count ?? "—");
 
-  // Earnings — format as currency
-  const total = earnings?.totalEarnings ?? null;
+  const total = earnings?.totalEarnings ?? stats?.totalEarnings ?? null;
   setCard(
     "Earnings",
     total !== null
@@ -276,33 +256,31 @@ function renderOverviewCards(stats, earnings, profile) {
       : "—"
   );
 
-  // Returns — use cancelled as proxy until a dedicated returns endpoint exists
   setCard("Returns", stats?.cancelled ?? "—");
 }
 
 // ─── Progress Tracker ─────────────────────────────────────────────────────────
-function renderProgressTracker(profile) {
+function renderProgressTracker(profile, store) {
   const bar  = document.getElementById("progressBar");
   const text = document.getElementById("progress-text");
   if (!bar || !text) return;
 
-  const p       = profile?.profile;
-  const kycUrls = p?.kycDocumentUrls || {};
-  const kycStatus = kycUrls.kyc_status || null;
+  const p         = profile?.profile;
+  const kycStatus = p?.kycDocumentUrls?.kyc_status || null;
+  const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at;
 
-  const storeSetupDone = !!(p?.businessName && p?.storeLogo && p?.businessAddress);
-  const kycSubmitted   = !!kycUrls.kyc_submitted_at;
-  const kycApproved    = p?.isVerified && kycStatus === "approved";
-  const productCount   = profile?.productCount ?? 0;
-  const totalSales     = p?.totalSales ?? 0;
+  // Store-level checks
+  const storeSetupDone = !!(store?.business_name && store?.store_logo_url && store?.business_address);
+  const kycApproved    = p?.isVerified && kycStatus === 'approved';
+  const productCount   = store?.productCount || store?.product_count || 0;
+  const totalSales     = store?.total_sales || 0;
 
   let progress, color, html;
 
   if (!storeSetupDone) {
     progress = 20; color = "#ef4444";
-    html = `<a href="setup-store.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
-  } else if (kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) {
-    // KYC is under review — advance to next step but show notification banner
+    html = `<a href="sellers setting.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
+  } else if (kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted)) {
     progress = 60; color = "#eab308";
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
   } else if (!kycApproved) {
@@ -329,44 +307,39 @@ function renderProgressTracker(profile) {
 
 // ─── KYC Notification Banner ──────────────────────────────────────────────────
 function updateKYCNotificationBanner(profile) {
-  const banner = document.getElementById("kycNotificationBanner");
+  const banner   = document.getElementById("kycNotificationBanner");
   const closeBtn = document.getElementById("kycNotificationClose");
   if (!banner || !closeBtn) return;
 
-  const p       = profile?.profile;
-  const kycUrls = p?.kycDocumentUrls || {};
+  const kycUrls   = profile?.profile?.kycDocumentUrls || {};
   const kycStatus = kycUrls.kyc_status || null;
-  const kycSubmitted = !!kycUrls.kyc_submitted_at;
 
-  // Show banner if KYC is under review or pending after submission
-  if (kycStatus === "under_review" || (kycStatus === "pending" && kycSubmitted)) {
+  if (kycStatus === 'under_review' || (kycStatus === 'pending' && kycUrls.kyc_submitted_at)) {
     banner.style.display = "block";
-    document.getElementById("kycNotificationText").textContent = "Your KYC verification is under review. We'll notify you once approved.";
+    document.getElementById("kycNotificationText").textContent =
+      "Your KYC verification is under review. We'll notify you once approved.";
   } else {
     banner.style.display = "none";
   }
 
-  // Set up close button listener (only once via data attribute check)
   if (!closeBtn.dataset.listenerAttached) {
-    closeBtn.addEventListener("click", () => {
-      banner.style.display = "none";
-    });
+    closeBtn.addEventListener("click", () => { banner.style.display = "none"; });
     closeBtn.dataset.listenerAttached = "true";
   }
 }
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 const ACTIVITY_META = {
-  product_added:        { icon: "📦", label: "Product added"       },
-  product_updated:      { icon: "✏️",  label: "Product updated"     },
-  product_deleted:      { icon: "🗑️",  label: "Product deleted"     },
-  order_confirmed:      { icon: "✅",  label: "Order confirmed"     },
-  order_processing:     { icon: "⚙️",  label: "Order processing"    },
-  order_shipped:        { icon: "🚚",  label: "Order shipped"       },
-  order_delivered:      { icon: "📬",  label: "Order delivered"     },
-  order_cancelled:      { icon: "❌",  label: "Order cancelled"     },
-  order_updated:        { icon: "🔄",  label: "Order updated"       },
-  withdrawal_requested: { icon: "💰",  label: "Withdrawal requested"},
+  product_added:        { icon: "📦", label: "Product added"        },
+  product_updated:      { icon: "✏️",  label: "Product updated"      },
+  product_deleted:      { icon: "🗑️",  label: "Product deleted"      },
+  order_confirmed:      { icon: "✅",  label: "Order confirmed"      },
+  order_processing:     { icon: "⚙️",  label: "Order processing"     },
+  order_shipped:        { icon: "🚚",  label: "Order shipped"        },
+  order_delivered:      { icon: "📬",  label: "Order delivered"      },
+  order_cancelled:      { icon: "❌",  label: "Order cancelled"      },
+  order_updated:        { icon: "🔄",  label: "Order updated"        },
+  withdrawal_requested: { icon: "💰",  label: "Withdrawal requested" },
 };
 
 function activityMeta(type) {
@@ -389,33 +362,21 @@ function renderActivityLog(activities) {
   const tickerList = document.getElementById("tickerList");
   const fullLog    = document.querySelector(".full-log");
 
-  // ── Ticker ────────────────────────────────────────────────
   if (tickerList) {
-    if (!activities.length) {
-      tickerList.innerHTML = "<li>No activity yet — start by adding a product!</li>";
-    } else {
-      tickerList.innerHTML = activities
-        .slice(0, 15)
-        .map((a) => {
+    tickerList.innerHTML = activities.length
+      ? activities.slice(0, 15).map((a) => {
           const { icon } = activityMeta(a.type);
-          const time     = formatRelativeTime(a.createdAt);
-          return `<li>${icon} ${a.title} <span style="opacity:.55;font-size:.85em">${time}</span></li>`;
-        })
-        .join("");
-    }
+          return `<li>${icon} ${a.title} <span style="opacity:.55;font-size:.85em">${formatRelativeTime(a.createdAt)}</span></li>`;
+        }).join("")
+      : "<li>No activity yet — start by adding a product!</li>";
   }
 
-  // ── Full log (modal) ──────────────────────────────────────
   if (fullLog) {
-    if (!activities.length) {
-      fullLog.innerHTML = "<li>No activity yet.</li>";
-    } else {
-      fullLog.innerHTML = activities
-        .map((a) => {
+    fullLog.innerHTML = activities.length
+      ? activities.map((a) => {
           const { icon, label } = activityMeta(a.type);
           const dateStr = new Date(a.createdAt).toLocaleString("en-US", {
-            month: "short", day: "numeric",
-            hour: "2-digit", minute: "2-digit",
+            month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
           });
           const detail = a.detail
             ? `<br><span style="font-size:.85em;opacity:.65">${a.detail}</span>`
@@ -425,9 +386,8 @@ function renderActivityLog(activities) {
             <strong>${a.title}</strong>${detail}
             <span style="float:right;font-size:.8em;opacity:.5">${dateStr}</span>
           </li>`;
-        })
-        .join("");
-    }
+        }).join("")
+      : "<li>No activity yet.</li>";
   }
 }
 
@@ -487,7 +447,7 @@ function initModals() {
   document.getElementById("coupon-form")?.addEventListener("submit", handleCouponSubmit);
 }
 
-// ─── Coupon product dropdown ──────────────────────────────────────────────────
+// ─── Coupon product dropdown — store-scoped ───────────────────────────────────
 async function loadSellerProductsForCoupon() {
   const dropdown = document.getElementById("couponProduct");
   if (!dropdown) return;
@@ -495,11 +455,11 @@ async function loadSellerProductsForCoupon() {
   dropdown.disabled  = true;
 
   try {
-    const data     = await apiFetch("/seller/products?limit=100");
+    const data     = await StoreManager.apiFetch("/seller/products?limit=100");
     const products = data?.data?.products || [];
     dropdown.innerHTML = `<option value="">-- Choose a product --</option>`;
     if (!products.length) {
-      dropdown.innerHTML = `<option value="">No products available</option>`;
+      dropdown.innerHTML = `<option value="">No products in this store</option>`;
       return;
     }
     products.forEach((p) => {
@@ -511,7 +471,6 @@ async function loadSellerProductsForCoupon() {
     dropdown.disabled = false;
   } catch (err) {
     dropdown.innerHTML = `<option value="">Failed to load products</option>`;
-    console.error("loadSellerProductsForCoupon:", err);
   }
 }
 
@@ -524,13 +483,14 @@ async function handleCouponSubmit(e) {
   const expiryDate = document.getElementById("couponExpiry")?.value;
   const usageLimit = parseInt(document.getElementById("couponLimit")?.value) || 0;
 
-  if (!code)                           return alert("Please enter a coupon code.");
-  if (discount < 1 || discount > 100)  return alert("Discount must be 1–100%.");
-  if (!productId)                      return alert("Please select a product.");
+  if (!code)                          return alert("Please enter a coupon code.");
+  if (discount < 1 || discount > 100) return alert("Discount must be 1–100%.");
+  if (!productId)                     return alert("Please select a product.");
 
   try {
+    const store   = StoreManager.getActiveStore();
     const coupons = JSON.parse(localStorage.getItem("mm_coupons") || "[]");
-    coupons.push({ code, discount, productId, expiryDate, usageLimit, createdAt: new Date().toISOString() });
+    coupons.push({ code, discount, productId, storeId: store?.id, expiryDate, usageLimit, createdAt: new Date().toISOString() });
     localStorage.setItem("mm_coupons", JSON.stringify(coupons));
     alert(`Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
     e.target.reset();
@@ -540,7 +500,7 @@ async function handleCouponSubmit(e) {
   }
 }
 
-// ─── Sales Chart ──────────────────────────────────────────────────────────────
+// ─── Sales Chart — store-scoped ───────────────────────────────────────────────
 async function renderSalesChart() {
   if (typeof Chart === "undefined") { alert("Chart library not loaded."); return; }
 
@@ -555,7 +515,7 @@ async function renderSalesChart() {
   let monthlySales = new Array(12).fill(0);
 
   try {
-    const data   = await apiFetch("/seller/orders?limit=200");
+    const data   = await StoreManager.apiFetch("/seller/orders?limit=200");
     const orders = data?.data?.orders || [];
     orders.forEach((o) => {
       if (o.createdAt && o.totalAmount) {
@@ -564,7 +524,7 @@ async function renderSalesChart() {
       }
     });
   } catch (err) {
-    console.warn("Sales chart: could not fetch orders, showing empty chart.", err);
+    console.warn("Sales chart: could not fetch orders.", err);
   }
 
   const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -587,7 +547,7 @@ async function renderSalesChart() {
       responsive: true, maintainAspectRatio: true,
       plugins: {
         legend: { display: true, position: "top" },
-        title: { display: true, text: "Your Monthly Sales Performance" },
+        title: { display: true, text: `Sales — ${StoreManager.getActiveStore()?.business_name || 'Store'}` },
         tooltip: { callbacks: { label: (ctx) => " ₦" + Number(ctx.parsed.y).toLocaleString() } },
       },
       scales: {
