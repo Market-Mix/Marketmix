@@ -1460,7 +1460,6 @@
         seller_id: caseData.seller_id || null,
         status: caseData.status || 'pending',
         evidence_url: caseData.evidence_url || null,
-        evidence_file_name: caseData.evidence_file_name || null,
         store_name: caseData.store_name || null,
         total_amount: caseData.total_amount || null,
         reason: caseData.reason || null,
@@ -2398,8 +2397,7 @@
         reason: currentChatData.reason || 'complaint',
         purchase_date: currentChatData.purchase_date || null,
         evidence_submitted_at: new Date().toISOString(),
-        evidence_url: evidenceData.url,
-        evidence_file_name: evidenceData.fileName
+        evidence_url: evidenceData.url
       });
 
       if (!refundCase) {
