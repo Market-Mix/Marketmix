@@ -189,6 +189,35 @@
     }
     .preview-empty i { font-size: 40px; opacity: .3; }
 
+    /* ── Create Store Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.5);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--card); border-radius: 14px;
+      padding: 28px; width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 14px; font-family: 'DM Sans', sans-serif;
+      background: var(--bg); transition: border-color .2s;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; }
+
     /* ── Toast ── */
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
@@ -285,6 +314,43 @@
   </div>
 </div>
 
+<!-- Create Store Modal -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <h2>Create Your Second Store</h2>
+    <div class="form-group">
+      <label>Store Name <span style="color:var(--red)">*</span></label>
+      <input type="text" id="cs-name" placeholder="e.g. TechHub Electronics" />
+    </div>
+    <div class="form-group">
+      <label>Description <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+      <textarea id="cs-desc" placeholder="What do you sell in this store?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Business Email <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+      <input type="email" id="cs-email" placeholder="store2@yourdomain.com" />
+    </div>
+    <div class="form-group">
+      <label>Phone <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+      <input type="tel" id="cs-phone" placeholder="+234 000 0000" />
+    </div>
+    <div class="form-group">
+      <label>Address <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+      <input type="text" id="cs-address" placeholder="Business address" />
+    </div>
+    <div class="form-group">
+      <label>Category <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+      <input type="text" id="cs-category" placeholder="e.g. Electronics, Fashion" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" id="createStoreBtn" onclick="submitCreateStore()">
+        <i class="fas fa-plus"></i> Create Store
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -318,7 +384,6 @@ function renderStores(stores, canCreate) {
 
   stores.forEach(s => {
     const isActive = s.id === activeId;
-    const safeStore = JSON.stringify(s).replace(/"/g, '&quot;');
     const logoHtml = s.store_logo_url
       ? `<div class="store-logo"><img src="${s.store_logo_url}" alt="logo" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-store\\'></i>'"></div>`
       : `<div class="store-logo"><i class="fas fa-store"></i></div>`;
@@ -355,7 +420,7 @@ function renderStores(stores, canCreate) {
           <button class="btn btn-outline btn-sm" onclick="previewStore('${s.id}', '${(s.business_name||'').replace(/'/g,"\\'")}')">
             <i class="fas fa-eye"></i> Preview
           </button>
-          <a href="sellers setting.html" class="btn btn-outline btn-sm" style="text-decoration:none" onclick="StoreManager.setActiveStore(${safeStore})">
+          <a href="sellers setting.html" class="btn btn-outline btn-sm" style="text-decoration:none" onclick="StoreManager.setActiveStore(${JSON.stringify(s).replace(/"/g,'&quot;')})">
             <i class="fas fa-cog"></i>
           </a>
         </div>
@@ -365,7 +430,7 @@ function renderStores(stores, canCreate) {
   // Create card
   if (canCreate && stores.length < 2) {
     html += `
-      <div class="create-card" onclick="window.location.href='setup-store.html'">
+      <div class="create-card" onclick="openCreateModal()">
         <div class="create-icon"><i class="fas fa-plus"></i></div>
         <h3>Add Second Store</h3>
         <p>Expand your business with a second storefront under your account.</p>
@@ -452,6 +517,51 @@ async function loadStores() {
       `<div style="color:var(--red);padding:20px">${e.message || 'Failed to load stores'}</div>`;
   }
 }
+
+// ── Create store modal ─────────────────────────────────────────────────────────
+function openCreateModal()  { document.getElementById('createModal').classList.add('show'); }
+function closeCreateModal() { document.getElementById('createModal').classList.remove('show'); }
+
+async function submitCreateStore() {
+  const name = document.getElementById('cs-name').value.trim();
+  if (!name) { toast('Store name is required', 'error'); return; }
+
+  const btn = document.getElementById('createStoreBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+  try {
+    const res  = await fetch(`${API}/seller/stores`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        storeName:        name,
+        storeDescription: document.getElementById('cs-desc').value.trim() || null,
+        businessEmail:    document.getElementById('cs-email').value.trim() || null,
+        businessPhone:    document.getElementById('cs-phone').value.trim() || null,
+        businessAddress:  document.getElementById('cs-address').value.trim() || null,
+        category:         document.getElementById('cs-category').value.trim() || null
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+
+    window.StoreManager.setActiveStore(data.data.store);
+    toast('Store created! Redirecting to settings...', 'success');
+    closeCreateModal();
+    setTimeout(() => { window.location.href = 'sellers setting.html'; }, 1500);
+  } catch (e) {
+    toast(e.message || 'Failed to create store', 'error');
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus"></i> Create Store';
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('createModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCreateModal();
+});
 
 // Init
 document.addEventListener('DOMContentLoaded', loadStores);
