@@ -1496,7 +1496,7 @@
       if (!file) return null;
       
       const fileName = `${caseId}-${Date.now()}-${file.name}`;
-      const filePath = `refund-evidence/${fileName}`;
+      const filePath = fileName; // Don't include bucket name - .from('refund-evidence') already specifies it
       
       const { data, error: uploadError } = await getSupabaseClient().storage
         .from('refund-evidence')
