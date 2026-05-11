@@ -2358,6 +2358,7 @@
     submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
 
     try {
+      console.log('DEBUG: submitEvidence function started');
       // Get current user info
       const userId = getCurrentBuyerId();
       if (!userId) {
@@ -2374,6 +2375,7 @@
           showNotification('Evidence upload failed. Please try again.', 'error');
           return;
         }
+        console.log('DEBUG: File uploaded successfully:', evidenceData);
       }
 
       // Create refund case in Supabase
@@ -2393,6 +2395,8 @@
         submitBtn.innerHTML = originalBtnText;
         return;
       }
+      
+      console.log('DEBUG: Refund case created successfully:', refundCase);
 
       // Create notification for buyer
       await createBuyerNotification({
@@ -2436,6 +2440,7 @@
       }, 500);
 
       closeEvidenceModal();
+      console.log('DEBUG: Calling openChatPanel with:', currentChatData);
       openChatPanel(currentChatData);
       
       // Refresh the existing table with the row saved in Supabase.
@@ -2452,7 +2457,9 @@
   }
 
   function openChatPanel(report) {
-    document.getElementById('chatStoreName').textContent = `Chat with ${report.store_name}`;
+    console.log('DEBUG: openChatPanel called, report:', report);
+    try {
+      document.getElementById('chatStoreName').textContent = `Chat with ${report.store_name}`;
     document.getElementById('chatOrderId').textContent = `Order ID: ${report.order_id}`;
     
     const statusElement = document.getElementById('chatResolutionStatus');
@@ -2484,6 +2491,10 @@
 
     document.getElementById('chatPanel').classList.add('active');
     document.getElementById('chatOverlay').classList.add('active');
+    console.log('DEBUG: Chat panel opened successfully');
+    } catch (err) {
+      console.error('DEBUG: Error in openChatPanel:', err);
+    }
   }
 
   function loadChatMessages(report) {
