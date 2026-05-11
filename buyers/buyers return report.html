@@ -1519,16 +1519,13 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
+      console.log('DEBUG: Creating notification with data:', notificationData);
       const { data, error } = await getSupabaseClient()
         .from('notifications')
         .insert([{
           buyer_id: notificationData.buyer_id,
-          refund_case_id: notificationData.refund_case_id,
-          type: notificationData.type || 'refund_created',
           title: notificationData.title,
-          message: notificationData.message,
-          is_read: false,
-          created_at: new Date().toISOString()
+          message: notificationData.message
         }])
         .select();
       
@@ -1537,6 +1534,7 @@
         throw error;
       }
       
+      console.log('DEBUG: Notification created successfully:', data);
       return data?.[0];
     } catch (err) {
       console.error('Failed to create notification:', err);
