@@ -2186,6 +2186,12 @@
       }
     });
 
+    // Test button event listener (development only)
+    const testBtn = document.getElementById('testCreateRefundBtn');
+    if (testBtn) {
+      testBtn.addEventListener('click', createTestRefundCase);
+    }
+
     // Check and show account modal on page load
     checkAndShowAccountModal();
   }
