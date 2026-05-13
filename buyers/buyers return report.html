@@ -1525,7 +1525,6 @@
         user_id: notificationData.buyer_id,
         title: notificationData.title,
         message: notificationData.message,
-        type: notificationData.type || 'refund',
         is_read: false
       };
       
@@ -1540,7 +1539,6 @@
         console.error('Notification error code:', error.code);
         console.error('Notification error message:', error.message);
         console.error('Notification error details:', error.details);
-        console.error('Full error object:', JSON.stringify(error, null, 2));
         throw error;
       }
       
