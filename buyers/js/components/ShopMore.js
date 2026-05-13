@@ -59,7 +59,9 @@ function createShopMore(product) {
   document.querySelectorAll('.seller-product-card').forEach(card => {
     card.addEventListener('click', () => {
       const productId = card.getAttribute('data-product-id');
-      window.location.href = `./product.html?id=${productId}`;
+      const storeId = product.store_id || product.storeId || product.seller?.store_id || product.seller?.storeId || '';
+      const storeParam = storeId ? `&store=${encodeURIComponent(storeId)}` : '';
+      window.location.href = `./product.html?id=${encodeURIComponent(productId)}${storeParam}`;
     });
   });
 }

@@ -1,12 +1,27 @@
 const API = 'https://marketmix-backend.onrender.com/api';
 const authToken = localStorage.getItem('token');
 
-// ─── Get sellerId from URL ───────────────────────────────────────────────────
-// Links to this page should be: store-id.html?seller=<uuid>
+// ─── Get store id from URL ───────────────────────────────────────────────────
+// Preferred links: store-id.html?store=<uuid>
+// Legacy links using ?seller=<uuid> or ?id=<uuid> are still supported.
 const params = new URLSearchParams(window.location.search);
-const SELLER_ID = params.get('seller');
+const STORE_ID = params.get('store') || params.get('seller') || params.get('id');
+const SELLER_ID = STORE_ID;
 
-if (!SELLER_ID) {
+function storeScopedUrl(path) {
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}store=${encodeURIComponent(STORE_ID)}`;
+}
+
+function authHeaders(extra = {}) {
+  return {
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    ...(STORE_ID ? { 'X-Store-Id': STORE_ID } : {}),
+    ...extra,
+  };
+}
+
+if (!STORE_ID) {
   showToast('No store specified.');
   // Optionally redirect: window.location.replace('marketplace.html');
 }
@@ -20,7 +35,7 @@ const PAGE_LIMIT = 20;
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  if (!SELLER_ID) return;
+  if (!STORE_ID) return;
   loadStoreProfile();
   loadProducts();
   loadReviews();
@@ -31,8 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ─── Load Store Profile ───────────────────────────────────────────────────────
 async function loadStoreProfile() {
   try {
-    const res = await fetch(`${API}/seller/public/${SELLER_ID}`, {
-      headers: { Authorization: `Bearer ${authToken}` }
+    const res = await fetch(`${API}/seller/public/${STORE_ID}`, {
+      headers: authHeaders()
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to load store');
@@ -124,8 +139,8 @@ async function loadProducts(categoryFilter = 'all', append = false) {
   try {
     const catParam = categoryFilter !== 'all' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
     const res = await fetch(
-      `${API}/seller/public/${SELLER_ID}/products?page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`,
-      { headers: { Authorization: `Bearer ${authToken}` } }
+      `${API}/seller/public/${STORE_ID}/products?page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`,
+      { headers: authHeaders() }
     );
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to load products');
@@ -225,8 +240,8 @@ function populateCategoryFilter(categories) {
 // ─── Load Reviews ─────────────────────────────────────────────────────────────
 async function loadReviews() {
   try {
-    const res = await fetch(`${API}/reviews/seller/${SELLER_ID}?limit=10`, {
-      headers: { Authorization: `Bearer ${authToken}` }
+    const res = await fetch(`${API}/reviews/seller/${STORE_ID}?limit=10`, {
+      headers: authHeaders()
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
@@ -288,11 +303,8 @@ async function addToCart(productId, productName) {
   try {
     const res = await fetch(`${API}/cart/add`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`
-      },
-      body: JSON.stringify({ product_id: productId, quantity: 1 })
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ product_id: productId, quantity: 1, store_id: STORE_ID })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
@@ -304,17 +316,16 @@ async function addToCart(productId, productName) {
 
 // ─── View Product ─────────────────────────────────────────────────────────────
 function viewProduct(productId) {
-  // Navigate to your product detail page — adjust path as needed
-  window.location.href = `product-detail.html?id=${productId}`;
+  window.location.href = storeScopedUrl(`product.html?id=${encodeURIComponent(productId)}`);
 }
 
 
 // ─── Follow Store ─────────────────────────────────────────────────────────────
 async function syncFollowState() {
-  if (!authToken || !SELLER_ID) return;
+  if (!authToken || !STORE_ID) return;
   try {
-    const res = await fetch(`${API}/shops/following/${SELLER_ID}/status`, {
-      headers: { Authorization: `Bearer ${authToken}` }
+    const res = await fetch(`${API}/shops/following/${STORE_ID}/status`, {
+      headers: authHeaders()
     });
     const data = await res.json();
     updateFollowBtn(data?.data?.isFollowing);
@@ -327,9 +338,9 @@ async function toggleFollow() {
   const isFollowing = btn.classList.contains('following');
   btn.disabled = true;
   try {
-    const res = await fetch(`${API}/shops/following/${SELLER_ID}`, {
+    const res = await fetch(`${API}/shops/following/${STORE_ID}`, {
       method: isFollowing ? 'DELETE' : 'POST',
-      headers: { Authorization: `Bearer ${authToken}` }
+      headers: authHeaders()
     });
     const data = await res.json();
     if (res.ok) {
@@ -393,6 +404,7 @@ function escapeHtml(str) {
 
 function showToast(message) {
   const toast = document.getElementById('toast');
+  if (!toast) return;
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2500);

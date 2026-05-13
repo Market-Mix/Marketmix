@@ -1219,8 +1219,8 @@
 
       try {
         const res = await fetch(
-          `${API}/seller/public/${SELLER_ID}/products?page=1&limit=${PAGE_LIMIT}${catParam}${searchParam}`,
-          { headers: { Authorization: `Bearer ${authToken}` } }
+          `${API}/seller/public/${STORE_ID}/products?page=1&limit=${PAGE_LIMIT}${catParam}${searchParam}`,
+          { headers: authHeaders() }
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
