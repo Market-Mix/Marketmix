@@ -3,216 +3,544 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MarketMix | Shop Settings</title>
-  <link rel="stylesheet" href="sellers setting.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="storeManager.js"></script>
-  <script defer src="sellers settings.js"></script>
-  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-  <link rel="shortcut icon" href="images/marketmix.png" type="image/x-icon">
+  <title>Shop Settings — MarketMix</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f1ec;
+      --card: #ffffff;
+      --ink: #1a1a1a;
+      --ink2: #5a5a5a;
+      --accent: #1e40af;
+      --accent-light: #dbeafe;
+      --border: #e5e0d8;
+      --red: #dc2626;
+      --green: #16a34a;
+      --r: 12px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.07);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+    /* Nav */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: var(--ink); height: 58px;
+      display: flex; align-items: center; padding: 0 24px; gap: 16px;
+    }
+    .nav-brand { color: #fff; font-family: 'Playfair Display', serif; font-size: 1.25rem; text-decoration: none; flex-shrink: 0; }
+    .nav-store-badge {
+      background: rgba(255,255,255,.12); color: #fff;
+      font-size: 12px; padding: 4px 10px; border-radius: 20px;
+      display: flex; align-items: center; gap: 6px; max-width: 180px;
+    }
+    .nav-store-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-links { display: flex; gap: 4px; margin-left: auto; }
+    .nav-links a {
+      color: #aaa; font-size: 13px; text-decoration: none;
+      padding: 6px 10px; border-radius: 6px; transition: all .2s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .nav-links a:hover, .nav-links a.active { color: #fff; background: rgba(255,255,255,.1); }
+
+    /* Layout */
+    .page { max-width: 800px; margin: 0 auto; padding: 80px 24px 60px; }
+
+    .page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 28px; gap: 16px; flex-wrap: wrap;
+    }
+    .page-header h1 { font-family: 'Playfair Display', serif; font-size: 1.9rem; margin-bottom: 4px; }
+    .page-header p  { color: var(--ink2); font-size: 14px; }
+    .store-switcher-link {
+      font-size: 13px; color: var(--accent); text-decoration: none;
+      display: flex; align-items: center; gap: 5px; white-space: nowrap;
+      padding: 7px 12px; border: 1.5px solid var(--accent-light);
+      border-radius: 8px; transition: background .2s;
+    }
+    .store-switcher-link:hover { background: var(--accent-light); }
+
+    /* Card */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 24px; margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .card-head { margin-bottom: 20px; }
+    .card-head h2 { font-size: 1rem; font-weight: 700; }
+    .card-head p  { font-size: 13px; color: var(--ink2); margin-top: 3px; }
+
+    /* Logo upload */
+    .logo-section { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px; }
+    .logo-preview-wrap {
+      width: 90px; height: 90px; border-radius: 12px; flex-shrink: 0;
+      border: 2px dashed var(--border); background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative; cursor: pointer;
+      transition: border-color .2s;
+    }
+    .logo-preview-wrap:hover { border-color: var(--accent); }
+    .logo-preview-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .logo-preview-wrap .logo-placeholder { color: var(--ink2); font-size: 28px; }
+    .logo-preview-wrap .logo-overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,.45);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .2s; font-size: 18px;
+    }
+    .logo-preview-wrap:hover .logo-overlay { opacity: 1; }
+    #logoInput { display: none; }
+    .logo-meta h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .logo-meta p  { font-size: 12px; color: var(--ink2); line-height: 1.6; }
+    .logo-meta .logo-hint {
+      font-size: 12px; color: var(--accent); margin-top: 8px;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .upload-progress {
+      font-size: 12px; color: var(--ink2); margin-top: 6px;
+      display: none; align-items: center; gap: 6px;
+    }
+    .upload-progress.show { display: flex; }
+
+    /* Form */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 14px; font-family: 'DM Sans', sans-serif;
+      background: #fff; transition: border-color .2s;
+    }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .form-group .hint { font-size: 11px; color: var(--ink2); margin-top: 4px; }
+
+    /* Social icon prefix */
+    .input-icon-wrap { position: relative; }
+    .input-icon-wrap i {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--ink2); font-size: 14px; pointer-events: none;
+    }
+    .input-icon-wrap input { padding-left: 32px; }
+
+    /* Section divider */
+    .section-title {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--ink2); margin: 22px 0 14px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 18px; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 7px;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--ink); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+    /* No-store state */
+    .no-store {
+      text-align: center; padding: 60px 20px;
+      background: var(--card); border-radius: var(--r);
+      border: 1px solid var(--border);
+    }
+    .no-store i { font-size: 40px; color: var(--ink2); opacity: .4; margin-bottom: 16px; display: block; }
+    .no-store h2 { font-size: 1.1rem; margin-bottom: 8px; }
+    .no-store p  { font-size: 14px; color: var(--ink2); margin-bottom: 20px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--ink); color: #fff; padding: 11px 20px;
+      border-radius: 8px; font-size: 14px; z-index: 999;
+      transition: transform .3s; white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: var(--green); }
+    .toast.error   { background: var(--red); }
+
+    /* Skeleton */
+    .skeleton {
+      background: linear-gradient(90deg,#e8e3da 25%,#f0ece4 50%,#e8e3da 75%);
+      background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 6px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .logo-section { flex-direction: column; }
+      .page-header { flex-direction: column; }
+    }
+  </style>
 </head>
 <body>
-  <div class="body-background">
-  <!-- Navbar --> 
-  <nav class="navbar">
-    <div class="nav-container">
-      <a href="#" class="brand-logo">MarketMix</a>
-      <button class="navbar-toggler" id="navbar-toggler" type="button" aria-label="Toggle navigation">
-    <img src="images/elon.jfif" class="navbar-toggler-icon" alt="">
-      </button>
-      <div class="nav-large">
-        <ul class="nav-list">
-          
-  <ul class="nav-links">
-    <li><a href="sellers layout.html">Dashboard</a></li>
-    <li><a href="sellers product.html">My Products</a></li>
-    <li><a href="sellers order.html">Orders</a></li>
-    <li><a href="sellers returns.html">Returns & Refunds</a></li>
-    <li><a href="sellers earning.html">Earnings</a></li>
-    <li><a href="sellers setting.html">Shop Settings</a></li>
-  </ul>
-         
-        </ul>
-        <div class="nav-actions">
-       
-        </div>
-        
-          <div class="icon-container">
-    <div class="profile-container">
-  <img id="sellerProfileImage" src="" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()">
 
-  <div class="profile-dropdown" id="profileDropdown">
-    <a href="view profile.html">View Profile</a>
-    <a href="sellers-account.html">Account Settings</a>
-    <a href="sellers layout.html">View Store</a>
-    <a href="help.html">Help & Support</a>
-    <a href="logout.html">Logout</a>
+<nav class="nav">
+  <a href="sellers layout.html" class="nav-brand">MarketMix</a>
+  <div class="nav-store-badge" id="navStoreBadge">
+    <i class="fas fa-store" style="font-size:11px;opacity:.7"></i>
+    <span>Loading...</span>
+  </div>
+  <div class="nav-links">
+    <a href="sellers layout.html"><i class="fas fa-th-large"></i> Dashboard</a>
+    <a href="view-store.html"><i class="fas fa-store"></i> Stores</a>
+    <a href="sellers-account.html"><i class="fas fa-user"></i> Account</a>
+    <a href="sellers setting.html" class="active"><i class="fas fa-cog"></i> Settings</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Shop Settings</h1>
+      <p id="pageSubtitle">Settings for your active store.</p>
+    </div>
+    <a href="view-store.html" class="store-switcher-link">
+      <i class="fas fa-exchange-alt"></i> Switch Store
+    </a>
+  </div>
+
+  <div id="mainContent">
+    <!-- Loading skeleton -->
+    <div class="card">
+      <div class="skeleton" style="height:14px;width:40%;margin-bottom:20px"></div>
+      <div class="skeleton" style="height:90px;width:90px;border-radius:12px;margin-bottom:16px"></div>
+      <div class="skeleton" style="height:38px;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:38px;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:38px"></div>
+    </div>
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
+<script src="storeManager.js"></script>
+<script>
+const API = 'https://marketmix-backend.onrender.com/api';
+
+function getToken() { return localStorage.getItem('token') || ''; }
+
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+function setBtnLoading(id, loading, label = 'Save Changes') {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? '<i class="fas fa-spinner fa-spin"></i> Saving...'
+    : `<i class="fas fa-save"></i> ${label}`;
+}
+
+// ── Render the form with store data ───────────────────────────────────────────
+function renderForm(store) {
+  document.getElementById('mainContent').innerHTML = `
+
+    <!-- Logo -->
+    <div class="card">
+      <div class="card-head">
+        <h2><i class="fas fa-image" style="margin-right:7px;color:var(--accent)"></i>Store Logo</h2>
+        <p>This logo is unique to <strong>${store.business_name || 'this store'}</strong> — different from your account profile picture.</p>
+      </div>
+
+      <div class="logo-section">
+        <div class="logo-preview-wrap" id="logoWrap" onclick="document.getElementById('logoInput').click()">
+          ${store.store_logo_url
+            ? `<img id="logoPreviewImg" src="${store.store_logo_url}" alt="Store logo">`
+            : `<i class="fas fa-store logo-placeholder"></i>`
+          }
+          <div class="logo-overlay"><i class="fas fa-camera"></i></div>
+        </div>
+        <div class="logo-meta">
+          <h3>Store Logo</h3>
+          <p>Recommended: 400×400px square<br>PNG, JPG or WebP · Max 5MB</p>
+          <div class="logo-hint" onclick="document.getElementById('logoInput').click()">
+            <i class="fas fa-upload"></i> Upload new logo
+          </div>
+          <div class="upload-progress" id="uploadProgress">
+            <i class="fas fa-spinner fa-spin"></i> Uploading...
+          </div>
+        </div>
+        <input type="file" id="logoInput" accept="image/jpeg,image/png,image/webp" onchange="handleLogoUpload(event, '${store.id}')">
+      </div>
+    </div>
+
+    <!-- Core info -->
+    <div class="card">
+      <div class="card-head">
+        <h2><i class="fas fa-store" style="margin-right:7px;color:var(--accent)"></i>Store Information</h2>
+        <p>Basic details buyers see when visiting your store.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Store Name <span style="color:var(--red)">*</span></label>
+        <input type="text" id="storeName" value="${esc(store.business_name)}" placeholder="Your store name" />
+      </div>
+
+      <div class="form-group">
+        <label>Store Description <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+        <textarea id="storeDesc" rows="3" placeholder="What do you sell? Tell buyers about your store.">${esc(store.business_description)}</textarea>
+      </div>
+
+      <div class="section-title">Pickup / Delivery Address</div>
+
+      <div class="form-group">
+        <label>Address <span style="color:var(--red)">*</span></label>
+        <input type="text" id="storeAddress" value="${esc(store.business_address)}" placeholder="e.g. 12 Commerce Street, Lagos" />
+        <p class="hint">Buyers see this as your pickup / delivery location.</p>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Business Email <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+          <input type="email" id="storeEmail" value="${esc(store.business_email)}" placeholder="store@yourdomain.com" />
+        </div>
+        <div class="form-group">
+          <label>Business Phone <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+          <input type="tel" id="storePhone" value="${esc(store.business_phone)}" placeholder="+234 000 0000" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+          <input type="text" id="storeCategory" value="${esc(store.category)}" placeholder="e.g. Fashion, Electronics" />
+        </div>
+        <div class="form-group">
+          <label>Website <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+          <input type="url" id="storeWebsite" value="${esc(store.website)}" placeholder="https://yourstore.com" />
+        </div>
+      </div>
+
+      <div class="section-title">Social Media Links</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Instagram</label>
+          <div class="input-icon-wrap">
+            <i class="fab fa-instagram"></i>
+            <input type="url" id="socialInstagram" value="${esc(store.instagram)}" placeholder="https://instagram.com/yourstore" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Facebook</label>
+          <div class="input-icon-wrap">
+            <i class="fab fa-facebook"></i>
+            <input type="url" id="socialFacebook" value="${esc(store.facebook)}" placeholder="https://facebook.com/yourstore" />
           </div>
         </div>
       </div>
-    </div>
-  </nav>
 
-  <!-- Offcanvas Menu (for small screens) -->
-  <div class="offcanvas-menu" id="offcanvasMenu">
-    <div class="offcanvas-header">
-      <button class="offcanvas-close" id="offcanvasClose">&times;</button>
-    </div>
-    <div class="offcanvas-body">
-      <ul class="nav-list">
-       <ul class="nav-links">
-    <li><a href="sellers layout.html">Dashboard</a></li>
-    <li><a href="sellers product.html">My Products</a></li>
-    <li><a href="sellers order.html">Orders</a></li>
-    <li><a href="sellers earning.html">Earnings</a></li>
-    <li><a href="sellers setting.html">Shop Settings</a></li>
-  
-  </ul>
-
-      </ul>
-      <div class="nav-actions">
-     
-      </div>
-      
-        <div class="icon-container">
-   <div class="profile-container">
-  <img id="sellerProfileImageMobile" src="" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()">
-
-  <div class="nav-list">
-       <li><a style="text-decoration: none; color: white;" href="view profile.html">View Profile</a></li>
-    <li><a style="text-decoration: none; color: white;" href="sellers-account.html">Account Settings</a></li>
-    <li><a style="text-decoration: none; color: white;" href="help.html">Help & Support</a></li>
-    <li><a style="text-decoration: none; color: white;" href="logout.html">Logout</a></li>
-  </div>
-</div>
-
-
+      <div class="form-row">
+        <div class="form-group">
+          <label>TikTok</label>
+          <div class="input-icon-wrap">
+            <i class="fab fa-tiktok"></i>
+            <input type="url" id="socialTiktok" value="${esc(store.tiktok)}" placeholder="https://tiktok.com/@yourstore" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Twitter / X</label>
+          <div class="input-icon-wrap">
+            <i class="fab fa-x-twitter"></i>
+            <input type="url" id="socialTwitter" value="${esc(store.twitter)}" placeholder="https://x.com/yourstore" />
+          </div>
         </div>
       </div>
+
+      <div class="form-group">
+        <label>Telegram</label>
+        <div class="input-icon-wrap">
+          <i class="fab fa-telegram"></i>
+          <input type="url" id="socialTelegram" value="${esc(store.telegram)}" placeholder="https://t.me/yourchannel" />
+        </div>
+      </div>
+
+      <div class="btn-actions">
+        <button class="btn btn-primary" id="saveStoreBtn" onclick="saveStore('${store.id}')">
+          <i class="fas fa-save"></i> Save Changes
+        </button>
+        <button class="btn btn-outline" onclick="loadSettings()">
+          <i class="fas fa-undo"></i> Reset
+        </button>
+        <a href="view-store.html?preview=${store.id}" class="btn btn-outline" style="text-decoration:none" target="_blank">
+          <i class="fas fa-eye"></i> Preview Store
+        </a>
+      </div>
     </div>
-  </div>
+  `;
+}
 
-  <main>
-    <form
-      id="shop-settings"
-      class="shop-settings-form"
-      aria-labelledby="shop-settings-title"
-      novalidate
-    >
-      <h2 id="shop-settings-title">Shop Settings</h2>
+function renderNoStore() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="no-store">
+      <i class="fas fa-store-slash"></i>
+      <h2>No active store selected</h2>
+      <p>Go to your stores page to select or create a store first.</p>
+      <a href="view-store.html" class="btn btn-primary" style="text-decoration:none;display:inline-flex">
+        <i class="fas fa-store"></i> Go to Stores
+      </a>
+    </div>`;
+}
 
-      <div class="form-group">
-        <label for="shop-name">Shop Name</label>
-        <input
-          type="text"
-          id="shop-name"
-          name="business_name"
-          placeholder="Your shop name"
-          required
-          aria-required="true"
-        />
-      </div>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(val) {
+  return (val || '').toString().replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
 
-      <div class="form-group">
-        <label for="shop-address">Shop Address</label>
-        <textarea
-          id="shop-address"
-          name="business_address"
-          rows="3"
-          placeholder="Shop location/address"
-        ></textarea>
-      </div>
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
 
-      <div class="form-group">
-        <label for="shop-logo-file">Shop Logo</label>
-        <button
-          type="button"
-          id="change-logo-btn"
-          class="preview-btn"
-          aria-describedby="logo-desc"
-        >
-          Change Logo
-        </button>
-        <input
-          type="file"
-          id="shop-logo-file"
-          accept="image/png, image/jpeg, image/webp"
-          hidden
-        />
-        <small id="logo-desc">Upload PNG, JPG, or WebP. This logo belongs only to the active shop.</small>
-        <img id="logo-preview" alt="Shop Logo Preview" />
-      </div>
+// ── Load settings ─────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const token = getToken();
+  if (!token) { window.location.href = 'sellers login.html'; return; }
 
-      <div class="form-group">
-        <label for="shop-instagram">Instagram URL</label>
-        <input
-          type="url"
-          id="shop-instagram"
-          name="instagram"
-          placeholder="https://instagram.com/yourshop"
-        />
-      </div>
+  const store = window.StoreManager?.getActiveStore();
+  if (!store?.id) { renderNoStore(); return; }
 
-      <div class="form-group">
-        <label for="shop-facebook">Facebook URL</label>
-        <input
-          type="url"
-          id="shop-facebook"
-          name="facebook"
-          placeholder="https://facebook.com/yourshop"
-        />
-      </div>
+  // Update nav badge
+  document.getElementById('navStoreBadge').innerHTML =
+    `<i class="fas fa-store" style="font-size:11px;opacity:.7"></i><span>${store.business_name || 'Store'}</span>`;
+  document.getElementById('pageSubtitle').textContent =
+    `Settings for "${store.business_name || 'your store'}" — Store #${store.store_number || ''}`;
 
-      <div class="form-group">
-        <label for="shop-twitter">Twitter URL</label>
-        <input
-          type="url"
-          id="shop-twitter"
-          name="twitter"
-          placeholder="https://twitter.com/yourshop"
-        />
-      </div>
+  try {
+    const res  = await fetch(`${API}/seller/stores/${store.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
 
-      <div class="form-group">
-        <label for="shop-tiktok">TikTok URL</label>
-        <input
-          type="url"
-          id="shop-tiktok"
-          name="tiktok"
-          placeholder="https://www.tiktok.com/@yourshop"
-        />
-      </div>
+    const s = data.data?.store || store;
+    // Keep StoreManager cache fresh
+    window.StoreManager.setActiveStore(s);
+    renderForm(s);
+  } catch (e) {
+    // Fallback to cached store data
+    renderForm(store);
+    toast(e.message || 'Using cached store data', '');
+  }
+}
 
-      <div class="form-group">
-        <label for="shop-whatsapp">WhatsApp URL</label>
-        <input
-          type="url"
-          id="shop-whatsapp"
-          name="whatsapp"
-          placeholder="https://wa.me/23400000000"
-        />
-      </div>
+// ── Logo upload ───────────────────────────────────────────────────────────────
+async function handleLogoUpload(e, storeId) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return; }
 
-      <div class="btn-group" style="margin-top: 15px;">
-        <button type="submit" class="save-btn" aria-live="polite" aria-busy="false" aria-label="Save changes">
-          Save Changes
-          <span class="loading-spinner" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="reset-btn" id="reset-btn">Reset Settings</button>
-        <button type="button" class="preview-btn" id="preview-btn">Preview Shop</button>
+  // Instant preview
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const wrap = document.getElementById('logoWrap');
+    let img = document.getElementById('logoPreviewImg');
+    if (!img) {
+      wrap.innerHTML = `<img id="logoPreviewImg" src="${ev.target.result}" alt="logo"><div class="logo-overlay"><i class="fas fa-camera"></i></div>`;
+    } else {
+      img.src = ev.target.result;
+    }
+  };
+  reader.readAsDataURL(file);
 
-      </div>
+  // Show progress
+  const prog = document.getElementById('uploadProgress');
+  if (prog) prog.classList.add('show');
 
-      <div id="form-message" role="alert" aria-live="assertive" style="margin-top: 10px;"></div>
-    </form>
-  </main>
- <footer>
-    &copy; 2025 MarketMix. All Rights Reserved.
-  </footer>
+  try {
+    // Upload via Supabase proxy
+    const formData = new FormData();
+    formData.append('file', file);
 
+    const upRes  = await fetch(`${API}/seller/stores/logo-upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData
+    });
+    const upData = await upRes.json();
+    if (!upRes.ok) throw new Error(upData.message || 'Upload failed');
+
+    const logoUrl = upData.data?.url;
+
+    // Save to store
+    const saveRes = await fetch(`${API}/seller/stores/${storeId}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeName: val('storeName') || window.StoreManager.getActiveStore()?.business_name, storeLogoUrl: logoUrl })
+    });
+    const saveData = await saveRes.json();
+    if (!saveRes.ok) throw new Error(saveData.message);
+
+    // Update cache
+    const updated = { ...window.StoreManager.getActiveStore(), store_logo_url: logoUrl };
+    window.StoreManager.setActiveStore(updated);
+    toast('Store logo updated!', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to upload logo', 'error');
+  } finally {
+    if (prog) prog.classList.remove('show');
+    e.target.value = '';
+  }
+}
+
+// ── Save store ────────────────────────────────────────────────────────────────
+async function saveStore(storeId) {
+  const storeName = val('storeName');
+  if (!storeName) { toast('Store name is required', 'error'); return; }
+
+  setBtnLoading('saveStoreBtn', true);
+  try {
+    const payload = {
+      storeName,
+      storeDescription: val('storeDesc')        || null,
+      businessAddress:  val('storeAddress')     || null,
+      businessEmail:    val('storeEmail')        || null,
+      businessPhone:    val('storePhone')        || null,
+      category:         val('storeCategory')     || null,
+      website:          val('storeWebsite')      || null,
+      instagram:        val('socialInstagram')   || null,
+      facebook:         val('socialFacebook')    || null,
+      tiktok:           val('socialTiktok')      || null,
+      twitter:          val('socialTwitter')     || null,
+      telegram:         val('socialTelegram')    || null,
+      storeLogoUrl:     window.StoreManager.getActiveStore()?.store_logo_url || null,
+    };
+
+    const res  = await fetch(`${API}/seller/stores/${storeId}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+
+    // Update StoreManager cache
+    const updated = { ...window.StoreManager.getActiveStore(), business_name: storeName, ...payload };
+    window.StoreManager.setActiveStore(updated);
+    document.getElementById('navStoreBadge').querySelector('span').textContent = storeName;
+    toast('Store settings saved!', 'success');
+  } catch (e) {
+    toast(e.message || 'Failed to save', 'error');
+  }
+  setBtnLoading('saveStoreBtn', false);
+}
+
+// Re-load when active store changes
+window.addEventListener('storeChanged', loadSettings);
+document.addEventListener('DOMContentLoaded', loadSettings);
+</script>
 </body>
 </html>
