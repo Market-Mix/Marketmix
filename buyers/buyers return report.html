@@ -1458,10 +1458,10 @@
         buyer_id: caseData.buyer_id,
         seller_id: caseData.seller_id || null,
         status: caseData.status || 'pending',
-        evidence_url: caseData.evidence_url || null,
-        evidence_submitted_at: new Date().toISOString()
+        evidence_url: caseData.evidence_url || null
       };
 
+      console.log('Inserting refund case payload:', refundCasePayload);
       const { data, error } = await getSupabaseClient()
         .from('refund_cases')
         .insert([refundCasePayload])
@@ -1469,7 +1469,7 @@
         .single();
       
       if (error) {
-        console.error('Error creating refund case:', error);
+        console.error('Supabase error details:', error);
         throw error;
       }
       
