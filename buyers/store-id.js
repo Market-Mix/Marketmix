@@ -6,7 +6,10 @@ const authToken = localStorage.getItem('token');
 // Legacy links using ?seller=<uuid> or ?id=<uuid> are still supported.
 const params = new URLSearchParams(window.location.search);
 const STORE_ID = params.get('store') || params.get('seller') || params.get('id');
-const SELLER_ID = STORE_ID;
+
+if (!STORE_ID) {
+  showToast('No store specified.');
+}
 
 function storeScopedUrl(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -15,15 +18,11 @@ function storeScopedUrl(path) {
 
 function authHeaders(extra = {}) {
   return {
+    'Content-Type': 'application/json',
     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     ...(STORE_ID ? { 'X-Store-Id': STORE_ID } : {}),
     ...extra,
   };
-}
-
-if (!STORE_ID) {
-  showToast('No store specified.');
-  // Optionally redirect: window.location.replace('marketplace.html');
 }
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -46,7 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ─── Load Store Profile ───────────────────────────────────────────────────────
 async function loadStoreProfile() {
   try {
-    const res = await fetch(`${API}/seller/public/${STORE_ID}`, {
+    // Use the new stores endpoint
+    const res = await fetch(`${API}/seller/stores/public/${STORE_ID}`, {
       headers: authHeaders()
     });
     const data = await res.json();
@@ -69,23 +69,19 @@ function renderStoreInfo(store) {
   if (store.storeLogo) {
     logoEl.innerHTML = `<img src="${store.storeLogo}" alt="${store.businessName} logo" />`;
   } else {
-    // Fallback: initials
     const initials = store.businessName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     logoEl.innerHTML = `<span class="logo-initials">${initials}</span>`;
   }
 
-  // Verified badge
   if (store.isVerified) {
     document.getElementById('verifiedBadge').style.display = 'inline-flex';
   }
 
-  // Name & rating
   document.getElementById('storeName').textContent = store.businessName;
   document.getElementById('storeRating').textContent = store.rating > 0 ? store.rating.toFixed(1) : 'No ratings yet';
   document.getElementById('storeReviewCount').textContent =
     store.totalReviews > 0 ? `(${store.totalReviews.toLocaleString()} reviews)` : '';
 
-  // Address & member since
   if (store.businessAddress) {
     document.getElementById('storeAddress').innerHTML =
       `<i class="fa-solid fa-location-dot"></i> ${store.businessAddress}`;
@@ -96,27 +92,23 @@ function renderStoreInfo(store) {
       `<i class="fa-regular fa-calendar"></i> Member since ${year}`;
   }
 
-  // Stats strip
   document.getElementById('statProducts').textContent = store.productCount.toLocaleString();
   document.getElementById('statSales').textContent = store.totalSales.toLocaleString();
   document.getElementById('statRating').textContent = store.rating > 0 ? store.rating.toFixed(1) : '—';
   document.getElementById('statReviews').textContent = store.totalReviews.toLocaleString();
 
-  // About tab
   document.getElementById('aboutContent').innerHTML = buildAboutHTML(store);
-
-  // Policies contact email
   document.getElementById('policyEmail').textContent = store.businessEmail || 'Contact via MarketMix';
 }
 
 function buildAboutHTML(store) {
   const links = store.socialLinks || {};
   const socialsHTML = [
-    links.website ? `<a href="${links.website}" target="_blank"><i class="fa-solid fa-globe"></i> Website</a>` : '',
+    links.website   ? `<a href="${links.website}" target="_blank"><i class="fa-solid fa-globe"></i> Website</a>` : '',
     links.instagram ? `<a href="https://instagram.com/${links.instagram}" target="_blank"><i class="fa-brands fa-instagram"></i> Instagram</a>` : '',
-    links.facebook ? `<a href="${links.facebook}" target="_blank"><i class="fa-brands fa-facebook"></i> Facebook</a>` : '',
-    links.twitter ? `<a href="https://twitter.com/${links.twitter}" target="_blank"><i class="fa-brands fa-x-twitter"></i> Twitter/X</a>` : '',
-    links.tiktok ? `<a href="https://tiktok.com/@${links.tiktok}" target="_blank"><i class="fa-brands fa-tiktok"></i> TikTok</a>` : '',
+    links.facebook  ? `<a href="${links.facebook}" target="_blank"><i class="fa-brands fa-facebook"></i> Facebook</a>` : '',
+    links.twitter   ? `<a href="https://twitter.com/${links.twitter}" target="_blank"><i class="fa-brands fa-x-twitter"></i> Twitter/X</a>` : '',
+    links.tiktok    ? `<a href="https://tiktok.com/@${links.tiktok}" target="_blank"><i class="fa-brands fa-tiktok"></i> TikTok</a>` : '',
   ].filter(Boolean).join('');
 
   return `
@@ -138,8 +130,9 @@ async function loadProducts(categoryFilter = 'all', append = false) {
 
   try {
     const catParam = categoryFilter !== 'all' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
+    // Use the new stores endpoint for products
     const res = await fetch(
-      `${API}/seller/public/${STORE_ID}/products?page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`,
+      `${API}/seller/stores/public/${STORE_ID}/products?page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`,
       { headers: authHeaders() }
     );
     const data = await res.json();
@@ -148,7 +141,6 @@ async function loadProducts(categoryFilter = 'all', append = false) {
     const { products, categories, total } = data.data;
     totalProducts = total;
 
-    // Populate category dropdown on first load
     if (!append && categories && categories.length > 0) {
       populateCategoryFilter(categories);
     }
@@ -167,17 +159,11 @@ async function loadProducts(categoryFilter = 'all', append = false) {
       products.forEach(p => grid.appendChild(buildProductCard(p)));
     }
 
-    // Update label
     document.getElementById('productCountLabel').textContent =
       `${totalProducts} product${totalProducts !== 1 ? 's' : ''}`;
 
-    // Load more button
     const loadMoreWrap = document.getElementById('loadMoreWrap');
-    if (allProducts.length < totalProducts) {
-      loadMoreWrap.style.display = 'block';
-    } else {
-      loadMoreWrap.style.display = 'none';
-    }
+    loadMoreWrap.style.display = allProducts.length < totalProducts ? 'block' : 'none';
 
   } catch (err) {
     console.error(err);
@@ -228,7 +214,6 @@ function buildProductCard(p) {
 
 function populateCategoryFilter(categories) {
   const select = document.getElementById('categoryFilter');
-  // Keep the "All" option, add the rest
   select.innerHTML = `<option value="all">All Categories</option>` +
     categories.map(c => `<option value="${c}">${c}</option>`).join('');
 
@@ -240,7 +225,19 @@ function populateCategoryFilter(categories) {
 // ─── Load Reviews ─────────────────────────────────────────────────────────────
 async function loadReviews() {
   try {
-    const res = await fetch(`${API}/reviews/seller/${STORE_ID}?limit=10`, {
+    // Reviews are scoped by seller_id; STORE_ID is the store uuid
+    // The reviews endpoint uses seller_id — we get it from storeData once loaded
+    // Poll until storeData is available
+    let attempts = 0;
+    while (!storeData && attempts < 20) {
+      await new Promise(r => setTimeout(r, 150));
+      attempts++;
+    }
+
+    const sellerId = storeData?.sellerId;
+    if (!sellerId) return;
+
+    const res = await fetch(`${API}/reviews/seller/${sellerId}?limit=10`, {
       headers: authHeaders()
     });
     const data = await res.json();
@@ -255,7 +252,6 @@ async function loadReviews() {
 }
 
 function renderReviews(reviews, summary) {
-  // Summary block
   const summaryEl = document.getElementById('reviewsSummary');
   summaryEl.innerHTML = `
     <div class="rating-overview">
@@ -277,7 +273,6 @@ function renderReviews(reviews, summary) {
       </div>
     </div>`;
 
-  // Reviews list
   const listEl = document.getElementById('reviewsList');
   if (reviews.length === 0) {
     listEl.innerHTML = `<p class="empty-state">No reviews yet for this store.</p>`;
@@ -303,8 +298,12 @@ async function addToCart(productId, productName) {
   try {
     const res = await fetch(`${API}/cart/add`, {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ product_id: productId, quantity: 1, store_id: STORE_ID })
+      headers: authHeaders(),
+      body: JSON.stringify({
+        product_id: productId,
+        quantity: 1,
+        store_id: STORE_ID       // ← store-scoped
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
@@ -314,11 +313,10 @@ async function addToCart(productId, productName) {
   }
 }
 
-// ─── View Product ─────────────────────────────────────────────────────────────
+// ─── View Product — always carries store context ──────────────────────────────
 function viewProduct(productId) {
   window.location.href = storeScopedUrl(`product.html?id=${encodeURIComponent(productId)}`);
 }
-
 
 // ─── Follow Store ─────────────────────────────────────────────────────────────
 async function syncFollowState() {
@@ -354,6 +352,7 @@ async function toggleFollow() {
   }
   btn.disabled = false;
 }
+
 function updateFollowBtn(isFollowing) {
   const btn = document.getElementById('followBtn');
   if (!btn) return;
@@ -365,6 +364,7 @@ function updateFollowBtn(isFollowing) {
     btn.classList.remove('following');
   }
 }
+
 // ─── Contact Seller ───────────────────────────────────────────────────────────
 function contactSeller() {
   if (storeData?.businessEmail) {
@@ -399,7 +399,9 @@ function formatDate(dateStr) {
 }
 
 function escapeHtml(str) {
-  return String(str).replace(/['"<>&]/g, c => ({'\'':'&#39;','"':'&quot;','<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  return String(str).replace(/['"<>&]/g, c => (
+    {'\'':'&#39;', '"':'&quot;', '<':'&lt;', '>':'&gt;', '&':'&amp;'}[c]
+  ));
 }
 
 function showToast(message) {
