@@ -1627,6 +1627,14 @@
     // If status is 'pending' (complaint started), use created_at as evidence submission time for countdown
     const evidenceSubmittedTime = caseData.evidence_submitted_at || (caseData.status !== 'purchased' ? caseData.created_at : null);
     
+    console.log('DEBUG mapRefundCaseToReport:', {
+      order_id: caseData.order_id,
+      status: caseData.status,
+      created_at: caseData.created_at,
+      evidence_submitted_at: caseData.evidence_submitted_at,
+      calculatedEvidenceTime: evidenceSubmittedTime
+    });
+    
     return {
       id: caseData.id,
       order_id: caseData.order_id,
@@ -1740,7 +1748,11 @@
   }
 
   async function refreshRefundTableFromSupabase() {
+    console.log('DEBUG: Refreshing refund table from Supabase...');
     currentReports = await loadReturnReportsForCurrentBuyer();
+    console.log('DEBUG: Loaded reports:', currentReports);
+    const reportsWithEvidence = currentReports.filter(r => r.evidence_submitted_at);
+    console.log('DEBUG: Reports with evidence_submitted_at:', reportsWithEvidence);
     renderReports(currentReports);
   }
   // =====================================================
@@ -2240,7 +2252,7 @@
         `;
       }
 
-      if (report.purchase_date) {
+      if (report.purchase_date || report.evidence_submitted_at) {
         const now = Date.now();
         let expiryTime;
         let timeLeft;
@@ -2250,6 +2262,13 @@
           const evidenceTime = new Date(report.evidence_submitted_at).getTime();
           expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
           timeLeft = expiryTime - now;
+          console.log('DEBUG: Calculating countdown from evidence time:', {
+            evidenceTime,
+            expiryTime,
+            now,
+            timeLeft,
+            daysLeft: Math.floor(timeLeft / (1000 * 60 * 60 * 24))
+          });
         } else {
           // Otherwise, countdown from 5 days after purchase
           const purchaseTime = new Date(report.purchase_date).getTime();
