@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Notifications - MarketMix</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
     body {
@@ -742,6 +744,18 @@ setInterval(() => {
     });
   }
 }, 30000);
+  </script>
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
+        // Mark all notifications as read when opening notifications page
+        await NotificationManager.markAllAsRead(buyerId);
+      }
+    });
   </script>
 
 </body>

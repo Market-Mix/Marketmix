@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Orders & Tracking - MarketMix</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
    <!-- 🔒 BLOCK UNAUTHORIZED USERS -->
       <!-- 🔒 BLOCK UNAUTHORIZED USERS -->
     <script>
@@ -209,7 +211,9 @@
     <i class="fas fa-chevron-left"></i> Back
   </button>
   <header>
-   <h1>My Orders & Tracking</h1>
+   <h1>My Orders & Tracking
+     <span data-tracking-badge class="badge badge-danger" style="display: none; margin-left: 10px; font-size: 12px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span>
+   </h1>
     
   </header>
   <section class="orders-container">
@@ -300,6 +304,17 @@
       const progress = card.querySelector('.tracking-progress');
       progress.classList.toggle('active');
     }
+  </script>
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+      }
+    });
   </script>
 
 </body>
