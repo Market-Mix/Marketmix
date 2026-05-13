@@ -10,8 +10,25 @@ function getToken() {
   return localStorage.getItem('token') || '';
 }
 
+function getActiveStoreId() {
+  return window.StoreManager?.getActiveStoreId?.()
+    || window.StoreManager?.getActiveStore?.()?.id
+    || '';
+}
+
+async function requireActiveStore() {
+  if (window.StoreManager?.requireActiveStore) {
+    return window.StoreManager.requireActiveStore();
+  }
+  return window.StoreManager?.getActiveStore?.() || null;
+}
+
 function authHeaders() {
-  return { Authorization: `Bearer ${getToken()}` };
+  const storeId = getActiveStoreId();
+  return {
+    Authorization: `Bearer ${getToken()}`,
+    ...(storeId ? { 'X-Store-Id': storeId } : {}),
+  };
 }
 
 // ─── API Fetch ─────────────────────────────────────────────────────────────────
@@ -57,7 +74,7 @@ let allCategories = [];
 let editingProductId = null;
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Navbar toggler
   const toggler = document.getElementById('navbar-toggler');
   const offcanvasMenu = document.getElementById('offcanvasMenu');
@@ -103,9 +120,16 @@ document.addEventListener('DOMContentLoaded', () => {
   setupImagePreview('newProductImage', 'addImagePreview');
   setupImagePreview('editProductImage', 'editImagePreview');
 
+  const activeStore = await requireActiveStore();
+  if (!activeStore) return;
+
   // Load data
   loadProfile();
   loadCategories();
+  loadProducts();
+});
+
+window.addEventListener('storeChanged', () => {
   loadProducts();
 });
 

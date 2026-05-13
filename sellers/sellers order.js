@@ -10,10 +10,25 @@ function getToken() {
   return localStorage.getItem('token') || '';
 }
 
+function getActiveStoreId() {
+  return window.StoreManager?.getActiveStoreId?.()
+    || window.StoreManager?.getActiveStore?.()?.id
+    || '';
+}
+
+async function requireActiveStore() {
+  if (window.StoreManager?.requireActiveStore) {
+    return window.StoreManager.requireActiveStore();
+  }
+  return window.StoreManager?.getActiveStore?.() || null;
+}
+
 function authHeaders() {
+  const storeId = getActiveStoreId();
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${getToken()}`,
+    ...(storeId ? { 'X-Store-Id': storeId } : {}),
   };
 }
 
@@ -337,7 +352,7 @@ loadMoreBtn.addEventListener('click', () => {
 
 /* ── navbar / tips (unchanged from original) ─────────────── */
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
   const toggler       = document.getElementById('navbar-toggler');
   const offcanvasMenu = document.getElementById('offcanvasMenu');
   const offcanvasClose = document.getElementById('offcanvasClose');
@@ -378,8 +393,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  const activeStore = await requireActiveStore();
+  if (!activeStore) return;
+
   // Initial load
   loadProfile();
+  fetchOrders(true);
+});
+
+window.addEventListener('storeChanged', () => {
   fetchOrders(true);
 });
 

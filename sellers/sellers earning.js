@@ -6,6 +6,17 @@ const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
 // Auth helpers
 const getToken = () => localStorage.getItem('token') || sessionStorage.getItem('token');
+const getActiveStoreId = () => (
+    window.StoreManager?.getActiveStoreId?.()
+    || window.StoreManager?.getActiveStore?.()?.id
+    || ''
+);
+const requireActiveStore = async () => {
+    if (window.StoreManager?.requireActiveStore) {
+        return window.StoreManager.requireActiveStore();
+    }
+    return window.StoreManager?.getActiveStore?.() || null;
+};
 const getUserId = () => {
     try {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -15,10 +26,14 @@ const getUserId = () => {
     }
 };
 
-const authHeaders = () => ({
-    'Authorization': `Bearer ${getToken()}`,
-    'Content-Type': 'application/json'
-});
+const authHeaders = () => {
+    const storeId = getActiveStoreId();
+    return {
+        'Authorization': `Bearer ${getToken()}`,
+        'Content-Type': 'application/json',
+        ...(storeId ? { 'X-Store-Id': storeId } : {})
+    };
+};
 
 // API Fetch
 async function apiFetch(path, opts = {}) {
@@ -73,7 +88,7 @@ function showToast(message, success = true) {
     }, 3500);
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     // Navbar/Sidebar logic
     const toggler = document.getElementById("navbar-toggler");
     const offcanvasMenu = document.getElementById("offcanvasMenu");
@@ -105,10 +120,17 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    const activeStore = await requireActiveStore();
+    if (!activeStore) return;
+
     // Load earnings data
     loadProfile();
     fetchEarningsData();
     setupWithdrawalForm();
+});
+
+window.addEventListener('storeChanged', () => {
+    fetchEarningsData();
 });
 
 async function loadProfile() {
