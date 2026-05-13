@@ -1155,7 +1155,9 @@
 
 <div class="returns-container">
   <section class="returns-section">
-    <h1>Returns & Refunds</h1>
+    <h1>Returns & Refunds
+      <span data-refund-badge class=\"badge badge-danger\" style=\"display: none; margin-left: 10px; font-size: 12px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;\">0</span>
+    </h1>
     
     <!-- Filter/Search -->
     <div class="filter-search">
@@ -1443,6 +1445,12 @@
   }
   
   // =====================================================
+  // =====================================================
+  // NOTIFICATION SYSTEM - Using global notification-manager.js
+  // NotificationManager and badge functions are loaded from notification-manager.js
+  // =====================================================
+
+  // =====================================================
   // SUPABASE HELPER FUNCTIONS
   // =====================================================
   
@@ -1458,10 +1466,10 @@
         buyer_id: caseData.buyer_id,
         seller_id: caseData.seller_id || null,
         status: caseData.status || 'pending',
-        evidence_url: caseData.evidence_url || null,
-        evidence_submitted_at: new Date().toISOString()
+        evidence_url: caseData.evidence_url || null
       };
 
+      console.log('Inserting refund case payload:', refundCasePayload);
       const { data, error } = await getSupabaseClient()
         .from('refund_cases')
         .insert([refundCasePayload])
@@ -1469,10 +1477,11 @@
         .single();
       
       if (error) {
-        console.error('Error creating refund case:', error);
+        console.error('Supabase error details:', error);
         throw error;
       }
       
+      console.log('Refund case created:', data);
       return data;
     } catch (err) {
       console.error('Failed to create refund case:', err);
@@ -1520,20 +1529,28 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
+      const payload = {
+        user_id: notificationData.buyer_id,
+        title: notificationData.title,
+        message: notificationData.message,
+        is_read: false
+      };
+      
+      console.log('Notification payload:', JSON.stringify(payload, null, 2));
+      
       const { data, error } = await getSupabaseClient()
         .from('notifications')
-        .insert([{
-          buyer_id: notificationData.buyer_id,
-          title: notificationData.title,
-          message: notificationData.message
-        }])
+        .insert([payload])
         .select();
       
       if (error) {
-        console.error('Error creating notification:', error);
+        console.error('Notification error code:', error.code);
+        console.error('Notification error message:', error.message);
+        console.error('Notification error details:', error.details);
         throw error;
       }
       
+      console.log('Notification created:', data);
       return data?.[0];
     } catch (err) {
       console.error('Failed to create notification:', err);
@@ -1615,6 +1632,17 @@
   // SUPABASE DATA MAPPING / REFRESH HELPERS
   // =====================================================
   function mapRefundCaseToReport(caseData) {
+    // If status is 'pending' (complaint started), use created_at as evidence submission time for countdown
+    const evidenceSubmittedTime = caseData.evidence_submitted_at || (caseData.status !== 'purchased' ? caseData.created_at : null);
+    
+    console.log('DEBUG mapRefundCaseToReport:', {
+      order_id: caseData.order_id,
+      status: caseData.status,
+      created_at: caseData.created_at,
+      evidence_submitted_at: caseData.evidence_submitted_at,
+      calculatedEvidenceTime: evidenceSubmittedTime
+    });
+    
     return {
       id: caseData.id,
       order_id: caseData.order_id,
@@ -1625,7 +1653,7 @@
       description: caseData.complaint_text || '',
       purchase_date: caseData.purchase_date,
       created_at: caseData.created_at,
-      evidence_submitted_at: caseData.evidence_submitted_at,
+      evidence_submitted_at: evidenceSubmittedTime,
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
       marketmix_reason: caseData.marketmix_reason,
@@ -1728,7 +1756,11 @@
   }
 
   async function refreshRefundTableFromSupabase() {
+    console.log('DEBUG: Refreshing refund table from Supabase...');
     currentReports = await loadReturnReportsForCurrentBuyer();
+    console.log('DEBUG: Loaded reports:', currentReports);
+    const reportsWithEvidence = currentReports.filter(r => r.evidence_submitted_at);
+    console.log('DEBUG: Reports with evidence_submitted_at:', reportsWithEvidence);
     renderReports(currentReports);
   }
   // =====================================================
@@ -2125,6 +2157,13 @@
     // Get buyer ID from the same auth data saved by the buyer login page.
     let userId = getCurrentBuyerId();
     
+    // Start notification sync
+    if (userId) {
+      await syncNotifications(userId);
+      // Mark refund notifications as read when opening this page
+      await NotificationManager.markTypeAsRead(userId, 'refund');
+    }
+    
     // Fetch real buyer orders and Supabase refund cases, then render them in the existing table.
     if (userId) {
       try {
@@ -2228,7 +2267,7 @@
         `;
       }
 
-      if (report.purchase_date) {
+      if (report.purchase_date || report.evidence_submitted_at) {
         const now = Date.now();
         let expiryTime;
         let timeLeft;
@@ -2238,6 +2277,13 @@
           const evidenceTime = new Date(report.evidence_submitted_at).getTime();
           expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
           timeLeft = expiryTime - now;
+          console.log('DEBUG: Calculating countdown from evidence time:', {
+            evidenceTime,
+            expiryTime,
+            now,
+            timeLeft,
+            daysLeft: Math.floor(timeLeft / (1000 * 60 * 60 * 24))
+          });
         } else {
           // Otherwise, countdown from 5 days after purchase
           const purchaseTime = new Date(report.purchase_date).getTime();
@@ -2838,6 +2884,18 @@
     document.getElementById('detailsModal').classList.remove('active');
   }
 </script>
-
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+        // Mark refund notifications as read when opening Returns & Refunds page
+        await NotificationManager.markTypeAsRead(buyerId, 'refund');
+      }
+    });
+  </script>
 </body>
 </html>
