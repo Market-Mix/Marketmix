@@ -225,8 +225,19 @@
 <script src="storeManager.js"></script>
 <script>
 const API = 'https://marketmix-backend.onrender.com/api';
+let updatingActiveStoreCache = false;
 
 function getToken() { return localStorage.getItem('token') || ''; }
+
+function updateActiveStoreCache(store) {
+  if (!window.StoreManager?.setActiveStore) return;
+  updatingActiveStoreCache = true;
+  try {
+    window.StoreManager.setActiveStore(store);
+  } finally {
+    updatingActiveStoreCache = false;
+  }
+}
 
 function toast(msg, type = '') {
   const el = document.getElementById('toast');
@@ -428,7 +439,7 @@ async function loadSettings() {
 
     const s = data.data?.store || store;
     // Keep StoreManager cache fresh
-    window.StoreManager.setActiveStore(s);
+    updateActiveStoreCache(s);
     renderForm(s);
   } catch (e) {
     // Fallback to cached store data
@@ -486,7 +497,7 @@ async function handleLogoUpload(e, storeId) {
 
     // Update cache
     const updated = { ...window.StoreManager.getActiveStore(), store_logo_url: logoUrl };
-    window.StoreManager.setActiveStore(updated);
+    updateActiveStoreCache(updated);
     toast('Store logo updated!', 'success');
   } catch (err) {
     toast(err.message || 'Failed to upload logo', 'error');
@@ -529,7 +540,7 @@ async function saveStore(storeId) {
 
     // Update StoreManager cache
     const updated = { ...window.StoreManager.getActiveStore(), business_name: storeName, ...payload };
-    window.StoreManager.setActiveStore(updated);
+    updateActiveStoreCache(updated);
     document.getElementById('navStoreBadge').querySelector('span').textContent = storeName;
     toast('Store settings saved!', 'success');
   } catch (e) {
@@ -539,7 +550,9 @@ async function saveStore(storeId) {
 }
 
 // Re-load when active store changes
-window.addEventListener('storeChanged', loadSettings);
+window.addEventListener('storeChanged', () => {
+  if (!updatingActiveStoreCache) loadSettings();
+});
 document.addEventListener('DOMContentLoaded', loadSettings);
 </script>
 </body>
