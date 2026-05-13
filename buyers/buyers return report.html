@@ -1473,6 +1473,7 @@
         throw error;
       }
       
+      console.log('Refund case created:', data);
       return data;
     } catch (err) {
       console.error('Failed to create refund case:', err);
@@ -1520,20 +1521,30 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
+      console.log('Creating notification with:', {
+        user_id: notificationData.buyer_id,
+        title: notificationData.title,
+        message: notificationData.message,
+        type: notificationData.type || 'refund'
+      });
+      
       const { data, error } = await getSupabaseClient()
         .from('notifications')
         .insert([{
-          buyer_id: notificationData.buyer_id,
+          user_id: notificationData.buyer_id,
           title: notificationData.title,
-          message: notificationData.message
+          message: notificationData.message,
+          type: notificationData.type || 'refund',
+          is_read: false
         }])
         .select();
       
       if (error) {
-        console.error('Error creating notification:', error);
+        console.error('Supabase notification error:', error);
         throw error;
       }
       
+      console.log('Notification created:', data);
       return data?.[0];
     } catch (err) {
       console.error('Failed to create notification:', err);
@@ -1615,6 +1626,9 @@
   // SUPABASE DATA MAPPING / REFRESH HELPERS
   // =====================================================
   function mapRefundCaseToReport(caseData) {
+    // If status is 'pending' (complaint started), use created_at as evidence submission time for countdown
+    const evidenceSubmittedTime = caseData.evidence_submitted_at || (caseData.status !== 'purchased' ? caseData.created_at : null);
+    
     return {
       id: caseData.id,
       order_id: caseData.order_id,
@@ -1625,7 +1639,7 @@
       description: caseData.complaint_text || '',
       purchase_date: caseData.purchase_date,
       created_at: caseData.created_at,
-      evidence_submitted_at: caseData.evidence_submitted_at,
+      evidence_submitted_at: evidenceSubmittedTime,
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
       marketmix_reason: caseData.marketmix_reason,
