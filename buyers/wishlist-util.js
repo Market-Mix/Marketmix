@@ -53,26 +53,6 @@ async function addToWishlist(productId) {
 
     // Show success popup
     alert('Added to wishlist! ❤️');
-    
-    // Create notification for wishlist update (only for authenticated users)
-    if (token && typeof NotificationManager !== 'undefined') {
-      try {
-        const buyerId = getBuyerId?.() || (JSON.parse(localStorage.getItem('user') || '{}').id);
-        if (buyerId) {
-          const productName = data.data?.product_name || `Product #${productId}`;
-          await NotificationManager.createNotification(buyerId, {
-            title: 'Item Added to Wishlist',
-            message: `${productName} has been added to your wishlist`,
-            type: 'wishlist',
-            link: '/buyers/buyers wishlist.html'
-          });
-          updateWishlistBadge?.(buyerId);
-        }
-      } catch (err) {
-        console.error('Error creating wishlist notification:', err);
-      }
-    }
-    
     return true;
 
   } catch (error) {

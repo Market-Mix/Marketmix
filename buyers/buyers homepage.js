@@ -82,24 +82,6 @@ window.addEventListener('DOMContentLoaded', () => {
     ex ? ex.quantity = (ex.quantity||1)+1 : cart.push({...product, quantity:1});
     saveCart();
     showToast(`${product.name} added to cart`);
-    
-    // Create notification for cart update
-    if (typeof NotificationManager !== 'undefined') {
-      try {
-        const buyerId = getBuyerId?.() || (JSON.parse(localStorage.getItem('user') || '{}').id);
-        if (buyerId) {
-          await NotificationManager.createNotification(buyerId, {
-            title: 'Item Added to Cart',
-            message: `${product.name} has been added to your cart`,
-            type: 'cart',
-            link: '/buyers/cart.html'
-          });
-          updateCartBadge?.(buyerId);
-        }
-      } catch (err) {
-        console.error('Error creating cart notification:', err);
-      }
-    }
   }
 
   function attachCartListeners() {
