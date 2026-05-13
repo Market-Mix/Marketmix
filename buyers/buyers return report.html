@@ -1521,26 +1521,26 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
-      console.log('Creating notification with:', {
+      const payload = {
         user_id: notificationData.buyer_id,
         title: notificationData.title,
         message: notificationData.message,
-        type: notificationData.type || 'refund'
-      });
+        type: notificationData.type || 'refund',
+        is_read: false
+      };
+      
+      console.log('Notification payload:', JSON.stringify(payload, null, 2));
       
       const { data, error } = await getSupabaseClient()
         .from('notifications')
-        .insert([{
-          user_id: notificationData.buyer_id,
-          title: notificationData.title,
-          message: notificationData.message,
-          type: notificationData.type || 'refund',
-          is_read: false
-        }])
+        .insert([payload])
         .select();
       
       if (error) {
-        console.error('Supabase notification error:', error);
+        console.error('Notification error code:', error.code);
+        console.error('Notification error message:', error.message);
+        console.error('Notification error details:', error.details);
+        console.error('Full error object:', JSON.stringify(error, null, 2));
         throw error;
       }
       
