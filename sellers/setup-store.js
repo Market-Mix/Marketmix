@@ -60,9 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const previewSocials = document.getElementById('previewSocials');
   const mapFrame       = document.getElementById('mapFrame');
 
-  // OTP UI — injected below the email field
-  let otpVerified    = false;
-  let otpSentEmail   = null;
+  // OTP UI
+  let otpVerified  = false;
+  let otpSentEmail = null;
 
   // Inject OTP input row below email field
   const emailFormGroup = document.getElementById('email').closest('.form-group');
@@ -85,10 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ─── Toast ─────────────────────────────────────────────────────────────── */
   function showToast(msg, type = 'info') {
-    if (typeof showNotification === 'function') {
-      showNotification(msg, type);
-      return;
-    }
+    if (typeof showNotification === 'function') { showNotification(msg, type); return; }
     const existing = document.querySelector('.toast-msg');
     if (existing) existing.remove();
     const t = document.createElement('div');
@@ -119,51 +116,70 @@ document.addEventListener('DOMContentLoaded', () => {
     if (input) input.style.borderColor = '';
   }
 
-  /* ─── Load existing seller profile ─────────────────────────────────────── */
+  /* ─── Load existing store #1 if it exists ───────────────────────────────── */
   async function loadProfile() {
     try {
-      const res  = await fetch(`${API_BASE}/seller/profile`, {
+      // First try the stores endpoint (new)
+      const storesRes = await fetch(`${API_BASE}/seller/stores`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) return;
-      const data = await res.json();
-      const p    = data.data?.seller?.profile;
-      if (!p) return;
-
-      if (p.businessName)    storeName.value    = p.businessName;
-      if (p.businessAddress) addressInput.value = p.businessAddress;
-      if (p.businessPhone)   phoneInput.value   = p.businessPhone;
-      if (p.businessEmail) {
-        emailInput.value = p.businessEmail;
-        previewEmail.textContent = p.businessEmail;
-      }
-
-      // Check verified status
-      if (p.isVerified) {
-        markEmailVerified();
-      }
-
-      // Update previews
-      previewName.textContent    = p.businessName    || 'Your Store Name';
-      previewAddress.textContent = p.businessAddress || '—';
-      previewPhone.textContent   = p.businessPhone   || '—';
-
-      // Extract category from businessDescription if present
-      if (p.businessDescription) {
-        const match = p.businessDescription.match(/Product Category:\s*([^|]+)/);
-        if (match && match[1]) {
-          const cat = match[1].trim();
-          const found = defaultCategories.find(c => c.toLowerCase() === cat.toLowerCase());
-          if (found) {
-            selectedCategory = found;
-            renderChips();
-            updatePreviewCategories();
-          }
+      if (storesRes.ok) {
+        const data   = await storesRes.json();
+        const stores = data.data?.stores || [];
+        const store1 = stores.find(s => s.store_number === 1);
+        if (store1) {
+          populateFormFromStore(store1);
+          return;
         }
       }
     } catch (e) {
-      console.warn('Could not load profile:', e.message);
+      console.warn('Could not load store:', e.message);
     }
+  }
+
+  function populateFormFromStore(store) {
+    if (store.business_name)    storeName.value    = store.business_name;
+    if (store.business_address) addressInput.value = store.business_address;
+    if (store.business_phone)   phoneInput.value   = store.business_phone;
+    if (store.business_email) {
+      emailInput.value           = store.business_email;
+      previewEmail.textContent   = store.business_email;
+    }
+    if (store.website) websiteInput.value = store.website;
+
+    // Social links
+    if (store.facebook)  document.getElementById('social-facebook').value = store.facebook;
+    if (store.twitter)   document.getElementById('social-x').value        = store.twitter;
+    if (store.tiktok)    document.getElementById('social-tiktok').value    = store.tiktok;
+    if (store.instagram) document.getElementById('social-ig').value        = store.instagram;
+    if (store.telegram)  document.getElementById('social-telegram').value  = store.telegram;
+
+    if (store.is_verified) markEmailVerified();
+
+    // Logo
+    if (store.store_logo_url) {
+      logoPreview.src            = store.store_logo_url;
+      logoPreview.style.display  = 'block';
+      previewLogo.src            = store.store_logo_url;
+      previewLogo.style.display  = 'block';
+      previewNoImg.style.display = 'none';
+      removeLogoBtn.style.display = 'inline-block';
+    }
+
+    // Category
+    if (store.category) {
+      const found = defaultCategories.find(c => c.toLowerCase() === store.category.toLowerCase());
+      if (found) {
+        selectedCategory = found;
+        renderChips();
+        updatePreviewCategories();
+      }
+    }
+
+    // Update previews
+    previewName.textContent    = store.business_name    || 'Your Store Name';
+    previewAddress.textContent = store.business_address || '—';
+    previewPhone.textContent   = store.business_phone   || '—';
   }
 
   /* ─── OTP: Send ─────────────────────────────────────────────────────────── */
@@ -203,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('otpMsg').style.color = '#4CAF50';
       document.getElementById('resendOtpBtn').style.display = 'inline';
 
-      // Start 60s cooldown on Verify button
       let countdown = 60;
       verifyEmailBtn.textContent = `Resend (${countdown}s)`;
       const timer = setInterval(() => {
@@ -217,7 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 1000);
 
     } catch (err) {
-      console.error('Send OTP error:', err);
       showFieldError('email', 'Network error. Please try again.');
       verifyEmailBtn.disabled = false;
       verifyEmailBtn.textContent = 'Verify';
@@ -228,9 +242,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', async (e) => {
     if (e.target.id !== 'verifyOtpBtn') return;
 
-    const otp      = document.getElementById('otpInput').value.trim();
-    const otpMsg   = document.getElementById('otpMsg');
-    const otpBtn   = document.getElementById('verifyOtpBtn');
+    const otp    = document.getElementById('otpInput').value.trim();
+    const otpMsg = document.getElementById('otpMsg');
+    const otpBtn = document.getElementById('verifyOtpBtn');
 
     if (!otp || otp.length !== 6) {
       otpMsg.textContent = 'Please enter the 6-digit code.';
@@ -261,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Email verified successfully! ✅', 'success');
 
     } catch (err) {
-      console.error('Verify OTP error:', err);
       otpMsg.textContent = 'Network error. Please try again.';
       otpMsg.style.color = '#f44336';
       otpBtn.disabled = false;
@@ -346,10 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!file.type.startsWith('image/')) return alert('Please upload an image file.');
     const reader = new FileReader();
     reader.onload = ev => {
-      logoPreview.src          = ev.target.result;
-      logoPreview.style.display = 'block';
-      previewLogo.src           = ev.target.result;
-      previewLogo.style.display = 'block';
+      logoPreview.src            = ev.target.result;
+      logoPreview.style.display  = 'block';
+      previewLogo.src            = ev.target.result;
+      previewLogo.style.display  = 'block';
       previewNoImg.style.display = 'none';
       removeLogoBtn.style.display = 'inline-block';
       errorLogo.textContent = '';
@@ -358,13 +371,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   removeLogoBtn.addEventListener('click', () => {
-    logoInput.value            = '';
-    logoPreview.src            = '';
-    logoPreview.style.display  = 'none';
+    logoInput.value             = '';
+    logoPreview.src             = '';
+    logoPreview.style.display   = 'none';
     removeLogoBtn.style.display = 'none';
-    previewLogo.src            = '';
-    previewLogo.style.display  = 'none';
-    previewNoImg.style.display = 'block';
+    previewLogo.src             = '';
+    previewLogo.style.display   = 'none';
+    previewNoImg.style.display  = 'block';
   });
 
   /* ─── Gallery ───────────────────────────────────────────────────────────── */
@@ -452,7 +465,6 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async e => {
     e.preventDefault();
 
-    // Clear all errors
     ['logo','storeName','email','phone','address','category'].forEach(clearFieldError);
 
     let valid = true;
@@ -521,11 +533,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // ── KEY CHANGE: persist the store in localStorage so dashboard loads correctly ──
+      if (data.data?.store) {
+        localStorage.setItem('mm_active_store', JSON.stringify(data.data.store));
+        localStorage.removeItem('mm_stores_cache'); // force refresh on next load
+      }
+
       showToast('Store setup completed! 🎉 Redirecting to KYC verification...', 'success');
       setTimeout(() => { window.location.href = 'kyc-verification.html'; }, 2000);
 
     } catch (err) {
-      console.error('Save store error:', err);
       showToast('Network error. Please check your connection.', 'error');
       saveBtn.disabled    = false;
       saveBtn.textContent = 'Save & Continue to verify KYC';
@@ -538,7 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updatePreviewCategories();
   loadProfile();
 
-  // Auto year in footer
   const footerCopy = document.querySelector('.footer-copy');
   if (footerCopy) {
     footerCopy.innerHTML = `&copy; ${new Date().getFullYear()} MarketMix. All rights reserved.`;
