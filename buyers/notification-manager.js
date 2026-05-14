@@ -21,11 +21,23 @@ function getBuyerId() {
 
 // Initialize Supabase client
 function getSupabaseClient() {
-  if (window.supabase) {
-    return window.supabase;
+  if (window.marketmixSupabaseClient) {
+    return window.marketmixSupabaseClient;
   }
-  console.error('❌ Supabase not loaded');
-  return null;
+  
+  if (!window.supabase || !window.supabase.createClient) {
+    console.error('❌ Supabase not loaded');
+    return null;
+  }
+  
+  try {
+    window.marketmixSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase client initialized');
+    return window.marketmixSupabaseClient;
+  } catch (e) {
+    console.error('❌ Error initializing Supabase:', e);
+    return null;
+  }
 }
 
 // Global NotificationManager object

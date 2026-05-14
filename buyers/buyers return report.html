@@ -1444,271 +1444,23 @@
   }
   
   // =====================================================
-  // CENTRALIZED NOTIFICATION MANAGER
+  // SUPABASE INITIALIZATION (use from notification-manager.js)
   // =====================================================
-  const NotificationManager = {
-    cache: {
-      unreadCounts: {},
-      lastFetch: 0,
-      fetchInterval: 30000 // 30 seconds
-    },
+  window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
+  window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
 
-    /**
-     * Fetch unread count by type from Supabase
-     */
-    async getUnreadCount(buyerId, type = null) {
-      try {
-        let query = getSupabaseClient()
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', buyerId)
-          .eq('is_read', false);
-
-        if (type) {
-          query = query.eq('type', type);
-        }
-
-        const { count, error } = await query;
-        if (error) throw error;
-        return count || 0;
-      } catch (err) {
-        console.error('Error fetching unread count:', err);
-        return 0;
-      }
-    },
-
-    /**
-     * Fetch total unread count across all types
-     */
-    async getTotalUnreadCount(buyerId) {
-      return this.getUnreadCount(buyerId, null);
-    },
-
-    /**
-     * Fetch unread counts by type
-     */
-    async getUnreadCountsByType(buyerId) {
-      try {
-        const types = ['refund', 'cart', 'wishlist', 'order', 'account'];
-        const counts = {};
-
-        for (const type of types) {
-          counts[type] = await this.getUnreadCount(buyerId, type);
-        }
-
-        return counts;
-      } catch (err) {
-        console.error('Error fetching unread counts by type:', err);
-        return {};
-      }
-    },
-
-    /**
-     * Mark notification as read
-     */
-    async markAsRead(notificationId) {
-      try {
-        const { error } = await getSupabaseClient()
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('id', notificationId);
-
-        if (error) throw error;
-        console.log('Notification marked as read:', notificationId);
-        return true;
-      } catch (err) {
-        console.error('Error marking notification as read:', err);
-        return false;
-      }
-    },
-
-    /**
-     * Mark all notifications of a type as read
-     */
-    async markTypeAsRead(buyerId, type) {
-      try {
-        const { error } = await getSupabaseClient()
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('user_id', buyerId)
-          .eq('type', type)
-          .eq('is_read', false);
-
-        if (error) throw error;
-        console.log(`All ${type} notifications marked as read`);
-        return true;
-      } catch (err) {
-        console.error(`Error marking ${type} notifications as read:`, err);
-        return false;
-      }
-    },
-
-    /**
-     * Mark all notifications as read
-     */
-    async markAllAsRead(buyerId) {
-      try {
-        const { error } = await getSupabaseClient()
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('user_id', buyerId)
-          .eq('is_read', false);
-
-        if (error) throw error;
-        console.log('All notifications marked as read');
-        return true;
-      } catch (err) {
-        console.error('Error marking all notifications as read:', err);
-        return false;
-      }
-    },
-
-    /**
-     * Fetch unread notifications
-     */
-    async fetchUnreadNotifications(buyerId, limit = 10) {
-      try {
-        const { data, error } = await getSupabaseClient()
-          .from('notifications')
-          .select('*')
-          .eq('user_id', buyerId)
-          .eq('is_read', false)
-          .order('created_at', { ascending: false })
-          .limit(limit);
-
-        if (error) throw error;
-        return data || [];
-      } catch (err) {
-        console.error('Error fetching unread notifications:', err);
-        return [];
-      }
+  function getSupabaseClient() {
+    if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      console.error('❌ Supabase client library is not loaded.');
+      return null;
     }
-  };
-
-  /**
-   * Update navbar notification badge
-   */
-  function updateNavbarNotificationBadge(buyerId) {
-    const badge = document.querySelector('[data-notification-badge]');
-    if (!badge) return;
-
-    NotificationManager.getTotalUnreadCount(buyerId).then(count => {
-      if (count > 0) {
-        badge.textContent = count > 99 ? '99+' : count;
-        badge.style.display = 'inline-flex';
-      } else {
-        badge.style.display = 'none';
-      }
-    });
+    window.marketmixSupabaseClient = window.supabase.createClient(
+      window.MARKETMIX_SUPABASE_URL,
+      window.MARKETMIX_SUPABASE_ANON_KEY
+    );
+    return window.marketmixSupabaseClient;
   }
-
-    /**
-     * Update refund page badge
-     */
-    function updateRefundPageBadge(buyerId) {
-      const badge = document.querySelector('[data-refund-badge]');
-      if (!badge) return;
-
-      NotificationManager.getUnreadCount(buyerId, 'refund').then(count => {
-        if (count > 0) {
-          badge.textContent = count > 99 ? '99+' : count;
-          badge.style.display = 'inline-flex';
-        } else {
-          badge.style.display = 'none';
-        }
-      });
-    }
-
-    /**
-     * Update account badge (total activity)
-     */
-    function updateAccountBadge(buyerId) {
-      const badge = document.querySelector('[data-account-badge]');
-      if (!badge) return;
-
-      NotificationManager.getTotalUnreadCount(buyerId).then(count => {
-        if (count > 0) {
-          badge.textContent = count > 99 ? '99+' : count;
-          badge.style.display = 'inline-flex';
-        } else {
-          badge.style.display = 'none';
-        }
-      });
-    }
-
-    /**
-     * Update cart badge
-     */
-    function updateCartBadge(buyerId) {
-      const badge = document.querySelector('[data-cart-badge]');
-      if (!badge) return;
-
-      NotificationManager.getUnreadCount(buyerId, 'cart').then(count => {
-        if (count > 0) {
-          badge.textContent = count > 99 ? '99+' : count;
-          badge.style.display = 'inline-flex';
-        } else {
-          badge.style.display = 'none';
-        }
-      });
-    }
-
-    /**
-     * Update wishlist badge
-     */
-    function updateWishlistBadge(buyerId) {
-      const badge = document.querySelector('[data-wishlist-badge]');
-      if (!badge) return;
-
-      NotificationManager.getUnreadCount(buyerId, 'wishlist').then(count => {
-        if (count > 0) {
-          badge.textContent = count > 99 ? '99+' : count;
-          badge.style.display = 'inline-flex';
-        } else {
-          badge.style.display = 'none';
-        }
-      });
-    }
-
-    /**
-     * Update tracking/orders badge
-     */
-    function updateTrackingBadge(buyerId) {
-      const badge = document.querySelector('[data-tracking-badge]');
-      if (!badge) return;
-
-      NotificationManager.getUnreadCount(buyerId, 'order').then(count => {
-        if (count > 0) {
-          badge.textContent = count > 99 ? '99+' : count;
-          badge.style.display = 'inline-flex';
-        } else {
-          badge.style.display = 'none';
-        }
-      });
-    }
-
-    /**
-     * Update all badges
-     */
-    function updateAllBadges(buyerId) {
-      updateNavbarNotificationBadge(buyerId);
-      updateRefundPageBadge(buyerId);
-      updateAccountBadge(buyerId);
-      updateCartBadge(buyerId);
-      updateWishlistBadge(buyerId);
-      updateTrackingBadge(buyerId);
-    }
-
-    /**
-     * Sync unread counts when page loads
-     */
-    async function syncNotifications(buyerId) {
-      console.log('Syncing notifications for buyer:', buyerId);
-      updateAllBadges(buyerId);
-      
-      // Set up periodic refresh every 30 seconds
-      setInterval(() => updateAllBadges(buyerId), 30000);
-    }
 
   // =====================================================
   // SUPABASE HELPER FUNCTIONS
@@ -2419,21 +2171,28 @@
     
     // Start notification sync
     if (userId) {
-      await syncNotifications(userId);
-      // Mark refund notifications as read when opening this page
-      await NotificationManager.markTypeAsRead(userId, 'refund');
+      if (typeof NotificationManager !== 'undefined') {
+        await NotificationManager.init(userId);
+        // Mark refund notifications as read when opening this page
+        await NotificationManager.markTypeAsRead(userId, 'refund');
+      }
     }
     
     // Fetch real buyer orders and Supabase refund cases, then render them in the existing table.
     if (userId) {
       try {
         currentReports = await loadReturnReportsForCurrentBuyer();
+        // If no reports loaded, use sample data as fallback
+        if (!currentReports || currentReports.length === 0) {
+          console.log('📋 No reports loaded from Supabase, using sample data');
+          currentReports = sampleReports;
+        }
       } catch (err) {
         console.error('Failed to load returns data:', err);
-        currentReports = [];
+        currentReports = sampleReports;
       }
     } else {
-      currentReports = [];
+      currentReports = sampleReports;
       showNotification('Unable to identify your buyer account. Please log in again.', 'error');
     }
     
