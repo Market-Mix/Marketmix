@@ -436,7 +436,7 @@ async function goToSettings(storeId) {
 // ── Preview store ──────────────────────────────────────────────────────────────
 function previewStore(storeId, storeName) {
   const baseUrl   = window.location.origin;
-  const storeUrl  = `${baseUrl}/buyers/store-id.html?seller=${storeId}`;
+  const storeUrl  = `${baseUrl}/buyers/store-id.html?store=${storeId}`;
   const container = document.getElementById('previewContainer');
   const urlBar    = document.getElementById('previewUrl');
   const openBtn   = document.getElementById('previewOpenBtn');

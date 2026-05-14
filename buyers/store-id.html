@@ -994,30 +994,50 @@
     // Override renderStoreInfo to use new layout
     const _originalRenderStoreInfo = window.renderStoreInfo;
 
+    function storeField(store, camel, snake, fallback = '') {
+      return store?.[camel] ?? store?.[snake] ?? fallback;
+    }
+
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
+
     function renderStoreInfo(store) {
-      document.title = `${store.businessName} | MarketMix`;
+      const name = storeField(store, 'businessName', 'business_name', 'Store');
+      const logo = storeField(store, 'storeLogo', 'store_logo_url', '');
+      const isVerified = storeField(store, 'isVerified', 'is_verified', false);
+      const address = storeField(store, 'businessAddress', 'business_address', '');
+      const memberSince = store.memberSince || store.created_at;
+      const reviews = parseInt(storeField(store, 'totalReviews', 'total_reviews', 0)) || 0;
+
+      document.title = `${name} | MarketMix`;
 
       // Avatar
       const logoEl = document.getElementById('storeLogo');
-      if (store.storeLogo) {
-        logoEl.innerHTML = `<img src="${store.storeLogo}" alt="${store.businessName} logo" />`;
+      if (logo) {
+        logoEl.innerHTML = `<img src="${esc(logo)}" alt="${esc(name)} logo" />`;
       } else {
-        const initials = store.businessName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
         logoEl.innerHTML = `<span class="logo-initials">${initials}</span>`;
       }
 
       // Verified badges — only when isVerified is true
-      if (store.isVerified) {
+      if (isVerified) {
         document.getElementById('verifiedBadge').style.display = 'inline-flex';
         document.getElementById('verifiedInline').style.display = 'inline-flex';
       }
 
       // Name
-      document.getElementById('storeName').textContent = store.businessName;
+      document.getElementById('storeName').textContent = name;
 
       // Rating
       const rating = parseFloat(store.rating) || 0;
-      const reviews = parseInt(store.totalReviews) || 0;
       const fullStars = Math.round(rating);
       document.getElementById('storeStarsDisplay').textContent =
         '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
@@ -1027,66 +1047,68 @@
         reviews > 0 ? `(${reviews.toLocaleString()} reviews)` : '';
 
       // Address
-      if (store.businessAddress) {
-        document.getElementById('storeAddress').textContent = store.businessAddress;
+      if (address) {
+        document.getElementById('storeAddress').textContent = address;
         document.getElementById('storeAddressItem').style.display = 'flex';
       }
 
       // Member since
-      if (store.memberSince) {
-        const year = new Date(store.memberSince).getFullYear();
+      if (memberSince) {
+        const year = new Date(memberSince).getFullYear();
         document.getElementById('storeMemberSince').textContent = `Member since ${year}`;
         document.getElementById('storeMemberItem').style.display = 'flex';
       }
 
       // Stats
-      document.getElementById('statProducts').textContent = (parseInt(store.productCount) || 0).toLocaleString();
-      document.getElementById('statSales').textContent = (parseInt(store.totalSales) || 0).toLocaleString();
+      document.getElementById('statProducts').textContent = (parseInt(storeField(store, 'productCount', 'product_count', 0)) || 0).toLocaleString();
+      document.getElementById('statSales').textContent = (parseInt(storeField(store, 'totalSales', 'total_sales', 0)) || 0).toLocaleString();
       document.getElementById('statRating').textContent = rating > 0 ? rating.toFixed(1) : '—';
       document.getElementById('statReviews').textContent = reviews.toLocaleString();
 
       // Policies email
-      document.getElementById('policyEmail').textContent = store.businessEmail || 'Contact via MarketMix';
+      document.getElementById('policyEmail').textContent = storeField(store, 'businessEmail', 'business_email', 'Contact via MarketMix');
 
       // About
       document.getElementById('aboutContent').innerHTML = buildAboutHTML(store);
     }
 
     function buildAboutHTML(store) {
-      const links = store.socialLinks || {};
+      const links = store.socialLinks || store.social_links || {};
       const socialItems = [
-        links.website    ? { icon: 'fa-solid fa-globe',      label: 'Website',    href: links.website } : null,
-        links.instagram  ? { icon: 'fa-brands fa-instagram', label: 'Instagram',  href: `https://instagram.com/${links.instagram}` } : null,
-        links.facebook   ? { icon: 'fa-brands fa-facebook',  label: 'Facebook',   href: links.facebook } : null,
-        links.twitter    ? { icon: 'fa-brands fa-x-twitter', label: 'Twitter/X',  href: `https://twitter.com/${links.twitter}` } : null,
-        links.tiktok     ? { icon: 'fa-brands fa-tiktok',    label: 'TikTok',     href: `https://tiktok.com/@${links.tiktok}` } : null,
+        (links.website || store.website) ? { icon: 'fa-solid fa-globe',      label: 'Website',    href: links.website || store.website } : null,
+        (links.instagram || store.instagram) ? { icon: 'fa-brands fa-instagram', label: 'Instagram',  href: `https://instagram.com/${links.instagram || store.instagram}` } : null,
+        (links.facebook || store.facebook) ? { icon: 'fa-brands fa-facebook',  label: 'Facebook',   href: links.facebook || store.facebook } : null,
+        (links.twitter || store.twitter) ? { icon: 'fa-brands fa-x-twitter', label: 'Twitter/X',  href: `https://twitter.com/${links.twitter || store.twitter}` } : null,
+        (links.tiktok || store.tiktok) ? { icon: 'fa-brands fa-tiktok',    label: 'TikTok',     href: `https://tiktok.com/@${links.tiktok || store.tiktok}` } : null,
       ].filter(Boolean);
 
       const socialsHTML = socialItems.length > 0 ? `
         <div class="social-card">
           <div class="social-card-title">Connect</div>
           ${socialItems.map(s => `
-            <a href="${s.href}" target="_blank" class="social-link-item">
-              <i class="${s.icon}"></i> ${s.label}
+            <a href="${esc(s.href)}" target="_blank" class="social-link-item">
+              <i class="${s.icon}"></i> ${esc(s.label)}
             </a>`).join('')}
         </div>` : '';
 
       const details = [
         store.category     ? { label: 'Category', value: store.category } : null,
-        store.businessPhone ? { label: 'Phone',    value: store.businessPhone } : null,
-        store.businessEmail ? { label: 'Email',    value: store.businessEmail } : null,
+        storeField(store, 'businessPhone', 'business_phone') ? { label: 'Phone', value: storeField(store, 'businessPhone', 'business_phone') } : null,
+        storeField(store, 'businessEmail', 'business_email') ? { label: 'Email', value: storeField(store, 'businessEmail', 'business_email') } : null,
       ].filter(Boolean);
 
       const detailsHTML = details.map(d => `
         <div class="about-detail-row">
-          <span class="about-detail-label">${d.label}</span>
-          <span class="about-detail-value">${d.value}</span>
+          <span class="about-detail-label">${esc(d.label)}</span>
+          <span class="about-detail-value">${esc(d.value)}</span>
         </div>`).join('');
+
+      const description = storeField(store, 'businessDescription', 'business_description', 'This seller has not added a store description yet.');
 
       return `
         <div class="about-layout">
           <div>
-            <p class="about-description">${store.businessDescription || 'This seller has not added a store description yet.'}</p>
+            <p class="about-description">${esc(description)}</p>
             ${detailsHTML}
           </div>
           <div>${socialsHTML}</div>
@@ -1149,30 +1171,34 @@
       const isFlashActive = p.flash_start && p.flash_end &&
         new Date() >= new Date(p.flash_start) && new Date() <= new Date(p.flash_end);
 
-      const rating = parseFloat(p.avgRating) || 0;
+      const rating = parseFloat(p.avgRating || p.avg_rating) || 0;
+      const reviewCount = parseInt(p.reviewCount || p.review_count) || 0;
       const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
       const imgSrc = p.main_image_url || 'https://via.placeholder.com/300x300?text=No+Image';
-      const price = parseFloat(p.price).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+      const name = p.name || 'Product';
+      const price = (parseFloat(p.price) || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+      const inStock = parseInt(p.stock_quantity) > 0;
+      const productNameArg = JSON.stringify(name).replace(/"/g, '&quot;');
 
       card.innerHTML = `
         ${isFlashActive ? '<span class="flash-badge">Flash Sale</span>' : ''}
         <div class="card-img-wrap" onclick="viewProduct('${p.id}')">
-          <img src="${imgSrc}" alt="${p.name}" loading="lazy"
+          <img src="${esc(imgSrc)}" alt="${esc(name)}" loading="lazy"
             onerror="this.src='https://via.placeholder.com/300x300?text=No+Image'" />
         </div>
         <div class="card-body">
-          <div class="card-name" onclick="viewProduct('${p.id}')">${p.name}</div>
+          <div class="card-name" onclick="viewProduct('${p.id}')">${esc(name)}</div>
           <div class="card-price">₦${price}</div>
           <div class="card-meta">
             <span class="card-stars">${stars}
-              <small>${p.reviewCount > 0 ? `(${p.reviewCount})` : ''}</small>
+              <small>${reviewCount > 0 ? `(${reviewCount})` : ''}</small>
             </span>
-            ${p.stock_quantity === 0 ? '<span class="out-of-stock-tag">Out of stock</span>' : ''}
+            ${!inStock ? '<span class="out-of-stock-tag">Out of stock</span>' : ''}
           </div>
           <div class="card-actions">
             <button class="btn-view-sm" onclick="viewProduct('${p.id}')">View</button>
-            <button class="btn-cart-sm" onclick="addToCart('${p.id}', '${p.name.replace(/'/g, "\\'")}')"
-              ${p.stock_quantity === 0 ? 'disabled' : ''}>
+            <button class="btn-cart-sm" onclick="addToCart('${p.id}', ${productNameArg})"
+              ${!inStock ? 'disabled' : ''}>
               <i class="fa-solid fa-cart-plus"></i> Add to cart
             </button>
           </div>
@@ -1218,14 +1244,9 @@
       const searchParam = currentSearchQuery ? `&search=${encodeURIComponent(currentSearchQuery)}` : '';
 
       try {
-        const res = await fetch(
-          `${API}/seller/public/${STORE_ID}/products?page=1&limit=${PAGE_LIMIT}${catParam}${searchParam}`,
-          { headers: authHeaders() }
+        const { products, total } = await fetchProductsForStore(
+          `page=1&limit=${PAGE_LIMIT}${catParam}${searchParam}`
         );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-
-        const { products, total } = data.data;
         totalProducts = total;
         allProducts = products;
         currentPage = 1;

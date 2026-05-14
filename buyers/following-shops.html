@@ -217,9 +217,12 @@
       const logo = s.store_logo || avatarUrl(s.business_name);
       const cat = s.category || '';
       const rating = parseFloat(s.rating) || 0;
+      const storeHref = s.store_id || s.storeId
+        ? `store-id.html?store=${encodeURIComponent(s.store_id || s.storeId)}`
+        : `store-id.html?seller=${encodeURIComponent(s.seller_id || s.sellerId)}`;
       return `
         <div class="shop-card-wrap" data-seller="${s.seller_id}">
-          <a href="store-id.html?seller=${s.seller_id}" class="shop-card">
+          <a href="${storeHref}" class="shop-card">
             ${s.is_verified ? '<span class="verified" title="Verified">✓</span>' : ''}
             <img class="logo" src="${escapeHtml(logo)}" alt="${escapeHtml(s.business_name)}"
               onerror="this.src='${avatarUrl(s.business_name)}'">
