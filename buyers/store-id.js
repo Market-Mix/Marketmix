@@ -26,11 +26,13 @@ let allProducts  = [];
 let currentPage  = 1;
 let totalProducts = 0;
 const PAGE_LIMIT  = 20;
+let resolvedStoreId = params.get('store') || null;
+let resolvedSellerId = params.get('seller') || null;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (!STORE_ID) return;
-  loadStoreProfile();
+  await loadStoreProfile();
   loadProducts();
   loadReviews();
   initTabs();
@@ -57,6 +59,8 @@ async function loadStoreProfile() {
 
     // Normalise response — stores endpoint uses data.data.store
     storeData = data.data?.store || data.data;
+    resolvedStoreId = storeData?.storeId || storeData?.store_id || storeData?.id || resolvedStoreId;
+    resolvedSellerId = storeData?.sellerId || storeData?.seller_id || resolvedSellerId;
     renderStoreInfo(storeData);
   } catch (err) {
     console.error(err);
@@ -165,6 +169,50 @@ function buildAboutHTML(store) {
 }
 
 // ─── Load Products ────────────────────────────────────────────────────────────
+function getProductEndpointIds() {
+  return {
+    storeId: resolvedStoreId || storeData?.storeId || storeData?.store_id || null,
+    sellerId: resolvedSellerId || storeData?.sellerId || storeData?.seller_id || null,
+  };
+}
+
+function normaliseProductsPayload(data) {
+  const payload = data?.data || data || {};
+  const products = Array.isArray(payload)
+    ? payload
+    : payload.products || payload.items || [];
+
+  return {
+    products,
+    categories: payload.categories || [],
+    total: payload.total ?? payload.count ?? products.length,
+  };
+}
+
+async function fetchProductsForStore(queryString) {
+  const { storeId, sellerId } = getProductEndpointIds();
+  const urls = [];
+
+  if (storeId) urls.push(`${API}/seller/stores/public/${storeId}/products?${queryString}`);
+  if (sellerId) urls.push(`${API}/products?seller_id=${sellerId}&${queryString}`);
+  if (!urls.length) urls.push(`${API}/seller/stores/public/${STORE_ID}/products?${queryString}`);
+  if (!urls.some(url => url.includes(`seller_id=${STORE_ID}`))) {
+    urls.push(`${API}/products?seller_id=${STORE_ID}&${queryString}`);
+  }
+
+  let lastData = null;
+  let lastStatus = 0;
+  for (const url of [...new Set(urls)]) {
+    const res = await fetch(url, { headers: authHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return normaliseProductsPayload(data);
+    lastData = data;
+    lastStatus = res.status;
+  }
+
+  throw new Error(lastData?.message || `Failed to load products (${lastStatus || 'request failed'})`);
+}
+
 async function loadProducts(categoryFilter = 'all', append = false) {
   const grid = document.getElementById('productsGrid');
   if (!grid) return;
@@ -177,26 +225,9 @@ async function loadProducts(categoryFilter = 'all', append = false) {
   try {
     const catParam = categoryFilter !== 'all' ? `&category=${encodeURIComponent(categoryFilter)}` : '';
 
-    // Try store-scoped endpoint first
-    let res = await fetch(
-      `${API}/seller/stores/public/${STORE_ID}/products?page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`,
-      { headers: authHeaders() }
+    const { products, categories, total } = await fetchProductsForStore(
+      `page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`
     );
-
-    // Fallback to old seller products endpoint
-    if (!res.ok) {
-      res = await fetch(
-        `${API}/products?seller_id=${STORE_ID}&page=${currentPage}&limit=${PAGE_LIMIT}${catParam}`,
-        { headers: authHeaders() }
-      );
-    }
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to load products');
-
-    const products   = data.data?.products || data.data || [];
-    const categories = data.data?.categories || [];
-    const total      = data.data?.total || products.length;
 
     totalProducts = total;
 
