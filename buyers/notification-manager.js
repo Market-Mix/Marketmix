@@ -1,12 +1,11 @@
 // ============================================
 // CENTRALIZED NOTIFICATION MANAGER
 // ============================================
-// Manages all notifications from Supabase
+// Manages all notifications using Backend API
 // Auto-syncs every 30 seconds
 // Updates all badge elements across pages
 
-const SUPABASE_URL = 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
+const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
 
 // Get buyer ID from localStorage
 function getBuyerId() {
@@ -19,24 +18,47 @@ function getBuyerId() {
   }
 }
 
-// Initialize Supabase client
-function getSupabaseClient() {
-  if (window.marketmixSupabaseClient) {
-    return window.marketmixSupabaseClient;
-  }
-  
-  if (!window.supabase || !window.supabase.createClient) {
-    console.error('❌ Supabase not loaded');
-    return null;
-  }
-  
+// Get JWT token from localStorage
+function getAuthToken() {
   try {
-    window.marketmixSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase client initialized');
-    return window.marketmixSupabaseClient;
+    const token = localStorage.getItem('token');
+    return token || null;
   } catch (e) {
-    console.error('❌ Error initializing Supabase:', e);
+    console.error('❌ Error getting auth token:', e);
     return null;
+  }
+}
+
+// Make API call with auth
+async function apiCall(endpoint, options = {}) {
+  const token = getAuthToken();
+  if (!token) {
+    console.error('❌ No auth token available');
+    return { error: 'No auth token' };
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...options.headers
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+
+    if (response.status === 401) {
+      console.error('❌ Unauthorized - please login again');
+      return { error: 'Unauthorized' };
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error('❌ API call error:', e);
+    return { error: e.message };
   }
 }
 
@@ -75,79 +97,39 @@ const NotificationManager = {
     console.log('✅ NotificationManager initialized');
   },
 
-  // Fetch unread count for specific type
-  getUnreadCount: async function(buyerId, type) {
-    try {
-      const client = getSupabaseClient();
-      if (!client) return 0;
-
-      const { count, error } = await client
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', buyerId)
-        .eq('type', type)
-        .eq('is_read', false)
-        .eq('is_deleted', false);
-
-      if (error) {
-        console.error(`❌ Error fetching ${type} count:`, error);
-        return 0;
-      }
-      return count || 0;
-    } catch (e) {
-      console.error(`❌ Exception fetching ${type} count:`, e);
-      return 0;
-    }
-  },
-
-  // Fetch total unread across all types
-  getTotalUnreadCount: async function(buyerId) {
-    try {
-      const client = getSupabaseClient();
-      if (!client) return 0;
-
-      const { count, error } = await client
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', buyerId)
-        .eq('is_read', false)
-        .eq('is_deleted', false);
-
-      if (error) {
-        console.error('❌ Error fetching total unread:', error);
-        return 0;
-      }
-      return count || 0;
-    } catch (e) {
-      console.error('❌ Exception fetching total unread:', e);
-      return 0;
-    }
-  },
-
-  // Sync all counts from Supabase
+  // Sync all counts from Backend API
   syncUnreadCounts: async function(buyerId) {
     try {
-      const client = getSupabaseClient();
-      if (!client) return;
+      // Fetch unread notifications from backend
+      const response = await apiCall('/notifications?unread=true');
+      
+      if (response.error) {
+        console.error('❌ Error fetching notifications:', response.error);
+        return;
+      }
 
-      // Fetch each type
-      const [refund, cart, wishlist, order, total] = await Promise.all([
-        this.getUnreadCount(buyerId, 'refund'),
-        this.getUnreadCount(buyerId, 'cart'),
-        this.getUnreadCount(buyerId, 'wishlist'),
-        this.getUnreadCount(buyerId, 'order'),
-        this.getTotalUnreadCount(buyerId)
-      ]);
+      const unreadCount = response.unreadCount || 0;
+      const notifications = response.notifications || [];
+
+      // Count by type
+      const counts = {
+        refund: 0,
+        cart: 0,
+        wishlist: 0,
+        order: 0,
+        account: 0
+      };
+
+      notifications.forEach(notif => {
+        const type = notif.type || 'account';
+        if (counts[type] !== undefined) {
+          counts[type]++;
+        }
+      });
 
       // Update cache
-      this.cache.unreadCounts = {
-        refund,
-        cart,
-        wishlist,
-        order,
-        account: total
-      };
-      this.cache.totalUnread = total;
+      this.cache.unreadCounts = counts;
+      this.cache.totalUnread = unreadCount;
       this.cache.lastFetch = Date.now();
 
       console.log('✅ Synced unread counts:', this.cache.unreadCounts);
@@ -159,38 +141,30 @@ const NotificationManager = {
     }
   },
 
-  // Create notification
+  // Create notification via backend API
   createNotification: async function(buyerId, notification) {
     try {
-      const client = getSupabaseClient();
-      if (!client) {
-        console.error('❌ Supabase not available');
-        return null;
-      }
-
       const { title, message, type, link } = notification;
 
-      const { data, error } = await client
-        .from('notifications')
-        .insert([{
-          user_id: buyerId,
-          title: title || 'Notification',
-          message: message || '',
-          type: type || 'account',
-          link: link || '',
-          is_read: false,
-          is_deleted: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
-        .select();
+      const payload = {
+        user_id: buyerId,
+        title: title || 'Notification',
+        message: message || '',
+        type: type || 'account',
+        link: link || ''
+      };
 
-      if (error) {
-        console.error('❌ Error creating notification:', error);
+      const response = await apiCall('/notifications', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (response.error) {
+        console.error('❌ Error creating notification:', response.error);
         return null;
       }
 
-      console.log('✅ Notification created:', data);
+      console.log('✅ Notification created:', response.notification);
 
       // Update cache immediately
       if (type && this.cache.unreadCounts[type] !== undefined) {
@@ -199,41 +173,29 @@ const NotificationManager = {
       this.cache.totalUnread++;
       this.cache.unreadCounts.account = this.cache.totalUnread;
 
-      // Update badges immediately
-      updateAllBadges(buyerId);
+      // Update badges immediately (with slight delay to ensure DOM is ready)
+      setTimeout(() => {
+        updateAllBadges(buyerId);
+      }, 100);
 
-      return data ? data[0] : null;
+      return response.notification || null;
     } catch (e) {
       console.error('❌ Exception creating notification:', e);
       return null;
     }
   },
 
-  // Mark type as read
+  // Mark type as read (update cache, will be synced on next fetch)
   markTypeAsRead: async function(buyerId, type) {
     try {
-      const client = getSupabaseClient();
-      if (!client) return;
-
-      const { error } = await client
-        .from('notifications')
-        .update({ is_read: true, updated_at: new Date().toISOString() })
-        .eq('user_id', buyerId)
-        .eq('type', type)
-        .eq('is_read', false)
-        .eq('is_deleted', false);
-
-      if (error) {
-        console.error(`❌ Error marking ${type} as read:`, error);
-        return;
-      }
-
-      console.log(`✅ Marked ${type} notifications as read`);
-
-      // Update cache
+      // Note: Backend doesn't have bulk mark-by-type endpoint
+      // Update cache locally - next sync will refresh from server
+      const previousCount = this.cache.unreadCounts[type] || 0;
       this.cache.unreadCounts[type] = 0;
-      this.cache.totalUnread -= this.cache.unreadCounts[type];
+      this.cache.totalUnread -= previousCount;
       this.cache.unreadCounts.account = this.cache.totalUnread;
+
+      console.log(`✅ Marked ${type} notifications as read (cache updated)`);
 
       // Update badges
       updateAllBadges(buyerId);
@@ -242,21 +204,16 @@ const NotificationManager = {
     }
   },
 
-  // Mark all as read
+  // Mark all as read via backend API
   markAllAsRead: async function(buyerId) {
     try {
-      const client = getSupabaseClient();
-      if (!client) return;
+      const response = await apiCall('/notifications/read-all', {
+        method: 'PUT',
+        body: JSON.stringify({})
+      });
 
-      const { error } = await client
-        .from('notifications')
-        .update({ is_read: true, updated_at: new Date().toISOString() })
-        .eq('user_id', buyerId)
-        .eq('is_read', false)
-        .eq('is_deleted', false);
-
-      if (error) {
-        console.error('❌ Error marking all as read:', error);
+      if (response.error) {
+        console.error('❌ Error marking all as read:', response.error);
         return;
       }
 
