@@ -171,5 +171,16 @@
   <script src="js/components/RelatedProducts.js"></script>
   <script src="notification-manager.js"></script>
   <script src="js/product-page.js"></script>
+  <script>
+    // Initialize notification system on product page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId?.();
+      if (buyerId) {
+        console.log('🔔 product.html: Initializing NotificationManager for user:', buyerId);
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+      }
+    });
+  </script>
 </body>
 </html>

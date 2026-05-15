@@ -992,6 +992,17 @@
   <script src="notification-manager.js"></script>
   <script src="store-id.js"></script>
   <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId?.();
+      if (buyerId) {
+        console.log('🔔 store-id: Initializing NotificationManager for user:', buyerId);
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+      }
+    });
+  </script>
+  <script>
     // Override renderStoreInfo to use new layout
     const _originalRenderStoreInfo = window.renderStoreInfo;
 

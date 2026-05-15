@@ -414,5 +414,16 @@
   <script src="../utils/autocomplete.js"></script>
   <script src="notification-manager.js"></script>
   <script src="buyers homepage.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId?.();
+      if (buyerId) {
+        console.log('🔔 buyers homepage: Initializing NotificationManager for user:', buyerId);
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+      }
+    });
+  </script>
 </body>
 </html>
