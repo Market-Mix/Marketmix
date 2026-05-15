@@ -1430,15 +1430,16 @@
   window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0';
 
   function getSupabaseClient() {
-    if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
+    if (window.supabaseClient) return window.supabaseClient;
+    if (window.marketmixSupabaseClient) {
+      window.supabaseClient = window.marketmixSupabaseClient;
+      return window.supabaseClient;
+    }
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       throw new Error('Supabase client library is not loaded.');
     }
-    window.marketmixSupabaseClient = window.supabase.createClient(
-      window.MARKETMIX_SUPABASE_URL,
-      window.MARKETMIX_SUPABASE_ANON_KEY
-    );
-    return window.marketmixSupabaseClient;
+    console.error('❌ Supabase client is not initialized globally. Use the shared client from notification-manager or initialize one before calling getSupabaseClient.');
+    return null;
   }
   
   // =====================================================
@@ -1448,16 +1449,17 @@
   window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
 
   function getSupabaseClient() {
-    if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
+    if (window.supabaseClient) return window.supabaseClient;
+    if (window.marketmixSupabaseClient) {
+      window.supabaseClient = window.marketmixSupabaseClient;
+      return window.supabaseClient;
+    }
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       console.error('❌ Supabase client library is not loaded.');
       return null;
     }
-    window.marketmixSupabaseClient = window.supabase.createClient(
-      window.MARKETMIX_SUPABASE_URL,
-      window.MARKETMIX_SUPABASE_ANON_KEY
-    );
-    return window.marketmixSupabaseClient;
+    console.error('❌ Supabase client is not initialized globally. Use the shared client from notification-manager or initialize one before calling getSupabaseClient.');
+    return null;
   }
 
   // =====================================================
