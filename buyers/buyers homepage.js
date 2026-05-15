@@ -91,15 +91,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     saveCart();
     showToast(`${product.name} added to cart`);
 
-    // Create notification
+    // Create backend cart notification
     const buyerId = getBuyerId();
-    if (buyerId && typeof NotificationManager !== 'undefined') {
-      await NotificationManager.createNotification(buyerId, {
-        title: 'Item Added to Cart',
-        message: `${product.name} has been added to your cart`,
-        type: 'cart',
-        link: '/buyers/cart.html'
-      });
+    if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createCartNotification) {
+      console.log('🔔 buyers homepage: creating cart notification for', product.name);
+      await NotificationManager.createCartNotification(buyerId, product.name);
     }
   }
 
@@ -318,10 +314,7 @@ function makeFloatingList(btn, items) {
       container.innerHTML = d.data.sellers.map(s => {
         const logo = s.storeLogo||`https://ui-avatars.com/api/?name=${encodeURIComponent(s.businessName)}&background=F97316&color=fff&size=100`;
         const feat = s.featuredProductImage||'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300';
-        const storeHref = s.storeId || s.store_id
-          ? `store-id.html?store=${encodeURIComponent(s.storeId || s.store_id)}`
-          : `store-id.html?seller=${encodeURIComponent(s.sellerId || s.seller_id)}`;
-        return `<a href="${storeHref}" class="brand-card">
+        return `<a href="store-id.html?seller=${s.sellerId}" class="brand-card">
           <img src="${logo}" alt="${escapeHtml(s.businessName)}" class="brand-logo" onerror="this.src='${logo}'">
           <h3>${escapeHtml(s.businessName)}</h3><p class="muted">${escapeHtml(s.category||'Marketplace')}</p>
           <img src="${feat}" class="featured-product" onerror="this.src='marketplace.png'"></a>`;
@@ -358,10 +351,7 @@ function makeFloatingList(btn, items) {
     container.innerHTML = shops.map(s => {
       const logo = s.store_logo ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(s.business_name)}&background=F97316&color=fff&size=150`;
-      const storeHref = s.store_id || s.storeId
-        ? `store-id.html?store=${encodeURIComponent(s.store_id || s.storeId)}`
-        : `store-id.html?seller=${encodeURIComponent(s.seller_id || s.sellerId)}`;
-      return `<a href="${storeHref}" title="${escapeHtml(s.business_name)}" class="following-shop-item">
+      return `<a href="store-id.html?seller=${s.seller_id}" title="${escapeHtml(s.business_name)}" class="following-shop-item">
         <img src="${escapeHtml(logo)}" alt="${escapeHtml(s.business_name)}"
           onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.business_name)}&background=F97316&color=fff&size=150'">
         <span class="shop-name">${escapeHtml(s.business_name)}</span>
