@@ -24,7 +24,9 @@
    </div>
 
   <div class="wishlist-page">
-    <h2>My Wishlist</h2>
+    <h2>My Wishlist
+      <span data-wishlist-badge class="badge badge-danger" style="display: none; margin-left: 10px; font-size: 12px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span>
+    </h2>
     <div class="wishlist-grid" id="wishlist-container">
       <!-- Items will be loaded here dynamically -->
     </div>
@@ -32,6 +34,17 @@
 
   <script src="notification-manager.js"></script>
   <script src="buyers wishlist.js"></script>
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+      }
+    });
+  </script>
   </script>
 
 <footer>

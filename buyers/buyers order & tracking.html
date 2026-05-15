@@ -211,7 +211,9 @@
     <i class="fas fa-chevron-left"></i> Back
   </button>
   <header>
-   <h1>My Orders & Tracking</h1>
+   <h1>My Orders & Tracking
+     <span data-tracking-badge class="badge badge-danger" style="display: none; margin-left: 10px; font-size: 12px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span>
+   </h1>
     
   </header>
   <section class="orders-container">
@@ -303,6 +305,17 @@
       const progress = card.querySelector('.tracking-progress');
       progress.classList.toggle('active');
     }
+  </script>
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+      }
+    });
   </script>
 
 </body>

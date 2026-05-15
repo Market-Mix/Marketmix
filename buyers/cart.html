@@ -309,6 +309,10 @@
 
     <h1>Your Cart</h1>
     <p class="intro">Review your items, adjust quantities, or remove products before checkout.</p>
+    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">
+      <span data-cart-badge class="badge badge-danger" style="display: inline-block; background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; margin-right: 8px;">0</span>
+      items in your cart
+    </p>
 
     <!-- Cart items injected here -->
     <div id="cart-items"></div>
@@ -726,6 +730,28 @@
             return true;
           } catch(err){ localStorage.setItem('after_login_redirect','/buyers/checkout.html'); window.location.href = '/buyers/login for buyers.html?next=checkout.html'; }
         });
+      }
+    });
+  </script>
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
+      }
+    });
+  </script>
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
+        initializeBadgeUpdates(buyerId);
       }
     });
   </script>
