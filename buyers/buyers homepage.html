@@ -7,15 +7,8 @@
   <link rel="stylesheet" href="buyers homepage.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="shortcut icon" href="marketplace.png" type="image/x-icon">
-<<<<<<< HEAD
-<<<<<<< HEAD
  <!-- Supabase JS -->
-=======
-<!-- Supabase JS -->
->>>>>>> parent of bf8c15a (Revert "bjkllk")
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-=======
->>>>>>> parent of 74ecd65 (notification)
  <!-- 🔒 BLOCK UNAUTHORIZED USERS -->
     <script>
         const token = localStorage.getItem('token');
@@ -40,7 +33,7 @@
 
     <div class="notification" id="bell" >
       <a href="buyer notification page.html"><i class="fas fa-bell"></i>
-      <span class="badge">5</span></a>
+      <span class="badge" data-notification-badge style="display: none;">0</span></a>
     </div>
   </div>
 
@@ -419,16 +412,7 @@
 
 
   <script src="../utils/autocomplete.js"></script>
+  <script src="notification-manager.js"></script>
   <script src="buyers homepage.js"></script>
-  <script>
-    // Initialize notification system on page load
-    document.addEventListener('DOMContentLoaded', async function() {
-      const buyerId = getBuyerId();
-      if (buyerId) {
-        await NotificationManager.init(buyerId);
-        initializeBadgeUpdates(buyerId);
-      }
-    });
-  </script>
 </body>
 </html>
