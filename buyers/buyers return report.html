@@ -1155,9 +1155,7 @@
 
 <div class="returns-container">
   <section class="returns-section">
-    <h1>Returns & Refunds
-      <span data-refund-badge class=\"badge badge-danger\" style=\"display: none; margin-left: 10px; font-size: 12px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;\">0</span>
-    </h1>
+    <h1>Returns & Refunds</h1>
     
     <!-- Filter/Search -->
     <div class="filter-search">
@@ -1423,6 +1421,7 @@
   © MarketMix 2025
 </footer>
 
+<script src="notification-manager.js"></script>
 <script>
   // =====================================================
   // SUPABASE INITIALIZATION
@@ -1443,9 +1442,6 @@
   }
   
   // =====================================================
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   // SUPABASE INITIALIZATION (use from notification-manager.js)
   // =====================================================
   window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
@@ -1463,18 +1459,8 @@
     );
     return window.marketmixSupabaseClient;
   }
-=======
-  // =====================================================
-  // NOTIFICATION SYSTEM - Using global notification-manager.js
-  // NotificationManager and badge functions are loaded from notification-manager.js
-  // =====================================================
->>>>>>> parent of bf8c15a (Revert "bjkllk")
 
   // =====================================================
-=======
->>>>>>> parent of 886cfb0 (kmkokk)
-=======
->>>>>>> parent of 886cfb0 (kmkokk)
   // SUPABASE HELPER FUNCTIONS
   // =====================================================
   
@@ -2226,8 +2212,6 @@
     // Get buyer ID from the same auth data saved by the buyer login page.
     let userId = getCurrentBuyerId();
     
-<<<<<<< HEAD
-<<<<<<< HEAD
     // Start notification sync
     if (userId) {
       if (typeof NotificationManager !== 'undefined') {
@@ -2237,10 +2221,6 @@
       }
     }
     
-=======
->>>>>>> parent of 886cfb0 (kmkokk)
-=======
->>>>>>> parent of 886cfb0 (kmkokk)
     // Fetch real buyer orders and Supabase refund cases, then render them in the existing table.
     if (userId) {
       try {
@@ -2982,18 +2962,6 @@
     document.getElementById('detailsModal').classList.remove('active');
   }
 </script>
-  <script src="notification-manager.js"></script>
-  <script>
-    // Initialize notification system on page load
-    document.addEventListener('DOMContentLoaded', async function() {
-      const buyerId = getBuyerId();
-      if (buyerId) {
-        await NotificationManager.init(buyerId);
-        initializeBadgeUpdates(buyerId);
-        // Mark refund notifications as read when opening Returns & Refunds page
-        await NotificationManager.markTypeAsRead(buyerId, 'refund');
-      }
-    });
-  </script>
+
 </body>
 </html>

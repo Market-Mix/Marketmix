@@ -6,6 +6,8 @@
   <title>Buyer Account - MarketMix</title>
   <link rel="stylesheet" href="buyers profile .css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- BLOCK UNAUTHORIZED USERS -->
   <script>
@@ -65,34 +67,14 @@
 
     <!-- Navigation Links -->
     <div class="account-links">
-<<<<<<< HEAD
-<<<<<<< HEAD
       <a href="cart.html" class="link-card"><i class="fa-solid fa-cart-shopping"></i> Cart <span data-cart-badge class="badge" style="display: none; margin-left: 5px; font-size: 10px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span></a>
       <a href="buyers wishlist.html" class="link-card"><i class="fa-solid fa-heart"></i> Wishlist <span data-wishlist-badge class="badge" style="display: none; margin-left: 5px; font-size: 10px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span></a>
       <a href="buyers order & tracking.html" class="link-card"><i class="fa-solid fa-box"></i> Order Tracking <span data-tracking-badge class="badge" style="display: none; margin-left: 5px; font-size: 10px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span></a>
-=======
-      <a href="cart.html" class="link-card"><i class="fa-solid fa-cart-shopping"></i> Cart <span data-cart-badge class="badge badge-danger" style="display: none; margin-left: 5px; font-size: 10px;">0</span></a>
-      <a href="buyers wishlist.html" class="link-card"><i class="fa-solid fa-heart"></i> Wishlist <span data-wishlist-badge class="badge badge-danger" style="display: none; margin-left: 5px; font-size: 10px;">0</span></a>
-      <a href="buyers order & tracking.html" class="link-card"><i class="fa-solid fa-box"></i> Order Tracking <span data-tracking-badge class="badge badge-danger" style="display: none; margin-left: 5px; font-size: 10px;">0</span></a>
->>>>>>> parent of bf8c15a (Revert "bjkllk")
-=======
-      <a href="cart.html" class="link-card"><i class="fa-solid fa-cart-shopping"></i> Cart</a>
-      <a href="buyers wishlist.html" class="link-card"><i class="fa-solid fa-heart"></i> Wishlist</a>
-      <a href="buyers order & tracking.html" class="link-card"><i class="fa-solid fa-box"></i> Order Tracking</a>
->>>>>>> parent of 74ecd65 (notification)
       <a href="shipping infor.html" class="link-card"><i class="fa-solid fa-truck"></i> Shipping Info</a>
       <a href="save payment.html" class="link-card"><i class="fa-solid fa-credit-card"></i> saved payment methods</a>
       <a href="purchase history.html" class="link-card"><i class="fa-solid fa-receipt"></i> Purchase History</a>
       <a href="reviews ratings.html" class="link-card"><i class="fa-solid fa-star"></i> Reviews & Ratings</a>
-<<<<<<< HEAD
-<<<<<<< HEAD
       <a href="buyers return report.html" class="link-card"><i class="fa-solid fa-arrow-right-arrow-left"></i> Returns & Refunds <span data-refund-badge class="badge" style="display: none; margin-left: 5px; font-size: 10px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span></a>
-=======
-      <a href="buyers return report.html" class="link-card"><i class="fa-solid fa-arrow-right-arrow-left"></i> Returns & Refunds <span data-refund-badge class="badge badge-danger" style="display: none; margin-left: 5px; font-size: 10px;">0</span></a>
->>>>>>> parent of bf8c15a (Revert "bjkllk")
-=======
-      <a href="buyers return report.html" class="link-card"><i class="fa-solid fa-arrow-right-arrow-left"></i> Returns & Refunds</a>
->>>>>>> parent of 74ecd65 (notification)
       <a href="account setting.html" class="link-card"><i class="fa-solid fa-gear"></i> Account Settings</a>
       <a href="logout.html" class="link-card"><i class="fa fa-sign-out" aria-hidden="true"></i> logout</a>
     </div>
@@ -102,10 +84,19 @@
     © MarketMix 2025
   </footer>
 
+  <script src="notification-manager.js"></script>
   <script>
     // =====================================================
     // CONFIGURATION
     // =====================================================
+
+    // Initialize notifications on page load
+    window.addEventListener('DOMContentLoaded', async () => {
+      const buyerId = getBuyerId();
+      if (buyerId && typeof NotificationManager !== 'undefined') {
+        await NotificationManager.init(buyerId);
+      }
+    });
 
     // =====================================================
     // LOAD USER PROFILE ON PAGE LOAD
@@ -341,17 +332,6 @@
         alert.remove();
       }, 5000);
     }
-  </script>
-  <script src="notification-manager.js"></script>
-  <script>
-    // Initialize notification system on page load
-    document.addEventListener('DOMContentLoaded', async function() {
-      const buyerId = getBuyerId();
-      if (buyerId) {
-        await NotificationManager.init(buyerId);
-        initializeBadgeUpdates(buyerId);
-      }
-    });
   </script>
 </body>
 </html>

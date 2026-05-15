@@ -1,8 +1,16 @@
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   const API = 'https://marketmix-backend.onrender.com/api';
   let cart = JSON.parse(localStorage.getItem('cart')) || [];
   let cachedCategories = null;
   let flashCountdownInterval = null;
+
+  // =====================================================
+  // INITIALIZE NOTIFICATION MANAGER
+  // =====================================================
+  const buyerId = getBuyerId();
+  if (buyerId && typeof NotificationManager !== 'undefined') {
+    await NotificationManager.init(buyerId);
+  }
 
   // =====================================================
   // NOTIFICATION INTEGRATION
@@ -82,8 +90,6 @@ window.addEventListener('DOMContentLoaded', () => {
     ex ? ex.quantity = (ex.quantity||1)+1 : cart.push({...product, quantity:1});
     saveCart();
     showToast(`${product.name} added to cart`);
-<<<<<<< HEAD
-<<<<<<< HEAD
 
     // Create notification
     const buyerId = getBuyerId();
@@ -94,28 +100,7 @@ window.addEventListener('DOMContentLoaded', () => {
         type: 'cart',
         link: '/buyers/cart.html'
       });
-=======
-    
-    // Create notification for cart update
-    if (typeof NotificationManager !== 'undefined') {
-      try {
-        const buyerId = getBuyerId?.() || (JSON.parse(localStorage.getItem('user') || '{}').id);
-        if (buyerId) {
-          await NotificationManager.createNotification(buyerId, {
-            title: 'Item Added to Cart',
-            message: `${product.name} has been added to your cart`,
-            type: 'cart',
-            link: '/buyers/cart.html'
-          });
-          updateCartBadge?.(buyerId);
-        }
-      } catch (err) {
-        console.error('Error creating cart notification:', err);
-      }
->>>>>>> parent of bf8c15a (Revert "bjkllk")
     }
-=======
->>>>>>> parent of 74ecd65 (notification)
   }
 
   function attachCartListeners() {
