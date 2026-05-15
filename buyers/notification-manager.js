@@ -32,6 +32,11 @@ function getAuthToken() {
 
 function getSupabaseClient() {
   if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
+  if (window.supabaseClient) return window.supabaseClient;
+  if (window.supabase && typeof window.supabase.from === 'function' && typeof window.supabase.auth?.getSession === 'function') {
+    console.log('🔔 Reusing existing Supabase client instance from window.supabase');
+    return window.supabase;
+  }
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     console.error('❌ Supabase client library is not loaded.');
     return null;
@@ -42,6 +47,67 @@ function getSupabaseClient() {
 
   window.marketmixSupabaseClient = window.supabase.createClient(url, key);
   return window.marketmixSupabaseClient;
+}
+
+async function getAuthenticatedSupabaseClient() {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  if (!client.auth || typeof client.auth.getSession !== 'function') {
+    console.error('❌ Supabase client auth interface is unavailable.');
+    return null;
+  }
+
+  let sessionResponse;
+  try {
+    sessionResponse = await client.auth.getSession();
+  } catch (error) {
+    console.error('❌ Error fetching Supabase session:', error);
+    return null;
+  }
+
+  const currentSession = sessionResponse?.data?.session || sessionResponse?.session || null;
+  const currentUser = sessionResponse?.data?.user || sessionResponse?.user || null;
+
+  console.log('🔐 Supabase current session:', currentSession);
+  console.log('🔐 Supabase current user:', currentUser);
+
+  if (!currentSession || !currentUser) {
+    const token = getAuthToken();
+    if (!token) {
+      console.warn('⚠️ No auth token found in localStorage for Supabase session recovery.');
+      return null;
+    }
+
+    try {
+      console.log('🔄 Restoring Supabase session from stored auth token');
+      const { data: setSessionData, error: setSessionError } = await client.auth.setSession({
+        access_token: token,
+        refresh_token: token
+      });
+
+      if (setSessionError) {
+        console.error('❌ Error restoring Supabase session:', setSessionError);
+        return null;
+      }
+
+      const restoredSession = setSessionData?.session || null;
+      const restoredUser = setSessionData?.user || null;
+      console.log('🔐 Restored Supabase session:', restoredSession);
+      console.log('🔐 Restored Supabase user:', restoredUser);
+
+      if (!restoredSession || !restoredUser) {
+        console.warn('⚠️ Supabase session restoration did not produce an authenticated user.');
+        return null;
+      }
+
+      return { client, session: restoredSession, user: restoredUser };
+    } catch (error) {
+      console.error('❌ Exception restoring Supabase session:', error);
+      return null;
+    }
+  }
+
+  return { client, session: currentSession, user: currentUser };
 }
 
 // Make API call with auth
@@ -216,10 +282,23 @@ const NotificationManager = {
       return null;
     }
 
-    const client = getSupabaseClient();
-    if (!client) {
-      console.error('❌ Supabase client unavailable for direct notification insert');
+    const authState = await getAuthenticatedSupabaseClient();
+    if (!authState) {
+      console.error('❌ No authenticated Supabase client available for direct notification insert');
       return null;
+    }
+
+    const { client, session, user } = authState;
+    if (!user || !user.id) {
+      console.error('❌ Authenticated Supabase user missing or invalid.');
+      return null;
+    }
+
+    if (String(user.id) !== String(buyerId)) {
+      console.warn('⚠️ Supabase authenticated user does not match buyerId for notification insert:', {
+        buyerId,
+        authenticatedUserId: user.id
+      });
     }
 
     const { title, message, type, link } = notification;
@@ -233,7 +312,10 @@ const NotificationManager = {
       is_deleted: false
     };
 
-    console.log('🔔 Inserting notification directly into Supabase:', payload);
+    console.log('🔔 Notification payload to insert via Supabase:', payload);
+    console.log('🔔 Using authenticated Supabase user:', user);
+    console.log('🔔 Using authenticated Supabase session:', session);
+
     const { data, error } = await client.from('notifications').insert([payload]).select().single();
 
     if (error) {
@@ -242,7 +324,7 @@ const NotificationManager = {
     }
 
     const inserted = data || null;
-    console.log('✅ Direct Supabase notification created:', inserted);
+    console.log('✅ Direct Supabase notification created successfully:', inserted);
 
     if (type && this.cache.unreadCounts[type] !== undefined) {
       this.cache.unreadCounts[type]++;
