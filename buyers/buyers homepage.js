@@ -1,16 +1,8 @@
-window.addEventListener('DOMContentLoaded', async () => {
+window.addEventListener('DOMContentLoaded', () => {
   const API = 'https://marketmix-backend.onrender.com/api';
   let cart = JSON.parse(localStorage.getItem('cart')) || [];
   let cachedCategories = null;
   let flashCountdownInterval = null;
-
-  // =====================================================
-  // INITIALIZE NOTIFICATION MANAGER
-  // =====================================================
-  const buyerId = getBuyerId();
-  if (buyerId && typeof NotificationManager !== 'undefined') {
-    await NotificationManager.init(buyerId);
-  }
 
   // =====================================================
   // NOTIFICATION INTEGRATION
@@ -91,6 +83,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     saveCart();
     showToast(`${product.name} added to cart`);
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     // Create notification
     const buyerId = getBuyerId();
@@ -121,6 +114,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
 >>>>>>> parent of bf8c15a (Revert "bjkllk")
     }
+=======
+>>>>>>> parent of 74ecd65 (notification)
   }
 
   function attachCartListeners() {
