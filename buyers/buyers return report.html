@@ -1539,31 +1539,57 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        console.error('No auth token available');
+        return null;
+      }
+
       const payload = {
         user_id: notificationData.buyer_id,
         title: notificationData.title,
         message: notificationData.message,
-        is_read: false
+        type: 'refund',
+        link: '/buyers/buyers%20return%20report.html'
       };
       
-      console.log('Notification payload:', JSON.stringify(payload, null, 2));
+      console.log('🔔 Creating notification via backend API:', payload);
       
-      const { data, error } = await getSupabaseClient()
-        .from('notifications')
-        .insert([payload])
-        .select();
+      const response = await fetch(`${API_BASE_URL}/notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       
-      if (error) {
-        console.error('Notification error code:', error.code);
-        console.error('Notification error message:', error.message);
-        console.error('Notification error details:', error.details);
-        throw error;
+      if (data.error) {
+        console.error('❌ Notification API error:', data.error);
+        return null;
       }
       
-      console.log('Notification created:', data);
-      return data?.[0];
+      console.log('✅ Notification created successfully:', data.notification);
+      
+      // Update NotificationManager cache if available
+      if (typeof NotificationManager !== 'undefined') {
+        const buyerId = notificationData.buyer_id;
+        if (NotificationManager.cache.unreadCounts.refund !== undefined) {
+          NotificationManager.cache.unreadCounts.refund++;
+          NotificationManager.cache.totalUnread++;
+          NotificationManager.cache.unreadCounts.account = NotificationManager.cache.totalUnread;
+        }
+      }
+      
+      return data.notification;
     } catch (err) {
-      console.error('Failed to create notification:', err);
+      console.error('❌ Failed to create notification:', err);
       return null;
     }
   }
