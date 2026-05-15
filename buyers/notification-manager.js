@@ -30,6 +30,20 @@ function getAuthToken() {
   }
 }
 
+function getSupabaseClient() {
+  if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    console.error('❌ Supabase client library is not loaded.');
+    return null;
+  }
+
+  const url = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
+  const key = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0';
+
+  window.marketmixSupabaseClient = window.supabase.createClient(url, key);
+  return window.marketmixSupabaseClient;
+}
+
 // Make API call with auth
 async function apiCall(endpoint, options = {}) {
   const token = getAuthToken();
@@ -195,6 +209,54 @@ const NotificationManager = {
     }
   },
 
+  // Create notification via Supabase direct insert
+  createNotificationViaSupabase: async function(buyerId, notification) {
+    if (!buyerId || !notification) {
+      console.warn('⚠️ createNotificationViaSupabase missing buyerId or notification payload');
+      return null;
+    }
+
+    const client = getSupabaseClient();
+    if (!client) {
+      console.error('❌ Supabase client unavailable for direct notification insert');
+      return null;
+    }
+
+    const { title, message, type, link } = notification;
+    const payload = {
+      user_id: buyerId,
+      title: title || 'Notification',
+      message: message || '',
+      type: type || 'account',
+      link: link || '',
+      is_read: false,
+      is_deleted: false
+    };
+
+    console.log('🔔 Inserting notification directly into Supabase:', payload);
+    const { data, error } = await client.from('notifications').insert([payload]).select().single();
+
+    if (error) {
+      console.error('❌ Error inserting notification via Supabase:', error);
+      return null;
+    }
+
+    const inserted = data || null;
+    console.log('✅ Direct Supabase notification created:', inserted);
+
+    if (type && this.cache.unreadCounts[type] !== undefined) {
+      this.cache.unreadCounts[type]++;
+    }
+    this.cache.totalUnread++;
+    this.cache.unreadCounts.account = this.cache.totalUnread;
+
+    setTimeout(() => {
+      updateAllBadges(buyerId);
+    }, 100);
+
+    return inserted;
+  },
+
   // Create a cart notification with standardized payload
   createCartNotification: async function(buyerId, productName) {
     if (!buyerId || !productName) {
@@ -212,7 +274,7 @@ const NotificationManager = {
     });
   },
 
-  // Create a wishlist notification with standardized payload
+  // Create a wishlist notification with standardized payload using direct Supabase insert
   createWishlistNotification: async function(buyerId, productName) {
     if (!buyerId || !productName) {
       console.warn('⚠️ createWishlistNotification missing buyerId or productName');
@@ -221,7 +283,7 @@ const NotificationManager = {
 
     console.log('🔔 Creating wishlist notification for product:', productName);
 
-    return this.createNotification(buyerId, {
+    return this.createNotificationViaSupabase(buyerId, {
       title: 'Product Added to Wishlist',
       message: `${productName} added to wishlist`,
       type: 'wishlist',

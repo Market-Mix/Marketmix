@@ -547,6 +547,17 @@ async function handleWishlist(product) {
       if (res.ok || res.status === 200) {
         setWishlisted(product.id, true);
         showToast('Added to wishlist ❤️', 'success');
+
+        const buyerId = getBuyerId?.();
+        if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createWishlistNotification) {
+          console.log('🔔 handleWishlist: creating direct wishlist notification for', product.name);
+          const notification = await NotificationManager.createWishlistNotification(buyerId, product.name);
+          if (notification) {
+            console.log('✅ handleWishlist: wishlist notification created', notification);
+          } else {
+            console.warn('⚠️ handleWishlist: wishlist notification creation failed');
+          }
+        }
       } else {
         const err = await res.json().catch(() => ({}));
         showToast(err.message || 'Could not update wishlist', 'error');

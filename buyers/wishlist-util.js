@@ -61,7 +61,6 @@ async function addToWishlist(productId) {
         if (buyerId) {
           const productName = data.data?.product_name || `Product #${productId}`;
           console.log('🔔 wishlist-util: creating wishlist notification for', productName);
-          // Use helper to ensure standardized payload and cache update
           await NotificationManager.createWishlistNotification(buyerId, productName);
           console.log('🔔 wishlist-util: wishlist notification created');
           // Update badges immediately
