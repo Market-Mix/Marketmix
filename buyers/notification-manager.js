@@ -5,7 +5,8 @@
 // Auto-syncs every 30 seconds
 // Updates all badge elements across pages
 
-const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
+// Make API_BASE_URL globally accessible to all pages
+window.API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
 
 // Get buyer ID from localStorage
 function getBuyerId() {

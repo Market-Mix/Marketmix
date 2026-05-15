@@ -1541,10 +1541,12 @@
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (!token) {
-        console.error('No auth token available');
+        console.error('❌ No auth token available');
         return null;
       }
 
+      const apiBaseUrl = window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
+      
       const payload = {
         user_id: notificationData.buyer_id,
         title: notificationData.title,
@@ -1555,7 +1557,7 @@
       
       console.log('🔔 Creating notification via backend API:', payload);
       
-      const response = await fetch(`${API_BASE_URL}/notifications`, {
+      const response = await fetch(`${apiBaseUrl}/notifications`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1565,6 +1567,8 @@
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ API error! Status: ${response.status}`, errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -1584,6 +1588,7 @@
           NotificationManager.cache.unreadCounts.refund++;
           NotificationManager.cache.totalUnread++;
           NotificationManager.cache.unreadCounts.account = NotificationManager.cache.totalUnread;
+          console.log('📊 Updated cache:', NotificationManager.cache.unreadCounts);
         }
       }
       
