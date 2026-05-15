@@ -1551,12 +1551,16 @@
         user_id: notificationData.buyer_id,
         title: notificationData.title,
         message: notificationData.message,
-        type: 'refund',
-        link: '/buyers/buyers%20return%20report.html'
+        type: notificationData.type || 'refund',
+        link: notificationData.link || '/buyers/buyers%20return%20report.html'
       };
-      
-      console.log('🔔 Creating notification via backend API:', payload);
-      
+
+      console.log('🔔 createBuyerNotification: API base URL', apiBaseUrl);
+      console.log('🔔 createBuyerNotification: token present?', !!token);
+      console.log('🔔 createBuyerNotification: payload', payload);
+      console.log('🔔 createBuyerNotification: user_id', payload.user_id);
+      console.log('🔔 createBuyerNotification: type', payload.type);
+
       const response = await fetch(`${apiBaseUrl}/notifications`, {
         method: 'POST',
         headers: {
@@ -1566,32 +1570,42 @@
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ API error! Status: ${response.status}`, errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.status === 'error' || !response.ok) {
-        console.error('❌ Notification API error:', result);
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonErr) {
+        const text = await response.text();
+        console.error('❌ createBuyerNotification: Failed to parse response JSON', text, jsonErr);
         return null;
       }
-      
-      const notification = result.data?.notification || null;
-      console.log('✅ Notification created successfully:', notification);
-      
-      // Update NotificationManager cache if available
-      if (notification && typeof NotificationManager !== 'undefined') {
-        if (NotificationManager.cache.unreadCounts.refund !== undefined) {
-          NotificationManager.cache.unreadCounts.refund++;
-          NotificationManager.cache.totalUnread++;
-          NotificationManager.cache.unreadCounts.account = NotificationManager.cache.totalUnread;
-          console.log('📊 Updated cache:', NotificationManager.cache.unreadCounts);
-        }
+
+      console.log('🔔 createBuyerNotification: raw response', {
+        status: response.status,
+        ok: response.ok,
+        body: result
+      });
+
+      if (!response.ok || result.status === 'error') {
+        console.error('❌ createBuyerNotification: API returned error', result);
+        return null;
       }
-      
+
+      const notification = result.data?.notification || null;
+      console.log('✅ createBuyerNotification: notification created', notification);
+
+      if (!notification) {
+        console.error('❌ createBuyerNotification: No notification object returned');
+        return null;
+      }
+
+      // Update NotificationManager cache if available
+      if (typeof NotificationManager !== 'undefined' && NotificationManager.cache.unreadCounts.refund !== undefined) {
+        NotificationManager.cache.unreadCounts.refund++;
+        NotificationManager.cache.totalUnread++;
+        NotificationManager.cache.unreadCounts.account = NotificationManager.cache.totalUnread;
+        console.log('📊 createBuyerNotification: Updated cache', NotificationManager.cache.unreadCounts);
+      }
+
       return notification;
     } catch (err) {
       console.error('❌ Failed to create notification:', err);
@@ -2485,14 +2499,30 @@
         return;
       }
 
-
-      // Create notification for buyer
-      await createBuyerNotification({
+      const notificationPayload = {
         buyer_id: userId,
         refund_case_id: refundCase.id,
         title: 'Refund Case Created',
-        message: `Your refund case for order ${currentChatData.order_id} has been created successfully.`
+        message: `Your refund case for order ${currentChatData.order_id} has been created successfully.`,
+        type: 'refund',
+        link: '/buyers/buyers%20return%20report.html'
+      };
+
+      console.log('🔔 submitEvidence: Notification payload before creation', {
+        user_id: notificationPayload.buyer_id,
+        type: notificationPayload.type,
+        title: notificationPayload.title,
+        message: notificationPayload.message,
+        link: notificationPayload.link,
+        refund_case_id: notificationPayload.refund_case_id
       });
+
+      const createdNotification = await createBuyerNotification(notificationPayload);
+      console.log('🔔 submitEvidence: createBuyerNotification result', createdNotification);
+
+      if (!createdNotification) {
+        console.error('❌ Notification creation failed during evidence submission');
+      }
 
       // Update local data for UI consistency
       currentChatData.evidence_submitted_at = new Date().toISOString();
