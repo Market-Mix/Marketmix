@@ -1572,18 +1572,18 @@
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const result = await response.json();
       
-      if (data.error) {
-        console.error('❌ Notification API error:', data.error);
+      if (result.status === 'error' || !response.ok) {
+        console.error('❌ Notification API error:', result);
         return null;
       }
       
-      console.log('✅ Notification created successfully:', data.notification);
+      const notification = result.data?.notification || null;
+      console.log('✅ Notification created successfully:', notification);
       
       // Update NotificationManager cache if available
-      if (typeof NotificationManager !== 'undefined') {
-        const buyerId = notificationData.buyer_id;
+      if (notification && typeof NotificationManager !== 'undefined') {
         if (NotificationManager.cache.unreadCounts.refund !== undefined) {
           NotificationManager.cache.unreadCounts.refund++;
           NotificationManager.cache.totalUnread++;
@@ -1592,7 +1592,7 @@
         }
       }
       
-      return data.notification;
+      return notification;
     } catch (err) {
       console.error('❌ Failed to create notification:', err);
       return null;

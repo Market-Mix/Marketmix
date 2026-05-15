@@ -45,18 +45,24 @@ async function apiCall(endpoint, options = {}) {
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${window.API_BASE_URL}${endpoint}`, {
       ...options,
       headers
     });
 
-    if (response.status === 401) {
-      console.error('❌ Unauthorized - please login again');
-      return { error: 'Unauthorized' };
+    const json = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ API call HTTP error:', response.status, json);
+      return { error: json.message || 'Request failed', details: json.errors || json.data };
     }
 
-    const data = await response.json();
-    return data;
+    if (json.status === 'error') {
+      console.error('❌ API call returned error:', json);
+      return { error: json.message || 'Request failed', details: json.errors || json.data };
+    }
+
+    return json.data || {};
   } catch (e) {
     console.error('❌ API call error:', e);
     return { error: e.message };
