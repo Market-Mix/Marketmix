@@ -737,7 +737,17 @@
       const buyerId = getBuyerId();
       if (buyerId) {
         await NotificationManager.init(buyerId);
-        await NotificationManager.markNotificationsReadByType(buyerId, 'cart');
+        initializeBadgeUpdates(buyerId);
+      }
+    });
+  </script>
+  <script src="notification-manager.js"></script>
+  <script>
+    // Initialize notification system on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const buyerId = getBuyerId();
+      if (buyerId) {
+        await NotificationManager.init(buyerId);
         initializeBadgeUpdates(buyerId);
       }
     });

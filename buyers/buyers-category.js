@@ -51,12 +51,6 @@ async function addToCart(product) {
   ex ? ex.quantity = (ex.quantity||1)+1 : cart.push({...product, quantity:1});
   saveCart();
   showToast(`${product.name} added to cart`);
-
-  const buyerId = getBuyerId();
-  if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createCartNotification) {
-    console.log('🔔 buyers-category: creating cart notification for', product.name);
-    await NotificationManager.createCartNotification(buyerId, product.name);
-  }
 }
 
 function attachCartListeners() {

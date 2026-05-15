@@ -402,12 +402,6 @@ async function addToCart(productId, productName) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
     showToast(`${productName} added to cart 🛒`);
-
-    const buyerId = getBuyerId();
-    if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createCartNotification) {
-      console.log('🔔 store-id: creating cart notification for', productName);
-      await NotificationManager.createCartNotification(buyerId, productName);
-    }
   } catch (err) {
     showToast(err.message || 'Could not add to cart');
   }

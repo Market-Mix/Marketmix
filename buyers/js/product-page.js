@@ -400,12 +400,6 @@ async function addToCart(product) {
   updateCartCount();
   showToast(`${product.name} added to cart!`, 'success');
 
-  const buyerId = getBuyerId();
-  if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createCartNotification) {
-    console.log('🔔 product-page: creating cart notification for', product.name);
-    await NotificationManager.createCartNotification(buyerId, product.name);
-  }
-
   // 2. Sync to backend (fire-and-forget — don't block the UI)
   const token = localStorage.getItem('token');
   if (token) {
