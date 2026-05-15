@@ -52,62 +52,29 @@ function getSupabaseClient() {
 async function getAuthenticatedSupabaseClient() {
   const client = getSupabaseClient();
   if (!client) return null;
-  if (!client.auth || typeof client.auth.getSession !== 'function') {
+  if (!client.auth || typeof client.auth.getUser !== 'function') {
     console.error('❌ Supabase client auth interface is unavailable.');
     return null;
   }
 
-  let sessionResponse;
+  let userResponse;
   try {
-    sessionResponse = await client.auth.getSession();
+    userResponse = await client.auth.getUser();
   } catch (error) {
-    console.error('❌ Error fetching Supabase session:', error);
+    console.error('❌ Error fetching Supabase user:', error);
     return null;
   }
 
-  const currentSession = sessionResponse?.data?.session || sessionResponse?.session || null;
-  const currentUser = sessionResponse?.data?.user || sessionResponse?.user || null;
+  const currentUser = userResponse?.data?.user || null;
 
-  console.log('🔐 Supabase current session:', currentSession);
   console.log('🔐 Supabase current user:', currentUser);
 
-  if (!currentSession || !currentUser) {
-    const token = getAuthToken();
-    if (!token) {
-      console.warn('⚠️ No auth token found in localStorage for Supabase session recovery.');
-      return null;
-    }
-
-    try {
-      console.log('🔄 Restoring Supabase session from stored auth token');
-      const { data: setSessionData, error: setSessionError } = await client.auth.setSession({
-        access_token: token,
-        refresh_token: token
-      });
-
-      if (setSessionError) {
-        console.error('❌ Error restoring Supabase session:', setSessionError);
-        return null;
-      }
-
-      const restoredSession = setSessionData?.session || null;
-      const restoredUser = setSessionData?.user || null;
-      console.log('🔐 Restored Supabase session:', restoredSession);
-      console.log('🔐 Restored Supabase user:', restoredUser);
-
-      if (!restoredSession || !restoredUser) {
-        console.warn('⚠️ Supabase session restoration did not produce an authenticated user.');
-        return null;
-      }
-
-      return { client, session: restoredSession, user: restoredUser };
-    } catch (error) {
-      console.error('❌ Exception restoring Supabase session:', error);
-      return null;
-    }
+  if (!currentUser) {
+    console.warn('⚠️ No authenticated Supabase user available. Cannot create notification via Supabase.');
+    return null;
   }
 
-  return { client, session: currentSession, user: currentUser };
+  return { client, user: currentUser };
 }
 
 // Make API call with auth
@@ -284,18 +251,18 @@ const NotificationManager = {
 
     const authState = await getAuthenticatedSupabaseClient();
     if (!authState) {
-      console.error('❌ No authenticated Supabase client available for direct notification insert');
+      console.error('❌ No authenticated Supabase user available. Cannot create wishlist notification.');
       return null;
     }
 
-    const { client, session, user } = authState;
+    const { client, user } = authState;
     if (!user || !user.id) {
       console.error('❌ Authenticated Supabase user missing or invalid.');
       return null;
     }
 
     if (String(user.id) !== String(buyerId)) {
-      console.warn('⚠️ Supabase authenticated user does not match buyerId for notification insert:', {
+      console.warn('⚠️ Supabase authenticated user does not match buyerId:', {
         buyerId,
         authenticatedUserId: user.id
       });
@@ -314,7 +281,6 @@ const NotificationManager = {
 
     console.log('🔔 Notification payload to insert via Supabase:', payload);
     console.log('🔔 Using authenticated Supabase user:', user);
-    console.log('🔔 Using authenticated Supabase session:', session);
 
     const { data, error } = await client.from('notifications').insert([payload]).select().single();
 
