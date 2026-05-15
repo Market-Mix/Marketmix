@@ -1539,76 +1539,65 @@
    */
   async function createBuyerNotification(notificationData) {
     try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        console.error('❌ No auth token available');
+      const buyer_id = notificationData.buyer_id;
+      const title = notificationData.title;
+      const message = notificationData.message;
+      const type = notificationData.type || 'refund';
+      const link = notificationData.link || '/buyers/buyers%20return%20report.html';
+
+      console.log('📝 createBuyerNotification: BEFORE INSERT');
+      console.log('  - user_id:', buyer_id);
+      console.log('  - title:', title);
+      console.log('  - message:', message);
+      console.log('  - type:', type);
+      console.log('  - link:', link);
+
+      const client = getSupabaseClient();
+      if (!client) {
+        console.error('❌ createBuyerNotification: Supabase client not available');
         return null;
       }
 
-      const apiBaseUrl = window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
-      
-      const payload = {
-        user_id: notificationData.buyer_id,
-        title: notificationData.title,
-        message: notificationData.message,
-        type: notificationData.type || 'refund',
-        link: notificationData.link || '/buyers/buyers%20return%20report.html'
-      };
+      // Insert into notifications table with exact schema
+      const { data, error } = await client
+        .from('notifications')
+        .insert([{
+          user_id: buyer_id,
+          title: title,
+          message: message,
+          type: type,
+          link: link,
+          is_read: false,
+          is_deleted: false
+        }])
+        .select();
 
-      console.log('🔔 createBuyerNotification: API base URL', apiBaseUrl);
-      console.log('🔔 createBuyerNotification: token present?', !!token);
-      console.log('🔔 createBuyerNotification: payload', payload);
-      console.log('🔔 createBuyerNotification: user_id', payload.user_id);
-      console.log('🔔 createBuyerNotification: type', payload.type);
-
-      const response = await fetch(`${apiBaseUrl}/notifications`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      let result;
-      try {
-        result = await response.json();
-      } catch (jsonErr) {
-        const text = await response.text();
-        console.error('❌ createBuyerNotification: Failed to parse response JSON', text, jsonErr);
+      if (error) {
+        console.error('❌ createBuyerNotification: INSERT ERROR');
+        console.error('  - error.code:', error.code);
+        console.error('  - error.message:', error.message);
+        console.error('  - error details:', error.details);
         return null;
       }
 
-      console.log('🔔 createBuyerNotification: raw response', {
-        status: response.status,
-        ok: response.ok,
-        body: result
-      });
+      const notification = data && data.length > 0 ? data[0] : null;
 
-      if (!response.ok || result.status === 'error') {
-        console.error('❌ createBuyerNotification: API returned error', result);
-        return null;
-      }
-
-      const notification = result.data?.notification || null;
-      console.log('✅ createBuyerNotification: notification created', notification);
-
-      if (!notification) {
-        console.error('❌ createBuyerNotification: No notification object returned');
-        return null;
-      }
+      console.log('✅ createBuyerNotification: AFTER INSERT SUCCESS');
+      console.log('  - notification id:', notification?.id);
+      console.log('  - notification:', notification);
 
       // Update NotificationManager cache if available
       if (typeof NotificationManager !== 'undefined' && NotificationManager.cache.unreadCounts.refund !== undefined) {
         NotificationManager.cache.unreadCounts.refund++;
         NotificationManager.cache.totalUnread++;
         NotificationManager.cache.unreadCounts.account = NotificationManager.cache.totalUnread;
-        console.log('📊 createBuyerNotification: Updated cache', NotificationManager.cache.unreadCounts);
+        console.log('📊 Cache updated:', NotificationManager.cache.unreadCounts);
       }
 
       return notification;
     } catch (err) {
-      console.error('❌ Failed to create notification:', err);
+      console.error('❌ createBuyerNotification: EXCEPTION ERROR');
+      console.error('  - error:', err);
       return null;
     }
   }
