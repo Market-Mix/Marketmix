@@ -212,6 +212,23 @@ const NotificationManager = {
     });
   },
 
+  // Create a wishlist notification with standardized payload
+  createWishlistNotification: async function(buyerId, productName) {
+    if (!buyerId || !productName) {
+      console.warn('⚠️ createWishlistNotification missing buyerId or productName');
+      return null;
+    }
+
+    console.log('🔔 Creating wishlist notification for product:', productName);
+
+    return this.createNotification(buyerId, {
+      title: 'Product Added to Wishlist',
+      message: `${productName} added to wishlist`,
+      type: 'wishlist',
+      link: '/buyers/buyers%20wishlist.html'
+    });
+  },
+
   // Mark type as read (update cache, will be synced on next fetch)
   markTypeAsRead: async function(buyerId, type) {
     try {

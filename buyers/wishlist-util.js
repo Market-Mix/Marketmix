@@ -60,12 +60,11 @@ async function addToWishlist(productId) {
         const buyerId = getBuyerId?.() || (JSON.parse(localStorage.getItem('user') || '{}').id);
         if (buyerId) {
           const productName = data.data?.product_name || `Product #${productId}`;
-          await NotificationManager.createNotification(buyerId, {
-            title: 'Item Added to Wishlist',
-            message: `${productName} has been added to your wishlist`,
-            type: 'wishlist',
-            link: '/buyers/buyers wishlist.html'
-          });
+          console.log('🔔 wishlist-util: creating wishlist notification for', productName);
+          // Use helper to ensure standardized payload and cache update
+          await NotificationManager.createWishlistNotification(buyerId, productName);
+          console.log('🔔 wishlist-util: wishlist notification created');
+          // Update badges immediately
           updateWishlistBadge?.(buyerId);
         }
       } catch (err) {

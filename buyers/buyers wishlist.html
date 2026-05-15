@@ -38,6 +38,8 @@
       const buyerId = getBuyerId();
       if (buyerId) {
         await NotificationManager.init(buyerId);
+        // Mark wishlist notifications as read when opening wishlist page
+        await NotificationManager.markNotificationsReadByType(buyerId, 'wishlist');
         initializeBadgeUpdates(buyerId);
       }
     });
