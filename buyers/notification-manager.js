@@ -31,10 +31,11 @@ function getAuthToken() {
 }
 
 function getSupabaseClient() {
+  if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
   if (window.supabaseClient) return window.supabaseClient;
-  if (window.marketmixSupabaseClient) {
-    window.supabaseClient = window.marketmixSupabaseClient;
-    return window.supabaseClient;
+  if (window.supabase && typeof window.supabase.from === 'function' && typeof window.supabase.auth?.getSession === 'function') {
+    console.log('🔔 Reusing existing Supabase client instance from window.supabase');
+    return window.supabase;
   }
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     console.error('❌ Supabase client library is not loaded.');
@@ -44,9 +45,8 @@ function getSupabaseClient() {
   const url = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
   const key = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0';
 
-  window.supabaseClient = window.supabase.createClient(url, key);
-  window.marketmixSupabaseClient = window.supabaseClient;
-  return window.supabaseClient;
+  window.marketmixSupabaseClient = window.supabase.createClient(url, key);
+  return window.marketmixSupabaseClient;
 }
 
 async function getAuthenticatedSupabaseClient() {
@@ -181,6 +181,8 @@ const NotificationManager = {
         }
       });
 
+      counts.account = unreadCount;
+
       // Update cache
       this.cache.unreadCounts = counts;
       this.cache.totalUnread = unreadCount;
@@ -208,6 +210,7 @@ const NotificationManager = {
         link: link || ''
       };
 
+      console.log('🔔 Creating notification payload:', payload);
       const response = await apiCall('/notifications', {
         method: 'POST',
         body: JSON.stringify(payload)
@@ -239,7 +242,6 @@ const NotificationManager = {
     }
   },
 
-<<<<<<< HEAD
   // Create notification via Supabase direct insert
   createNotificationViaSupabase: async function(buyerId, notification) {
     if (!buyerId || !notification) {
@@ -268,7 +270,7 @@ const NotificationManager = {
 
     const { title, message, type, link } = notification;
     const payload = {
-      user_id: user.id,
+      user_id: buyerId,
       title: title || 'Notification',
       message: message || '',
       type: type || 'account',
@@ -333,12 +335,10 @@ const NotificationManager = {
       title: 'Product Added to Wishlist',
       message: `${productName} added to wishlist`,
       type: 'wishlist',
-      link: '/buyers/wishlist.html'
+      link: '/buyers/buyers%20wishlist.html'
     });
   },
 
-=======
->>>>>>> parent of 7820152 (revert nextdown if e no work)
   // Mark type as read (update cache, will be synced on next fetch)
   markTypeAsRead: async function(buyerId, type) {
     try {
@@ -347,6 +347,7 @@ const NotificationManager = {
       const previousCount = this.cache.unreadCounts[type] || 0;
       this.cache.unreadCounts[type] = 0;
       this.cache.totalUnread -= previousCount;
+      if (this.cache.totalUnread < 0) this.cache.totalUnread = 0;
       this.cache.unreadCounts.account = this.cache.totalUnread;
 
       console.log(`✅ Marked ${type} notifications as read (cache updated)`);
@@ -355,6 +356,45 @@ const NotificationManager = {
       updateAllBadges(buyerId);
     } catch (e) {
       console.error(`❌ Exception marking ${type} as read:`, e);
+    }
+  },
+
+  // Mark all unread notifications of a specific type as read via backend
+  markNotificationsReadByType: async function(buyerId, type) {
+    try {
+      if (!buyerId || !type) return;
+      console.log(`🔔 Marking unread ${type} notifications as read for user:`, buyerId);
+      const response = await apiCall('/notifications?unread=true');
+      if (response.error) {
+        console.error('❌ Error fetching unread notifications:', response.error);
+        return;
+      }
+
+      const notifications = response.notifications || [];
+      const itemsToMark = notifications.filter(n => n.type === type);
+      if (!itemsToMark.length) {
+        console.log(`🔔 No unread ${type} notifications found to mark as read.`);
+        return;
+      }
+
+      for (const notif of itemsToMark) {
+        console.log('🔔 Marking notification read:', notif.id, notif.title);
+        const markResponse = await apiCall(`/notifications/${notif.id}/read`, { method: 'PUT' });
+        if (markResponse.error) {
+          console.error('❌ Error marking notification as read:', notif.id, markResponse.error);
+        }
+      }
+
+      const previousCount = this.cache.unreadCounts[type] || 0;
+      this.cache.totalUnread -= previousCount;
+      if (this.cache.totalUnread < 0) this.cache.totalUnread = 0;
+      this.cache.unreadCounts[type] = 0;
+      this.cache.unreadCounts.account = this.cache.totalUnread;
+
+      updateAllBadges(buyerId);
+      console.log(`✅ Marked ${itemsToMark.length} ${type} notification(s) as read`);
+    } catch (e) {
+      console.error(`❌ Exception marking ${type} notifications as read:`, e);
     }
   },
 
@@ -493,6 +533,10 @@ function updateAllBadges(buyerId) {
   updateRefundBadge(buyerId);
   updateTrackingBadge(buyerId);
   updateAccountBadge(buyerId);
+}
+
+function initializeBadgeUpdates(buyerId) {
+  updateAllBadges(buyerId);
 }
 
 console.log('✅ Notification Manager loaded successfully');
