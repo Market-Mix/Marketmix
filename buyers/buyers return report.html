@@ -2506,8 +2506,31 @@
         refund_case_id: notificationPayload.refund_case_id
       });
 
-      const createdNotification = await createBuyerNotification(notificationPayload);
-      console.log('🔔 submitEvidence: createBuyerNotification result', createdNotification);
+      let createdNotification = null;
+      if (typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+        console.log('🔔 submitEvidence: Using NotificationManager.createNotification');
+        try {
+          createdNotification = await NotificationManager.createNotification(userId, {
+            title: notificationPayload.title,
+            message: notificationPayload.message,
+            type: notificationPayload.type,
+            link: notificationPayload.link
+          });
+          console.log('🔔 submitEvidence: NotificationManager.createNotification result', createdNotification);
+        } catch (err) {
+          console.error('❌ submitEvidence: NotificationManager.createNotification threw', err);
+        }
+      }
+
+      if (!createdNotification) {
+        console.log('🔔 submitEvidence: Falling back to createBuyerNotification');
+        try {
+          createdNotification = await createBuyerNotification(notificationPayload);
+          console.log('🔔 submitEvidence: createBuyerNotification result', createdNotification);
+        } catch (err) {
+          console.error('❌ submitEvidence: createBuyerNotification threw', err);
+        }
+      }
 
       if (!createdNotification) {
         console.error('❌ Notification creation failed during evidence submission');
