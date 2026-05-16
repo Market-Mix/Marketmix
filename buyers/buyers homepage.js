@@ -104,24 +104,28 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   function attachCartListeners() {
-    document.querySelectorAll('.add-to-cart:not([data-cl])').forEach(btn => {
-      btn.dataset.cl = '1';
-      btn.addEventListener('click', async e => {
-        e.stopPropagation();
-        if (btn.disabled) return;
-        btn.disabled = true;
-        const card = btn.closest('.product-card,.flash-card,.recommended-item');
-        if (!card) { btn.disabled = false; return; }
-        const name = (card.querySelector('h3,h4')?.textContent||'').trim();
-        const price = parseFloat((card.querySelector('.price')?.textContent||'').replace(/[^\d.]/g,''))||0;
-        const image = card.querySelector('img')?.src||'';
-        const productId = card.dataset.productId||null;
-        const orig = btn.textContent;
-        await addToCart({name, price, image, productId});
-        btn.textContent = 'Added'; btn.classList.add('added');
-        setTimeout(() => { btn.textContent = orig; btn.classList.remove('added'); btn.disabled = false; }, 2000);
-      });
-    });
+    // Keep call sites intact. Add-to-cart button clicks are handled via delegation.
+  }
+
+  async function handleAddToCartButtonClick(e) {
+    const btn = e.target.closest && e.target.closest('.add-to-cart');
+    if (!btn) return;
+    e.stopPropagation();
+    if (btn.disabled) return;
+    const card = btn.closest('.product-card,.flash-card,.recommended-item');
+    if (!card) return;
+
+    btn.disabled = true;
+    const name = (card.querySelector('.product-name,h3,h4')?.textContent || '').trim();
+    const price = parseFloat((card.querySelector('.price')?.textContent || '').replace(/[^\d.]/g,'')) || 0;
+    const image = card.querySelector('img')?.src || '';
+    const productId = card.dataset.productId || null;
+    const orig = btn.textContent;
+
+    await addToCart({name, price, image, productId});
+    btn.textContent = 'Added';
+    btn.classList.add('added');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('added'); btn.disabled = false; }, 2000);
   }
 
   function attachCardClicks(container) {
@@ -133,6 +137,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       card.addEventListener('click', e => { if (!e.target.closest('.add-to-cart')) window.location.href = `product.html?id=${id}`; });
     });
   }
+
+  document.body.addEventListener('click', handleAddToCartButtonClick);
 
   function renderCard(p, cls='product-card') {
     const img = p.main_image_url||p.image||'marketplace.png';
