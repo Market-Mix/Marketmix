@@ -322,7 +322,7 @@ const NotificationManager = {
     });
   },
 
-  // Create a wishlist notification with standardized payload using direct Supabase insert
+  // Create a wishlist notification with standardized payload
   createWishlistNotification: async function(buyerId, productName) {
     if (!buyerId || !productName) {
       console.warn('⚠️ createWishlistNotification missing buyerId or productName');
@@ -331,11 +331,11 @@ const NotificationManager = {
 
     console.log('🔔 Creating wishlist notification for product:', productName);
 
-    return this.createNotificationViaSupabase(buyerId, {
+    return this.createNotification(buyerId, {
       title: 'Product Added to Wishlist',
       message: `${productName} added to wishlist`,
       type: 'wishlist',
-      link: '/buyers/buyers%20wishlist.html'
+      link: '/buyers/wishlist.html'
     });
   },
 
