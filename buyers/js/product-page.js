@@ -26,6 +26,9 @@ function getProductStoreId(product = {}) {
     product.store?.id   ||
     product.seller?.store_id ||
     product.seller?.storeId  ||
+    product.seller?.id      ||
+    product.seller?.seller_id ||
+    product.seller?.sellerId  ||
     getStoreIdFromParams() ||
     ''
   );
@@ -312,7 +315,16 @@ function renderProduct(product) {
   setEl('product-title',       product.name);
   setEl('product-category',    rules.displayName);
 
-  if (product.seller) renderSellerInfo(product.seller, getProductStoreId(product));
+  if (product.seller) {
+    renderSellerInfo(product.seller, getProductStoreId(product));
+  } else {
+    renderSellerInfo({
+      shop_name: product.name ? `${product.name} Store` : 'MarketMix Store',
+      rating: product.rating || 0,
+      shop_avatar_url: product.main_image_url || '',
+      store_id: getProductStoreId(product),
+    }, getProductStoreId(product));
+  }
 
   // Price
   const basePrice    = Number(product.price) || 0;
