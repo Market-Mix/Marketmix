@@ -323,17 +323,20 @@ const NotificationManager = {
   },
 
   // Create a wishlist notification with standardized payload
-  createWishlistNotification: async function(buyerId, productName) {
+  createWishlistNotification: async function(buyerId, productName, action = 'added') {
     if (!buyerId || !productName) {
       console.warn('⚠️ createWishlistNotification missing buyerId or productName');
       return null;
     }
 
-    console.log('🔔 Creating wishlist notification for product:', productName);
+    const normalizedAction = String(action || 'added').toLowerCase();
+    const isRemoved = normalizedAction === 'removed';
+
+    console.log('🔔 Creating wishlist notification for product:', productName, 'action:', normalizedAction);
 
     return this.createNotification(buyerId, {
-      title: 'Product Added to Wishlist',
-      message: `${productName} added to wishlist`,
+      title: isRemoved ? 'Product Removed from Wishlist' : 'Product Added to Wishlist',
+      message: isRemoved ? `${productName} removed from wishlist` : `${productName} added to wishlist`,
       type: 'wishlist',
       link: '/buyers/wishlist.html'
     });

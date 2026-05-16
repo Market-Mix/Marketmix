@@ -533,7 +533,7 @@ async function handleWishlist(product) {
       const buyerId = getBuyerId?.();
       if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createWishlistNotification) {
         try {
-          await NotificationManager.createWishlistNotification(buyerId, product.name);
+          await NotificationManager.createWishlistNotification(buyerId, product.name, 'removed');
         } catch (err) {
           console.warn('Wishlist removal notification failed:', err);
         }
