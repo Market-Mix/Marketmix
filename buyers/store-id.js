@@ -42,19 +42,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ─── Load Store Profile ───────────────────────────────────────────────────────
 async function loadStoreProfile() {
   try {
-    // Try store-scoped endpoint first (new architecture)
-    let res = await fetch(`${API}/seller/stores/public/${STORE_ID}`, {
-      headers: authHeaders()
-    });
+    const profileUrls = params.has('seller')
+      ? [
+          `${API}/seller/public/${STORE_ID}`,
+          `${API}/seller/stores/public/${STORE_ID}`,
+        ]
+      : [
+          `${API}/seller/stores/public/${STORE_ID}`,
+          `${API}/seller/public/${STORE_ID}`,
+        ];
 
-    // Fallback: old seller_profiles-based endpoint
-    if (!res.ok) {
-      res = await fetch(`${API}/seller/public/${STORE_ID}`, {
-        headers: authHeaders()
-      });
+    let res = null;
+    let data = null;
+    for (const url of profileUrls) {
+      res = await fetch(url, { headers: authHeaders() });
+      data = await res.json().catch(() => ({}));
+      if (res.ok) break;
     }
 
-    const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Store not found');
 
     // Normalise response — stores endpoint uses data.data.store

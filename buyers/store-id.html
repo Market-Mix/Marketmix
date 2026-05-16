@@ -989,15 +989,16 @@
 
   <div id="toast"></div>
 
+  <script src="notification-manager.js"></script>
   <script src="store-id.js"></script>
   <script>
     // Initialize notification system on page load
     document.addEventListener('DOMContentLoaded', async function() {
-      const buyerId = getBuyerId?.();
-      if (buyerId) {
+      const buyerId = window.getBuyerId?.();
+      if (buyerId && window.NotificationManager) {
         console.log('🔔 store-id: Initializing NotificationManager for user:', buyerId);
-        await NotificationManager.init(buyerId);
-        initializeBadgeUpdates(buyerId);
+        await window.NotificationManager.init(buyerId);
+        window.initializeBadgeUpdates?.(buyerId);
       }
     });
   </script>

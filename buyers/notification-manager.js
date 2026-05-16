@@ -539,4 +539,9 @@ function initializeBadgeUpdates(buyerId) {
   updateAllBadges(buyerId);
 }
 
+window.getBuyerId = getBuyerId;
+window.getAuthToken = getAuthToken;
+window.NotificationManager = NotificationManager;
+window.initializeBadgeUpdates = initializeBadgeUpdates;
+
 console.log('✅ Notification Manager loaded successfully');
