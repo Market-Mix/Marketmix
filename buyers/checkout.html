@@ -260,7 +260,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-document.getElementById("placeOrderBtn").addEventListener("click", async () => {
+// Helper function to create order notification
+async function createOrderNotification(totalAmount) {
+  try {
+    const buyerId = getBuyerId?.();
+    if (!buyerId || typeof NotificationManager === 'undefined') {
+      console.warn('Order notification skipped: missing buyerId or NotificationManager');
+      return null;
+    }
+
+    return await NotificationManager.createNotification(buyerId, {
+      title: 'Order Placed Successfully',
+      message: `Your order for ₦${totalAmount} has been placed and is being processed.`,
+      type: 'order',
+      link: '/buyers/buyers order & tracking.html'
+    });
+  } catch (err) {
+    console.warn('Order notification creation failed:', err);
+    return null;
+  }
+}
+
+
   const form = document.getElementById("checkoutForm");
   const message = document.getElementById("orderMessage");
 
@@ -292,6 +313,12 @@ document.getElementById("placeOrderBtn").addEventListener("click", async () => {
       message.textContent = "✅ Order placed successfully! Redirecting...";
       message.className = "success";
       message.classList.remove("hidden");
+
+      // Get total amount for notification
+      const totalAmount = document.getElementById("totalAmount").textContent.replace('₦', '').trim();
+
+      // Create order notification
+      await createOrderNotification(totalAmount);
 
       // Clear cart and reset
       document.getElementById("orderItems").innerHTML = "<li>Your cart is empty.</li>";
@@ -326,5 +353,6 @@ document.getElementById("placeOrderBtn").addEventListener("click", async () => {
 
 
   </script>
+  <script src="notification-manager.js"></script>
 </body>
 </html>
