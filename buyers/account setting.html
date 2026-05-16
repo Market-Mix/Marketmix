@@ -684,61 +684,6 @@
       </div>
     </div>
 
-    <!-- Notification Preferences Section -->
-    <div class="settings-section">
-      <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
-      
-      <div class="toggle-options">
-        <div class="toggle-option">
-          <label>
-            <i class="fas fa-envelope"></i>
-            <span>
-              <strong>Email Notifications</strong>
-              <p style="margin:0;font-size:13px;color:var(--muted)">Receive order updates and promotions via email</p>
-            </span>
-          </label>
-          <label class="switch">
-            <input type="checkbox" id="emailNotifications" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="toggle-option">
-          <label>
-            <i class="fas fa-sms"></i>
-            <span>
-              <strong>SMS Alerts</strong>
-              <p style="margin:0;font-size:13px;color:var(--muted)">Get important order updates via SMS</p>
-            </span>
-          </label>
-          <label class="switch">
-            <input type="checkbox" id="smsNotifications">
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="toggle-option">
-          <label>
-            <i class="fas fa-mobile-alt"></i>
-            <span>
-              <strong>In-App Notifications</strong>
-              <p style="margin:0;font-size:13px;color:var(--muted)">Show notifications within the app</p>
-            </span>
-          </label>
-          <label class="switch">
-            <input type="checkbox" id="inAppNotifications" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="section-actions">
-        <button class="btn btn-primary" id="saveNotificationsBtn">
-          <i class="fas fa-save"></i> Save Preferences
-        </button>
-      </div>
-    </div>
-
     <!-- Danger Zone -->
     <div class="danger-zone">
       <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
@@ -911,14 +856,6 @@
           document.getElementById('routingNumber').value = bankDetails.routingNumber || '';
         }
 
-        // Load notification preferences
-        if (user.notificationPreferences) {
-          const prefs = user.notificationPreferences;
-          document.getElementById('emailNotifications').checked = prefs.email !== false;
-          document.getElementById('smsNotifications').checked = prefs.sms === true;
-          document.getElementById('inAppNotifications').checked = prefs.inApp !== false;
-        }
-
         // Fetch fresh data from backend
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
           method: 'GET',
@@ -961,13 +898,6 @@
             if (mergedUser.postalCode) document.getElementById('postalCode').value = mergedUser.postalCode;
             if (mergedUser.country) document.getElementById('country').value = mergedUser.country;
 
-            // Update notifications
-            if (mergedUser.notificationPreferences) {
-              const prefs = mergedUser.notificationPreferences;
-              document.getElementById('emailNotifications').checked = prefs.email !== false;
-              document.getElementById('smsNotifications').checked = prefs.sms === true;
-              document.getElementById('inAppNotifications').checked = prefs.inApp !== false;
-            }
           }
         }
 
@@ -1192,57 +1122,6 @@
     }
 
     // =====================================================
-    // SAVE NOTIFICATION PREFERENCES
-    // =====================================================
-    async function saveNotifications() {
-      const emailNotifications = document.getElementById('emailNotifications').checked;
-      const smsNotifications = document.getElementById('smsNotifications').checked;
-      const inAppNotifications = document.getElementById('inAppNotifications').checked;
-
-      const saveBtn = document.getElementById('saveNotificationsBtn');
-      setButtonLoading(saveBtn, true, 'Saving...');
-
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/auth/notification-preferences`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: emailNotifications,
-            sms: smsNotifications,
-            inApp: inAppNotifications
-          })
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.status === 'success') {
-          // Update localStorage
-          const user = JSON.parse(localStorage.getItem('user') || '{}');
-          user.notificationPreferences = {
-            email: emailNotifications,
-            sms: smsNotifications,
-            inApp: inAppNotifications
-          };
-          localStorage.setItem('user', JSON.stringify(user));
-
-          showAlert('success', 'Notification preferences updated successfully!');
-        } else {
-          throw new Error(data.message || 'Failed to update preferences');
-        }
-
-      } catch (error) {
-        console.error('Error updating notifications:', error);
-        showAlert('error', error.message || 'Could not update preferences. Please try again.');
-      } finally {
-        setButtonLoading(saveBtn, false);
-      }
-    }
-
-    // =====================================================
     // DELETE ACCOUNT
     // =====================================================
     function openDeleteModal() {
@@ -1326,9 +1205,6 @@
 
       // Save refund bank details button
       document.getElementById('saveBankDetailsBtn').addEventListener('click', saveBankDetails);
-
-      // Save notifications button
-      document.getElementById('saveNotificationsBtn').addEventListener('click', saveNotifications);
 
       // Delete account button
       document.getElementById('deleteAccountBtn').addEventListener('click', openDeleteModal);
