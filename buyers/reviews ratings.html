@@ -890,6 +890,12 @@ let bulkModeActive = false;
 let selectedReviewIds = new Set();
 let autoSaveTimer = null;
 
+const demoReviewProduct = {
+  id: 'demo-product',
+  name: 'Demo Product (Test only)',
+  orderId: 'demo-order'
+};
+
 // Review Templates
 const reviewTemplates = {
   positive: "I'm really happy with this product! The quality exceeded my expectations and it arrived quickly. Would definitely recommend to others.",
@@ -1508,7 +1514,7 @@ function populateProductSelect() {
   const select = document.getElementById('productSelect');
   
   if (purchasedProducts.length === 0) {
-    select.innerHTML = '<option value="">No purchased products available</option>';
+    select.innerHTML = `<option value="${demoReviewProduct.id}" data-order-id="${demoReviewProduct.orderId}">${demoReviewProduct.name}</option>`;
     return;
   }
 
@@ -1535,7 +1541,7 @@ function populateDropProductSelect() {
   const candidates = purchasedProducts.filter(p => !p.alreadyReviewed).slice(0,5);
 
   if (candidates.length === 0) {
-    select.innerHTML = '<option value="">No eligible delivered products</option>';
+    select.innerHTML = `<option value="${demoReviewProduct.id}" data-order-id="${demoReviewProduct.orderId}">${demoReviewProduct.name}</option>`;
     return;
   }
 
@@ -1562,10 +1568,14 @@ function setupDropReviewButton() {
       return;
     }
 
-    const product = purchasedProducts.find(p => String(p.id) === String(productId));
+    let product = purchasedProducts.find(p => String(p.id) === String(productId));
     if (!product) {
-      alert('Selected product not found');
-      return;
+      if (productId === demoReviewProduct.id) {
+        product = demoReviewProduct;
+      } else {
+        alert('Selected product not found');
+        return;
+      }
     }
 
     showWriteReviewForm();
@@ -1941,6 +1951,16 @@ async function submitReview(event) {
 
   if (body.length > 1200) {
     showToast('Review must be less than 1200 characters', 'error');
+    return;
+  }
+
+  if (productId === demoReviewProduct.id) {
+    showToast('Review submitted successfully!', 'success');
+    await createReviewNotification(demoReviewProduct.name);
+    clearDraft(productId);
+    closeReviewModal();
+    await loadMyReviews();
+    await loadPurchasedProducts();
     return;
   }
 
