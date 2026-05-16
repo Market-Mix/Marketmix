@@ -919,6 +919,57 @@ function formatStars(rating) {
   return '★'.repeat(rating) + '☆'.repeat(5 - rating);
 }
 
+function getBuyerId() {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.id || null;
+  } catch {
+    return null;
+  }
+}
+
+async function createReviewNotification(productName) {
+  const buyerId = getBuyerId();
+  const token = localStorage.getItem('token');
+  if (!buyerId || !token || !productName) {
+    console.warn('⚠️ Review notification not created because auth or product name is missing', { buyerId, tokenExists: !!token, productName });
+    return null;
+  }
+
+  const payload = {
+    user_id: buyerId,
+    title: 'Review Submitted',
+    message: `${productName} review submitted`,
+    type: 'account',
+    link: '/buyers/reviews%20ratings.html'
+  };
+
+  console.log('🔔 Sending review notification payload:', payload);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.status === 'error') {
+      console.error('❌ Review notification failed:', result);
+      return null;
+    }
+
+    console.log('✅ Review notification created successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error creating review notification:', error);
+    return null;
+  }
+}
+
 function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
@@ -1947,6 +1998,13 @@ async function submitReview(event) {
     if (response.ok && data.status === 'success') {
       showToast(currentEditingId ? 'Review updated successfully!' : 'Review submitted successfully!', 'success');
       
+      // Create notification only for newly submitted reviews, not edits
+      if (!currentEditingId) {
+        const selectedOption = document.querySelector(`#productSelect option[value="${productId}"]`);
+        const productName = selectedOption?.textContent?.replace(' (Already reviewed)', '').trim() || 'Product';
+        await createReviewNotification(productName);
+      }
+
       // Clear draft after successful submission
       if (!currentEditingId) {
         clearDraft(productId);
