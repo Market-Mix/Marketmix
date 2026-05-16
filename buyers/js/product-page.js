@@ -529,6 +529,15 @@ async function handleWishlist(product) {
       }
       setWishlisted(product.id, false);
       showToast('Removed from wishlist', 'info');
+
+      const buyerId = getBuyerId?.();
+      if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createWishlistNotification) {
+        try {
+          await NotificationManager.createWishlistNotification(buyerId, product.name);
+        } catch (err) {
+          console.warn('Wishlist removal notification failed:', err);
+        }
+      }
     } else {
       // Add to wishlist — include store_id in body and X-Store-Id in header
       const res = await fetch(`${API_BASE}/wishlist/add`, {

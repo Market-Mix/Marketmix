@@ -29,7 +29,7 @@ async function fetchWishlist() {
 }
 
 // Remove item from wishlist
-async function removeFromWishlist(itemId) {
+async function removeFromWishlist(itemId, itemName = 'Product', notify = true) {
   try {
     const response = await fetch(`${API_BASE_URL}/wishlist/remove/${itemId}`, {
       method: 'DELETE',
@@ -43,6 +43,17 @@ async function removeFromWishlist(itemId) {
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to remove item');
+    }
+
+    if (notify) {
+      try {
+        const buyerId = getBuyerId();
+        if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createWishlistNotification) {
+          await NotificationManager.createWishlistNotification(buyerId, itemName);
+        }
+      } catch (err) {
+        console.warn('Wishlist removal notification failed:', err);
+      }
     }
 
     return true;
@@ -143,7 +154,8 @@ function addEventListeners() {
       const confirmed = confirm('Are you sure you want to remove this item from your wishlist?');
       
       if (confirmed) {
-        const success = await removeFromWishlist(itemId);
+        const itemName = this.closest('.wishlist-item').querySelector('h4').textContent.trim();
+        const success = await removeFromWishlist(itemId, itemName, true);
         if (success) {
           // Reload wishlist after removal
           loadWishlist();
@@ -168,8 +180,8 @@ function addEventListeners() {
       const success = await moveToCart(productId, itemData);
       if (success) {
         alert("Item moved to cart!");
-        // Remove from wishlist after moving to cart
-        await removeFromWishlist(itemId);
+        // Remove from wishlist after moving to cart, but do not create a removal notification for this transition
+        await removeFromWishlist(itemId, itemData.name, false);
         loadWishlist();
       }
     });

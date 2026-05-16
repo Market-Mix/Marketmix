@@ -524,6 +524,22 @@
             saveRecentDeleted();
           } catch(e){ console.warn('Recent delete save failed', e); }
 
+          const notifyCartRemoval = async () => {
+            try {
+              const buyerId = getBuyerId();
+              if (buyerId && typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+                await NotificationManager.createNotification(buyerId, {
+                  title: 'Item removed from cart',
+                  message: `${item.name} was removed from your cart.`,
+                  type: 'cart',
+                  link: '/buyers/cart.html'
+                });
+              }
+            } catch (err) {
+              console.warn('Cart removal notification failed:', err);
+            }
+          };
+
           // Try backend deletion if item has id
           try {
             const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
@@ -533,6 +549,7 @@
               if (resp.ok) {
                 cart.splice(index,1);
                 saveAndRender();
+                await notifyCartRemoval();
                 return;
               }
             }
@@ -541,6 +558,7 @@
           // fallback local remove
           cart.splice(index,1);
           saveAndRender();
+          await notifyCartRemoval();
         });
 
         container.appendChild(div);
