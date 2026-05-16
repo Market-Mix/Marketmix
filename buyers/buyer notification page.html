@@ -444,18 +444,9 @@
       return `${months}mo ago`;
     }
 
-    // Get icon for notification type
+    // Get icon for notification type (always use green tick for notifications)
     function getNotifIcon(type) {
-      const icons = {
-        info: 'fa-info-circle',
-        success: 'fa-check-circle',
-        warning: 'fa-exclamation-triangle',
-        error: 'fa-times-circle',
-        order: 'fa-shopping-bag',
-        message: 'fa-comment',
-        discount: 'fa-tag'
-      };
-      return icons[type] || icons.info;
+      return 'fa-check-circle';
     }
 
     // Fetch notifications from backend
@@ -531,7 +522,7 @@
         el.className = 'notif' + (n.isRead ? '' : ' unread');
         
         const iconClass = getNotifIcon(n.type);
-        const typeClass = n.type || 'info';
+        const typeClass = 'success';
 
         el.innerHTML = `
           <div class="notif-icon ${typeClass}">
