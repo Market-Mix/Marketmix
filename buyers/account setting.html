@@ -783,6 +783,7 @@
     © MarketMix 2025
   </footer>
 
+  <script src="notification-manager.js"></script>
   <script>
     // =====================================================
     // CONFIGURATION
@@ -822,6 +823,59 @@
       } else {
         button.disabled = false;
         button.innerHTML = button.dataset.originalText || text;
+      }
+    }
+
+    function getBuyerId() {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return user?.id || null;
+      } catch {
+        return null;
+      }
+    }
+
+    async function createAccountNotification(title, message, link = '/buyers/account setting.html') {
+      const buyerId = getBuyerId();
+      if (!buyerId) {
+        console.warn('Account notification skipped: missing buyer id');
+        return null;
+      }
+
+      if (typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+        try {
+          return await NotificationManager.createNotification(buyerId, {
+            title,
+            message,
+            type: 'account',
+            link
+          });
+        } catch (err) {
+          console.warn('NotificationManager failed, falling back to direct API:', err);
+        }
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/notifications`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: buyerId,
+            title,
+            message,
+            type: 'account',
+            link
+          })
+        });
+        const data = await response.json();
+        return (data && data.notification) ? data.notification : null;
+      } catch (error) {
+        console.warn('Fallback account notification creation failed:', error);
+        return null;
       }
     }
 
@@ -954,17 +1008,18 @@
 
         const data = await response.json();
         
-if (response.ok && data.status === 'success') {
-  // Update localStorage with the response from backend
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const updatedUser = {
-    ...currentUser,
-    ...data.data.user  // Use the user object from backend response
-  };
-  localStorage.setItem('user', JSON.stringify(updatedUser));
+        if (response.ok && data.status === 'success') {
+          // Update localStorage with the response from backend
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const updatedUser = {
+            ...currentUser,
+            ...data.data.user  // Use the user object from backend response
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
 
-  showAlert('success', 'Profile updated successfully!');
-     }else {
+          showAlert('success', 'Profile updated successfully!');
+          await createAccountNotification('Profile Updated', 'Your personal information has been updated successfully.');
+        } else {
           throw new Error(data.message || 'Failed to update profile');
         }
 
@@ -1026,6 +1081,7 @@ if (response.ok && data.status === 'success') {
 
         if (response.ok && data.status === 'success') {
           showAlert('success', 'Password changed successfully!');
+          await createAccountNotification('Password Changed', 'Your account password has been updated successfully.');
           
           // Clear password fields
           document.getElementById('currentPassword').value = '';
@@ -1091,6 +1147,7 @@ if (response.ok && data.status === 'success') {
           localStorage.setItem('user', JSON.stringify(user));
 
           showAlert('success', 'Shipping address updated successfully!');
+          await createAccountNotification('Address Updated', 'Your shipping address information has been saved successfully.');
         } else {
           throw new Error(data.message || 'Failed to update address');
         }
@@ -1106,7 +1163,7 @@ if (response.ok && data.status === 'success') {
     // =====================================================
     // SAVE BANK DETAILS
     // =====================================================
-    function saveBankDetails() {
+    async function saveBankDetails() {
       const bankName = document.getElementById('bankName').value.trim();
       const accountHolderName = document.getElementById('accountHolderName').value.trim();
       const accountNumber = document.getElementById('accountNumber').value.trim();
@@ -1131,6 +1188,7 @@ if (response.ok && data.status === 'success') {
       localStorage.setItem('user', JSON.stringify(user));
 
       showAlert('success', 'Refund bank details saved successfully!');
+      await createAccountNotification('Bank Details Saved', 'Your refund bank details have been saved successfully.');
     }
 
     // =====================================================
@@ -1244,9 +1302,18 @@ if (response.ok && data.status === 'success') {
     // =====================================================
     // EVENT LISTENERS
     // =====================================================
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
       // Load user data on page load
-      loadUserData();
+      await loadUserData();
+
+      const buyerId = getBuyerId();
+      if (buyerId && typeof NotificationManager !== 'undefined') {
+        try {
+          await NotificationManager.init(buyerId);
+        } catch (err) {
+          console.warn('NotificationManager init failed:', err);
+        }
+      }
 
       // Save profile button
       document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
