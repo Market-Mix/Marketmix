@@ -366,12 +366,15 @@ async function addProduct() {
       try {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const userId = user?.id;
+        // Prefer store name when composing notification messages
+        const store = (typeof StoreManager !== 'undefined' && StoreManager.getActiveStore) ? StoreManager.getActiveStore() : null;
+        const storeName = store?.business_name || 'your store';
         const notifPayload = {
           user_id: userId,
           title: wasFirstProduct ? 'First product added!' : 'New product added',
           message: wasFirstProduct
-            ? 'Congratulations! You just added your first product to MarketMix.'
-            : 'New product added successfully to MarketMix.',
+            ? `Congratulations! You just added your first product to ${storeName}.`
+            : `New product added successfully to ${storeName}.`,
           type: 'account',
           link: '/sellers/sellers product.html'
         };

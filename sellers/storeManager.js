@@ -176,3 +176,38 @@ const StoreManager = (() => {
 
 // Make available globally
 window.StoreManager = StoreManager;
+
+// Shared notification badge updater for seller pages.
+// Define only if a page hasn't already provided one (e.g., sellers layout.js)
+if (typeof window.updateNavbarNotificationBadge === 'undefined') {
+  window.updateNavbarNotificationBadge = async function() {
+    const token = localStorage.getItem('token') || '';
+    if (!token) return;
+    const apiBase = 'https://marketmix-backend.onrender.com/api';
+    try {
+      const res = await fetch(`${apiBase}/notifications?unread=true`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      const unread = json?.data?.unreadCount ?? json?.unreadCount ?? 0;
+      document.querySelectorAll('.notification-badge').forEach(b => {
+        try {
+          b.innerText = unread;
+          b.style.display = unread > 0 ? 'inline-block' : 'none';
+        } catch (e) { /* ignore */ }
+      });
+    } catch (e) {
+      console.error('Failed to update notification badge:', e);
+    }
+  };
+
+  // Auto-init on pages that include storeManager.js
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      window.updateNavbarNotificationBadge();
+      setInterval(window.updateNavbarNotificationBadge, 30_000);
+    } catch (e) { /* ignore */ }
+  });
+}
