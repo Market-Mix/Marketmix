@@ -27,7 +27,9 @@
     /* Nav */
     .nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: var(--ink); height: 58px;
+      /* match sellers earning page: transparent dark bar and slightly taller */
+      background: rgba(0,0,0,0.7);
+      height: 65px;
       display: flex; align-items: center; padding: 0 24px; gap: 20px;
     }
     .nav-brand { color: #fff; font-family: 'Playfair Display', serif; font-size: 1.25rem; text-decoration: none; }
@@ -252,9 +254,7 @@
       <div class="tab-item" onclick="switchTab('address')">
         <i class="fas fa-map-marker-alt"></i> Address
       </div>
-      <div class="tab-item" onclick="switchTab('notifications')">
-        <i class="fas fa-bell"></i> Notifications
-      </div>
+      
       <div class="tab-item" onclick="switchTab('danger')">
         <i class="fas fa-trash-alt" style="color:var(--red)"></i>
         <span style="color:var(--red)">Delete</span>
@@ -383,44 +383,7 @@
         </div>
       </div>
 
-      <!-- ── Notifications ── -->
-      <div class="section" id="sec-notifications">
-        <div class="card">
-          <h2>Notification Preferences</h2>
-          <p class="card-sub">Choose how you want MarketMix to reach you.</p>
-
-          <div class="toggle-row">
-            <div class="toggle-label">
-              <h4>Email Notifications</h4>
-              <p>Order updates, promotions, account alerts</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="notifEmail" onchange="saveNotifications()" />
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="toggle-row">
-            <div class="toggle-label">
-              <h4>SMS Notifications</h4>
-              <p>Text alerts for orders and deliveries</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="notifSms" onchange="saveNotifications()" />
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="toggle-row">
-            <div class="toggle-label">
-              <h4>In-App Notifications</h4>
-              <p>Alerts shown inside your seller dashboard</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="notifApp" onchange="saveNotifications()" />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
+      
 
       <!-- ── Danger ── -->
       <div class="section" id="sec-danger">
@@ -499,7 +462,7 @@ function setBtnLoading(id, loading, label = 'Save Changes') {
 // ── Tab switcher ─────────────────────────────────────────────────────────────
 function switchTab(name) {
   document.querySelectorAll('.tab-item').forEach((t, i) => {
-    const tabs = ['profile','password','address','notifications','danger'];
+    const tabs = ['profile','password','address','danger'];
     t.classList.toggle('active', tabs[i] === name);
   });
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -543,11 +506,7 @@ async function loadProfile() {
     document.getElementById('postalCode').value = u.postalCode || '';
     document.getElementById('country').value    = u.country    || '';
 
-    // Notifications tab
-    const np = u.notificationPreferences || {};
-    document.getElementById('notifEmail').checked = !!np.email;
-    document.getElementById('notifSms').checked   = !!np.sms;
-    document.getElementById('notifApp').checked   = !!np.inApp;
+    // Notification preferences UI removed — nothing to initialize here.
 
   } catch (e) {
     toast(e.message || 'Failed to load profile', 'error');
@@ -616,6 +575,12 @@ async function saveProfile() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     toast('Profile saved!', 'success');
+    // Create in-app notification for profile update
+    try {
+      const store = (typeof StoreManager !== 'undefined' && StoreManager.getActiveStore) ? StoreManager.getActiveStore() : null;
+      const storeName = store?.business_name || 'your store';
+      await createInAppNotification('Profile updated', `Your profile information was updated for ${storeName}.`, '/sellers/sellers notification page.html');
+    } catch (e) { console.warn('Profile notification failed', e); }
     document.getElementById('avatarName').textContent = `${firstName} ${lastName}`.trim();
   } catch (e) {
     toast(e.message || 'Failed to save', 'error');
@@ -667,6 +632,9 @@ async function savePassword() {
     if (!res.ok) throw new Error(data.message);
 
     toast('Password updated!', 'success');
+    try {
+      await createInAppNotification('Password changed', 'You changed your account password.', '/sellers/sellers notification page.html');
+    } catch (e) { console.warn('Password notification failed', e); }
     document.getElementById('currentPassword').value = '';
     document.getElementById('newPassword').value     = '';
     document.getElementById('confirmPassword').value = '';
@@ -695,6 +663,11 @@ async function saveAddress() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     toast('Address saved!', 'success');
+    try {
+      const store = (typeof StoreManager !== 'undefined' && StoreManager.getActiveStore) ? StoreManager.getActiveStore() : null;
+      const storeName = store?.business_name || 'your store';
+      await createInAppNotification('Address updated', `Delivery address updated for ${storeName}.`, '/sellers/sellers notification page.html');
+    } catch (e) { console.warn('Address notification failed', e); }
   } catch (e) {
     toast(e.message || 'Failed to save address', 'error');
   }
@@ -720,6 +693,41 @@ async function saveNotifications() {
       toast('Preferences saved', 'success');
     } catch { toast('Failed to save preferences', 'error'); }
   }, 600);
+}
+
+// Create in-app notification helper
+async function createInAppNotification(title, message, link = '/sellers/sellers notification page.html') {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user?.id;
+    if (!userId) return null;
+
+    if (typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+      try {
+        return await NotificationManager.createNotification(userId, { title, message, type: 'account', link });
+      } catch (e) {
+        console.warn('NotificationManager.createNotification failed', e);
+      }
+    }
+
+    // Fallback to backend API
+    try {
+      const res = await fetch(`${API}/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ user_id: userId, title, message, type: 'account', link })
+      });
+      if (!res.ok) throw new Error('Failed to create notification');
+      if (typeof updateNavbarNotificationBadge === 'function') updateNavbarNotificationBadge();
+      return await res.json();
+    } catch (e) {
+      console.warn('Fallback notification API failed', e);
+      return null;
+    }
+  } catch (e) {
+    console.warn('createInAppNotification error', e);
+    return null;
+  }
 }
 
 // ── Delete account ────────────────────────────────────────────────────────────
