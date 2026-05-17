@@ -539,6 +539,47 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('mm_stores_cache'); // force refresh on next load
       }
 
+      // Create a notification for the seller informing them the store setup completed
+      (async () => {
+        try {
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          const userId = user?.id;
+          const notifPayload = {
+            user_id: userId,
+            title: 'Store setup completed',
+            message: 'Your store has been successfully set up. Please complete KYC verification to get verified.',
+            type: 'account',
+            link: '/sellers/kyc-verification.html'
+          };
+
+          if (userId && typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+            // Prefer internal NotificationManager when available
+            try { await NotificationManager.createNotification(userId, {
+              title: notifPayload.title,
+              message: notifPayload.message,
+              type: notifPayload.type,
+              link: notifPayload.link
+            }); } catch (e) { console.warn('NotificationManager.createNotification failed', e); }
+          } else if (userId) {
+            // Fallback direct API call
+            try {
+              await fetch(`${API_BASE}/notifications`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(notifPayload)
+              });
+            } catch (e) { console.warn('Failed to create notification via API', e); }
+          }
+
+          // Immediately refresh navbar badges if updater exists
+          if (typeof updateNavbarNotificationBadge === 'function') {
+            try { updateNavbarNotificationBadge(); } catch (e) {}
+          }
+        } catch (e) {
+          console.warn('Could not create store setup notification:', e);
+        }
+      })();
+
       showToast('Store setup completed! 🎉 Redirecting to KYC verification...', 'success');
       setTimeout(() => { window.location.href = 'kyc-verification.html'; }, 2000);
 
