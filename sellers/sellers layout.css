@@ -120,11 +120,22 @@ body {
 
 /* ========== Navbar Toggler for Small Screens ========== */
 .navbar-toggler {
-  background: none;
-  border: none;
+  background: #fff;
+  border: 1px solid rgba(30, 41, 59, 0.12);
+  border-radius: 999px;
   cursor: pointer;
   display: none; /* Hidden on large screens */
   outline: none;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navbar-toggler i {
+  font-size: 1.2rem;
+  color: #1e293b;
 }
 
 .navbar-toggler-icon {
@@ -361,6 +372,10 @@ body {
   transition: right 0.3s ease-in-out;
   padding: 1rem;
   overflow-y: auto;
+}
+
+.offcanvas-menu.show {
+  right: 0;
 }
 
 .offcanvas-close{
