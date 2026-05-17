@@ -104,6 +104,50 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       showToast("KYC submitted! We'll review your documents and notify you.", 'success');
+
+      // Create a seller notification for the KYC submission event.
+      (async () => {
+        try {
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          const userId = user?.id;
+          const notifPayload = {
+            user_id: userId,
+            title: 'KYC Submitted',
+            message: 'Your KYC was submitted successfully and is under review.',
+            type: 'account',
+            link: '/sellers/sellers notification page.html'
+          };
+
+          if (userId && typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+            try {
+              await NotificationManager.createNotification(userId, {
+                title: notifPayload.title,
+                message: notifPayload.message,
+                type: notifPayload.type,
+                link: notifPayload.link
+              });
+            } catch (e) {
+              console.warn('NotificationManager.createNotification failed', e);
+            }
+          } else if (userId) {
+            try {
+              await fetch(`${API_BASE}/notifications`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(notifPayload)
+              });
+            } catch (e) {
+              console.warn('Failed to create notification via API', e);
+            }
+          }
+        } catch (e) {
+          console.warn('Could not create KYC notification:', e);
+        }
+      })();
+
       setTimeout(() => { window.location.href = 'sellers layout.html'; }, 2200);
 
     } catch (err) {
