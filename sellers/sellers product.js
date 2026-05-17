@@ -356,10 +356,55 @@ async function addProduct() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to create product');
 
+    const wasFirstProduct = allProducts.length === 0;
     allProducts.unshift(data.data.product);
     renderProducts();
     closeAddModal();
     showToast('Product added successfully!', 'success');
+
+    (async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userId = user?.id;
+        const notifPayload = {
+          user_id: userId,
+          title: wasFirstProduct ? 'First product added!' : 'New product added',
+          message: wasFirstProduct
+            ? 'Congratulations! You just added your first product to MarketMix.'
+            : 'New product added successfully to MarketMix.',
+          type: 'account',
+          link: '/sellers/sellers product.html'
+        };
+
+        if (userId && typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+          try {
+            await NotificationManager.createNotification(userId, {
+              title: notifPayload.title,
+              message: notifPayload.message,
+              type: notifPayload.type,
+              link: notifPayload.link
+            });
+          } catch (e) {
+            console.warn('NotificationManager.createNotification failed', e);
+          }
+        } else if (userId) {
+          try {
+            await fetch(`${API_BASE}/notifications`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...authHeaders()
+              },
+              body: JSON.stringify(notifPayload)
+            });
+          } catch (e) {
+            console.warn('Failed to create notification via API', e);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not create product notification:', e);
+      }
+    })();
   } catch (err) {
     console.error('addProduct:', err);
     showToast('Error: ' + err.message, 'error');
