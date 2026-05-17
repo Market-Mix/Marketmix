@@ -63,7 +63,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Auto-refresh every 30 seconds
   setInterval(loadDashboardData, 30_000);
+  // Update navbar notification badge right away and poll every 30s
+  try {
+    updateNavbarNotificationBadge();
+    setInterval(updateNavbarNotificationBadge, 30_000);
+  } catch (e) { console.warn('Notification badge updater init failed', e); }
 });
+
+// Fetch unread notifications count and update all navbar badges on seller pages
+async function updateNavbarNotificationBadge() {
+  const token = localStorage.getItem('token') || '';
+  if (!token) return;
+  const apiBase = StoreManager?.API_BASE || 'https://marketmix-backend.onrender.com/api';
+  try {
+    const res = await fetch(`${apiBase}/notifications?unread=true`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+    // support both shapes: { status,data:{unreadCount } } and { unreadCount }
+    const unread = json?.data?.unreadCount ?? json?.unreadCount ?? 0;
+    document.querySelectorAll('.notification-badge').forEach(b => {
+      try {
+        b.innerText = unread;
+        b.style.display = unread > 0 ? 'inline-block' : 'none';
+      } catch (e) { /* ignore */ }
+    });
+  } catch (e) {
+    console.error('Failed to update notification badge:', e);
+  }
+}
 
 // ─── Clear placeholder content ────────────────────────────────────────────────
 function clearOverviewCards() {
