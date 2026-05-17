@@ -652,6 +652,19 @@ body {
     font-size: 14px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
+
+  .nav-actions .notification-badge {
+    top: 4px;
+    right: 4px;
+    width: auto;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 999px;
+    box-shadow: none;
+  }
   
 
 .dashboard-overview a{
