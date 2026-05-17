@@ -106,8 +106,17 @@ body {
   margin-left: 1rem;
 }
 
+.mobile-nav-actions {
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+}
 
-
+.mobile-profile-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ========== Navbar Toggler for Small Screens ========== */
 .navbar-toggler {
@@ -369,6 +378,21 @@ body {
 @media (max-width: 768px) {
   .nav-large {
     display: none;
+  }
+
+  .mobile-nav-actions {
+    display: flex;
+  }
+
+  .mobile-profile-container {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mobile-profile-container .profile-icon {
+    width: 36px;
+    height: 36px;
+    border: 2px solid #dadce0;
   }
 
   .navbar-toggler {
