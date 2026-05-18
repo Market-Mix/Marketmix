@@ -203,14 +203,25 @@ function fetchWithTimeout(url, options = {}, ms = 6000) {
 
 // ── Try resolving seller/shop name from Supabase `product_listings` table ──
 // Try resolving seller/store info from backend endpoints (same source as product data)
+function isPlaceholderSellerName(name) {
+  if (!name) return true;
+  const normalized = String(name).trim();
+  if (!normalized) return true;
+  return /market\s?mix/i.test(normalized) && /store/i.test(normalized);
+}
+
 async function fetchSellerFromBackend(product) {
   if (!product) return;
 
-  // If product already contains seller info, render it immediately.
-  if (product.seller && (product.seller.shop_name || product.seller.businessName || product.seller.name || product.seller.shop_name === '')) {
-    product.seller.shop_name = formatSellerName(product.seller.shop_name || product.seller.businessName || product.seller.name);
+  const rawSellerName = product.seller?.shop_name || product.seller?.businessName || product.seller?.business_name || product.seller?.name || '';
+  const hasRating = product.seller?.rating != null && product.seller?.rating !== '';
+  const showImmediateSeller = rawSellerName && !isPlaceholderSellerName(rawSellerName);
+
+  // Render existing seller info immediately, but keep fetching if rating is missing.
+  if (product.seller && showImmediateSeller) {
+    product.seller.shop_name = formatSellerName(rawSellerName);
     renderSellerInfo(product.seller, getProductStoreId(product));
-    return;
+    if (hasRating) return;
   }
 
   // 1) Try seller_id endpoint
