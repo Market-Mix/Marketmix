@@ -91,6 +91,13 @@
   <script>
     const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
+
+    // At top of login page script
+localStorage.removeItem("token");
+localStorage.removeItem("user");
+localStorage.removeItem("mm_active_store");
+localStorage.removeItem("mm_stores_cache");
+
     // ─── Toast ────────────────────────────────────────────────────────────────
     function showToast(message, type = 'info') {
       if (typeof showNotification === 'function') {

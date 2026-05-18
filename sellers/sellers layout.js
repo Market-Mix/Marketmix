@@ -24,10 +24,9 @@ async function handleLogout() {
 }
 
 // Wire logout links
-document.querySelectorAll('a[href="#"]').forEach((a) => {
-  if (a.textContent.trim().toLowerCase() === "logout") {
-    a.addEventListener("click", (e) => { e.preventDefault(); handleLogout(); });
-  }
+document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  handleLogout();
 });
 
 // ─── DOM Ready ────────────────────────────────────────────────────────────────
