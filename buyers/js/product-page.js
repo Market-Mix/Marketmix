@@ -219,7 +219,7 @@ async function tryResolveSellerFromSupabase(product) {
   if (!supabase) return;
 
   try {
-    // Try common id columns
+    // Try common id columns, log each attempt for diagnosis
     const attempts = [
       { col: 'id', val: product.id },
       { col: 'product_id', val: product.id },
@@ -229,12 +229,34 @@ async function tryResolveSellerFromSupabase(product) {
     let row = null;
     for (const a of attempts) {
       if (!a.val) continue;
-      const { data, error } = await supabase.from('product_listings').select('*').eq(a.col, a.val).limit(1).maybeSingle();
-      if (error) continue;
+      console.debug('Supabase lookup attempt:', a.col, a.val);
+      const res = await supabase.from('product_listings').select('*').eq(a.col, a.val).limit(1).maybeSingle();
+      // supabase-js may return an object with data/error or throw — normalize
+      const data = res?.data ?? null;
+      const error = res?.error ?? null;
+      if (error) {
+        console.warn('Supabase lookup error for', a.col, error);
+        continue;
+      }
       if (data) { row = data; break; }
     }
 
-    if (!row) return;
+    // If not found by id-like fields, try fuzzy match on product name (case-insensitive)
+    if (!row && product?.name) {
+      try {
+        console.debug('Supabase fuzzy name lookup for:', product.name);
+        const nameRes = await supabase.from('product_listings').select('*').ilike('name', `%${product.name}%`).limit(1).maybeSingle();
+        if (nameRes?.error) console.warn('Supabase name lookup error', nameRes.error);
+        else if (nameRes?.data) row = nameRes.data;
+      } catch (e) {
+        console.warn('Supabase name lookup threw', e);
+      }
+    }
+
+    if (!row) {
+      console.debug('No product_listings row found for product', product.id || product.name);
+      return;
+    }
 
     const sellerName = row.seller_name || row.seller || row.business_name || row.store_name || null;
     if (!sellerName) return;
