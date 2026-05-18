@@ -206,8 +206,9 @@ function fetchWithTimeout(url, options = {}, ms = 6000) {
 async function fetchSellerFromBackend(product) {
   if (!product) return;
 
-  // If product already contains seller info, render it
+  // If product already contains seller info, render it immediately.
   if (product.seller && (product.seller.shop_name || product.seller.businessName || product.seller.name || product.seller.shop_name === '')) {
+    product.seller.shop_name = formatSellerName(product.seller.shop_name || product.seller.businessName || product.seller.name);
     renderSellerInfo(product.seller, getProductStoreId(product));
     return;
   }
@@ -222,7 +223,7 @@ async function fetchSellerFromBackend(product) {
         const store = j.data?.store;
         if (store) {
           product.seller = product.seller || {};
-          product.seller.shop_name = store.businessName || store.business_name || `${store.businessName || ''}`;
+          product.seller.shop_name = formatSellerName(store.businessName || store.business_name || store.name || '');
           product.seller.shop_avatar_url = store.storeLogo || store.store_logo_url || '';
           product.seller.rating = store.rating || product.seller.rating;
           product.seller.store_id = store.storeId || store.store_id || product.store_id || null;
@@ -243,7 +244,7 @@ async function fetchSellerFromBackend(product) {
         const store2 = j2.data?.store;
         if (store2) {
           product.seller = product.seller || {};
-          product.seller.shop_name = store2.businessName || store2.business_name || store2.businessName;
+          product.seller.shop_name = formatSellerName(store2.businessName || store2.business_name || store2.name || '');
           product.seller.shop_avatar_url = store2.storeLogo || store2.store_logo_url || '';
           product.seller.rating = store2.rating || product.seller.rating;
           product.seller.store_id = store2.storeId || store2.store_id || storeId;
@@ -295,33 +296,46 @@ async function fetchAndRenderSeller(product) {
   }
 }
 
+function formatSellerName(rawName) {
+  if (!rawName) return '';
+  const normalized = rawName.trim();
+  if (!normalized) return '';
+  if (/store$/i.test(normalized)) return normalized;
+  return `${normalized} Store`;
+}
+
 function renderSellerInfo(seller, storeId) {
   const avatar = document.getElementById('shop-avatar');
   if (avatar) {
-    avatar.src = seller.shop_avatar_url || 'https://via.placeholder.com/32';
+    avatar.src = seller?.shop_avatar_url || 'https://via.placeholder.com/32';
     avatar.onerror = () => { avatar.src = 'https://via.placeholder.com/32'; };
     avatar.classList.add('mm-fade-in');
   }
 
-  const shopName = seller && (
-    seller.shop_name || seller.businessName || seller.business_name || seller.name ||
-    [seller.firstName, seller.lastName].filter(Boolean).join(' ') ||
-    'MarketMix Store'
-  );
+  const shopName = seller ?
+    formatSellerName(
+      seller.shop_name || seller.businessName || seller.business_name || seller.name ||
+      [seller.firstName, seller.lastName].filter(Boolean).join(' ')
+    ) : '';
 
   const link = document.getElementById('shop-link');
   if (link) {
-    link.textContent = shopName;
-    const resolvedStoreId = seller.store_id || seller.storeId || storeId || seller.sellerId || seller.seller_id || '';
-    link.href = resolvedStoreId
-      ? `./store-id.html?store=${encodeURIComponent(resolvedStoreId)}`
-      : '#';
+    if (shopName) {
+      link.textContent = shopName;
+      const resolvedStoreId = seller?.store_id || seller?.storeId || storeId || seller?.sellerId || seller?.seller_id || '';
+      link.href = resolvedStoreId
+        ? `./store-id.html?store=${encodeURIComponent(resolvedStoreId)}`
+        : '#';
+    } else {
+      link.textContent = '';
+      link.href = '#';
+    }
     link.classList.add('mm-fade-in');
   }
 
   const shopRating = document.getElementById('shop-rating');
   if (shopRating) {
-    shopRating.textContent = seller.rating
+    shopRating.textContent = seller?.rating
       ? `⭐ ${Number(seller.rating).toFixed(1)} rating` : '';
     shopRating.classList.add('mm-fade-in');
   }
@@ -390,12 +404,12 @@ function renderProduct(product) {
   setEl('product-title',       product.name);
   setEl('product-category',    rules.displayName);
 
-  renderSellerInfo(product.seller || {
-    shop_name: product.business_name || product.businessName || 'MarketMix Store',
+  renderSellerInfo(product.seller || (product.business_name || product.businessName ? {
+    shop_name: product.business_name || product.businessName,
     rating: product.rating || 0,
     shop_avatar_url: product.main_image_url || '',
     store_id: getProductStoreId(product),
-  }, getProductStoreId(product));
+  } : null), getProductStoreId(product));
 
   // Price
   const basePrice    = Number(product.price) || 0;
