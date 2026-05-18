@@ -187,13 +187,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Fetch seller using the new stores/public/:storeId endpoint
   // Await so we can fall back to Supabase product_listings if needed
   try {
-    await fetchAndRenderSeller(product);
+    await fetchSellerFromBackend(product);
   } catch (_) { /* non-critical */ }
-
-  // Fallback: try to resolve seller/store name from Supabase `product_listings` table
-  try {
-    await tryResolveSellerFromSupabase(product);
-  } catch (_) { /* ignore */ }
 
   // Lazy-load below-the-fold sections
   setupLazyLoad(product);
@@ -207,72 +202,59 @@ function fetchWithTimeout(url, options = {}, ms = 6000) {
 }
 
 // ── Try resolving seller/shop name from Supabase `product_listings` table ──
-async function tryResolveSellerFromSupabase(product) {
+// Try resolving seller/store info from backend endpoints (same source as product data)
+async function fetchSellerFromBackend(product) {
   if (!product) return;
-  // If seller info already looks authoritative, skip
-  const currentName = product?.seller?.shop_name || product?.seller?.businessName || product?.seller?.business_name || '';
-  if (currentName && currentName !== 'MarketMix Store' && !currentName.endsWith(' Store')) return;
 
-  // Require Supabase client helper from notification-manager.js
-  if (typeof getSupabaseClient !== 'function') return;
-  const supabase = getSupabaseClient();
-  if (!supabase) return;
-
-  try {
-    // Try common id columns, log each attempt for diagnosis
-    const attempts = [
-      { col: 'id', val: product.id },
-      { col: 'product_id', val: product.id },
-      { col: 'listing_id', val: product.id },
-    ];
-
-    let row = null;
-    for (const a of attempts) {
-      if (!a.val) continue;
-      console.debug('Supabase lookup attempt:', a.col, a.val);
-      const res = await supabase.from('product_listings').select('*').eq(a.col, a.val).limit(1).maybeSingle();
-      // supabase-js may return an object with data/error or throw — normalize
-      const data = res?.data ?? null;
-      const error = res?.error ?? null;
-      if (error) {
-        console.warn('Supabase lookup error for', a.col, error);
-        continue;
-      }
-      if (data) { row = data; break; }
-    }
-
-    // If not found by id-like fields, try fuzzy match on product name (case-insensitive)
-    if (!row && product?.name) {
-      try {
-        console.debug('Supabase fuzzy name lookup for:', product.name);
-        const nameRes = await supabase.from('product_listings').select('*').ilike('name', `%${product.name}%`).limit(1).maybeSingle();
-        if (nameRes?.error) console.warn('Supabase name lookup error', nameRes.error);
-        else if (nameRes?.data) row = nameRes.data;
-      } catch (e) {
-        console.warn('Supabase name lookup threw', e);
-      }
-    }
-
-    if (!row) {
-      console.debug('No product_listings row found for product', product.id || product.name);
-      return;
-    }
-
-    const sellerName = row.seller_name || row.seller || row.business_name || row.store_name || null;
-    if (!sellerName) return;
-
-    // Merge into product.seller only when missing or default
-    product.seller = product.seller || {};
-    product.seller.shop_name = sellerName;
-    product.seller.shop_avatar_url = product.seller.shop_avatar_url || row.seller_avatar_url || row.store_logo || '';
-    product.seller.store_id = product.seller.store_id || row.store_id || row.seller_id || product.store_id || null;
-    if (row.avg_rating) product.seller.rating = Number(row.avg_rating) || product.seller.rating;
-
-    // Render
+  // If product already contains seller info, render it
+  if (product.seller && (product.seller.shop_name || product.seller.businessName || product.seller.name || product.seller.shop_name === '')) {
     renderSellerInfo(product.seller, getProductStoreId(product));
-  } catch (e) {
-    console.warn('Supabase seller lookup failed', e);
+    return;
   }
+
+  // 1) Try seller_id endpoint
+  const sellerId = product.seller_id || product.sellerId || product.seller?.id || null;
+  if (sellerId) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/seller/public/${sellerId}`, { headers: scopedHeaders({}, getProductStoreId(product)) }, 5000);
+      if (res && res.ok) {
+        const j = await res.json();
+        const store = j.data?.store;
+        if (store) {
+          product.seller = product.seller || {};
+          product.seller.shop_name = store.businessName || store.business_name || `${store.businessName || ''}`;
+          product.seller.shop_avatar_url = store.storeLogo || store.store_logo_url || '';
+          product.seller.rating = store.rating || product.seller.rating;
+          product.seller.store_id = store.storeId || store.store_id || product.store_id || null;
+          renderSellerInfo(product.seller, product.seller.store_id || getProductStoreId(product));
+          return;
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // 2) Try store_id endpoint
+  const storeId = getProductStoreId(product) || product.store_id || product.storeId || null;
+  if (storeId) {
+    try {
+      const res2 = await fetchWithTimeout(`${API_BASE}/seller/stores/public/${storeId}`, { headers: scopedHeaders({}, storeId) }, 5000);
+      if (res2 && res2.ok) {
+        const j2 = await res2.json();
+        const store2 = j2.data?.store;
+        if (store2) {
+          product.seller = product.seller || {};
+          product.seller.shop_name = store2.businessName || store2.business_name || store2.businessName;
+          product.seller.shop_avatar_url = store2.storeLogo || store2.store_logo_url || '';
+          product.seller.rating = store2.rating || product.seller.rating;
+          product.seller.store_id = store2.storeId || store2.store_id || storeId;
+          renderSellerInfo(product.seller, product.seller.store_id || storeId);
+          return;
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Nothing found — leave default
 }
 
 // ── Fetch seller/store profile from public endpoints ──────────────
