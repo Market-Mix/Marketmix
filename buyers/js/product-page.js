@@ -198,33 +198,42 @@ function fetchWithTimeout(url, options = {}, ms = 6000) {
   return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(id));
 }
 
-// ── Fetch seller from the stores/public endpoint ──────────────
-// Uses GET /api/seller/stores/public/:storeId — which returns store profile
+// ── Fetch seller/store profile from public endpoints ──────────────
 async function fetchAndRenderSeller(product) {
   const storeId = getProductStoreId(product);
   if (!storeId) return;
 
-  try {
-    const res = await fetchWithTimeout(`${API_BASE}/seller/stores/public/${storeId}`, {
-      headers: scopedHeaders({}, storeId),
-    }, 5000);
-    if (!res.ok) return;
+  const endpoints = [
+    `${API_BASE}/seller/stores/public/${storeId}`,
+    `${API_BASE}/seller/public/${storeId}`
+  ];
 
-    const data = await res.json();
-    const store = data.data?.store;
-    if (!store) return;
+  for (const url of endpoints) {
+    try {
+      const res = await fetchWithTimeout(url, {
+        headers: scopedHeaders({}, storeId),
+      }, 5000);
+      if (!res.ok) continue;
 
-    product.seller = {
-      id:              store.sellerId || store.seller_id || product.seller_id,
-      store_id:        store.storeId || store.id || storeId,
-      shop_name:       store.businessName,
-      rating:          store.rating,
-      shop_avatar_url: store.storeLogo || store.avatarUrl || '',
-    };
-    product.store_id = product.seller.store_id;
+      const data = await res.json();
+      const store = data.data?.store;
+      if (!store) continue;
 
-    renderSellerInfo(product.seller, storeId);
-  } catch (_) { /* non-critical */ }
+      product.seller = {
+        id:              store.sellerId || store.seller_id || product.seller_id || product.seller?.id,
+        store_id:        store.storeId || store.id || storeId,
+        shop_name:       store.businessName || store.business_name || store.name || product.seller?.name,
+        rating:          store.rating,
+        shop_avatar_url: store.storeLogo || store.avatarUrl || store.store_logo_url || '',
+      };
+      product.store_id = product.seller.store_id;
+
+      renderSellerInfo(product.seller, storeId);
+      return;
+    } catch (err) {
+      console.warn('Store profile fetch failed for', url, err);
+    }
+  }
 }
 
 function renderSellerInfo(seller, storeId) {
@@ -234,16 +243,23 @@ function renderSellerInfo(seller, storeId) {
     avatar.onerror = () => { avatar.src = 'https://via.placeholder.com/32'; };
     avatar.classList.add('mm-fade-in');
   }
+
+  const shopName = seller && (
+    seller.shop_name || seller.businessName || seller.business_name || seller.name ||
+    [seller.firstName, seller.lastName].filter(Boolean).join(' ') ||
+    'MarketMix Store'
+  );
+
   const link = document.getElementById('shop-link');
   if (link) {
-    link.textContent = seller.shop_name || 'View Store';
-    // Link to the store using the resolved store_id
-    const resolvedStoreId = seller.store_id || seller.storeId || storeId || '';
+    link.textContent = shopName;
+    const resolvedStoreId = seller.store_id || seller.storeId || storeId || seller.sellerId || seller.seller_id || '';
     link.href = resolvedStoreId
       ? `./store-id.html?store=${encodeURIComponent(resolvedStoreId)}`
       : '#';
     link.classList.add('mm-fade-in');
   }
+
   const shopRating = document.getElementById('shop-rating');
   if (shopRating) {
     shopRating.textContent = seller.rating
@@ -315,16 +331,12 @@ function renderProduct(product) {
   setEl('product-title',       product.name);
   setEl('product-category',    rules.displayName);
 
-  if (product.seller) {
-    renderSellerInfo(product.seller, getProductStoreId(product));
-  } else {
-    renderSellerInfo({
-      shop_name: product.name ? `${product.name} Store` : 'MarketMix Store',
-      rating: product.rating || 0,
-      shop_avatar_url: product.main_image_url || '',
-      store_id: getProductStoreId(product),
-    }, getProductStoreId(product));
-  }
+  renderSellerInfo(product.seller || {
+    shop_name: product.business_name || product.businessName || 'MarketMix Store',
+    rating: product.rating || 0,
+    shop_avatar_url: product.main_image_url || '',
+    store_id: getProductStoreId(product),
+  }, getProductStoreId(product));
 
   // Price
   const basePrice    = Number(product.price) || 0;
