@@ -185,7 +185,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   enrichWithReviews(product, reviewsResult);
 
   // Fetch seller using the new stores/public/:storeId endpoint
-  fetchAndRenderSeller(product);
+  // Await so we can fall back to Supabase product_listings if needed
+  try {
+    await fetchAndRenderSeller(product);
+  } catch (_) { /* non-critical */ }
+
+  // Fallback: try to resolve seller/store name from Supabase `product_listings` table
+  try {
+    await tryResolveSellerFromSupabase(product);
+  } catch (_) { /* ignore */ }
 
   // Lazy-load below-the-fold sections
   setupLazyLoad(product);
@@ -196,6 +204,53 @@ function fetchWithTimeout(url, options = {}, ms = 6000) {
   const ctrl = new AbortController();
   const id   = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(id));
+}
+
+// ── Try resolving seller/shop name from Supabase `product_listings` table ──
+async function tryResolveSellerFromSupabase(product) {
+  if (!product) return;
+  // If seller info already looks authoritative, skip
+  const currentName = product?.seller?.shop_name || product?.seller?.businessName || product?.seller?.business_name || '';
+  if (currentName && currentName !== 'MarketMix Store' && !currentName.endsWith(' Store')) return;
+
+  // Require Supabase client helper from notification-manager.js
+  if (typeof getSupabaseClient !== 'function') return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    // Try common id columns
+    const attempts = [
+      { col: 'id', val: product.id },
+      { col: 'product_id', val: product.id },
+      { col: 'listing_id', val: product.id },
+    ];
+
+    let row = null;
+    for (const a of attempts) {
+      if (!a.val) continue;
+      const { data, error } = await supabase.from('product_listings').select('*').eq(a.col, a.val).limit(1).maybeSingle();
+      if (error) continue;
+      if (data) { row = data; break; }
+    }
+
+    if (!row) return;
+
+    const sellerName = row.seller_name || row.seller || row.business_name || row.store_name || null;
+    if (!sellerName) return;
+
+    // Merge into product.seller only when missing or default
+    product.seller = product.seller || {};
+    product.seller.shop_name = sellerName;
+    product.seller.shop_avatar_url = product.seller.shop_avatar_url || row.seller_avatar_url || row.store_logo || '';
+    product.seller.store_id = product.seller.store_id || row.store_id || row.seller_id || product.store_id || null;
+    if (row.avg_rating) product.seller.rating = Number(row.avg_rating) || product.seller.rating;
+
+    // Render
+    renderSellerInfo(product.seller, getProductStoreId(product));
+  } catch (e) {
+    console.warn('Supabase seller lookup failed', e);
+  }
 }
 
 // ── Fetch seller/store profile from public endpoints ──────────────
