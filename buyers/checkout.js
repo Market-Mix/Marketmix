@@ -378,11 +378,7 @@
   async function attachAddress(addressId, addressPayload) {
     setInlineMessage(els.addressMessage, '', '');
     try {
-      const body = addressPayload || { addressId };
-      const data = await api(`/checkout/session/${state.sessionId}/address`, {
-        method: 'POST',
-        body: JSON.stringify(body)
-      });
+      const data = await attachAddressToSession(addressId, addressPayload);
       absorbSessionPayload(data);
       state.selectedAddressId = addressId || state.session.addressId || state.session.address_id;
       renderAddresses();
@@ -391,6 +387,39 @@
     } catch (error) {
       setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
     }
+  }
+
+  async function attachAddressToSession(addressId, addressPayload) {
+    const attempts = buildSessionAddressPayloads(addressId, addressPayload);
+    let lastError = null;
+
+    for (const body of attempts) {
+      try {
+        return await api(`/checkout/session/${state.sessionId}/address`, {
+          method: 'POST',
+          body: JSON.stringify(body)
+        });
+      } catch (error) {
+        lastError = error;
+        if (error.status !== 400) break;
+      }
+    }
+
+    throw lastError || new Error('Could not attach address.');
+  }
+
+  function buildSessionAddressPayloads(addressId, addressPayload) {
+    if (addressPayload) {
+      const address = addressPayload.address || addressPayload;
+      return [
+        { address: toSnakeAddress(address) },
+        toSnakeAddress(address)
+      ].map(stripEmptyDeep);
+    }
+
+    return [
+      { address_id: addressId }
+    ].filter((body) => addressId && Object.values(body).every(Boolean));
   }
 
   async function handleAddressSubmit(event) {
@@ -446,62 +475,24 @@
   }
 
   async function createAddress(payload) {
-    const attempts = buildAddressPayloads(payload);
-    let lastError = null;
-
-    for (const body of attempts) {
-      try {
-        return await api('/checkout/addresses', {
-          method: 'POST',
-          body: JSON.stringify(body)
-        });
-      } catch (error) {
-        lastError = error;
-        if (error.status !== 400) break;
-      }
-    }
-
-    throw lastError || new Error('Could not save address.');
+    return api('/checkout/addresses', {
+      method: 'POST',
+      body: JSON.stringify(toSnakeAddress(payload))
+    });
   }
 
-  function buildAddressPayloads(payload) {
-    const camel = stripEmpty({
-      fullName: payload.fullName,
+  function toSnakeAddress(payload) {
+    return stripEmpty({
+      full_name: payload.fullName || payload.full_name || payload.name,
       phone: payload.phone,
-      addressLine1: payload.addressLine1,
-      addressLine2: payload.addressLine2,
+      address_line_1: payload.addressLine1 || payload.address_line_1 || payload.address_line1 || payload.line1,
+      address_line_2: payload.addressLine2 || payload.address_line_2 || payload.address_line2 || payload.line2,
       city: payload.city,
       state: payload.state,
       country: payload.country,
-      postalCode: payload.postalCode,
-      deliveryInstructions: payload.deliveryInstructions
+      postal_code: payload.postalCode || payload.postal_code,
+      delivery_instructions: payload.deliveryInstructions || payload.delivery_instructions || payload.instructions
     });
-
-    const snake = stripEmpty({
-      full_name: payload.fullName,
-      phone: payload.phone,
-      address_line_1: payload.addressLine1,
-      address_line_2: payload.addressLine2,
-      city: payload.city,
-      state: payload.state,
-      country: payload.country,
-      postal_code: payload.postalCode,
-      delivery_instructions: payload.deliveryInstructions
-    });
-
-    const compactSnake = stripEmpty({
-      full_name: payload.fullName,
-      phone: payload.phone,
-      address_line1: payload.addressLine1,
-      address_line2: payload.addressLine2,
-      city: payload.city,
-      state: payload.state,
-      country: payload.country,
-      postal_code: payload.postalCode,
-      instructions: payload.deliveryInstructions
-    });
-
-    return [snake, compactSnake, camel];
   }
 
   function normalizeDeliveryOptions(options) {
@@ -557,11 +548,9 @@
       const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
         method: 'POST',
         body: JSON.stringify({
-          method: option.method || option.id,
-          provider: option.provider,
-          deliveryMethod: option.method || option.id,
-          deliveryProvider: option.provider,
-          shippingFee: option.fee
+          delivery_method: option.method || option.id,
+          delivery_provider: option.provider,
+          shipping_fee: option.fee
         })
       });
       absorbSessionPayload(data);
@@ -636,7 +625,7 @@
     try {
       const data = await api('/payments/initiate', {
         method: 'POST',
-        body: JSON.stringify({ sessionId: state.sessionId, method: state.selectedPayment })
+        body: JSON.stringify({ session_id: state.sessionId, method: state.selectedPayment })
       });
 
       const paymentUrl = data.paymentUrl || data.authorizationUrl || data.authorization_url || data.data?.paymentUrl || data.data?.authorization_url;
@@ -807,6 +796,14 @@
   function stripEmpty(object) {
     return Object.fromEntries(Object.entries(object).filter(([, value]) => {
       return value !== undefined && value !== null && value !== '';
+    }));
+  }
+
+  function stripEmptyDeep(object) {
+    return Object.fromEntries(Object.entries(object).filter(([, value]) => {
+      if (value === undefined || value === null || value === '') return false;
+      if (typeof value === 'object' && !Array.isArray(value)) return Object.keys(value).length > 0;
+      return true;
     }));
   }
 
