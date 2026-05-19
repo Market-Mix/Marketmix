@@ -142,7 +142,7 @@
     state.session = session;
     state.sessionId = session.id;
     state.items = Array.isArray(items) ? items : [];
-    state.selectedAddressId = session.addressId || session.address_id || state.selectedAddressId;
+    state.selectedAddressId = session.address_id || session.addressId || state.selectedAddressId;
     state.selectedPayment = session.paymentMethod || session.payment_method || state.selectedPayment;
 
     if (session.deliveryMethod || session.delivery_method) {
@@ -356,7 +356,7 @@
     }
 
     els.addressList.innerHTML = state.addresses.map((address) => {
-      const id = address.id || address.addressId;
+      const id = getAddressId(address);
       const selected = String(id) === String(state.selectedAddressId);
       return `
         <button type="button" class="address-card ${selected ? 'selected' : ''}" data-address-id="${escapeAttr(id)}">
@@ -377,14 +377,23 @@
 
   async function attachAddress(addressId, addressPayload) {
     setInlineMessage(els.addressMessage, '', '');
+    const previousAddressId = state.selectedAddressId;
+
+    if (addressId) {
+      state.selectedAddressId = addressId;
+      renderAddresses();
+    }
+
     try {
       const data = await attachAddressToSession(addressId, addressPayload);
       absorbSessionPayload(data);
-      state.selectedAddressId = addressId || state.session.addressId || state.session.address_id;
+      state.selectedAddressId = addressId || state.session.address_id || state.session.addressId;
       renderAddresses();
       renderSummary();
       setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
     } catch (error) {
+      state.selectedAddressId = previousAddressId;
+      renderAddresses();
       setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
     }
   }
@@ -445,9 +454,10 @@
       if (payload.saveAddress) {
         const created = await createAddress(payload);
         address = created.address || created.data?.address || created.data || created;
-        if (address && address.id) {
+        const createdAddressId = getAddressId(address || {});
+        if (address && createdAddressId) {
           state.addresses.unshift(address);
-          await attachAddress(address.id);
+          await attachAddress(createdAddressId);
         } else {
           await attachAddress(null, { address: stripEmpty(payload) });
         }
@@ -743,6 +753,10 @@
       address.state,
       address.country
     ].filter(Boolean).join(', ');
+  }
+
+  function getAddressId(address) {
+    return address.id || address.address_id || address.addressId || address.uuid || '';
   }
 
   function authHeader(token) {
