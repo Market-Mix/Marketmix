@@ -192,7 +192,10 @@
 
     if (!response.ok) {
       const message = data?.message || data?.error || `Request failed with status ${response.status}`;
-      throw new Error(message);
+      const error = new Error(message);
+      error.status = response.status;
+      error.data = data;
+      throw error;
     }
 
     return data || {};
@@ -411,19 +414,16 @@
     try {
       let address = null;
       if (payload.saveAddress) {
-        const created = await api('/checkout/addresses', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
+        const created = await createAddress(payload);
         address = created.address || created.data?.address || created.data || created;
         if (address && address.id) {
           state.addresses.unshift(address);
           await attachAddress(address.id);
         } else {
-          await attachAddress(null, { address: payload });
+          await attachAddress(null, { address: stripEmpty(payload) });
         }
       } else {
-        await attachAddress(null, { address: payload });
+        await attachAddress(null, { address: stripEmpty(payload) });
       }
 
       els.addressForm.reset();
@@ -443,6 +443,65 @@
     const rawOptions = data.options || data.deliveryOptions || data.data?.options || data.data || [];
     state.deliveryOptions = normalizeDeliveryOptions(rawOptions);
     renderDeliveryOptions();
+  }
+
+  async function createAddress(payload) {
+    const attempts = buildAddressPayloads(payload);
+    let lastError = null;
+
+    for (const body of attempts) {
+      try {
+        return await api('/checkout/addresses', {
+          method: 'POST',
+          body: JSON.stringify(body)
+        });
+      } catch (error) {
+        lastError = error;
+        if (error.status !== 400) break;
+      }
+    }
+
+    throw lastError || new Error('Could not save address.');
+  }
+
+  function buildAddressPayloads(payload) {
+    const camel = stripEmpty({
+      fullName: payload.fullName,
+      phone: payload.phone,
+      addressLine1: payload.addressLine1,
+      addressLine2: payload.addressLine2,
+      city: payload.city,
+      state: payload.state,
+      country: payload.country,
+      postalCode: payload.postalCode,
+      deliveryInstructions: payload.deliveryInstructions
+    });
+
+    const snake = stripEmpty({
+      full_name: payload.fullName,
+      phone: payload.phone,
+      address_line_1: payload.addressLine1,
+      address_line_2: payload.addressLine2,
+      city: payload.city,
+      state: payload.state,
+      country: payload.country,
+      postal_code: payload.postalCode,
+      delivery_instructions: payload.deliveryInstructions
+    });
+
+    const compactSnake = stripEmpty({
+      full_name: payload.fullName,
+      phone: payload.phone,
+      address_line1: payload.addressLine1,
+      address_line2: payload.addressLine2,
+      city: payload.city,
+      state: payload.state,
+      country: payload.country,
+      postal_code: payload.postalCode,
+      instructions: payload.deliveryInstructions
+    });
+
+    return [snake, compactSnake, camel];
   }
 
   function normalizeDeliveryOptions(options) {
@@ -743,6 +802,12 @@
     } catch (error) {
       return fallback;
     }
+  }
+
+  function stripEmpty(object) {
+    return Object.fromEntries(Object.entries(object).filter(([, value]) => {
+      return value !== undefined && value !== null && value !== '';
+    }));
   }
 
   function escapeHtml(value) {
