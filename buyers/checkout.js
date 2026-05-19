@@ -1,0 +1,761 @@
+(function () {
+  'use strict';
+
+  const API_BASE = 'https://marketmix-backend.onrender.com/api';
+  const SESSION_KEY = 'marketmix_checkout_session_id';
+  const LEGACY_SESSION_KEY = 'checkoutSessionId';
+  const FALLBACK_IMAGE = 'marketplace.png';
+
+  const state = {
+    sessionId: sessionStorage.getItem(SESSION_KEY) || sessionStorage.getItem(LEGACY_SESSION_KEY) || null,
+    currentStep: 0,
+    session: null,
+    items: [],
+    addresses: [],
+    deliveryOptions: [],
+    paymentMethods: [],
+    selectedAddressId: null,
+    selectedDelivery: null,
+    selectedPayment: null,
+    expiryTimer: null
+  };
+
+  const els = {};
+
+  document.addEventListener('DOMContentLoaded', initCheckout);
+
+  async function initCheckout() {
+    cacheElements();
+    bindEvents();
+    initNotifications();
+
+    try {
+      setGlobalMessage('', '');
+      await ensureSession();
+      renderAll();
+      startExpiryCountdown();
+    } catch (error) {
+      setGlobalMessage(error.message || 'We could not start checkout. Please try again.', 'error');
+      renderEmptySummary();
+    }
+  }
+
+  function cacheElements() {
+    els.steps = Array.from(document.querySelectorAll('[data-step]'));
+    els.progress = Array.from(document.querySelectorAll('[data-progress-step]'));
+    els.globalMessage = document.getElementById('globalMessage');
+    els.orderItems = document.getElementById('orderItems');
+    els.summaryItems = document.getElementById('summaryItems');
+    els.subtotalAmount = document.getElementById('subtotalAmount');
+    els.shippingAmount = document.getElementById('shippingAmount');
+    els.discountAmount = document.getElementById('discountAmount');
+    els.totalAmount = document.getElementById('totalAmount');
+    els.summaryToggleTotal = document.getElementById('summaryToggleTotal');
+    els.couponCode = document.getElementById('couponCode');
+    els.applyCouponBtn = document.getElementById('applyCouponBtn');
+    els.removeCouponBtn = document.getElementById('removeCouponBtn');
+    els.couponMessage = document.getElementById('couponMessage');
+    els.addressList = document.getElementById('addressList');
+    els.addressForm = document.getElementById('addressForm');
+    els.toggleAddressForm = document.getElementById('toggleAddressForm');
+    els.addressMessage = document.getElementById('addressMessage');
+    els.saveAddressBtn = document.getElementById('saveAddressBtn');
+    els.deliveryOptions = document.getElementById('deliveryOptions');
+    els.deliveryMessage = document.getElementById('deliveryMessage');
+    els.paymentOptions = document.getElementById('paymentOptions');
+    els.paymentMessage = document.getElementById('paymentMessage');
+    els.placeOrderBtn = document.getElementById('placeOrderBtn');
+    els.confirmationPanel = document.getElementById('confirmationPanel');
+    els.confirmationText = document.getElementById('confirmationText');
+    els.expiryPill = document.getElementById('expiryPill');
+    els.expiryCountdown = document.getElementById('expiryCountdown');
+    els.summaryPanel = document.getElementById('summaryPanel');
+    els.summaryToggle = document.getElementById('summaryToggle');
+  }
+
+  function bindEvents() {
+    document.querySelectorAll('[data-next-step]').forEach((button) => {
+      button.addEventListener('click', () => goNext());
+    });
+
+    document.querySelectorAll('[data-prev-step]').forEach((button) => {
+      button.addEventListener('click', () => setStep(Math.max(0, state.currentStep - 1)));
+    });
+
+    els.applyCouponBtn.addEventListener('click', applyCoupon);
+    els.removeCouponBtn.addEventListener('click', removeCoupon);
+    els.couponCode.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        applyCoupon();
+      }
+    });
+
+    els.toggleAddressForm.addEventListener('click', () => {
+      els.addressForm.hidden = !els.addressForm.hidden;
+    });
+
+    els.addressForm.addEventListener('submit', handleAddressSubmit);
+    els.placeOrderBtn.addEventListener('click', placeOrder);
+    els.summaryToggle.addEventListener('click', () => els.summaryPanel.classList.toggle('open'));
+
+    window.addEventListener('pageshow', handlePaymentReturn);
+  }
+
+  async function ensureSession() {
+    if (state.sessionId) {
+      try {
+        await loadSession(state.sessionId);
+        return;
+      } catch (error) {
+        sessionStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem(LEGACY_SESSION_KEY);
+        state.sessionId = null;
+      }
+    }
+
+    await createSession();
+  }
+
+  async function createSession() {
+    const payload = buildCartPayload();
+    const data = await api('/checkout/session', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    absorbSessionPayload(data);
+  }
+
+  async function loadSession(sessionId) {
+    const data = await api(`/checkout/session/${encodeURIComponent(sessionId)}`);
+    absorbSessionPayload(data);
+  }
+
+  function absorbSessionPayload(data) {
+    const session = data.session || data.data?.session || data.checkoutSession || data;
+    const items = data.items || data.data?.items || session.items || [];
+
+    if (!session || !session.id) {
+      throw new Error('Checkout session was not returned by the server.');
+    }
+
+    state.session = session;
+    state.sessionId = session.id;
+    state.items = Array.isArray(items) ? items : [];
+    state.selectedAddressId = session.addressId || session.address_id || state.selectedAddressId;
+    state.selectedPayment = session.paymentMethod || session.payment_method || state.selectedPayment;
+
+    if (session.deliveryMethod || session.delivery_method) {
+      state.selectedDelivery = {
+        id: session.deliveryMethod || session.delivery_method,
+        method: session.deliveryMethod || session.delivery_method,
+        provider: session.deliveryProvider || session.delivery_provider,
+        fee: readMoney(session.shippingFee || session.shipping_fee)
+      };
+    }
+
+    sessionStorage.setItem(SESSION_KEY, state.sessionId);
+    sessionStorage.setItem(LEGACY_SESSION_KEY, state.sessionId);
+  }
+
+  function buildCartPayload() {
+    const cart = safeJson(localStorage.getItem('cart'), []);
+    const items = Array.isArray(cart) ? cart.map((item) => ({
+      product_id: item.product_id || item.productId || item.id,
+      seller_id: item.seller_id || item.sellerId || item.seller?.id,
+      quantity: Number(item.quantity || 1),
+      price: Number(item.price || item.unitPrice || 0),
+      name: item.name || item.title || 'Product',
+      image: item.image || item.main_image_url || item.imageUrl || ''
+    })).filter((item) => item.product_id) : [];
+
+    return items.length ? { items } : {};
+  }
+
+  async function api(path, options) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Please log in to continue checkout.');
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader(token),
+        ...(options && options.headers ? options.headers : {})
+      }
+    });
+
+    const text = await response.text();
+    const data = text ? safeJson(text, null) : {};
+
+    if (!response.ok) {
+      const message = data?.message || data?.error || `Request failed with status ${response.status}`;
+      throw new Error(message);
+    }
+
+    return data || {};
+  }
+
+  function renderAll() {
+    renderItems();
+    renderSummary();
+    renderProgress();
+    hydrateStepData(state.currentStep);
+  }
+
+  function renderItems() {
+    if (!state.items.length) {
+      els.orderItems.innerHTML = '<p class="muted">No items were found in this checkout session.</p>';
+      return;
+    }
+
+    els.orderItems.innerHTML = state.items.map((item) => `
+      <div class="checkout-item">
+        <img src="${escapeAttr(item.image || FALLBACK_IMAGE)}" alt="${escapeAttr(item.name || 'Product')}" onerror="this.src='${FALLBACK_IMAGE}'">
+        <div>
+          <p class="item-name">${escapeHtml(item.name || 'Product')}</p>
+          <p class="item-meta">Qty ${Number(item.quantity || 1)} x ${formatMoney(item.price)}</p>
+        </div>
+        <strong class="item-price">${formatMoney(Number(item.price || 0) * Number(item.quantity || 1))}</strong>
+      </div>
+    `).join('');
+  }
+
+  function renderSummary() {
+    const session = state.session || {};
+    const subtotal = readMoney(session.subtotal, calcItemsSubtotal());
+    const shipping = readMoney(session.shippingFee ?? session.shipping_fee);
+    const discount = readMoney(session.couponDiscount ?? session.coupon_discount);
+    const total = readMoney(session.total, Math.max(0, subtotal + shipping - discount));
+
+    els.summaryItems.innerHTML = state.items.length ? state.items.map((item) => `
+      <div class="summary-item">
+        <img src="${escapeAttr(item.image || FALLBACK_IMAGE)}" alt="${escapeAttr(item.name || 'Product')}" onerror="this.src='${FALLBACK_IMAGE}'">
+        <div>
+          <p>${escapeHtml(item.name || 'Product')}</p>
+          <span>Qty ${Number(item.quantity || 1)}</span>
+        </div>
+        <strong>${formatMoney(Number(item.price || 0) * Number(item.quantity || 1))}</strong>
+      </div>
+    `).join('') : '<p class="muted">Your order summary will appear here.</p>';
+
+    els.subtotalAmount.textContent = formatMoney(subtotal);
+    els.shippingAmount.textContent = formatMoney(shipping);
+    els.discountAmount.textContent = `-${formatMoney(discount)}`;
+    els.totalAmount.textContent = formatMoney(total);
+    els.summaryToggleTotal.textContent = formatMoney(total);
+    els.couponCode.value = session.couponCode || session.coupon_code || els.couponCode.value || '';
+    els.removeCouponBtn.hidden = !(session.couponCode || session.coupon_code);
+  }
+
+  function renderEmptySummary() {
+    els.summaryItems.innerHTML = '<p class="muted">Checkout is unavailable right now.</p>';
+    els.orderItems.innerHTML = '<p class="muted">Checkout is unavailable right now.</p>';
+    ['subtotalAmount', 'shippingAmount', 'totalAmount', 'summaryToggleTotal'].forEach((key) => {
+      els[key].textContent = formatMoney(0);
+    });
+    els.discountAmount.textContent = `-${formatMoney(0)}`;
+  }
+
+  async function goNext() {
+    if (state.currentStep === 1 && !state.selectedAddressId) {
+      setInlineMessage(els.addressMessage, 'Choose or add a delivery address first.', 'error');
+      return;
+    }
+
+    if (state.currentStep === 2 && !state.selectedDelivery) {
+      setInlineMessage(els.deliveryMessage, 'Choose a delivery method to continue.', 'error');
+      return;
+    }
+
+    const nextStep = Math.min(3, state.currentStep + 1);
+    setStep(nextStep);
+    await hydrateStepData(nextStep);
+  }
+
+  function setStep(step) {
+    state.currentStep = step;
+    els.steps.forEach((panel) => panel.classList.toggle('active', Number(panel.dataset.step) === step));
+    renderProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderProgress() {
+    els.progress.forEach((item) => {
+      const index = Number(item.dataset.progressStep);
+      item.classList.toggle('active', index === state.currentStep);
+      item.classList.toggle('complete', index < state.currentStep);
+    });
+  }
+
+  async function hydrateStepData(step) {
+    try {
+      if (step === 1 && !state.addresses.length) await loadAddresses();
+      if (step === 2) await loadDeliveryOptions();
+      if (step === 3 && !state.paymentMethods.length) await loadPaymentMethods();
+    } catch (error) {
+      setGlobalMessage(error.message || 'Something went wrong loading this step.', 'error');
+    }
+  }
+
+  async function applyCoupon() {
+    const code = els.couponCode.value.trim();
+    if (!code) {
+      setInlineMessage(els.couponMessage, 'Enter a coupon code first.', 'error');
+      return;
+    }
+
+    setButtonLoading(els.applyCouponBtn, true);
+    try {
+      const data = await api(`/checkout/session/${state.sessionId}/coupon`, {
+        method: 'POST',
+        body: JSON.stringify({ code })
+      });
+      absorbSessionPayload(data);
+      renderSummary();
+      setInlineMessage(els.couponMessage, 'Coupon applied successfully.', 'success');
+    } catch (error) {
+      setInlineMessage(els.couponMessage, error.message || 'Could not apply coupon.', 'error');
+    } finally {
+      setButtonLoading(els.applyCouponBtn, false);
+    }
+  }
+
+  async function removeCoupon() {
+    setButtonLoading(els.removeCouponBtn, true);
+    try {
+      const data = await api(`/checkout/session/${state.sessionId}/coupon`, { method: 'DELETE' });
+      absorbSessionPayload(data);
+      els.couponCode.value = '';
+      renderSummary();
+      setInlineMessage(els.couponMessage, 'Coupon removed.', 'success');
+    } catch (error) {
+      setInlineMessage(els.couponMessage, error.message || 'Could not remove coupon.', 'error');
+    } finally {
+      setButtonLoading(els.removeCouponBtn, false);
+    }
+  }
+
+  async function loadAddresses() {
+    els.addressList.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+    const data = await api('/checkout/addresses');
+    state.addresses = data.addresses || data.data?.addresses || data.data || [];
+    renderAddresses();
+  }
+
+  function renderAddresses() {
+    if (!state.addresses.length) {
+      els.addressList.innerHTML = '<p class="muted">No saved addresses yet. Add one below to continue.</p>';
+      els.addressForm.hidden = false;
+      return;
+    }
+
+    els.addressList.innerHTML = state.addresses.map((address) => {
+      const id = address.id || address.addressId;
+      const selected = String(id) === String(state.selectedAddressId);
+      return `
+        <button type="button" class="address-card ${selected ? 'selected' : ''}" data-address-id="${escapeAttr(id)}">
+          <span class="radio-dot"></span>
+          <div>
+            <strong>${escapeHtml(address.fullName || address.full_name || address.name || 'Delivery address')}</strong>
+            <p class="muted">${escapeHtml(formatAddress(address))}</p>
+            <p class="muted">${escapeHtml(address.phone || '')}</p>
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    els.addressList.querySelectorAll('[data-address-id]').forEach((card) => {
+      card.addEventListener('click', () => attachAddress(card.dataset.addressId));
+    });
+  }
+
+  async function attachAddress(addressId, addressPayload) {
+    setInlineMessage(els.addressMessage, '', '');
+    try {
+      const body = addressPayload || { addressId };
+      const data = await api(`/checkout/session/${state.sessionId}/address`, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      absorbSessionPayload(data);
+      state.selectedAddressId = addressId || state.session.addressId || state.session.address_id;
+      renderAddresses();
+      renderSummary();
+      setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
+    } catch (error) {
+      setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
+    }
+  }
+
+  async function handleAddressSubmit(event) {
+    event.preventDefault();
+    setButtonLoading(els.saveAddressBtn, true);
+
+    const form = new FormData(els.addressForm);
+    const payload = {
+      fullName: form.get('fullName')?.trim(),
+      phone: form.get('phone')?.trim(),
+      addressLine1: form.get('addressLine1')?.trim(),
+      addressLine2: form.get('addressLine2')?.trim(),
+      city: form.get('city')?.trim(),
+      state: form.get('state')?.trim(),
+      country: form.get('country')?.trim() || 'Nigeria',
+      postalCode: form.get('postalCode')?.trim(),
+      deliveryInstructions: form.get('deliveryInstructions')?.trim(),
+      saveAddress: form.get('saveAddress') === 'on'
+    };
+
+    try {
+      let address = null;
+      if (payload.saveAddress) {
+        const created = await api('/checkout/addresses', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        address = created.address || created.data?.address || created.data || created;
+        if (address && address.id) {
+          state.addresses.unshift(address);
+          await attachAddress(address.id);
+        } else {
+          await attachAddress(null, { address: payload });
+        }
+      } else {
+        await attachAddress(null, { address: payload });
+      }
+
+      els.addressForm.reset();
+      els.addressForm.country.value = 'Nigeria';
+      els.addressForm.hidden = true;
+      renderAddresses();
+    } catch (error) {
+      setInlineMessage(els.addressMessage, error.message || 'Could not save address.', 'error');
+    } finally {
+      setButtonLoading(els.saveAddressBtn, false);
+    }
+  }
+
+  async function loadDeliveryOptions() {
+    els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+    const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
+    const rawOptions = data.options || data.deliveryOptions || data.data?.options || data.data || [];
+    state.deliveryOptions = normalizeDeliveryOptions(rawOptions);
+    renderDeliveryOptions();
+  }
+
+  function normalizeDeliveryOptions(options) {
+    const list = Array.isArray(options) ? options : [];
+    if (list.length) {
+      return list.map((option, index) => ({
+        id: option.id || option.method || option.deliveryMethod || `delivery-${index}`,
+        method: option.method || option.deliveryMethod || option.type || option.name,
+        provider: option.provider || option.deliveryProvider || option.name,
+        title: option.title || option.name || labelFromMethod(option.method || option.deliveryMethod || option.type),
+        fee: readMoney(option.fee ?? option.shippingFee ?? option.price ?? option.amount),
+        estimatedDays: option.estimatedDays || option.estimated_days || option.etaDays || option.days,
+        estimatedDelivery: option.estimatedDelivery || option.estimated_delivery || option.eta
+      }));
+    }
+
+    return [
+      { id: 'seller_delivery', method: 'seller_delivery', provider: 'seller', title: 'Seller Delivery', fee: 0, estimatedDays: '2-5' },
+      { id: 'marketmix_delivery', method: 'marketmix_delivery', provider: 'marketmix', title: 'MarketMix Delivery', fee: 0, estimatedDays: '1-3' }
+    ];
+  }
+
+  function renderDeliveryOptions() {
+    if (!state.deliveryOptions.length) {
+      els.deliveryOptions.innerHTML = '<p class="muted">No delivery options are available for this address.</p>';
+      return;
+    }
+
+    els.deliveryOptions.innerHTML = state.deliveryOptions.map((option) => {
+      const selected = state.selectedDelivery && String(state.selectedDelivery.id) === String(option.id);
+      return `
+        <button type="button" class="option-card ${selected ? 'selected' : ''}" data-delivery-id="${escapeAttr(option.id)}">
+          <span class="radio-dot"></span>
+          <div>
+            <strong>${escapeHtml(option.title || 'Delivery option')}</strong>
+            <p class="muted">${escapeHtml(deliveryEta(option))}</p>
+          </div>
+          <strong class="option-price">${formatMoney(option.fee)}</strong>
+        </button>
+      `;
+    }).join('');
+
+    els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach((card) => {
+      card.addEventListener('click', () => selectDelivery(card.dataset.deliveryId));
+    });
+  }
+
+  async function selectDelivery(optionId) {
+    const option = state.deliveryOptions.find((item) => String(item.id) === String(optionId));
+    if (!option) return;
+
+    try {
+      const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
+        method: 'POST',
+        body: JSON.stringify({
+          method: option.method || option.id,
+          provider: option.provider,
+          deliveryMethod: option.method || option.id,
+          deliveryProvider: option.provider,
+          shippingFee: option.fee
+        })
+      });
+      absorbSessionPayload(data);
+      state.selectedDelivery = option;
+      renderDeliveryOptions();
+      renderSummary();
+      setInlineMessage(els.deliveryMessage, 'Delivery method selected.', 'success');
+    } catch (error) {
+      setInlineMessage(els.deliveryMessage, error.message || 'Could not select delivery method.', 'error');
+    }
+  }
+
+  async function loadPaymentMethods() {
+    els.paymentOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+    const data = await api('/payments/methods');
+    state.paymentMethods = normalizePaymentMethods(data.methods || data.paymentMethods || data.data?.methods || data.data || []);
+    renderPaymentMethods();
+  }
+
+  function normalizePaymentMethods(methods) {
+    const defaults = [
+      { id: 'cod', name: 'Cash on Delivery', icon: 'fa-money-bill-wave' },
+      { id: 'paystack', name: 'Paystack', icon: 'fa-credit-card' },
+      { id: 'flutterwave', name: 'Flutterwave', icon: 'fa-wallet' }
+    ];
+
+    if (!Array.isArray(methods) || !methods.length) return defaults;
+
+    return methods.map((method) => {
+      const id = String(method.id || method.code || method.method || method.name).toLowerCase();
+      const fallback = defaults.find((item) => id.includes(item.id));
+      return {
+        id: fallback ? fallback.id : id,
+        name: method.name || method.label || fallback?.name || id,
+        icon: fallback?.icon || 'fa-credit-card',
+        description: method.description || ''
+      };
+    });
+  }
+
+  function renderPaymentMethods() {
+    els.paymentOptions.innerHTML = state.paymentMethods.map((method) => {
+      const selected = state.selectedPayment === method.id;
+      return `
+        <button type="button" class="option-card ${selected ? 'selected' : ''}" data-payment-id="${escapeAttr(method.id)}">
+          <span class="radio-dot"></span>
+          <i class="fas ${escapeAttr(method.icon)}"></i>
+          <div>
+            <strong>${escapeHtml(method.name)}</strong>
+            <p class="muted">${escapeHtml(method.description || paymentDescription(method.id))}</p>
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    els.paymentOptions.querySelectorAll('[data-payment-id]').forEach((card) => {
+      card.addEventListener('click', () => {
+        state.selectedPayment = card.dataset.paymentId;
+        renderPaymentMethods();
+        setInlineMessage(els.paymentMessage, '', '');
+      });
+    });
+  }
+
+  async function placeOrder() {
+    if (!state.selectedPayment) {
+      setInlineMessage(els.paymentMessage, 'Choose a payment method first.', 'error');
+      return;
+    }
+
+    setButtonLoading(els.placeOrderBtn, true);
+    try {
+      const data = await api('/payments/initiate', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId: state.sessionId, method: state.selectedPayment })
+      });
+
+      const paymentUrl = data.paymentUrl || data.authorizationUrl || data.authorization_url || data.data?.paymentUrl || data.data?.authorization_url;
+
+      if (state.selectedPayment === 'cod' || !paymentUrl) {
+        await confirmOrder();
+        return;
+      }
+
+      sessionStorage.setItem(SESSION_KEY, state.sessionId);
+      window.location.href = paymentUrl;
+    } catch (error) {
+      setInlineMessage(els.paymentMessage, error.message || 'Could not initiate payment.', 'error');
+    } finally {
+      setButtonLoading(els.placeOrderBtn, false);
+    }
+  }
+
+  async function handlePaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const paymentSignal = params.get('reference') || params.get('trxref') || params.get('transaction_id') || params.get('tx_ref') || params.get('status');
+    if (!paymentSignal || !state.sessionId) return;
+
+    try {
+      setGlobalMessage('Confirming your payment...', 'success');
+      await confirmOrder();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) {
+      setGlobalMessage(error.message || 'Payment returned, but order confirmation failed.', 'error');
+    }
+  }
+
+  async function confirmOrder() {
+    const data = await api(`/checkout/session/${state.sessionId}/confirm`, { method: 'POST' });
+    absorbSessionPayload(data);
+    showConfirmation(data);
+  }
+
+  function showConfirmation(data) {
+    els.steps.forEach((panel) => panel.classList.remove('active'));
+    els.confirmationPanel.hidden = false;
+    els.confirmationPanel.classList.add('active');
+    const orderId = data.orderId || data.order?.id || data.session?.orderId || state.session?.orderId;
+    els.confirmationText.textContent = orderId
+      ? `Your order number is ${orderId}. We will keep you updated as it moves.`
+      : 'Your order has been placed successfully. We will keep you updated as it moves.';
+    setGlobalMessage('', '');
+    localStorage.removeItem('cart');
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(LEGACY_SESSION_KEY);
+    renderSummary();
+  }
+
+  function startExpiryCountdown() {
+    if (state.expiryTimer) clearInterval(state.expiryTimer);
+    const expiresAt = state.session?.expiresAt || state.session?.expires_at;
+    if (!expiresAt) return;
+
+    const expiryTime = new Date(expiresAt).getTime();
+    if (!Number.isFinite(expiryTime)) return;
+
+    els.expiryPill.hidden = false;
+
+    const tick = () => {
+      const remainingMs = expiryTime - Date.now();
+      if (remainingMs <= 0) {
+        els.expiryCountdown.textContent = 'expired';
+        setGlobalMessage('This checkout session has expired. Please return to your cart and start again.', 'error');
+        clearInterval(state.expiryTimer);
+        return;
+      }
+
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      els.expiryCountdown.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+      if (remainingMs <= 5 * 60 * 1000) {
+        els.expiryPill.classList.add('urgent');
+      }
+    };
+
+    tick();
+    state.expiryTimer = setInterval(tick, 1000);
+  }
+
+  function initNotifications() {
+    const buyerId = window.getBuyerId?.();
+    if (buyerId && window.NotificationManager) {
+      window.NotificationManager.init(buyerId);
+    }
+  }
+
+  function calcItemsSubtotal() {
+    return state.items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+  }
+
+  function readMoney(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : Number(fallback || 0);
+  }
+
+  function formatMoney(value) {
+    return `NGN ${readMoney(value).toLocaleString('en-NG', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    })}`;
+  }
+
+  function formatAddress(address) {
+    return [
+      address.addressLine1 || address.address_line_1 || address.line1,
+      address.addressLine2 || address.address_line_2 || address.line2,
+      address.city,
+      address.state,
+      address.country
+    ].filter(Boolean).join(', ');
+  }
+
+  function authHeader(token) {
+    return String(token).startsWith('Bearer ') ? token : `Bearer ${token}`;
+  }
+
+  function deliveryEta(option) {
+    if (option.estimatedDelivery) return `Estimated delivery: ${option.estimatedDelivery}`;
+    if (option.estimatedDays) return `Estimated delivery: ${option.estimatedDays} days`;
+    return 'Estimated delivery shown after selection';
+  }
+
+  function labelFromMethod(method) {
+    const text = String(method || 'Delivery option').replace(/[_-]+/g, ' ');
+    return text.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function paymentDescription(id) {
+    if (id === 'cod') return 'Pay when your order arrives.';
+    if (id === 'paystack') return 'Pay securely with card, bank, or transfer.';
+    if (id === 'flutterwave') return 'Pay securely with Flutterwave checkout.';
+    return 'Secure payment method.';
+  }
+
+  function setButtonLoading(button, loading) {
+    button.disabled = loading;
+    const spinner = button.querySelector('.fa-spinner');
+    if (spinner) spinner.hidden = !loading;
+  }
+
+  function setGlobalMessage(message, type) {
+    setInlineMessage(els.globalMessage, message, type);
+  }
+
+  function setInlineMessage(element, message, type) {
+    if (!element) return;
+    element.textContent = message || '';
+    element.hidden = !message;
+    element.classList.remove('success', 'error');
+    if (type) element.classList.add(type);
+  }
+
+  function safeJson(value, fallback) {
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[char]));
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#096;');
+  }
+})();

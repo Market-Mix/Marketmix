@@ -728,6 +728,7 @@
       if(proceed){
         proceed.addEventListener('click', async (e)=>{
           e.preventDefault();
+          let originalText = proceed.textContent || 'Proceed to Checkout';
           
           // 🔥 CHECK IF CART IS EMPTY
           if (!cart || cart.length === 0) {
@@ -741,9 +742,52 @@
             let token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
             if(_forceLogin) token = null;
             if(!token){ localStorage.setItem('after_login_redirect','/buyers/checkout.html'); window.location.href = '/buyers/login for buyers.html?next=checkout.html'; return false; }
+
+            proceed.classList.add('disabled');
+            proceed.setAttribute('aria-busy', 'true');
+            proceed.textContent = 'Starting checkout...';
+
+            const API_BASE = 'https://marketmix-backend.onrender.com/api';
+            const checkoutItems = (cart || []).map(item => ({
+              product_id: item.product_id || item.productId || item.id,
+              seller_id: item.seller_id || item.sellerId || (item.seller && item.seller.id),
+              quantity: Number(item.quantity || 1),
+              price: Number(item.price || item.unitPrice || 0),
+              name: item.name || item.title || 'Product',
+              image: item.image || item.main_image_url || item.imageUrl || ''
+            })).filter(item => item.product_id);
+
+            const response = await fetch(`${API_BASE}/checkout/session`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': String(token).startsWith('Bearer ') ? token : `Bearer ${token}`
+              },
+              body: JSON.stringify(checkoutItems.length ? { items: checkoutItems } : {})
+            });
+
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              throw new Error(result.message || result.error || 'Could not start checkout');
+            }
+
+            const session = result.session || result.data?.session || result.checkoutSession || result;
+            if (session && session.id) {
+              sessionStorage.setItem('marketmix_checkout_session_id', session.id);
+              sessionStorage.setItem('checkoutSessionId', session.id);
+            }
+
             window.location.href = 'checkout.html';
             return true;
-          } catch(err){ localStorage.setItem('after_login_redirect','/buyers/checkout.html'); window.location.href = '/buyers/login for buyers.html?next=checkout.html'; }
+          } catch(err){
+            console.error('Checkout session error:', err);
+            if (proceed) {
+              proceed.classList.remove('disabled');
+              proceed.removeAttribute('aria-busy');
+              proceed.textContent = originalText || 'Proceed to Checkout';
+            }
+            showMessage(err.message || 'Could not start checkout. Please try again.');
+          }
         });
       }
     });
