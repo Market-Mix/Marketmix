@@ -119,31 +119,38 @@
   }
 
   function absorbSessionPayload(data) {
-    const session = data.session || data.data?.session || data.checkoutSession || data;
-    const items = data.items || data.data?.items || session.items || [];
+  // Handle wrapped response: {status, message, data: {addressId, address, nextStep}}
+  // vs session response: {session: {...}} or {data: {session: {...}}}
+  const inner = data.data || data;
+  const session = inner.session || data.session || data.checkoutSession || (inner.id ? inner : null);
+  const items = data.items || data.data?.items || session?.items || [];
 
-    if (!session || !session.id) {
-      throw new Error('Checkout session was not returned by the server.');
+  if (!session || !session.id) {
+    // Non-session responses (address set, coupon applied etc) - just update selectedAddressId if present
+    if (inner.addressId || inner.address_id) {
+      state.selectedAddressId = inner.addressId || inner.address_id;
     }
-
-    state.session = session;
-    state.sessionId = session.id;
-    state.items = Array.isArray(items) ? items : [];
-    state.selectedAddressId = session.address_id || session.addressId || state.selectedAddressId;
-    state.selectedPayment = session.paymentMethod || session.payment_method || state.selectedPayment;
-
-    if (session.deliveryMethod || session.delivery_method) {
-      state.selectedDelivery = {
-        id: session.deliveryMethod || session.delivery_method,
-        method: session.deliveryMethod || session.delivery_method,
-        provider: session.deliveryProvider || session.delivery_provider,
-        fee: readMoney(session.shippingFee || session.shipping_fee)
-      };
-    }
-
-    sessionStorage.setItem(SESSION_KEY, state.sessionId);
-    sessionStorage.setItem(LEGACY_SESSION_KEY, state.sessionId);
+    return; // don't throw, just return
   }
+
+  state.session = session;
+  state.sessionId = session.id;
+  state.items = Array.isArray(items) ? items : [];
+  state.selectedAddressId = session.address_id || session.addressId || state.selectedAddressId;
+  state.selectedPayment = session.paymentMethod || session.payment_method || state.selectedPayment;
+
+  if (session.deliveryMethod || session.delivery_method) {
+    state.selectedDelivery = {
+      id: session.deliveryMethod || session.delivery_method,
+      method: session.deliveryMethod || session.delivery_method,
+      provider: session.deliveryProvider || session.delivery_provider,
+      fee: readMoney(session.shippingFee || session.shipping_fee)
+    };
+  }
+
+  sessionStorage.setItem(SESSION_KEY, state.sessionId);
+  sessionStorage.setItem(LEGACY_SESSION_KEY, state.sessionId);
+}
 
   function buildCartPayload() {
     const cart = safeJson(localStorage.getItem('cart'), []);
@@ -362,31 +369,35 @@
 
   // FIX: single clean attachAddress, no duplicates
   async function attachAddress(addressId, addressPayload) {
-    console.log('attachAddress called - addressId:', addressId, 'payload:', addressPayload);
-    setInlineMessage(els.addressMessage, '', '');
-    const previousAddressId = state.selectedAddressId;
-    const confirmedId = addressId;
+  console.log('attachAddress called - addressId:', addressId, 'payload:', addressPayload);
+  setInlineMessage(els.addressMessage, '', '');
+  const previousAddressId = state.selectedAddressId;
+  const confirmedId = addressId;
 
-    if (addressId) {
-      state.selectedAddressId = addressId;
-      renderAddresses();
-    }
-
-    try {
-      const data = await attachAddressToSession(addressId, addressPayload);
-      console.log('attachAddressToSession response:', data);
-      absorbSessionPayload(data);
-      state.selectedAddressId = confirmedId;
-      renderAddresses();
-      renderSummary();
-      setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
-    } catch (error) {
-      console.error('attachAddress failed:', error.message, error.data);
-      state.selectedAddressId = previousAddressId;
-      renderAddresses();
-      setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
-    }
+  if (addressId) {
+    state.selectedAddressId = addressId;
+    renderAddresses();
   }
+
+  try {
+    const data = await attachAddressToSession(addressId, addressPayload);
+    console.log('attachAddressToSession response:', data);
+    absorbSessionPayload(data);
+    
+    // Reload session to get updated address_id on session object
+    await loadSession(state.sessionId);
+    
+    state.selectedAddressId = confirmedId;
+    renderAddresses();
+    renderSummary();
+    setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
+  } catch (error) {
+    console.error('attachAddress failed:', error.message, error.data);
+    state.selectedAddressId = previousAddressId;
+    renderAddresses();
+    setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
+  }
+}
 
   // FIX: debug logs added
   async function attachAddressToSession(addressId, addressPayload) {
