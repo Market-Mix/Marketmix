@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Order Confirmed - MarketMix</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 60px 20px; background: #fff7ed; }
+    .icon { font-size: 64px; color: #16a34a; }
+    h1 { color: #15803d; }
+    .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #f97316; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="icon">✅</div>
+  <h1>Order Confirmed!</h1>
+  <p>Thank you for your purchase. Your order has been placed successfully.</p>
+  <p id="orderRef"></p>
+  <a href="buyers homepage.html" class="btn">Continue Shopping</a>
+  <a href="buyers order & tracking.html" class="btn" style="background:#111;margin-left:10px">Track Order</a>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const orderId = params.get('orderId');
+    const ref = params.get('ref');
+    if (orderId) document.getElementById('orderRef').textContent = `Order ID: ${orderId}`;
+    else if (ref) document.getElementById('orderRef').textContent = `Reference: ${ref}`;
+  </script>
+</body>
+</html>
