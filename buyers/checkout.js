@@ -460,6 +460,8 @@ async function attachAddress(addressId, addressPayload) {
       const createdAddressId = getAddressId(address || {});
       if (address && createdAddressId) {
         state.addresses.unshift(address);
+        state.selectedAddressId = createdAddressId; 
+         renderAddresses();        
         await attachAddress(createdAddressId);
       } else {
         await attachAddress(null, { address: stripEmpty(payload) });
