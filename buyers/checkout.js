@@ -28,7 +28,6 @@
     cacheElements();
     bindEvents();
     initNotifications();
-
     try {
       setGlobalMessage('', '');
       await ensureSession();
@@ -77,28 +76,20 @@
     document.querySelectorAll('[data-next-step]').forEach((button) => {
       button.addEventListener('click', () => goNext());
     });
-
     document.querySelectorAll('[data-prev-step]').forEach((button) => {
       button.addEventListener('click', () => setStep(Math.max(0, state.currentStep - 1)));
     });
-
     els.applyCouponBtn.addEventListener('click', applyCoupon);
     els.removeCouponBtn.addEventListener('click', removeCoupon);
     els.couponCode.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        applyCoupon();
-      }
+      if (event.key === 'Enter') { event.preventDefault(); applyCoupon(); }
     });
-
     els.toggleAddressForm.addEventListener('click', () => {
       els.addressForm.hidden = !els.addressForm.hidden;
     });
-
-   els.addressForm.addEventListener('submit', handleAddressSubmit);
+    els.addressForm.addEventListener('submit', handleAddressSubmit);
     els.placeOrderBtn.addEventListener('click', placeOrder);
     els.summaryToggle.addEventListener('click', () => els.summaryPanel.classList.toggle('open'));
-
     window.addEventListener('pageshow', handlePaymentReturn);
   }
 
@@ -113,16 +104,12 @@
         state.sessionId = null;
       }
     }
-
     await createSession();
   }
 
   async function createSession() {
     const payload = buildCartPayload();
-    const data = await api('/checkout/session', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+    const data = await api('/checkout/session', { method: 'POST', body: JSON.stringify(payload) });
     absorbSessionPayload(data);
   }
 
@@ -168,15 +155,12 @@
       name: item.name || item.title || 'Product',
       image: item.image || item.main_image_url || item.imageUrl || ''
     })).filter((item) => item.product_id) : [];
-
     return items.length ? { items } : {};
   }
 
   async function api(path, options) {
     const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Please log in to continue checkout.');
-    }
+    if (!token) throw new Error('Please log in to continue checkout.');
 
     const response = await fetch(`${API_BASE}${path}`, {
       ...options,
@@ -213,7 +197,6 @@
       els.orderItems.innerHTML = '<p class="muted">No items were found in this checkout session.</p>';
       return;
     }
-
     els.orderItems.innerHTML = state.items.map((item) => `
       <div class="checkout-item">
         <img src="${escapeAttr(item.image || FALLBACK_IMAGE)}" alt="${escapeAttr(item.name || 'Product')}" onerror="this.src='${FALLBACK_IMAGE}'">
@@ -262,10 +245,17 @@
     els.discountAmount.textContent = `-${formatMoney(0)}`;
   }
 
+  // FIX: proper goNext with session fallback check
   async function goNext() {
-    if (state.currentStep === 1 && !state.selectedAddressId) {
-      setInlineMessage(els.addressMessage, 'Choose or add a delivery address first.', 'error');
-      return;
+    if (state.currentStep === 1) {
+      const hasAddress = state.selectedAddressId ||
+                         state.session?.addressId ||
+                         state.session?.address_id;
+      console.log('goNext step 1 - hasAddress:', hasAddress, 'state.selectedAddressId:', state.selectedAddressId, 'session:', state.session);
+      if (!hasAddress) {
+        setInlineMessage(els.addressMessage, 'Choose or add a delivery address first.', 'error');
+        return;
+      }
     }
 
     if (state.currentStep === 2 && !state.selectedDelivery) {
@@ -305,16 +295,11 @@
 
   async function applyCoupon() {
     const code = els.couponCode.value.trim();
-    if (!code) {
-      setInlineMessage(els.couponMessage, 'Enter a coupon code first.', 'error');
-      return;
-    }
-
+    if (!code) { setInlineMessage(els.couponMessage, 'Enter a coupon code first.', 'error'); return; }
     setButtonLoading(els.applyCouponBtn, true);
     try {
       const data = await api(`/checkout/session/${state.sessionId}/coupon`, {
-        method: 'POST',
-        body: JSON.stringify({ code })
+        method: 'POST', body: JSON.stringify({ code })
       });
       absorbSessionPayload(data);
       renderSummary();
@@ -375,52 +360,51 @@
     });
   }
 
-async function attachAddress(addressId, addressPayload) {
-  console.log('attachAddress called with:', addressId);  // ← add
-  setInlineMessage(els.addressMessage, '', '');
-  const previousAddressId = state.selectedAddressId;
+  // FIX: single clean attachAddress, no duplicates
+  async function attachAddress(addressId, addressPayload) {
+    console.log('attachAddress called - addressId:', addressId, 'payload:', addressPayload);
+    setInlineMessage(els.addressMessage, '', '');
+    const previousAddressId = state.selectedAddressId;
+    const confirmedId = addressId;
 
-  if (addressId) {
-    state.selectedAddressId = addressId;
-    renderAddresses();
+    if (addressId) {
+      state.selectedAddressId = addressId;
+      renderAddresses();
+    }
+
+    try {
+      const data = await attachAddressToSession(addressId, addressPayload);
+      console.log('attachAddressToSession response:', data);
+      absorbSessionPayload(data);
+      state.selectedAddressId = confirmedId;
+      renderAddresses();
+      renderSummary();
+      setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
+    } catch (error) {
+      console.error('attachAddress failed:', error.message, error.data);
+      state.selectedAddressId = previousAddressId;
+      renderAddresses();
+      setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
+    }
   }
 
- async function attachAddress(addressId, addressPayload) {
-  setInlineMessage(els.addressMessage, '', '');
-  const previousAddressId = state.selectedAddressId;
-  const confirmedId = addressId; // ← move here, before try
-
-  if (addressId) {
-    state.selectedAddressId = addressId;
-    renderAddresses();
-  }
-
-  try {
-    const data = await attachAddressToSession(addressId, addressPayload);
-    absorbSessionPayload(data);
-    state.selectedAddressId = confirmedId;
-    renderAddresses();
-    renderSummary();
-    setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
-  } catch (error) {
-    state.selectedAddressId = previousAddressId;
-    renderAddresses();
-    setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
-  }
-}
-}
-
+  // FIX: debug logs added
   async function attachAddressToSession(addressId, addressPayload) {
     const attempts = buildSessionAddressPayloads(addressId, addressPayload);
+    console.log('attachAddressToSession - attempts:', JSON.stringify(attempts));
     let lastError = null;
 
     for (const body of attempts) {
       try {
-        return await api(`/checkout/session/${state.sessionId}/address`, {
+        console.log('Trying payload:', JSON.stringify(body));
+        const result = await api(`/checkout/session/${state.sessionId}/address`, {
           method: 'POST',
           body: JSON.stringify(body)
         });
+        console.log('Success response:', result);
+        return result;
       } catch (error) {
+        console.log('Attempt failed:', error.message, 'status:', error.status, 'data:', error.data);
         lastError = error;
         if (error.status !== 400) break;
       }
@@ -443,60 +427,50 @@ async function attachAddress(addressId, addressPayload) {
     ].filter((body) => addressId && Object.values(body).every(Boolean));
   }
 
- async function handleAddressSubmit(e) {
-  e.preventDefault();
-  const form = e.target;
-  const formData = new FormData(form);
-  setButtonLoading(els.saveAddressBtn, true);
+  async function handleAddressSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    setButtonLoading(els.saveAddressBtn, true);
 
-  const payload = {
-    fullName: formData.get('fullName'),
-    phone: formData.get('phone'),
-    addressLine1: formData.get('addressLine1'),
-    addressLine2: formData.get('addressLine2') || null,
-    city: formData.get('city'),
-    state: formData.get('state'),
-    country: formData.get('country') || 'Nigeria',
-    postalCode: formData.get('postalCode') || null,
-    deliveryInstructions: formData.get('deliveryInstructions') || null,
-    saveAddress: formData.get('saveAddress') === 'on',
-  };
+    const payload = {
+      fullName: formData.get('fullName'),
+      phone: formData.get('phone'),
+      addressLine1: formData.get('addressLine1'),
+      addressLine2: formData.get('addressLine2') || null,
+      city: formData.get('city'),
+      state: formData.get('state'),
+      country: formData.get('country') || 'Nigeria',
+      postalCode: formData.get('postalCode') || null,
+      deliveryInstructions: formData.get('deliveryInstructions') || null,
+      saveAddress: formData.get('saveAddress') === 'on',
+    };
 
-  try {
-    if (payload.saveAddress) {
-      const created = await createAddress(payload);
-      const address = created.address || created.data?.address || created.data || created;
-      const createdAddressId = getAddressId(address || {});
-      if (address && createdAddressId) {
-        state.addresses.unshift(address);
-        state.selectedAddressId = createdAddressId; 
-         renderAddresses();        
-        await attachAddress(createdAddressId);
+    try {
+      if (payload.saveAddress) {
+        const created = await createAddress(payload);
+        const address = created.address || created.data?.address || created.data || created;
+        const createdAddressId = getAddressId(address || {});
+        if (address && createdAddressId) {
+          state.addresses.unshift(address);
+          state.selectedAddressId = createdAddressId;
+          renderAddresses();
+          await attachAddress(createdAddressId);
+        } else {
+          await attachAddress(null, { address: stripEmpty(payload) });
+        }
       } else {
         await attachAddress(null, { address: stripEmpty(payload) });
       }
-    } else {
-      await attachAddress(null, { address: stripEmpty(payload) });
+      els.addressForm.reset();
+      els.addressForm.hidden = true;
+      renderAddresses();
+    } catch (error) {
+      console.log('handleAddressSubmit error:', error.data, error.status);
+      setInlineMessage(els.addressMessage, error.message || 'Could not save address.', 'error');
+    } finally {
+      setButtonLoading(els.saveAddressBtn, false);
     }
-
-    els.addressForm.reset();
-    els.addressForm.hidden = true;
-    renderAddresses();
-  } catch (error) {
-      console.log('Full error:', error.data);
-    setInlineMessage(els.addressMessage, error.message || 'Could not save address.', 'error');
-    console.log('attach error:', error.data, error.status);
-  } finally {
-    setButtonLoading(els.saveAddressBtn, false);
-  }
-}
-
-  async function loadDeliveryOptions() {
-    els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
-    const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
-    const rawOptions = data.options || data.deliveryOptions || data.data?.options || data.data || [];
-    state.deliveryOptions = normalizeDeliveryOptions(rawOptions);
-    renderDeliveryOptions();
   }
 
   async function createAddress(payload) {
@@ -507,18 +481,26 @@ async function attachAddress(addressId, addressPayload) {
   }
 
   function toSnakeAddress(payload) {
-  return stripEmpty({
-    full_name: payload.fullName || payload.full_name || payload.name,
-    phone: payload.phone,
-    address_line1: payload.addressLine1 || payload.address_line1 || payload.line1,  // ← remove extra _
-    address_line2: payload.addressLine2 || payload.address_line2 || payload.line2,  // ← remove extra _
-    city: payload.city,
-    state: payload.state,
-    country: payload.country,
-    postal_code: payload.postalCode || payload.postal_code,
-    delivery_instructions: payload.deliveryInstructions || payload.delivery_instructions || payload.instructions
-  });
-}
+    return stripEmpty({
+      full_name: payload.fullName || payload.full_name || payload.name,
+      phone: payload.phone,
+      address_line1: payload.addressLine1 || payload.address_line1 || payload.line1,
+      address_line2: payload.addressLine2 || payload.address_line2 || payload.line2,
+      city: payload.city,
+      state: payload.state,
+      country: payload.country,
+      postal_code: payload.postalCode || payload.postal_code,
+      delivery_instructions: payload.deliveryInstructions || payload.delivery_instructions || payload.instructions
+    });
+  }
+
+  async function loadDeliveryOptions() {
+    els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+    const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
+    const rawOptions = data.options || data.deliveryOptions || data.data?.options || data.data?.all || data.data || [];
+    state.deliveryOptions = normalizeDeliveryOptions(rawOptions);
+    renderDeliveryOptions();
+  }
 
   function normalizeDeliveryOptions(options) {
     const list = Array.isArray(options) ? options : [];
@@ -527,8 +509,8 @@ async function attachAddress(addressId, addressPayload) {
         id: option.id || option.method || option.deliveryMethod || `delivery-${index}`,
         method: option.method || option.deliveryMethod || option.type || option.name,
         provider: option.provider || option.deliveryProvider || option.name,
-        title: option.title || option.name || labelFromMethod(option.method || option.deliveryMethod || option.type),
-        fee: readMoney(option.fee ?? option.shippingFee ?? option.price ?? option.amount),
+        title: option.title || option.name || option.providerLabel || labelFromMethod(option.method || option.deliveryMethod || option.type),
+        fee: readMoney(option.fee ?? option.totalFee ?? option.shippingFee ?? option.price ?? option.amount),
         estimatedDays: option.estimatedDays || option.estimated_days || option.etaDays || option.days,
         estimatedDelivery: option.estimatedDelivery || option.estimated_delivery || option.eta
       }));
@@ -573,9 +555,8 @@ async function attachAddress(addressId, addressPayload) {
       const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
         method: 'POST',
         body: JSON.stringify({
-          delivery_method: option.method || option.id,
-          delivery_provider: option.provider,
-          shipping_fee: option.fee
+          method: option.method || option.id,
+          provider_id: option.provider
         })
       });
       absorbSessionPayload(data);
@@ -601,9 +582,7 @@ async function attachAddress(addressId, addressPayload) {
       { id: 'paystack', name: 'Paystack', icon: 'fa-credit-card' },
       { id: 'flutterwave', name: 'Flutterwave', icon: 'fa-wallet' }
     ];
-
     if (!Array.isArray(methods) || !methods.length) return defaults;
-
     return methods.map((method) => {
       const id = String(method.id || method.code || method.method || method.name).toLowerCase();
       const fallback = defaults.find((item) => id.includes(item.id));
@@ -645,21 +624,17 @@ async function attachAddress(addressId, addressPayload) {
       setInlineMessage(els.paymentMessage, 'Choose a payment method first.', 'error');
       return;
     }
-
     setButtonLoading(els.placeOrderBtn, true);
     try {
       const data = await api('/payments/initiate', {
         method: 'POST',
         body: JSON.stringify({ session_id: state.sessionId, method: state.selectedPayment })
       });
-
       const paymentUrl = data.paymentUrl || data.authorizationUrl || data.authorization_url || data.data?.paymentUrl || data.data?.authorization_url;
-
       if (state.selectedPayment === 'cod' || !paymentUrl) {
         await confirmOrder();
         return;
       }
-
       sessionStorage.setItem(SESSION_KEY, state.sessionId);
       window.location.href = paymentUrl;
     } catch (error) {
@@ -673,7 +648,6 @@ async function attachAddress(addressId, addressPayload) {
     const params = new URLSearchParams(window.location.search);
     const paymentSignal = params.get('reference') || params.get('trxref') || params.get('transaction_id') || params.get('tx_ref') || params.get('status');
     if (!paymentSignal || !state.sessionId) return;
-
     try {
       setGlobalMessage('Confirming your payment...', 'success');
       await confirmOrder();
@@ -708,12 +682,9 @@ async function attachAddress(addressId, addressPayload) {
     if (state.expiryTimer) clearInterval(state.expiryTimer);
     const expiresAt = state.session?.expiresAt || state.session?.expires_at;
     if (!expiresAt) return;
-
     const expiryTime = new Date(expiresAt).getTime();
     if (!Number.isFinite(expiryTime)) return;
-
     els.expiryPill.hidden = false;
-
     const tick = () => {
       const remainingMs = expiryTime - Date.now();
       if (remainingMs <= 0) {
@@ -722,26 +693,19 @@ async function attachAddress(addressId, addressPayload) {
         clearInterval(state.expiryTimer);
         return;
       }
-
       const totalSeconds = Math.floor(remainingMs / 1000);
       const minutes = Math.floor(totalSeconds / 60);
       const seconds = totalSeconds % 60;
       els.expiryCountdown.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-      if (remainingMs <= 5 * 60 * 1000) {
-        els.expiryPill.classList.add('urgent');
-      }
+      if (remainingMs <= 5 * 60 * 1000) els.expiryPill.classList.add('urgent');
     };
-
     tick();
     state.expiryTimer = setInterval(tick, 1000);
   }
 
   function initNotifications() {
     const buyerId = window.getBuyerId?.();
-    if (buyerId && window.NotificationManager) {
-      window.NotificationManager.init(buyerId);
-    }
+    if (buyerId && window.NotificationManager) window.NotificationManager.init(buyerId);
   }
 
   function calcItemsSubtotal() {
@@ -754,16 +718,13 @@ async function attachAddress(addressId, addressPayload) {
   }
 
   function formatMoney(value) {
-    return `NGN ${readMoney(value).toLocaleString('en-NG', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    })}`;
+    return `NGN ${readMoney(value).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
   }
 
   function formatAddress(address) {
     return [
-      address.addressLine1 || address.address_line_1 || address.line1,
-      address.addressLine2 || address.address_line_2 || address.line2,
+      address.addressLine1 || address.address_line1 || address.address_line_1 || address.line1,
+      address.addressLine2 || address.address_line2 || address.address_line_2 || address.line2,
       address.city,
       address.state,
       address.country
@@ -815,11 +776,7 @@ async function attachAddress(addressId, addressPayload) {
   }
 
   function safeJson(value, fallback) {
-    try {
-      return JSON.parse(value);
-    } catch (error) {
-      return fallback;
-    }
+    try { return JSON.parse(value); } catch (error) { return fallback; }
   }
 
   function stripEmpty(object) {
@@ -838,15 +795,12 @@ async function attachAddress(addressId, addressPayload) {
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
     }[char]));
   }
 
   function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, '&#096;');
   }
+
 })();
