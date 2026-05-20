@@ -639,7 +639,7 @@
     try {
       const data = await api('/payments/initiate', {
         method: 'POST',
-        body: JSON.stringify({ session_id: state.sessionId, method: state.selectedPayment })
+      body: JSON.stringify({ sessionId: state.sessionId, method: state.selectedPayment })
       });
       const paymentUrl = data.paymentUrl || data.authorizationUrl || data.authorization_url || data.data?.paymentUrl || data.data?.authorization_url;
       if (state.selectedPayment === 'cod' || !paymentUrl) {
