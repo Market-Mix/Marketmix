@@ -95,7 +95,7 @@
       els.addressForm.hidden = !els.addressForm.hidden;
     });
 
-    els.addressForm.addEventListener('submit', (e) => handleAddressSubmit(e, addressForm));
+   els.addressForm.addEventListener('submit', handleAddressSubmit);
     els.placeOrderBtn.addEventListener('click', placeOrder);
     els.summaryToggle.addEventListener('click', () => els.summaryPanel.classList.toggle('open'));
 
@@ -431,56 +431,49 @@
     ].filter((body) => addressId && Object.values(body).every(Boolean));
   }
 
-  async function handleAddressSubmit(e) {
+ async function handleAddressSubmit(e) {
   e.preventDefault();
-  const form = e.target; 
+  const form = e.target;
   const formData = new FormData(form);
-    setButtonLoading(els.saveAddressBtn, true);
+  setButtonLoading(els.saveAddressBtn, true);
 
-const body = {
-  full_name: formData.get('fullName'),
-  phone: formData.get('phone'),
-  address_line1: formData.get('addressLine1'),
-  address_line2: formData.get('addressLine2') || null,
-  city: formData.get('city'),
-  state: formData.get('state'),
-  country: formData.get('country') || 'Nigeria',
-  postal_code: formData.get('postalCode') || null,
-  delivery_instructions: formData.get('deliveryInstructions') || null,
-  is_default: formData.get('saveAddress') === 'on',
-};
+  const payload = {
+    fullName: formData.get('fullName'),
+    phone: formData.get('phone'),
+    addressLine1: formData.get('addressLine1'),
+    addressLine2: formData.get('addressLine2') || null,
+    city: formData.get('city'),
+    state: formData.get('state'),
+    country: formData.get('country') || 'Nigeria',
+    postalCode: formData.get('postalCode') || null,
+    deliveryInstructions: formData.get('deliveryInstructions') || null,
+    saveAddress: formData.get('saveAddress') === 'on',
+  };
 
-const res = await apiFetch(`/checkout/addresses`, {
-  method: 'POST',
-  body: JSON.stringify(body),  // was payload
-});
-
-    try {
-      let address = null;
-      if (payload.saveAddress) {
-        const created = await createAddress(payload);
-        address = created.address || created.data?.address || created.data || created;
-        const createdAddressId = getAddressId(address || {});
-        if (address && createdAddressId) {
-          state.addresses.unshift(address);
-          await attachAddress(createdAddressId);
-        } else {
-          await attachAddress(null, { address: stripEmpty(payload) });
-        }
+  try {
+    if (payload.saveAddress) {
+      const created = await createAddress(payload);
+      const address = created.address || created.data?.address || created.data || created;
+      const createdAddressId = getAddressId(address || {});
+      if (address && createdAddressId) {
+        state.addresses.unshift(address);
+        await attachAddress(createdAddressId);
       } else {
         await attachAddress(null, { address: stripEmpty(payload) });
       }
-
-      els.addressForm.reset();
-      els.addressForm.country.value = 'Nigeria';
-      els.addressForm.hidden = true;
-      renderAddresses();
-    } catch (error) {
-      setInlineMessage(els.addressMessage, error.message || 'Could not save address.', 'error');
-    } finally {
-      setButtonLoading(els.saveAddressBtn, false);
+    } else {
+      await attachAddress(null, { address: stripEmpty(payload) });
     }
+
+    els.addressForm.reset();
+    els.addressForm.hidden = true;
+    renderAddresses();
+  } catch (error) {
+    setInlineMessage(els.addressMessage, error.message || 'Could not save address.', 'error');
+  } finally {
+    setButtonLoading(els.saveAddressBtn, false);
   }
+}
 
   async function loadDeliveryOptions() {
     els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
