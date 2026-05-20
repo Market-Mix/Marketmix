@@ -469,6 +469,7 @@
     els.addressForm.hidden = true;
     renderAddresses();
   } catch (error) {
+      console.log('Full error:', error.data);
     setInlineMessage(els.addressMessage, error.message || 'Could not save address.', 'error');
   } finally {
     setButtonLoading(els.saveAddressBtn, false);
