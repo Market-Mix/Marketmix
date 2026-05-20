@@ -395,6 +395,9 @@ async function attachAddress(addressId, addressPayload) {
     setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
   }catch (error) {
     state.selectedAddressId = previousAddressId;
+    state.selectedAddressId = confirmedId;
+    console.log('confirmedId:', confirmedId);
+   console.log('address ids:', state.addresses.map(a => getAddressId(a)));
     renderAddresses();
     setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
   }
