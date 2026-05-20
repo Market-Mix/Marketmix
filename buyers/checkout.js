@@ -450,6 +450,11 @@ const body = {
   is_default: formData.get('saveAddress') === 'on',
 };
 
+const res = await apiFetch(`/checkout/addresses`, {
+  method: 'POST',
+  body: JSON.stringify(body),  // was payload
+});
+
     try {
       let address = null;
       if (payload.saveAddress) {
