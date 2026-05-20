@@ -435,19 +435,19 @@
     event.preventDefault();
     setButtonLoading(els.saveAddressBtn, true);
 
-    const form = new FormData(els.addressForm);
-    const payload = {
-      fullName: form.get('fullName')?.trim(),
-      phone: form.get('phone')?.trim(),
-      addressLine1: form.get('addressLine1')?.trim(),
-      addressLine2: form.get('addressLine2')?.trim(),
-      city: form.get('city')?.trim(),
-      state: form.get('state')?.trim(),
-      country: form.get('country')?.trim() || 'Nigeria',
-      postalCode: form.get('postalCode')?.trim(),
-      deliveryInstructions: form.get('deliveryInstructions')?.trim(),
-      saveAddress: form.get('saveAddress') === 'on'
-    };
+const formData = new FormData(form);
+const body = {
+  full_name: formData.get('fullName'),
+  phone: formData.get('phone'),
+  address_line1: formData.get('addressLine1'),
+  address_line2: formData.get('addressLine2') || null,
+  city: formData.get('city'),
+  state: formData.get('state'),
+  country: formData.get('country') || 'Nigeria',
+  postal_code: formData.get('postalCode') || null,
+  delivery_instructions: formData.get('deliveryInstructions') || null,
+  is_default: formData.get('saveAddress') === 'on',
+};
 
     try {
       let address = null;
