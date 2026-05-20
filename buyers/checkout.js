@@ -375,28 +375,31 @@
     });
   }
 
-  async function attachAddress(addressId, addressPayload) {
-    setInlineMessage(els.addressMessage, '', '');
-    const previousAddressId = state.selectedAddressId;
+async function attachAddress(addressId, addressPayload) {
+  console.log('attachAddress called with:', addressId);  // ← add
+  setInlineMessage(els.addressMessage, '', '');
+  const previousAddressId = state.selectedAddressId;
 
-    if (addressId) {
-      state.selectedAddressId = addressId;
-      renderAddresses();
-    }
-
-    try {
-      const data = await attachAddressToSession(addressId, addressPayload);
-      absorbSessionPayload(data);
-      state.selectedAddressId = addressId || state.session.address_id || state.session.addressId;
-      renderAddresses();
-      renderSummary();
-      setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
-    } catch (error) {
-      state.selectedAddressId = previousAddressId;
-      renderAddresses();
-      setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
-    }
+  if (addressId) {
+    state.selectedAddressId = addressId;
+    renderAddresses();
   }
+
+  try {
+    const data = await attachAddressToSession(addressId, addressPayload);
+    absorbSessionPayload(data);
+    state.selectedAddressId = addressId || state.session.address_id || state.session.addressId;
+    console.log('selectedAddressId after attach:', state.selectedAddressId);  // ← add
+    console.log('addresses:', state.addresses.map(a => getAddressId(a)));  // ← add
+    renderAddresses();
+    renderSummary();
+    setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
+  } catch (error) {
+    state.selectedAddressId = previousAddressId;
+    renderAddresses();
+    setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
+  }
+}
 
   async function attachAddressToSession(addressId, addressPayload) {
     const attempts = buildSessionAddressPayloads(addressId, addressPayload);
