@@ -385,22 +385,14 @@ async function attachAddress(addressId, addressPayload) {
     renderAddresses();
   }
 
-  try {
+ try {
     const data = await attachAddressToSession(addressId, addressPayload);
+    const confirmedId = addressId; // ← save before absorbSessionPayload overwrites
     absorbSessionPayload(data);
-    console.log('session.address_id:', state.session?.address_id, state.session?.addressId); // temp
-    state.selectedAddressId = addressId || state.session.address_id || state.session.addressId;
-    console.log('selectedAddressId after attach:', state.selectedAddressId);  // ← add
-    console.log('addresses:', state.addresses.map(a => getAddressId(a)));  // ← add
+    state.selectedAddressId = confirmedId; // ← force it back after absorb
     renderAddresses();
     renderSummary();
     setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
-  } catch (error) {
-    state.selectedAddressId = previousAddressId;
-    renderAddresses();
-    setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
-  }
-}
 
   async function attachAddressToSession(addressId, addressPayload) {
     const attempts = buildSessionAddressPayloads(addressId, addressPayload);
