@@ -389,7 +389,7 @@ async function attachAddress(addressId, addressPayload) {
     const data = await attachAddressToSession(addressId, addressPayload);
     absorbSessionPayload(data);
     console.log('session.address_id:', state.session?.address_id, state.session?.addressId); // temp
-    state.selectedAddressId = addressId;
+    state.selectedAddressId = addressId || state.session.address_id || state.session.addressId;
     console.log('selectedAddressId after attach:', state.selectedAddressId);  // ← add
     console.log('addresses:', state.addresses.map(a => getAddressId(a)));  // ← add
     renderAddresses();
