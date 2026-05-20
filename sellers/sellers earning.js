@@ -304,6 +304,27 @@ function showTransactionModal(tx) {
     modal.style.display = "flex";
 }
 
+async function createSellerNotification({ title, message, type = 'withdrawal', link = '/sellers/sellers earning.html' }) {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+        await fetch(`${API_BASE}/notifications`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+                user_id: userId,
+                title,
+                message,
+                type,
+                link
+            })
+        });
+    } catch (err) {
+        console.warn('Unable to create withdrawal notification:', err);
+    }
+}
+
 function setupWithdrawalForm() {
     const form = document.getElementById("withdrawForm");
     if (!form) return;
@@ -335,7 +356,22 @@ function setupWithdrawalForm() {
                 const withdrawModal = document.getElementById("withdrawModal");
                 if (withdrawModal) withdrawModal.style.display = "none";
                 form.reset();
-                // Refresh data
+
+                if (data.data && typeof data.data.newBalance === 'number') {
+                    const availableBalanceEl = document.getElementById("available-balance");
+                    if (availableBalanceEl) {
+                        availableBalanceEl.textContent = `₦${data.data.newBalance.toFixed(2)}`;
+                    }
+                }
+
+                createSellerNotification({
+                    title: 'Withdrawal Request Submitted',
+                    message: `Your withdrawal request for ₦${amount.toFixed(2)} was received. Pending Earnings and Available Balance have been updated.`,
+                    type: 'withdrawal',
+                    link: '/sellers/sellers earning.html'
+                });
+
+                // Refresh earnings summary and transaction data
                 fetchEarningsData();
             } else {
                 showToast(data.message || 'Withdrawal failed', false);
