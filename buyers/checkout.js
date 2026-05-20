@@ -492,18 +492,18 @@
   }
 
   function toSnakeAddress(payload) {
-    return stripEmpty({
-      full_name: payload.fullName || payload.full_name || payload.name,
-      phone: payload.phone,
-      address_line_1: payload.addressLine1 || payload.address_line_1 || payload.address_line1 || payload.line1,
-      address_line_2: payload.addressLine2 || payload.address_line_2 || payload.address_line2 || payload.line2,
-      city: payload.city,
-      state: payload.state,
-      country: payload.country,
-      postal_code: payload.postalCode || payload.postal_code,
-      delivery_instructions: payload.deliveryInstructions || payload.delivery_instructions || payload.instructions
-    });
-  }
+  return stripEmpty({
+    full_name: payload.fullName || payload.full_name || payload.name,
+    phone: payload.phone,
+    address_line1: payload.addressLine1 || payload.address_line1 || payload.line1,  // ← remove extra _
+    address_line2: payload.addressLine2 || payload.address_line2 || payload.line2,  // ← remove extra _
+    city: payload.city,
+    state: payload.state,
+    country: payload.country,
+    postal_code: payload.postalCode || payload.postal_code,
+    delivery_instructions: payload.deliveryInstructions || payload.delivery_instructions || payload.instructions
+  });
+}
 
   function normalizeDeliveryOptions(options) {
     const list = Array.isArray(options) ? options : [];
