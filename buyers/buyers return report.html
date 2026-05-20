@@ -1424,24 +1424,6 @@
 <script src="notification-manager.js"></script>
 <script>
   // =====================================================
-  // SUPABASE INITIALIZATION
-  // =====================================================
-  window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
-  window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldndsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2NzIxNzIsImV4cCI6MjA3OTI0ODE3Mn0.k35O8K2mQyoI8T2PCI5RhInlaSTDMpwJ8xRw5zITL_0';
-
-  function getSupabaseClient() {
-    if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
-    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-      throw new Error('Supabase client library is not loaded.');
-    }
-    window.marketmixSupabaseClient = window.supabase.createClient(
-      window.MARKETMIX_SUPABASE_URL,
-      window.MARKETMIX_SUPABASE_ANON_KEY
-    );
-    return window.marketmixSupabaseClient;
-  }
-  
-  // =====================================================
   // SUPABASE INITIALIZATION (use from notification-manager.js)
   // =====================================================
   window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
@@ -1598,6 +1580,53 @@
     } catch (err) {
       console.error('❌ createBuyerNotification: EXCEPTION ERROR');
       console.error('  - error:', err);
+      return null;
+    }
+  }
+  
+  /**
+   * Create seller notification in Supabase
+   */
+  async function createSellerNotification(notificationData) {
+    try {
+      const seller_id = notificationData.seller_id;
+      const title = notificationData.title || 'New refund request';
+      const message = notificationData.message || `A refund case was submitted for order ${notificationData.order_id || 'unknown'}.`;
+      const type = notificationData.type || 'refund';
+      const link = notificationData.link || '/sellers/sellers%20returns.html';
+
+      if (!seller_id) {
+        console.error('createSellerNotification: seller_id is missing', notificationData);
+        return null;
+      }
+
+      const client = getSupabaseClient();
+      if (!client) {
+        console.error('createSellerNotification: Supabase client not available');
+        return null;
+      }
+
+      const { data, error } = await client
+        .from('notifications')
+        .insert([{
+          user_id: seller_id,
+          title,
+          message,
+          type,
+          link,
+          is_read: false,
+          is_deleted: false
+        }])
+        .select();
+
+      if (error) {
+        console.error('createSellerNotification: INSERT ERROR', error);
+        return null;
+      }
+
+      return data?.[0] || null;
+    } catch (err) {
+      console.error('createSellerNotification: EXCEPTION', err);
       return null;
     }
   }
@@ -1796,7 +1825,7 @@
       fetchBuyerOrdersForReturns()
     ]);
 
-    return buildReturnReports(refundCases, [...buyerOrders, ...getTempDevRefundTestOrders()]);
+    return buildReturnReports(refundCases, buyerOrders);
   }
 
   async function refreshRefundTableFromSupabase() {
@@ -2070,121 +2099,6 @@
     showNotification('Bank account details saved successfully.', 'success');
   }
 
-  // =====================================================
-  // SAMPLE/DEMO DATA
-  // =====================================================
-  const sampleReports = [
-    {
-      id: 1,
-      order_id: 'ORD-2025-001',
-      store_name: 'TechHub Store',
-      product_name: 'Wireless Headphones',
-      total_amount: 15999,
-      status: 'pending',
-      reason: 'defective',
-      description: 'The headphones stopped working after 2 days of use. The left ear is completely silent.',
-      purchase_date: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
-      created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
-      evidence_submitted_at: new Date(Date.now() - 1.5*24*60*60*1000).toISOString(),
-      seller_response: null,
-      messages: [
-        { type: 'buyer', text: '[Evidence Submitted]\nDescription: The headphones stopped working after 2 days of use. The left ear is completely silent.', time: new Date(Date.now() - 1.5*24*60*60*1000) },
-        { type: 'system', text: 'Please be patient while the store attends to you.', time: new Date(Date.now() - 1.49*24*60*60*1000) },
-        { type: 'seller', text: 'We are very sorry to hear that. Let me check your order details.', time: new Date(Date.now() - 1.4*24*60*60*1000) }
-      ]
-    },
-    {
-      id: 2,
-      order_id: 'ORD-2025-002',
-      store_name: 'Fashion Boutique',
-      product_name: 'Summer Dress',
-      total_amount: 8500,
-      status: 'under_review',
-      reason: 'wrong_item',
-      description: 'Received a size M instead of the ordered size L. The tag shows a different brand.',
-      purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
-      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
-      evidence_submitted_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
-      seller_response: 'We apologize for this mistake. We will send you the correct size immediately.',
-      messages: [
-        { type: 'buyer', text: '[Evidence Submitted]\nDescription: Received a size M instead of the ordered size L.', time: new Date(Date.now() - 1*24*60*60*1000) },
-        { type: 'system', text: 'Please be patient while the store attends to you.', time: new Date(Date.now() - 0.9*24*60*60*1000) },
-        { type: 'seller', text: 'My sincere apologies! I will expedite the correct size to you.', time: new Date(Date.now() - 0.8*24*60*60*1000) },
-        { type: 'buyer', text: 'Thank you! When can I expect it?', time: new Date(Date.now() - 0.7*24*60*60*1000) },
-      ]
-    },
-    {
-      id: 3,
-      order_id: 'ORD-2025-003',
-      store_name: 'Electronics Plus',
-      product_name: 'USB-C Cable (2m)',
-      total_amount: 2999,
-      status: 'resolved',
-      reason: 'not_as_described',
-      description: 'The cable appears to be used/damaged. The connector has visible scratches.',
-      purchase_date: new Date(Date.now() - 8*24*60*60*1000).toISOString(), // older than 5 days, button disabled
-      created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
-      evidence_submitted_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
-      marketmix_reason: 'Resolved: replacement approved because the product was not as described.',
-      seller_response: 'We sincerely apologize. A replacement has been shipped to you.',
-      messages: [
-        { type: 'buyer', text: '[Evidence Submitted]\nDescription: This cable looks used', time: new Date(Date.now() - 5*24*60*60*1000) },
-        { type: 'seller', text: 'We apologize for the inconvenience. New item will be sent immediately.', time: new Date(Date.now() - 4.9*24*60*60*1000) },
-      ]
-    },
-    {
-      id: 4,
-      order_id: 'ORD-2025-004',
-      store_name: 'Home Essentials',
-      product_name: 'Bed Sheets (King Size)',
-      total_amount: 12500,
-      status: 'refunded',
-      reason: 'quality_issue',
-      description: 'Poor stitching quality, threads coming loose from seams.',
-      purchase_date: new Date(Date.now() - 15*24*60*60*1000).toISOString(),
-      created_at: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
-      evidence_submitted_at: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
-      marketmix_reason: 'Refund approved after review due to quality issue.',
-      seller_response: 'Full refund approved. Thank you for your patience.',
-      messages: [
-        { type: 'buyer', text: '[Evidence Submitted]\nDescription: The stitching is terrible', time: new Date(Date.now() - 10*24*60*60*1000) },
-        { type: 'seller', text: 'We are deeply sorry. Full refund has been processed.', time: new Date(Date.now() - 9.9*24*60*60*1000) },
-      ]
-    },
-    {
-      id: 5,
-      order_id: 'ORD-2025-005',
-      store_name: 'Beauty Corner',
-      product_name: 'Skincare Set',
-      total_amount: 7200,
-      status: 'rejected',
-      reason: 'expired_product',
-      description: 'Product has already expired according to the expiration date on the box.',
-      purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(), // within 5 days, no messages yet
-      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
-      evidence_submitted_at: null,
-      marketmix_reason: 'Rejected: request denied because the product was already expired when delivered.',
-      seller_response: null,
-      messages: [] // No messages, so it will trigger the evidence modal
-    },
-    {
-      id: 6,
-      order_id: 'ORD-2025-006',
-      store_name: 'Kitchen Co',
-      product_name: 'Chef Knife Set',
-      total_amount: 12000,
-      status: 'purchased',
-      reason: '',
-      description: '',
-      purchase_date: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
-      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
-      evidence_submitted_at: null,
-      marketmix_reason: null,
-      seller_response: null,
-      messages: []
-    }
-  ];
-
   function checkAuth() {
     const token = getAuthToken();
     if (!token) {
@@ -2214,17 +2128,12 @@
     if (userId) {
       try {
         currentReports = await loadReturnReportsForCurrentBuyer();
-        // If no reports loaded, use sample data as fallback
-        if (!currentReports || currentReports.length === 0) {
-          console.log('📋 No reports loaded from Supabase, using sample data');
-          currentReports = sampleReports;
-        }
       } catch (err) {
         console.error('Failed to load returns data:', err);
-        currentReports = sampleReports;
+        currentReports = [];
       }
     } else {
-      currentReports = sampleReports;
+      currentReports = [];
       showNotification('Unable to identify your buyer account. Please log in again.', 'error');
     }
     
@@ -2487,6 +2396,11 @@
         submitBtn.innerHTML = originalBtnText;
         return;
       }
+
+      await createSellerNotification({
+        seller_id: currentChatData.seller_id,
+        order_id: currentChatData.order_id
+      });
 
       const notificationPayload = {
         buyer_id: userId,

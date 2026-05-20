@@ -1,87 +1,78 @@
-// Sample return data
-const returnsData = [
-  {
-    id: 1,
-    buyerName: 'John Doe',
-    productName: 'Wireless Headphones',
-    orderId: 'ORD-12345',
-    reason: 'Received Damaged',
-    notes: 'The left earphone is not working and there are visible cracks on the charging case.',
-    productImage: 'https://via.placeholder.com/200?text=Wireless+Headphones',
-    amount: 89.99,
-    status: 'Pending',
-    marketMixReason: 'MarketMix is reviewing the evidence and seller response.',
-    purchase_date: new Date(Date.now() - 1.5*24*60*60*1000).toISOString(),
-    evidence_submitted_at: new Date(Date.now() - 10*60*60*1000).toISOString(),
-    messages: [
-      { sender: 'marketmix', text: 'MarketMix has joined the conversation and will review the issue shortly.', timestamp: new Date(Date.now() - 10.5*60*60*1000).toISOString(), read: true, file: null },
-      { sender: 'buyer', text: 'I received the speaker with a broken casing.', timestamp: new Date(Date.now() - 10*60*60*1000).toISOString(), read: false, file: null },
-      { sender: 'seller', text: 'I am sorry to hear that. Can you share a photo of the damage?', timestamp: new Date(Date.now() - 9*60*60*1000).toISOString(), read: true, file: null }
-    ],
-    date: '2024-06-15'
-  },
-  {
-    id: 2,
-    buyerName: 'Jane Smith',
-    productName: 'Bluetooth Speaker',
-    orderId: 'ORD-12346',
-    reason: 'Wrong Item Delivered',
-    notes: 'Ordered black speaker but received silver color.',
-    productImage: 'https://via.placeholder.com/200?text=Bluetooth+Speaker',
-    amount: 49.99,
-    status: 'Approved',
-    marketMixReason: 'Return approved after verification of delivery and item condition.',
-    date: '2024-06-18'
-  },
-  {
-    id: 3,
-    buyerName: 'Bob Wilson',
-    productName: 'USB-C Cable',
-    orderId: 'ORD-12347',
-    reason: 'Changed My Mind',
-    notes: 'Item is unused and in original packaging. Request denied as per return policy.',
-    productImage: 'https://via.placeholder.com/200?text=USB-C+Cable',
-    amount: 15.99,
-    status: 'Denied',
-    marketMixReason: 'Return denied due to policy mismatch and insufficient grounds.',
-    date: '2024-06-20'
-  },
-  {
-    id: 4,
-    buyerName: 'Alice Brown',
-    productName: 'Phone Case',
-    orderId: 'ORD-12348',
-    reason: 'Item Not as Described',
-    notes: 'The product quality is much lower than shown in the product image.',
-    productImage: 'https://via.placeholder.com/200?text=Phone+Case',
-    amount: 24.99,
-    status: 'Pending',
-    marketMixReason: 'MarketMix is reviewing buyer evidence and will decide soon.',
-    purchase_date: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
-    evidence_submitted_at: new Date(Date.now() - 26*60*60*1000).toISOString(),
-    messages: [
-      { sender: 'buyer', text: 'The case looks cheap and not like the photos.', timestamp: new Date(Date.now() - 26*60*60*1000).toISOString(), read: false, file: null }
-    ],
-    date: '2024-06-22'
-  },
-  {
-    id: 5,
-    buyerName: 'Emma Gray',
-    productName: 'Smartwatch Strap',
-    orderId: 'ORD-12349',
-    reason: 'Color Mismatch',
-    notes: 'The strap color looks different from the product photo.',
-    productImage: 'https://via.placeholder.com/200?text=Smartwatch+Strap',
-    amount: 12.99,
-    status: 'Pending',
-    marketMixReason: 'Awaiting additional evidence before MarketMix can make a final decision.',
-    purchase_date: new Date(Date.now() - 3.5*24*60*60*1000).toISOString(),
-    messages: [
-      { sender: 'buyer', text: 'I received the wrong strap color.', timestamp: new Date(Date.now() - 3.5*24*60*60*1000).toISOString(), read: false, file: null }
-    ],
-    date: '2024-06-23'
+let returnsData = [];
+
+const SUPABASE_URL = 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
+let supabaseClient = null;
+
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    console.error('❌ Supabase client not loaded.');
+    return null;
   }
-];
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return supabaseClient;
+}
+
+function getStoredAuthUser() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+  } catch (err) {
+    return {};
+  }
+}
+
+function getCurrentSellerId() {
+  const user = getStoredAuthUser();
+  return user?.id || user?._id || user?.userId || null;
+}
+
+function mapRefundCaseFromSupabase(caseData) {
+  return {
+    id: caseData.id,
+    buyerName: caseData.buyer_name || caseData.buyer_id || 'Buyer',
+    productName: caseData.product_name || 'Purchased Item',
+    orderId: caseData.order_id || 'N/A',
+    reason: caseData.reason || caseData.complaint_text || '',
+    notes: caseData.complaint_text || caseData.reason || '',
+    productImage: caseData.product_image || caseData.product_image_url || 'https://via.placeholder.com/200?text=Product',
+    amount: Number(caseData.total_amount || caseData.amount || 0),
+    status: caseData.status ? String(caseData.status).charAt(0).toUpperCase() + String(caseData.status).slice(1) : 'Pending',
+    marketMixReason: caseData.marketmix_reason || caseData.seller_response || 'Awaiting review.',
+    purchase_date: caseData.purchase_date || caseData.created_at,
+    evidence_submitted_at: caseData.evidence_submitted_at || caseData.created_at,
+    messages: [],
+    date: caseData.evidence_submitted_at || caseData.created_at,
+    seller_id: caseData.seller_id,
+    store_name: caseData.store_name || 'Store'
+  };
+}
+
+async function loadSellerRefundCases() {
+  const client = getSupabaseClient();
+  if (!client) return [];
+  const sellerId = getCurrentSellerId();
+  if (!sellerId) return [];
+
+  try {
+    const { data, error } = await client
+      .from('refund_cases')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to fetch seller refund cases:', error);
+      return [];
+    }
+
+    returnsData = (data || []).map(mapRefundCaseFromSupabase);
+    return returnsData;
+  } catch (err) {
+    console.error('Error loading seller refund cases:', err);
+    return [];
+  }
+}
 
 // API Constants
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
@@ -222,7 +213,7 @@ function renderTable(data = returnsData) {
       chatDate = formatDate(item.evidence_submitted_at);
       if (timeLeft > 0) {
         chatBtnHtml = `
-          <button class="btn-chat" onclick="openChat(${item.id})">
+          <button class="btn-chat" onclick="openChat('${item.id}')">
             <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
           </button>
         `;
@@ -242,7 +233,7 @@ function renderTable(data = returnsData) {
       chatDate = formatDate(item.purchase_date);
       if (timeLeft > 0) {
         chatBtnHtml = `
-          <button class="btn-chat" onclick="openChat(${item.id})">
+          <button class="btn-chat" onclick="openChat('${item.id}')">
             <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
           </button>
         `;
@@ -268,7 +259,7 @@ function renderTable(data = returnsData) {
       <div class="col-amount">$${item.amount.toFixed(2)}</div>
       <div class="col-status"><span class="status-badge ${statusClass}">${item.status}</span></div>
       <div class="col-date">${chatDate}</div>
-      <div class="col-action"><button class="btn-action" onclick="openModal(${item.id})">View</button></div>
+      <div class="col-action"><button class="btn-action" onclick="openModal('${item.id}')">View</button></div>
       <div class="col-chat">${chatBtnHtml}</div>
     `;
     
@@ -726,16 +717,10 @@ chatInput?.addEventListener('keydown', (e) => {
 });
 
 // Initialize page
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   loadProfile();
+  await loadSellerRefundCases();
   renderTable();
-});
-
-// Send on Ctrl+Enter or Cmd+Enter
-chatInput.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-    sendChatMessage();
-  }
 });
 
 // Notification
