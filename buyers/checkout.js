@@ -565,10 +565,10 @@
     try {
       const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
         method: 'POST',
-        body: JSON.stringify({
-          method: option.method || option.id,
-          provider_id: option.provider
-        })
+      body: JSON.stringify({
+        method: option.provider,      // 'marketmix'
+        provider_id: option.providerId || option.id  // 'mock_standard'
+            })
       });
       absorbSessionPayload(data);
       state.selectedDelivery = option;
