@@ -476,6 +476,7 @@ async function attachAddress(addressId, addressPayload) {
   } catch (error) {
       console.log('Full error:', error.data);
     setInlineMessage(els.addressMessage, error.message || 'Could not save address.', 'error');
+    console.log('attach error:', error.data, error.status);
   } finally {
     setButtonLoading(els.saveAddressBtn, false);
   }
