@@ -286,6 +286,87 @@ function buildActionButton(order) {
 
 /* ── status update ───────────────────────────────────────── */
 
+// Helper to create order status change notifications
+async function createOrderNotification(orderId, newStatus) {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user?.id;
+    if (!userId) return;
+
+    const store = (typeof StoreManager !== 'undefined' && StoreManager.getActiveStore) ? StoreManager.getActiveStore() : null;
+    const storeName = store?.business_name || 'your store';
+
+    // Map status to user-friendly message
+    const statusMessages = {
+      'confirmed': `Your order #${orderId.slice(0, 8).toUpperCase()} has been confirmed and is being prepared.`,
+      'processing': `Your order #${orderId.slice(0, 8).toUpperCase()} is now being processed.`,
+      'shipped': `Your order #${orderId.slice(0, 8).toUpperCase()} has been shipped! You can track it soon.`,
+      'delivered': `Your order #${orderId.slice(0, 8).toUpperCase()} has been delivered successfully.`,
+    };
+
+    const notifPayload = {
+      user_id: userId,
+      title: `Order ${capitalize(newStatus)}`,
+      message: statusMessages[newStatus] || `Your order status has been updated to ${capitalize(newStatus)}.`,
+      type: 'account',
+      link: '/sellers/sellers order.html'
+    };
+
+    // Try NotificationManager first
+    if (userId && typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
+      try {
+        await NotificationManager.createNotification(userId, {
+          title: notifPayload.title,
+          message: notifPayload.message,
+          type: notifPayload.type,
+          link: notifPayload.link
+        });
+      } catch (e) {
+        console.warn('NotificationManager.createNotification failed', e);
+        // Fallback to direct API
+        throw e;
+      }
+    } else {
+      throw new Error('NotificationManager not available');
+    }
+  } catch (e) {
+    // Fallback: try direct API call
+    try {
+      const token = getToken();
+      const userId = JSON.parse(localStorage.getItem('user') || '{}')?.id;
+      if (!token || !userId) return;
+
+      const store = (typeof StoreManager !== 'undefined' && StoreManager.getActiveStore) ? StoreManager.getActiveStore() : null;
+      const storeName = store?.business_name || 'your store';
+
+      const statusMessages = {
+        'confirmed': `Your order #${orderId.slice(0, 8).toUpperCase()} has been confirmed and is being prepared.`,
+        'processing': `Your order #${orderId.slice(0, 8).toUpperCase()} is now being processed.`,
+        'shipped': `Your order #${orderId.slice(0, 8).toUpperCase()} has been shipped! You can track it soon.`,
+        'delivered': `Your order #${orderId.slice(0, 8).toUpperCase()} has been delivered successfully.`,
+      };
+
+      await fetch(`${API_BASE}/notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Store-Id': getActiveStoreId()
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          title: `Order ${capitalize(newStatus)}`,
+          message: statusMessages[newStatus] || `Your order status has been updated to ${capitalize(newStatus)}.`,
+          type: 'account',
+          link: '/sellers/sellers order.html'
+        })
+      });
+    } catch (fallbackErr) {
+      console.warn('Failed to create order notification:', fallbackErr);
+    }
+  }
+}
+
 async function updateOrderStatus(orderId, newStatus) {
   try {
     const res = await fetch(`${API_BASE}/seller/orders/${orderId}/status`, {
@@ -301,6 +382,13 @@ async function updateOrderStatus(orderId, newStatus) {
     }
 
     showToast(`Order updated to "${capitalize(newStatus)}" ✓`);
+
+    // Create notification after successful status update
+    try {
+      await createOrderNotification(orderId, newStatus);
+    } catch (notifErr) {
+      console.warn('Notification creation failed (non-blocking):', notifErr);
+    }
 
     // Refresh the list to reflect the new status
     await fetchOrders(true);
@@ -399,6 +487,20 @@ document.addEventListener('DOMContentLoaded', async function () {
   // Initial load
   loadProfile();
   fetchOrders(true);
+
+  // Initialize notifications
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userId = user?.id;
+  if (userId) {
+    try {
+      if (typeof NotificationManager !== 'undefined' && NotificationManager.init) {
+        await NotificationManager.init(userId);
+        console.log('✓ Notifications initialized for order page');
+      }
+    } catch (e) {
+      console.warn('Notification initialization failed:', e);
+    }
+  }
 });
 
 window.addEventListener('storeChanged', () => {
