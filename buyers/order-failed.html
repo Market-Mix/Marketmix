@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Order Failed - MarketMix</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 60px 20px; background: #fff7ed; }
+    .icon { font-size: 64px; color: #dc2626; }
+    h1 { color: #991b1b; }
+    .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #f97316; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; }
+    .reason { background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 20px; display: inline-block; margin: 16px 0; color: #991b1b; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="icon">❌</div>
+  <h1>Payment Failed</h1>
+  <p>Something went wrong with your payment. Your cart has not been affected.</p>
+  <div class="reason" id="reasonBox" style="display:none"></div>
+  <br>
+  <a href="cart.html" class="btn">Back to Cart</a>
+  <a href="buyers homepage.html" class="btn" style="background:#111;margin-left:10px">Continue Shopping</a>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const reason = params.get('reason');
+    const ref = params.get('ref');
+    const box = document.getElementById('reasonBox');
+
+    const messages = {
+      cancelled: 'You cancelled the payment.',
+      verification_error: 'Could not verify your payment. Please contact support with your reference.',
+      missing_reference: 'Payment reference missing.',
+    };
+
+    if (reason) {
+      box.style.display = 'inline-block';
+      box.textContent = messages[reason] || `Payment was not successful (${reason})`;
+    }
+    if (ref) {
+      box.style.display = 'inline-block';
+      box.textContent += ` Reference: ${ref}`;
+    }
+  </script>
+</body>
+</html>
