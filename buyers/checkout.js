@@ -95,7 +95,7 @@
       els.addressForm.hidden = !els.addressForm.hidden;
     });
 
-    els.addressForm.addEventListener('submit', handleAddressSubmit);
+    els.addressForm.addEventListener('submit', (e) => handleAddressSubmit(e, addressForm));
     els.placeOrderBtn.addEventListener('click', placeOrder);
     els.summaryToggle.addEventListener('click', () => els.summaryPanel.classList.toggle('open'));
 
@@ -431,8 +431,10 @@
     ].filter((body) => addressId && Object.values(body).every(Boolean));
   }
 
-  async function handleAddressSubmit(event) {
-    event.preventDefault();
+  async function handleAddressSubmit(e) {
+  e.preventDefault();
+  const form = e.target; 
+  const formData = new FormData(form);
     setButtonLoading(els.saveAddressBtn, true);
 
 const formData = new FormData(form);
