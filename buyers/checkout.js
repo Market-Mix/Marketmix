@@ -437,7 +437,6 @@
   const formData = new FormData(form);
     setButtonLoading(els.saveAddressBtn, true);
 
-const formData = new FormData(form);
 const body = {
   full_name: formData.get('fullName'),
   phone: formData.get('phone'),
