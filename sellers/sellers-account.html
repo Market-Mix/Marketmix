@@ -254,6 +254,11 @@
       <div class="tab-item" onclick="switchTab('address')">
         <i class="fas fa-map-marker-alt"></i> Address
       </div>
+
+        <!-- After the address tab-item -->
+      <div class="tab-item" onclick="switchTab('shipping')">
+       <i class="fas fa-truck"></i> Delivery
+        </div>
       
       <div class="tab-item" onclick="switchTab('danger')">
         <i class="fas fa-trash-alt" style="color:var(--red)"></i>
@@ -384,6 +389,49 @@
       </div>
 
       
+      <div class="section" id="sec-shipping">
+  <div class="card">
+    <h2>Delivery Settings</h2>
+    <p class="card-sub">Configure your shipping fees and delivery areas for buyers.</p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Base Delivery Fee (₦) <span style="color:var(--red)">*</span></label>
+        <input type="number" id="baseFee" placeholder="e.g. 1500" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Free Shipping Above (₦) <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+        <input type="number" id="freeAbove" placeholder="e.g. 20000" min="0" step="0.01" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Min Delivery Days</label>
+        <input type="number" id="minDays" placeholder="1" min="1" value="1" />
+      </div>
+      <div class="form-group">
+        <label>Max Delivery Days</label>
+        <input type="number" id="maxDays" placeholder="5" min="1" value="5" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Coverage Areas <small style="font-weight:400;color:var(--ink2)">(comma-separated)</small></label>
+      <input type="text" id="coverageAreas" placeholder="e.g. Lagos, Abuja, Port Harcourt" />
+    </div>
+    <div class="form-group">
+      <label>Notes <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
+      <input type="text" id="shippingNotes" placeholder="e.g. Same-day delivery within Lagos" />
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="shippingActive" checked style="width:auto">
+      <span style="font-weight:600;font-size:14px">Delivery settings active</span>
+    </label>
+
+    <button class="btn btn-primary" id="saveShippingBtn" onclick="saveShipping()">
+      <i class="fas fa-save"></i> Save Delivery Settings
+    </button>
+  </div>
+</div>
 
       <!-- ── Danger ── -->
       <div class="section" id="sec-danger">
@@ -462,7 +510,7 @@ function setBtnLoading(id, loading, label = 'Save Changes') {
 // ── Tab switcher ─────────────────────────────────────────────────────────────
 function switchTab(name) {
   document.querySelectorAll('.tab-item').forEach((t, i) => {
-    const tabs = ['profile','password','address','danger'];
+    const tabs = ['profile','password','address','shipping','danger'];
     t.classList.toggle('active', tabs[i] === name);
   });
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -506,6 +554,8 @@ async function loadProfile() {
     document.getElementById('postalCode').value = u.postalCode || '';
     document.getElementById('country').value    = u.country    || '';
 
+    loadShipping();
+    
     // Notification preferences UI removed — nothing to initialize here.
 
   } catch (e) {
@@ -673,6 +723,62 @@ async function saveAddress() {
   }
   setBtnLoading('saveAddressBtn', false, 'Save Address');
 }
+
+//seller pickup address  _______________
+async function loadShipping() {
+  try {
+    const res = await fetch(`${API}/seller/shipping`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    const data = await res.json();
+    if (!res.ok) return;
+    const s = data.data?.settings?.[0];
+    if (!s) return;
+    document.getElementById('baseFee').value = s.base_fee ?? '';
+    document.getElementById('freeAbove').value = s.free_above ?? '';
+    document.getElementById('minDays').value = s.min_days ?? 1;
+    document.getElementById('maxDays').value = s.max_days ?? 5;
+    document.getElementById('coverageAreas').value = Array.isArray(s.coverage_areas)
+      ? s.coverage_areas.join(', ')
+      : (s.coverage_areas ? JSON.parse(s.coverage_areas).join(', ') : '');
+    document.getElementById('shippingNotes').value = s.notes ?? '';
+    document.getElementById('shippingActive').checked = s.is_active !== false;
+  } catch (e) { console.warn('loadShipping failed', e); }
+}
+
+async function saveShipping() {
+  const baseFee = parseFloat(document.getElementById('baseFee').value);
+  if (isNaN(baseFee) || baseFee < 0) { toast('Enter a valid base fee', 'error'); return; }
+
+  const freeAboveVal = document.getElementById('freeAbove').value.trim();
+  const areasVal = document.getElementById('coverageAreas').value.trim();
+
+  const payload = {
+    base_fee: baseFee,
+    free_above: freeAboveVal ? parseFloat(freeAboveVal) : null,
+    min_days: parseInt(document.getElementById('minDays').value) || 1,
+    max_days: parseInt(document.getElementById('maxDays').value) || 5,
+    coverage_areas: areasVal ? areasVal.split(',').map(s => s.trim()).filter(Boolean) : [],
+    notes: document.getElementById('shippingNotes').value.trim() || null,
+    is_active: document.getElementById('shippingActive').checked
+  };
+
+  setBtnLoading('saveShippingBtn', true, 'Save Delivery Settings');
+  try {
+    const res = await fetch(`${API}/seller/shipping`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    toast('Delivery settings saved!', 'success');
+  } catch (e) {
+    toast(e.message || 'Failed to save', 'error');
+  }
+  setBtnLoading('saveShippingBtn', false, 'Save Delivery Settings');
+}
+
 
 // ── Notifications (auto-save on toggle) ──────────────────────────────────────
 let notifTimer;

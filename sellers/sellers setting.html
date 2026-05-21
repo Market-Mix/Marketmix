@@ -220,6 +220,8 @@
   </div>
 </div>
 
+<!-- After the address tab-item -->
+
 <div class="toast" id="toast"></div>
 
 <script src="storeManager.js"></script>
@@ -305,14 +307,7 @@ function renderForm(store) {
         <textarea id="storeDesc" rows="3" placeholder="What do you sell? Tell buyers about your store.">${esc(store.business_description)}</textarea>
       </div>
 
-      <div class="section-title">Pickup / Delivery Address</div>
-
-      <div class="form-group">
-        <label>Address <span style="color:var(--red)">*</span></label>
-        <input type="text" id="storeAddress" value="${esc(store.business_address)}" placeholder="e.g. 12 Commerce Street, Lagos" />
-        <p class="hint">Buyers see this as your pickup / delivery location.</p>
-      </div>
-
+  
       <div class="form-row">
         <div class="form-group">
           <label>Business Email <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
