@@ -25,6 +25,8 @@
     const reason = params.get('reason');
     const status = params.get('status');
     const ref = params.get('ref');
+    const method = params.get('method');
+    const methodLabel = method === 'flutterwave' ? 'Flutterwave' : method === 'paystack' ? 'Paystack' : 'Payment';
     const box = document.getElementById('reasonBox');
 
     const messages = {
@@ -49,13 +51,13 @@
     async function notifyPaymentFailure() {
       try {
         const buyerId = window.getBuyerId?.();
-        const notificationKey = `checkout-payment-failed-${ref || status || reason || 'unknown'}`;
+        const notificationKey = `checkout-payment-failed-${method || 'generic'}-${ref || status || reason || 'unknown'}`;
         if (!buyerId || !window.NotificationManager?.createNotification || sessionStorage.getItem(notificationKey)) return;
 
-        const title = status === 'pending' ? 'Payment Pending' : 'Payment Failed';
+        const title = status === 'pending' ? `${methodLabel} Payment Pending` : `${methodLabel} Payment Failed`;
         const message = status === 'pending'
-          ? `Your payment is pending. Reference: ${ref || 'N/A'}`
-          : `Your payment could not be completed.${ref ? ` Reference: ${ref}` : ''}`;
+          ? `Your ${methodLabel} payment is pending. Reference: ${ref || 'N/A'}`
+          : `Your ${methodLabel} payment could not be completed.${ref ? ` Reference: ${ref}` : ''}`;
 
         await window.NotificationManager.createNotification(buyerId, {
           title,
