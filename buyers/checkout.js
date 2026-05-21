@@ -311,6 +311,7 @@
       absorbSessionPayload(data);
       renderSummary();
       setInlineMessage(els.couponMessage, 'Coupon applied successfully.', 'success');
+      await notifyCouponApplied(code);
     } catch (error) {
       setInlineMessage(els.couponMessage, error.message || 'Could not apply coupon.', 'error');
     } finally {
@@ -675,6 +676,9 @@
     const data = await api(`/checkout/session/${state.sessionId}/confirm`, { method: 'POST' });
     absorbSessionPayload(data);
     showConfirmation(data);
+    if (state.selectedPayment === 'cod') {
+      await notifyCodOrderPlaced(data);
+    }
   }
 
   function showConfirmation(data) {
@@ -737,6 +741,49 @@
       });
     } catch (error) {
       console.warn('Address notification failed', error);
+    }
+  }
+
+  async function notifyCouponApplied(code) {
+    try {
+      const buyerId = window.getBuyerId?.();
+      if (!buyerId || !window.NotificationManager?.createNotification || !code) return;
+
+      const notificationKey = `checkout-coupon-applied-${state.sessionId}-${code}`;
+      if (sessionStorage.getItem(notificationKey)) return;
+
+      await window.NotificationManager.createNotification(buyerId, {
+        title: 'Coupon applied',
+        message: `Coupon "${code}" was successfully applied to your order.`,
+        type: 'order',
+        link: '/buyers/checkout.html'
+      });
+      sessionStorage.setItem(notificationKey, '1');
+    } catch (error) {
+      console.warn('Coupon notification failed', error);
+    }
+  }
+
+  async function notifyCodOrderPlaced(data) {
+    try {
+      const buyerId = window.getBuyerId?.();
+      if (!buyerId || !window.NotificationManager?.createNotification) return;
+
+      const orderId = data.orderId || data.order?.id || data.session?.orderId || state.session?.orderId;
+      const notificationKey = `checkout-cod-order-${orderId || state.sessionId || 'unknown'}`;
+      if (sessionStorage.getItem(notificationKey)) return;
+
+      await window.NotificationManager.createNotification(buyerId, {
+        title: 'Cash on Delivery order placed',
+        message: orderId
+          ? `Your order ${orderId} has been placed and will be paid on delivery.`
+          : 'Your order has been placed and will be paid on delivery.',
+        type: 'order',
+        link: '/buyers/buyers order & tracking.html'
+      });
+      sessionStorage.setItem(notificationKey, '1');
+    } catch (error) {
+      console.warn('COD order notification failed', error);
     }
   }
 
