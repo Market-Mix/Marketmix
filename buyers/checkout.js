@@ -458,11 +458,13 @@
     };
 
     try {
+      let savedAddress = false;
       if (payload.saveAddress) {
         const created = await createAddress(payload);
         const address = created.address || created.data?.address || created.data || created;
         const createdAddressId = getAddressId(address || {});
         if (address && createdAddressId) {
+          savedAddress = true;
           state.addresses.unshift(address);
           state.selectedAddressId = createdAddressId;
           renderAddresses();
@@ -473,6 +475,7 @@
       } else {
         await attachAddress(null, { address: stripEmpty(payload) });
       }
+      await notifyAddressAdded(savedAddress);
       els.addressForm.reset();
       els.addressForm.hidden = true;
       renderAddresses();
@@ -717,6 +720,24 @@
   function initNotifications() {
     const buyerId = window.getBuyerId?.();
     if (buyerId && window.NotificationManager) window.NotificationManager.init(buyerId);
+  }
+
+  async function notifyAddressAdded(saved) {
+    try {
+      const buyerId = window.getBuyerId?.();
+      if (!buyerId || !window.NotificationManager?.createNotification) return;
+
+      await window.NotificationManager.createNotification(buyerId, {
+        title: saved ? 'Delivery address saved' : 'Delivery address selected',
+        message: saved
+          ? 'A new delivery address was saved and selected for your order.'
+          : 'Your delivery address has been selected for this order.',
+        type: 'account',
+        link: '/buyers/checkout.html'
+      });
+    } catch (error) {
+      console.warn('Address notification failed', error);
+    }
   }
 
   function calcItemsSubtotal() {
