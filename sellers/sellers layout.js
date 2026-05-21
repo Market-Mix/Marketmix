@@ -290,48 +290,82 @@ function renderOverviewCards(stats, earnings, store) {
 
 // ─── Progress Tracker ─────────────────────────────────────────────────────────
 function renderProgressTracker(profile, store) {
-  const bar  = document.getElementById("progressBar");
-  const text = document.getElementById("progress-text");
-  if (!bar || !text) return;
+  const bar       = document.getElementById("progressBar");
+  const text      = document.getElementById("progress-text");
+  const badge     = document.getElementById("progressBadge");
+  const trackerEl = document.querySelector('.progress-tracker');
+  if (!bar || !text || !badge || !trackerEl) return;
 
-  const p         = profile?.profile;
-  const kycStatus = p?.kycDocumentUrls?.kyc_status || null;
-  const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at;
+  const p            = profile?.profile || profile;
+  const kycStatus    = p?.kycDocumentUrls?.kyc_status || p?.kyc_status || null;
+  const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at || !!p?.kyc_submitted_at;
+  const kycApproved  = !!p?.isVerified && kycStatus === 'approved';
+  const userAddress  = p?.address || p?.business_address || null;
 
-  // Store-level checks
   const storeSetupDone = !!(store?.business_name && store?.store_logo_url && store?.business_address);
-  const kycApproved    = p?.isVerified && kycStatus === 'approved';
   const productCount   = store?.productCount || store?.product_count || 0;
   const totalSales     = store?.total_sales || 0;
 
-  let progress, color, html;
+  let progress = 0;
+  let color = '#2563eb';
+  let html = '';
+  let badgeText = '';
+  let badgeClass = '';
+  let hideTracker = false;
 
   if (!storeSetupDone) {
-    progress = 20; color = "#ef4444";
+    progress = 15;
+    color = '#ef4444';
     html = `<a href="sellers setting.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
-  } else if (kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted)) {
-    progress = 60; color = "#eab308";
+  } else if (!kycSubmitted && !kycApproved) {
+    progress = 30;
+    color = '#f97316';
+    html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
+  } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted)) && productCount < 1) {
+    progress = 45;
+    color = '#f59e0b';
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
-  } else if (!kycApproved) {
-    progress = 40; color = "#f97316";
-    html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC verification</a>`;
-  } else if (productCount < 1) {
-    progress = 60; color = "#eab308";
-    html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Add your first product</a>`;
-  } else if (totalSales < 1) {
-    progress = 75; color = "#86efac";
-    html = `Make your first sale`;
-  } else if (totalSales < 10) {
-    progress = 90; color = "#22c55e";
-    html = `Reach 10 sales`;
-  } else {
-    progress = 100; color = "#3b82f6";
-    html = `Verified Seller ✓`;
+  } else if (productCount >= 1 && !userAddress) {
+    progress = 60;
+    color = '#eab308';
+    html = `<a href="sellers-account.html#shipping" style="color:#1e293b;text-decoration:underline">Setup your shopping details</a>`;
+  } else if (productCount >= 1 && userAddress && totalSales < 1) {
+    progress = 75;
+    color = '#86efac';
+    html = `Make your first sales`;
+  } else if (totalSales >= 1 && !(productCount >= 1 && userAddress && kycApproved)) {
+    progress = 90;
+    color = '#22c55e';
+    html = `<a href="sellers earning.html" style="color:#1e293b;text-decoration:underline">Withdraw your first earning</a>`;
   }
 
-  bar.style.width           = progress + "%";
+  if (kycApproved) {
+    badgeText = 'Verified ✓';
+    badgeClass = 'green';
+  }
+
+  if (kycApproved && storeSetupDone && productCount >= 1 && userAddress && totalSales >= 1) {
+    progress = 100;
+    color = '#3b82f6';
+    html = `Everything complete!`;
+    badgeText = 'Fully Verified ✓';
+    badgeClass = 'blue';
+    hideTracker = true;
+  }
+
+  bar.style.width = progress + "%";
   bar.style.backgroundColor = color;
-  text.innerHTML            = html;
+  text.innerHTML = html;
+
+  if (badgeText) {
+    badge.textContent = badgeText;
+    badge.className = `progress-badge ${badgeClass}`;
+    badge.hidden = false;
+  } else {
+    badge.hidden = true;
+  }
+
+  trackerEl.style.display = hideTracker ? 'none' : 'block';
 }
 
 // ─── KYC Notification Banner ──────────────────────────────────────────────────
