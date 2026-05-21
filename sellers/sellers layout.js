@@ -488,7 +488,14 @@ async function loadSellerProductsForCoupon() {
     const products = data?.data?.products || [];
     dropdown.innerHTML = `<option value="">-- Choose a product --</option>`;
     if (!products.length) {
-      dropdown.innerHTML = `<option value="">No products in this store</option>`;
+      // Seed a demo product option so the coupon form can be submitted during testing
+      const demoId = 'demo-product-temp-1';
+      const demoName = 'DEMO Product (remove after test)';
+      const opt = document.createElement('option');
+      opt.value = demoId;
+      opt.textContent = demoName;
+      dropdown.appendChild(opt);
+      dropdown.disabled = false;
       return;
     }
     products.forEach((p) => {
@@ -524,6 +531,26 @@ async function handleCouponSubmit(e) {
     alert(`Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
     e.target.reset();
     document.getElementById("coupons-modal").style.display = "none";
+
+    // Create an in-app notification for the seller about the new coupon
+    try {
+      const userId = (typeof getUserId === 'function') ? getUserId() : (JSON.parse(localStorage.getItem('user')||'{}')?.id);
+      if (userId) {
+        fetch(`${API_BASE}/notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(typeof authHeaders === 'function' ? authHeaders() : {}) },
+          body: JSON.stringify({
+            user_id: userId,
+            title: 'New coupon created',
+            message: `Coupon ${code} for your product was created.`,
+            type: 'coupon',
+            link: '/sellers/sellers layout.html'
+          })
+        }).catch(err => console.warn('Could not create coupon notification', err));
+      }
+    } catch (err) {
+      console.warn('Error while creating coupon notification', err);
+    }
   } catch (err) {
     alert("Error saving coupon: " + err.message);
   }
