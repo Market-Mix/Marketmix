@@ -49,22 +49,28 @@ function mapRefundCaseFromSupabase(caseData) {
 }
 
 async function loadSellerRefundCases() {
-  const client = getSupabaseClient();
-  if (!client) return [];
-  const sellerId = getCurrentSellerId();
-  if (!sellerId) return [];
+  const token = getToken();
+  if (!token) {
+    console.error('No auth token available.');
+    return [];
+  }
 
   try {
-    const { data, error } = await client
-      .from('refund_cases')
-      .select('*')
-      .eq('seller_id', sellerId)
-      .order('created_at', { ascending: false });
+    const res = await fetch(`${API_BASE}/seller/refund-cases`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-    if (error) {
-      console.error('Failed to fetch seller refund cases:', error);
+    if (!res.ok) {
+      console.error(`Failed to fetch refund cases: ${res.status} ${res.statusText}`);
       return [];
     }
+
+    const json = await res.json();
+    const data = json?.data || [];
 
     returnsData = (data || []).map(mapRefundCaseFromSupabase);
     return returnsData;
