@@ -534,11 +534,14 @@ async function handleCouponSubmit(e) {
 
     // Create an in-app notification for the seller about the new coupon
     try {
-      const userId = (typeof getUserId === 'function') ? getUserId() : (JSON.parse(localStorage.getItem('user')||'{}')?.id);
-      if (userId) {
-        fetch(`${API_BASE}/notifications`, {
+      const user = JSON.parse(localStorage.getItem('user')||'{}');
+      const userId = user?.id || user?._id || user?.userId;
+      const apiBase = StoreManager.API_BASE || 'https://marketmix-backend.onrender.com/api';
+      const token = getToken();
+      if (userId && token) {
+        fetch(`${apiBase}/notifications`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(typeof authHeaders === 'function' ? authHeaders() : {}) },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             user_id: userId,
             title: 'New coupon created',
