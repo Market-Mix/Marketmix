@@ -62,6 +62,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Auto-refresh every 30 seconds
   setInterval(loadDashboardData, 30_000);
+  
+  // Force refresh when page regains focus or becomes visible (after returning from other pages)
+  // This ensures store updates are picked up immediately
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.log('Page became visible - refreshing dashboard');
+      // Clear store cache to force fresh API fetch
+      if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
+        StoreManager.setCachedStores(null);
+      }
+      loadDashboardData();
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    console.log('Window regained focus - refreshing dashboard');
+    // Clear store cache to force fresh API fetch
+    if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
+      StoreManager.setCachedStores(null);
+    }
+    loadDashboardData();
+  });
+
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      console.log('Page restored from bfcache - refreshing dashboard');
+      // Clear store cache to force fresh API fetch
+      if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
+        StoreManager.setCachedStores(null);
+      }
+      loadDashboardData();
+    }
+  });
+
   // Update navbar notification badge right away and poll every 30s
   try {
     updateNavbarNotificationBadge();
@@ -127,6 +161,12 @@ async function loadDashboardData() {
   const activities = activityRes.status === "fulfilled"
     ? (activityRes.value?.data?.activities || [])
     : [];
+
+  // Merge stats into store object for progress tracker
+  if (stats) {
+    store.productCount = stats.product_count || stats.productCount || 0;
+    store.total_sales = stats.total_sales || stats.totalSales || 0;
+  }
 
   renderWelcome(store);
   renderProfileImage(profile);
