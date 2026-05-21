@@ -19,9 +19,11 @@
   <br>
   <a href="cart.html" class="btn">Back to Cart</a>
   <a href="buyers homepage.html" class="btn" style="background:#111;margin-left:10px">Continue Shopping</a>
+  <script src="notification-manager.js"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const reason = params.get('reason');
+    const status = params.get('status');
     const ref = params.get('ref');
     const box = document.getElementById('reasonBox');
 
@@ -29,16 +31,46 @@
       cancelled: 'You cancelled the payment.',
       verification_error: 'Could not verify your payment. Please contact support with your reference.',
       missing_reference: 'Payment reference missing.',
+      pending: 'Your payment is pending. We will update you once it completes.',
+      failed: 'Your payment was not successful. Please try again or use another method.',
     };
 
-    if (reason) {
+    if (reason || status) {
       box.style.display = 'inline-block';
-      box.textContent = messages[reason] || `Payment was not successful (${reason})`;
+      const msg = reason ? (messages[reason] || `Payment was not successful (${reason})`) : '';
+      const statusMsg = status ? (messages[status] || `Payment status: ${status}`) : '';
+      box.textContent = [msg, statusMsg].filter(Boolean).join(' ');
     }
     if (ref) {
       box.style.display = 'inline-block';
       box.textContent += ` Reference: ${ref}`;
     }
+
+    async function notifyPaymentFailure() {
+      try {
+        const buyerId = window.getBuyerId?.();
+        const notificationKey = `checkout-payment-failed-${ref || status || reason || 'unknown'}`;
+        if (!buyerId || !window.NotificationManager?.createNotification || sessionStorage.getItem(notificationKey)) return;
+
+        const title = status === 'pending' ? 'Payment Pending' : 'Payment Failed';
+        const message = status === 'pending'
+          ? `Your payment is pending. Reference: ${ref || 'N/A'}`
+          : `Your payment could not be completed.${ref ? ` Reference: ${ref}` : ''}`;
+
+        await window.NotificationManager.createNotification(buyerId, {
+          title,
+          message,
+          type: 'order',
+          link: '/buyers/cart.html'
+        });
+
+        sessionStorage.setItem(notificationKey, '1');
+      } catch (err) {
+        console.warn('Payment failure notification failed:', err);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', notifyPaymentFailure);
   </script>
 </body>
 </html>

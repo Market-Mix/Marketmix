@@ -17,12 +17,38 @@
   <p id="orderRef"></p>
   <a href="buyers homepage.html" class="btn">Continue Shopping</a>
   <a href="buyers order & tracking.html" class="btn" style="background:#111;margin-left:10px">Track Order</a>
+  <script src="notification-manager.js"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const orderId = params.get('orderId');
     const ref = params.get('ref');
     if (orderId) document.getElementById('orderRef').textContent = `Order ID: ${orderId}`;
     else if (ref) document.getElementById('orderRef').textContent = `Reference: ${ref}`;
+
+    async function notifyPaymentSuccess() {
+      try {
+        const buyerId = window.getBuyerId?.();
+        const notificationKey = `checkout-payment-success-${ref || orderId || 'unknown'}`;
+        if (!buyerId || !window.NotificationManager?.createNotification || sessionStorage.getItem(notificationKey)) return;
+
+        const message = orderId
+          ? `Your payment was successful and order ${orderId} is confirmed.`
+          : `Your payment was successful. Reference: ${ref}`;
+
+        await window.NotificationManager.createNotification(buyerId, {
+          title: 'Payment Successful',
+          message,
+          type: 'order',
+          link: '/buyers/buyers order & tracking.html'
+        });
+
+        sessionStorage.setItem(notificationKey, '1');
+      } catch (err) {
+        console.warn('Payment success notification failed:', err);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', notifyPaymentSuccess);
   </script>
 </body>
 </html>
