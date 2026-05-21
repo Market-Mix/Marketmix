@@ -555,6 +555,12 @@ async function loadProfile() {
     document.getElementById('country').value    = u.country    || '';
 
     loadShipping();
+
+    const hashTab = window.location.hash?.slice(1);
+    if (['profile','password','address','shipping','danger'].includes(hashTab)) {
+      switchTab(hashTab);
+    }
+
     // Notification preferences UI removed — nothing to initialize here.
 
   } catch (e) {
