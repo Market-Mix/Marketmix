@@ -538,6 +538,30 @@ async function saveStore(storeId) {
     updateActiveStoreCache(updated);
     document.getElementById('navStoreBadge').querySelector('span').textContent = storeName;
     toast('Store settings saved!', 'success');
+
+    // Create a notification for the seller about the settings change
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const sellerUserId = currentUser?.id || currentUser?._id || currentUser?.userId || null;
+      if (sellerUserId) {
+        await fetch(`${API}/notifications`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`
+          },
+          body: JSON.stringify({
+            user_id: sellerUserId,
+            title: 'Store settings updated',
+            message: `Your store "${storeName}" settings have been updated successfully.`,
+            type: 'store_settings',
+            link: '/sellers/sellers%20setting.html'
+          })
+        }).catch(e => console.warn('Notification create failed:', e));
+      }
+    } catch (e) {
+      console.warn('Failed to send store settings notification:', e);
+    }
   } catch (e) {
     toast(e.message || 'Failed to save', 'error');
   }
