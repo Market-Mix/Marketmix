@@ -442,10 +442,15 @@ function renderProduct(product) {
   const stockEl = document.getElementById('stock-status');
   if (stockEl) {
     const qty = Number(product.stock_quantity);
-    stockEl.innerHTML = qty > 0
+    const inStock = qty > 0;
+    stockEl.innerHTML = inStock
       ? `<span style="color:#22c55e">✓ In Stock (${qty} available)</span>`
       : `<span style="color:#ef4444">✗ Out of Stock</span>`;
-    if (qty <= 0) { disableBtn('product-add-to-cart'); disableBtn('product-checkout'); }
+    if (!inStock) {
+      disableBtn('product-add-to-cart', 'Out of stock');
+      disableBtn('product-checkout', 'Out of stock');
+      disableBtn('product-add-to-wishlist', 'Out of stock');
+    }
   }
 
   if (product.views) setEl('view-count', product.views);
@@ -705,9 +710,14 @@ function setEl(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
-function disableBtn(id) {
+function disableBtn(id, text) {
   const btn = document.getElementById(id);
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    if (typeof text === 'string') btn.textContent = text;
+  }
 }
 function onBtn(id, fn) {
   const btn = document.getElementById(id);
