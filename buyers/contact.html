@@ -98,6 +98,43 @@
       margin-right: 10px;
     }
 
+    .contact-details a {
+      color: #111;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .contact-details a:hover {
+      color: #F97316;
+    }
+
+    .social-links {
+      margin-top: 10px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .social-links div {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .social-links i {
+      font-size: 20px;
+      color: #0EA5E9;
+    }
+
+    .social-links a {
+      color: #111;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .social-links a:hover {
+      color: #F97316;
+    }
+
     .contact-form {
       background: #FFF7ED;
       padding: 25px;
@@ -228,9 +265,15 @@
       <p>Whether you’re a buyer needing assistance, a seller with inquiries, or just have general feedback — we’re here to help.</p>
       
       <div class="contact-details">
-        <div><i class="fas fa-envelope"></i> support@marketmix.com</div>
-        <div><i class="fas fa-phone"></i> +234 812 345 6789</div>
-        <div><i class="fas fa-map-marker-alt"></i> Lagos, Nigeria</div>
+        <div><i class="fas fa-envelope"></i> <a href="mailto:marketmixhq@gmail.com">marketmixhq@gmail.com</a></div>
+        <div><i class="fab fa-whatsapp"></i> <a href="https://wa.me/2348106617408" target="_blank" rel="noreferrer">+234 810 661 7408</a></div>
+        <div><i class="fab fa-whatsapp"></i> <a href="https://wa.me/2348136107671" target="_blank" rel="noreferrer">+234 813 610 7671</a></div>
+        <div><i class="fas fa-map-marker-alt"></i> Imo State, Nigeria</div>
+      </div>
+      <div class="social-links">
+        <div><i class="fab fa-x-twitter"></i> <a href="https://x.com/marketmixhq" target="_blank" rel="noreferrer">@marketmixhq</a></div>
+        <div><i class="fab fa-instagram"></i> <a href="https://instagram.com/marketmixhq" target="_blank" rel="noreferrer">@marketmixhq</a></div>
+        <div><i class="fab fa-tiktok"></i> <a href="https://www.tiktok.com/@marketmixhq" target="_blank" rel="noreferrer">@marketmixhq</a></div>
       </div>
     </div>
 
@@ -248,7 +291,7 @@
   <div class="map-container">
     <!-- Example Google Map Embed -->
     <iframe 
-      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3940.1478579670947!2d3.379205274063791!3d6.524379223040402!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103bf4e129e3bb7f%3A0x1b7bb7b4e8cf9b50!2sLagos%2C%20Nigeria!5e0!3m2!1sen!2sng!4v1697400000000"
+      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.254170503052!2d7.025556075086968!3d5.493007495427321!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1043a8f8c2e72f5d%3A0x2d6a5ab1e5e3def3!2sImo%20State%2C%20Nigeria!5e0!3m2!1sen!2sng!4v1700000000000"
       allowfullscreen=""
       loading="lazy">
     </iframe>
@@ -260,8 +303,17 @@
   <script>
     function sendMessage(event) {
       event.preventDefault();
-      alert("✅ Your message has been sent successfully! We'll get back to you shortly.");
-      document.querySelector('form').reset();
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const message = document.getElementById('message').value.trim();
+
+      const subject = `MarketMix Contact from ${name || email}`;
+      const body = `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`;
+      const mailtoUrl = `mailto:marketmixhq@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      window.location.href = mailtoUrl;
+      setTimeout(() => document.querySelector('form').reset(), 500);
     }
   </script>
 

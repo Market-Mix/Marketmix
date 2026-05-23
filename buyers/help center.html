@@ -76,18 +76,152 @@ header {
     }
 
     .help-content {
-      display: none;
-      padding: 20px;
+      max-height: 0;
+      overflow: hidden;
+      padding: 0 20px;
       background: #ffffff;
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid transparent;
+      transition: max-height 0.35s ease, padding 0.35s ease, border-color 0.35s ease;
     }
 
     .help-category.active .help-content {
-      display: block;
+      max-height: 1200px;
+      padding: 20px;
+      border-color: #e2e8f0;
     }
 
     .help-content p {
       margin-bottom: 10px;
+    }
+
+    .support-request-btn,
+    .view-ticket-btn,
+    .help-cta button {
+      background: #F97316;
+      border: none;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .support-request-btn:hover,
+    .view-ticket-btn:hover,
+    .help-cta button:hover {
+      background: #EA580C;
+      transform: translateY(-1px);
+    }
+
+    .ticket-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .ticket-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #f8fafc;
+    }
+
+    .ticket-card-title {
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .ticket-card-text {
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    .ticket-meta {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge.open { background: #22c55e; }
+    .badge.pending { background: #f59e0b; }
+    .badge.resolved { background: #3b82f6; }
+    .badge.closed { background: #64748b; }
+
+    .faq-container {
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .faq {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.3s ease;
+    }
+
+    .faq-question {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #0f172a;
+    }
+
+    .faq-question:hover {
+      color: #0EA5E9;
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.35s ease;
+      padding: 0 20px;
+      color: #475569;
+      line-height: 1.7;
+    }
+
+    .faq.active .faq-answer {
+      max-height: 320px;
+      padding: 16px 20px 20px;
+    }
+
+    .help-cta {
+      margin: 40px 0 0;
+      padding: 24px 28px;
+      background: #1e293b;
+      border-radius: 16px;
+      color: white;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .help-cta h2 {
+      margin: 0 0 10px;
+      font-size: 1.6rem;
+      color: #f8fafc;
+    }
+
+    .help-cta p {
+      margin: 0 0 18px;
+      color: #cbd5e1;
     }
 
     @media (max-width: 768px) {
@@ -147,6 +281,7 @@ header {
   </header>
   <section class="help-center">
     <h1>Help Center</h1>
+    <p class="section-intro">Your buyer support hub for orders, payments, returns, account help, and quick support access.</p>
 
     <div class="help-category">
       <div class="help-header">
@@ -156,7 +291,7 @@ header {
       <div class="help-content">
         <p><strong>How can I track my order?</strong> — Go to “My Orders” and click “Track Order” to view the delivery status.</p>
         <p><strong>Can I cancel an order?</strong> — Orders can only be canceled before they are shipped.</p>
-        <p><strong>What if my order didn’t arrive?</strong> — Contact our support team via the Help Center form.</p>
+        <p><strong>What if my order didn’t arrive?</strong> — Contact our support team through the hub below.</p>
       </div>
     </div>
 
@@ -168,6 +303,7 @@ header {
       <div class="help-content">
         <p><strong>Which payment methods are accepted?</strong> — We accept credit/debit cards, PayPal, and MarketMix Wallet.</p>
         <p><strong>Why was my payment declined?</strong> — Check your card details or balance and try again.</p>
+        <p><strong>How do I update billing information?</strong> — Visit Account Settings and select “Payment Methods.”</p>
       </div>
     </div>
 
@@ -179,6 +315,7 @@ header {
       <div class="help-content">
         <p><strong>How do I return a product?</strong> — Go to “My Orders” → select the item → click “Request Return.”</p>
         <p><strong>How long do refunds take?</strong> — Refunds are processed within 5–10 business days.</p>
+        <p><strong>Can I track my refund?</strong> — Yes, your refund status appears under “Returns & Refunds.”</p>
       </div>
     </div>
 
@@ -190,6 +327,7 @@ header {
       <div class="help-content">
         <p><strong>How do I reset my password?</strong> — Click “Forgot Password” on the login page to reset it.</p>
         <p><strong>Can I change my email address?</strong> — Yes, under Account Settings → “Edit Email.”</p>
+        <p><strong>How do I update my delivery address?</strong> — Edit your profile address details in Account Settings.</p>
       </div>
     </div>
 
@@ -201,6 +339,7 @@ header {
       <div class="help-content">
         <p><strong>How do I open a shop?</strong> — Go to the seller signup page and follow the steps to create your store.</p>
         <p><strong>How do I list a new product?</strong> — From your seller dashboard, click “Add Product.”</p>
+        <p><strong>How do I manage store orders?</strong> — Use your seller dashboard to view and process incoming orders.</p>
       </div>
     </div>
 
@@ -210,11 +349,103 @@ header {
         <i class="fas fa-chevron-down"></i>
       </div>
       <div class="help-content">
-        <p>If you still need help, reach out to our support team via the <a href="contact.html">Contact Page</a> or email us at <strong>support@marketmix.com</strong>.</p>
+        <p>Need personalized help? Email <a href="mailto:marketmixhq@gmail.com">marketmixhq@gmail.com</a> for buyer support or submit a support request below.</p>
+        <p><strong>Average response time:</strong> Within 24 hours on business days.</p>
+        <button class="support-request-btn" onclick="submitSupportRequest()">Submit Support Request</button>
       </div>
     </div>
 
+    <div class="help-category tickets-section">
+      <div class="help-header">
+        <span>🎫 Your Support Tickets</span>
+        <i class="fas fa-chevron-down"></i>
+      </div>
+      <div class="help-content">
+        <div class="ticket-grid">
+          <div class="ticket-card">
+            <div class="ticket-card-title">#MM-1001</div>
+            <div class="ticket-card-text">Order not delivered</div>
+            <span class="badge open">Open</span>
+            <div class="ticket-meta">Created 2026-05-18</div>
+            <button class="view-ticket-btn">View</button>
+          </div>
+          <div class="ticket-card">
+            <div class="ticket-card-title">#MM-1002</div>
+            <div class="ticket-card-text">Payment verification</div>
+            <span class="badge pending">Pending</span>
+            <div class="ticket-meta">Created 2026-05-14</div>
+            <button class="view-ticket-btn">View</button>
+          </div>
+          <div class="ticket-card">
+            <div class="ticket-card-title">#MM-1003</div>
+            <div class="ticket-card-text">Refund processed</div>
+            <span class="badge resolved">Resolved</span>
+            <div class="ticket-meta">Created 2026-05-09</div>
+            <button class="view-ticket-btn">View</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="help-category faq-section">
+      <div class="help-header">
+        <span>❓ Frequently Asked Questions</span>
+        <i class="fas fa-chevron-down"></i>
+      </div>
+      <div class="help-content">
+        <div class="faq-container">
+          <div class="faq">
+            <div class="faq-question">
+              <span>How do I create an account on MarketMix?</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">Creating an account is easy! Click “Sign Up” on the homepage, fill in your details, and verify your email.</div>
+          </div>
+          <div class="faq">
+            <div class="faq-question">
+              <span>Can I sell products on MarketMix?</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">Yes! Go to “Own a Shop” or “Become a Seller,” fill in your shop details, and upload products after approval.</div>
+          </div>
+          <div class="faq">
+            <div class="faq-question">
+              <span>How do I track my orders?</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">After your order is confirmed, visit your dashboard and select “Track Orders” for delivery status.</div>
+          </div>
+          <div class="faq">
+            <div class="faq-question">
+              <span>What payment methods are accepted?</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">We accept debit/credit cards, bank transfers, and secure wallet payments via encrypted gateways.</div>
+          </div>
+          <div class="faq">
+            <div class="faq-question">
+              <span>How do I request a return or refund?</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">Go to “Returns & Refunds” in your account, submit a request within the return window, and our team will assist.</div>
+          </div>
+          <div class="faq">
+            <div class="faq-question">
+              <span>Is my personal information safe?</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">Yes, MarketMix uses advanced encryption to protect your data and never shares it without consent.</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
+
+  <div class="help-cta">
+    <h2>Still need help?</h2>
+    <p>Our customer support team is ready to assist with any order, payment, or account issue. Reach out and we’ll respond as soon as possible.</p>
+    <button onclick="submitSupportRequest()">Contact Support</button>
+  </div>
 
   <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
@@ -227,6 +458,17 @@ header {
         category.classList.toggle('active');
       });
     });
+
+    document.querySelectorAll('.faq-question').forEach(item => {
+      item.addEventListener('click', () => {
+        const faq = item.parentElement;
+        faq.classList.toggle('active');
+      });
+    });
+
+    function submitSupportRequest() {
+      alert('✅ Support request submitted. A MarketMix agent will contact you shortly.');
+    }
   </script>
 
 </body>
