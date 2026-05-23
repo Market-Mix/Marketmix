@@ -455,20 +455,31 @@ async function toggleFollow() {
     });
     const data = await res.json();
     if (res.ok) {
-      updateFollowBtn(!isFollowing);
-      showToast(isFollowing ? 'Unfollowed store' : 'You are now following this store');
+      const storeName = storeData?.businessName || storeData?.business_name || 'this store';
+      const nowFollowing = !isFollowing;
+      updateFollowBtn(nowFollowing);
+      const toastMessage = nowFollowing
+        ? `You started following ${storeName}`
+        : `You just unfollowed ${storeName}`;
+      showToast(toastMessage);
 
-      if (!isFollowing && typeof window.NotificationManager !== 'undefined' && window.NotificationManager.createNotification) {
+      if (typeof window.NotificationManager !== 'undefined' && window.NotificationManager.createNotification) {
         const buyerId = window.getBuyerId?.();
         if (buyerId) {
           await window.NotificationManager.createNotification(buyerId, {
-            title: 'Store Followed',
-            message: `You are now following ${storeData?.businessName || storeData?.business_name || 'this store'}`,
+            title: nowFollowing ? 'Store Followed' : 'Store Unfollowed',
+            message: nowFollowing
+              ? `You started following ${storeName}`
+              : `You just unfollowed ${storeName}`,
             type: 'follow',
-            link: `store-id.html?store=${encodeURIComponent(storeData?.storeId || storeData?.store_id || '')}`
+            link: `store-id.html?store=${encodeURIComponent(resolvedStoreId || storeData?.storeId || storeData?.store_id || '')}`
           });
         }
       }
+
+      try {
+        localStorage.setItem('followedShopsChanged', String(Date.now()));
+      } catch (_) {}
     } else {
       showToast(data.message || 'Something went wrong');
     }

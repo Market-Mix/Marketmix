@@ -463,10 +463,24 @@ function makeFloatingList(btn, items) {
   if(flashRefreshInterval) clearInterval(flashRefreshInterval);
   flashRefreshInterval = setInterval(loadFlashProducts, 60000);
 
-  window.addEventListener('pageshow', syncCartFromStorage);
-  window.addEventListener('focus', syncCartFromStorage);
-  document.addEventListener('visibilitychange', ()=>!document.hidden&&syncCartFromStorage());
-  window.addEventListener('storage', e => e.key==='cart'&&syncCartFromStorage());
+  window.addEventListener('pageshow', () => {
+    syncCartFromStorage();
+    loadFollowedShops();
+  });
+  window.addEventListener('focus', () => {
+    syncCartFromStorage();
+    loadFollowedShops();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      syncCartFromStorage();
+      loadFollowedShops();
+    }
+  });
+  window.addEventListener('storage', e => {
+    if (e.key === 'cart') syncCartFromStorage();
+    if (e.key === 'followedShopsChanged') loadFollowedShops();
+  });
   window.addEventListener('beforeunload', ()=>{ clearInterval(flashCountdownInterval); clearInterval(flashRefreshInterval); });
 
   updateCartCount();
