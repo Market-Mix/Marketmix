@@ -457,6 +457,18 @@ async function toggleFollow() {
     if (res.ok) {
       updateFollowBtn(!isFollowing);
       showToast(isFollowing ? 'Unfollowed store' : 'You are now following this store');
+
+      if (!isFollowing && typeof window.NotificationManager !== 'undefined' && window.NotificationManager.createNotification) {
+        const buyerId = window.getBuyerId?.();
+        if (buyerId) {
+          await window.NotificationManager.createNotification(buyerId, {
+            title: 'Store Followed',
+            message: `You are now following ${storeData?.businessName || storeData?.business_name || 'this store'}`,
+            type: 'follow',
+            link: `store-id.html?store=${encodeURIComponent(storeData?.storeId || storeData?.store_id || '')}`
+          });
+        }
+      }
     } else {
       showToast(data.message || 'Something went wrong');
     }
