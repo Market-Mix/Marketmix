@@ -349,11 +349,16 @@ header {
         <i class="fas fa-chevron-down"></i>
       </div>
       <div class="help-content">
-        <p>Need personalized help? Email <a href="mailto:marketmixhq@gmail.com">marketmixhq@gmail.com</a> for buyer support or submit a support request below.</p>
+        <p>Contact our buyer support directly via WhatsApp for fastest response.</p>
         <p><strong>Average response time:</strong> Within 24 hours on business days.</p>
-        <button class="support-request-btn" onclick="submitSupportRequest()">Submit Support Request</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <button class="support-request-btn" onclick="window.open('https://wa.me/2348106617408','_blank')">Contact Support 1</button>
+          <button class="support-request-btn" onclick="window.open('https://wa.me/2348136107671','_blank')">Contact Support 2</button>
+        </div>
       </div>
     </div>
+
+ 
 
     <div class="help-category tickets-section">
       <div class="help-header">
@@ -444,7 +449,10 @@ header {
   <div class="help-cta">
     <h2>Still need help?</h2>
     <p>Our customer support team is ready to assist with any order, payment, or account issue. Reach out and we’ll respond as soon as possible.</p>
-    <button onclick="submitSupportRequest()">Contact Support</button>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:12px">
+      <button onclick="window.open('https://wa.me/2348106617408','_blank')">Contact Support 1</button>
+      <button onclick="window.open('https://wa.me/2348136107671','_blank')">Contact Support 2</button>
+    </div>
   </div>
 
   <footer>
@@ -467,7 +475,8 @@ header {
     });
 
     function submitSupportRequest() {
-      alert('✅ Support request submitted. A MarketMix agent will contact you shortly.');
+      // fallback: open primary WhatsApp chat
+      window.open('https://wa.me/2348106617408','_blank');
     }
   </script>
 
