@@ -487,6 +487,12 @@ function setupEventListeners(product) {
 // ── Add to Cart ───────────────────────────────────────────────
 // Sends X-Store-Id header + store_id in body to backend
 async function addToCart(product) {
+  const stockQty = Number(product.stock_quantity) || 0;
+  if (stockQty <= 0) {
+    showToast('Product is out of stock', 'error');
+    return;
+  }
+
   const qtyEl   = document.getElementById('product-quantity');
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
   const color    = window.productOptions?.color?.() || null;
@@ -530,6 +536,12 @@ async function addToCart(product) {
 // ── Proceed to Checkout ───────────────────────────────────────
 // Same as addToCart but also navigates to checkout
 async function proceedToCheckout(product) {
+  const stockQty = Number(product.stock_quantity) || 0;
+  if (stockQty <= 0) {
+    showToast('Product is out of stock', 'error');
+    return;
+  }
+
   const qtyEl   = document.getElementById('product-quantity');
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
   const color    = window.productOptions?.color?.() || null;
@@ -602,6 +614,12 @@ function refreshWishlistButton(productId) {
 }
 
 async function handleWishlist(product) {
+  const stockQty = Number(product.stock_quantity) || 0;
+  if (stockQty <= 0) {
+    showToast('Product is out of stock', 'error');
+    return;
+  }
+
   const btn       = document.getElementById('product-add-to-wishlist');
   const token     = localStorage.getItem('token');
   const storeId   = getProductStoreId(product);
@@ -716,12 +734,19 @@ function disableBtn(id, text) {
     btn.disabled = true;
     btn.style.opacity = '0.5';
     btn.style.cursor = 'not-allowed';
+    btn.style.pointerEvents = 'none';
+    btn.setAttribute('aria-disabled', 'true');
     if (typeof text === 'string') btn.textContent = text;
   }
 }
 function onBtn(id, fn) {
   const btn = document.getElementById(id);
-  if (btn) btn.addEventListener('click', fn);
+  if (btn) {
+    btn.addEventListener('click', e => {
+      if (btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
+      fn(e);
+    });
+  }
 }
 function showError(message) {
   document.body.innerHTML = `
