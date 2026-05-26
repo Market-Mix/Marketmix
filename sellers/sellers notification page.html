@@ -188,6 +188,14 @@
       transform: translateY(-2px);
     }
 
+    .notif {
+      cursor: pointer;
+    }
+
+    .notif:hover {
+      background: #F0F7FF;
+    }
+
     .notif.unread {
       border-left-color: #1d4ed8;
       background: #eff6ff;
@@ -460,6 +468,7 @@
       list.forEach(n => {
         const el = document.createElement('div');
         el.className = 'notif' + (n.isRead ? '' : ' unread');
+        el.style.cursor = 'pointer';
         const iconClass = getNotifIcon(n.type);
         const typeClass = 'success';
 
@@ -482,6 +491,18 @@
             </button>
           </div>
         `;
+        
+        // Add click handler to navigate to the notification link
+        el.addEventListener('click', function(e) {
+          if (e.target.closest('.notif-actions')) {
+            e.stopPropagation();
+            return;
+          }
+          if (n.link) {
+            window.location.href = n.link;
+          }
+        });
+        
         container.appendChild(el);
       });
     }
