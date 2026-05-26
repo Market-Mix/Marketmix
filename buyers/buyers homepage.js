@@ -300,6 +300,10 @@ function makeFloatingList(btn, items) {
       const bsGrid = document.querySelector('.best-selling-grid');
       const naGrid = document.querySelector('.new-arrivals-grid');
       const recGrid = document.querySelector('.recommended-grid');
+      const loadingHtml = `<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">Loading products...</div>`;
+      if (bsGrid) bsGrid.innerHTML = loadingHtml;
+      if (naGrid) naGrid.innerHTML = loadingHtml;
+      if (recGrid) recGrid.innerHTML = loadingHtml;
       const inStockProducts = products.filter(isInStock);
       const bestSellers = inStockProducts.slice(0,12);
       const newArrivals = inStockProducts.slice(0,12);
@@ -471,6 +475,7 @@ function makeFloatingList(btn, items) {
     syncCartFromStorage();
     loadFollowedShops();
   });
+  window.addEventListener('popstate', syncCartFromStorage);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       syncCartFromStorage();
@@ -483,6 +488,7 @@ function makeFloatingList(btn, items) {
   });
   window.addEventListener('beforeunload', ()=>{ clearInterval(flashCountdownInterval); clearInterval(flashRefreshInterval); });
 
+  syncCartFromStorage();
   updateCartCount();
 
   (async function syncWishlist() {

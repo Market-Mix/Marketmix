@@ -317,7 +317,7 @@
 
     <!-- Totals + actions -->
     <div class="totals-card">
-      <div class="total">Total: $0.00</div>
+      <div class="total">Total: ₦0.00</div>
       <div class="actions">
         <a href="#" id="proceedCheckout" class="btn btn-primary">Proceed to Checkout</a>
        </div>
@@ -427,7 +427,7 @@
         div.innerHTML = `
           <div class="item-details">
             <h3>${item.name}</h3>
-            <p>$${parseFloat(item.price).toFixed(2)}</p>
+            <p>₦${parseFloat(item.price).toFixed(2)}</p>
           </div>
           <div class="item-actions">
             <button class="quantity-btn">−</button>
@@ -570,7 +570,7 @@
     function updateTotal(){
       const totalEl = document.querySelector('.total');
       const total = cart.reduce((sum, item) => sum + Number(item.price||0) * Number(item.quantity||0), 0);
-      if(totalEl) totalEl.textContent = `Total: $${total.toFixed(2)}`;
+      if(totalEl) totalEl.textContent = `Total: ₦${total.toFixed(2)}`;
     }
 
     function saveAndRender(){ saveCart(); renderCart(); }
