@@ -2,43 +2,234 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Contact - Seller Support | MarketMix</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Support | MarketMix Sellers</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="sellers layout.css">
   <style>
-    .contact-section{padding:32px;background:#f7fafc;color:#1e293b}
-    /* center the intro paragraph under the H1 */
-    .contact-section > p{ text-align:center; max-width:900px; margin:0 auto 18px; color:#1e293b }
-    .contact-card{  background: white;border:1px solid #e6e6e6;padding:20px;border-radius:8px;max-width:720px;margin:0 auto}
-    .contact-card label{display:block;margin:8px 0 4px; color: black;}
-    .contact-card input, .contact-card textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:6px}
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      background: #FFF7ED;
+      color: #1e293b;
+    }
 
-    /* Primary button style for contact form */
-    .btn-primary{
-      display:block;
-      width: fit-content;
-      margin: 12px auto 0; /* center the button */
-      background: #1e40af; /* orange accent to stand out on blue */
-      color: #fff;
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #F97316;
+      color: white;
       border: none;
-      padding: 10px 18px;
-      border-radius: 6px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 16px;
       cursor: pointer;
-      font-weight: 600;
-      box-shadow: 0 6px 14px rgba(255,122,0,0.12);
-      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+      margin: 20px;
+      transition: 0.3s;
     }
-    .btn-primary:hover{
-      background:  #2c5282;
+
+    .back-btn:hover {
+      background: #EA580C;
       transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
     }
-    
+
+    header {
+      background: #111;
+      color: #f97316;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      margin: 0 0 10px;
+    }
+
+    header p {
+      color: #d1d5db;
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .contact-container {
+      max-width: 1100px;
+      margin: 30px auto 60px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 16px 32px rgba(30, 64, 175, 0.08);
+      padding: 30px;
+    }
+
+    .contact-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .contact-info h2 {
+      color: #111827;
+      font-size: 1.8rem;
+      margin: 0;
+    }
+
+    .contact-info p {
+      color: #475569;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .contact-details {
+      margin-top: 20px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .contact-details div {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #334155;
+    }
+
+    .contact-details i {
+      font-size: 20px;
+      color: #0EA5E9;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .contact-details a {
+      color: #111827;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .contact-details a:hover {
+      color: #F97316;
+    }
+
+    .social-links {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .social-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8fafc;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      color: #111827;
+      text-decoration: none;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .social-links a:hover {
+      background: #ffedd5;
+      transform: translateY(-1px);
+    }
+
+    .contact-form {
+      background: #FFF7ED;
+      padding: 28px;
+      border-radius: 16px;
+      border: 1px solid #fde3c1;
+    }
+
+    .contact-form h3 {
+      margin-top: 0;
+      color: #111827;
+    }
+
+    .contact-form form {
+      display: grid;
+      gap: 16px;
+    }
+
+    .contact-form label {
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .contact-form input,
+    .contact-form textarea {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      transition: border-color 0.2s ease;
+    }
+
+    .contact-form input:focus,
+    .contact-form textarea:focus {
+      border-color: #0EA5E9;
+      outline: none;
+    }
+
+    .contact-form button {
+      background: #F97316;
+      border: none;
+      color: white;
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .contact-form button:hover {
+      background: #EA580C;
+      transform: translateY(-2px);
+    }
+
+    .map-container {
+      max-width: 1100px;
+      margin: 0 auto 60px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+    }
+
+    .map-container iframe {
+      width: 100%;
+      height: 360px;
+      border: none;
+    }
+
+    footer {
+      background: rgba(0, 0, 0, 0.7);
+      color: #f8fafc;
+      text-align: center;
+      padding: 25px 15px;
+      margin-top: 20px;
+      font-size: 15px;
+    }
+
+    @media (max-width: 960px) {
+      .contact-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header h1 {
+        font-size: 1.6rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <!-- Navbar -->
   <nav class="navbar">
     <div class="nav-container">
       <a href="sellers layout.html" class="brand-logo">MarketMix</a>
@@ -78,32 +269,55 @@
     </div>
   </nav>
 
-  <main class="content-wrap">
-    <section class="contact-section">
-      <h1 style="text-align: center;">Contact Support</h1>
-      <p>If you need help, send us a message and our support team will respond.</p>
+  <button class="back-btn" onclick="history.back()">
+    <i class="fas fa-chevron-left"></i> Back
+  </button>
 
-      <div class="contact-card">
-        <form id="sellerContactForm">
-          <label for="name">Your name</label>
-          <input type="text" id="name" name="name" required>
+  <header>
+    <h1>Contact Support</h1>
+    <p>Need help with your seller account or orders? Our support team is standing by.</p>
+  </header>
 
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" required>
+  <div class="contact-container">
+    <div class="contact-info">
+      <h2>We're here for sellers</h2>
+      <p>Use the form to send your message, or contact us directly through email, phone, or WhatsApp. We aim to reply within one business day.</p>
 
-          <label for="message">Message</label>
-          <textarea id="message" name="message" rows="6" required></textarea>
-
-          <button type="submit" class="btn btn-primary">Send Message</button>
-        </form>
-
-        <div class="conlink" style="margin-top:18px;color:black">
-          <p><strong>Support email:</strong> <a href="mailto:support@marketmix.example" style="color:   #0e3e79">support@marketmix.example</a></p>
-          <p><strong>Phone:</strong> +1 (555) 123-4567</p>
-        </div>
+      <div class="contact-details">
+        <div><i class="fas fa-envelope"></i><a href="mailto:support@marketmix.example">support@marketmix.example</a></div>
+        <div><i class="fas fa-phone"></i><a href="tel:+2348106617408">+234 810 661 7408</a></div>
+        <div><i class="fas fa-phone"></i><a href="tel:+2348136107671">+234 813 610 7671</a></div>
       </div>
-    </section>
-  </main>
+
+      <div class="social-links">
+        <a href="https://wa.me/2348106617408" target="_blank"><i class="fab fa-whatsapp"></i> Chat with support on WhatsApp</a>
+        <a href="https://wa.me/2348136107671" target="_blank"><i class="fab fa-whatsapp"></i> Chat with our seller team</a>
+      </div>
+    </div>
+
+    <div class="contact-form">
+      <h3>Send us a message</h3>
+      <form id="sellerContactForm">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="subject">Subject</label>
+        <input type="text" id="subject" name="subject" required>
+
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="6" required></textarea>
+
+        <button type="submit">Send Message</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="map-container">
+    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126528.13035617525!2d-122.50764034715731!3d37.75767976994179!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808f7e2d4ec03ee3%3A0xf2a72b345e330aa8!2sSan%20Francisco%2C%20CA!5e0!3m2!1sen!2sng!4v1700000000000" allowfullscreen="" loading="lazy"></iframe>
+  </div>
 
   <footer class="dashboard-footer">
     <div class="footer-left">
@@ -117,9 +331,8 @@
   </footer>
 
   <script>
-    document.getElementById('sellerContactForm').addEventListener('submit', function(e){
+    document.getElementById('sellerContactForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      // Simple client-side feedback — no backend in this static project
       alert('Message sent. Our support team will contact you shortly.');
       e.target.reset();
     });
