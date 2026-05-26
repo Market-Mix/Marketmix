@@ -62,6 +62,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Auto-refresh every 30 seconds
   setInterval(loadDashboardData, 30_000);
+  
+  // Force refresh when page regains focus or becomes visible (after returning from other pages)
+  // This ensures store updates are picked up immediately
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.log('Page became visible - refreshing dashboard');
+      // Clear store cache to force fresh API fetch
+      if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
+        StoreManager.setCachedStores(null);
+      }
+      loadDashboardData();
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    console.log('Window regained focus - refreshing dashboard');
+    // Clear store cache to force fresh API fetch
+    if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
+      StoreManager.setCachedStores(null);
+    }
+    loadDashboardData();
+  });
+
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      console.log('Page restored from bfcache - refreshing dashboard');
+      // Clear store cache to force fresh API fetch
+      if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
+        StoreManager.setCachedStores(null);
+      }
+      loadDashboardData();
+    }
+  });
+
   // Update navbar notification badge right away and poll every 30s
   try {
     updateNavbarNotificationBadge();
@@ -114,24 +148,32 @@ async function loadDashboardData() {
   if (!store) return;
 
   // All calls go through StoreManager.apiFetch which auto-adds X-Store-Id
-  const [profileRes, statsRes, earningsRes, activityRes] = await Promise.allSettled([
+  const [profileRes, userRes, statsRes, earningsRes, activityRes] = await Promise.allSettled([
     StoreManager.apiFetch("/seller/profile"),
+    StoreManager.apiFetch("/auth/me"),
     StoreManager.apiFetch(`/seller/stores/${store.id}/stats`),
     StoreManager.apiFetch("/earnings"),
     StoreManager.apiFetch("/seller/activity?limit=50"),
   ]);
 
   const profile    = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller      : null;
+  const user       = userRes.status     === "fulfilled" ? userRes.value?.data?.user        : null;
   const stats      = statsRes.status    === "fulfilled"  ? statsRes.value?.data?.stats          : null;
   const earnings   = earningsRes.status === "fulfilled"  ? earningsRes.value?.data?.summary     : null;
   const activities = activityRes.status === "fulfilled"
     ? (activityRes.value?.data?.activities || [])
     : [];
 
+  // Merge stats into store object for progress tracker
+  if (stats) {
+    store.productCount = stats.product_count || stats.productCount || 0;
+    store.total_sales = stats.total_sales || stats.totalSales || 0;
+  }
+
   renderWelcome(store);
   renderProfileImage(profile);
   renderOverviewCards(stats, earnings, store);
-  renderProgressTracker(profile, store);
+  renderProgressTracker(profile, store, user);
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
   renderStoreShareLink(store);
@@ -289,49 +331,88 @@ function renderOverviewCards(stats, earnings, store) {
 }
 
 // ─── Progress Tracker ─────────────────────────────────────────────────────────
-function renderProgressTracker(profile, store) {
-  const bar  = document.getElementById("progressBar");
-  const text = document.getElementById("progress-text");
-  if (!bar || !text) return;
+function renderProgressTracker(profile, store, user) {
+  const bar       = document.getElementById("progressBar");
+  const text      = document.getElementById("progress-text");
+  const badge     = document.getElementById("progressBadge");
+  const trackerEl = document.querySelector('.progress-tracker');
+  if (!bar || !text || !badge || !trackerEl) return;
 
-  const p         = profile?.profile;
-  const kycStatus = p?.kycDocumentUrls?.kyc_status || null;
-  const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at;
+  const p            = profile?.profile || profile;
+  const kycStatus    = p?.kycDocumentUrls?.kyc_status || p?.kyc_status || null;
+  const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at || !!p?.kyc_submitted_at;
+  const kycApproved  = !!p?.isVerified && kycStatus === 'approved';
+  const userAddress  = user?.address || user?.business_address || p?.address || p?.business_address || null;
+  const hasShoppingDetails = !!(
+    userAddress ||
+    user?.city || user?.state || user?.postalCode || user?.country ||
+    p?.city || p?.state || p?.postalCode || p?.country
+  );
 
-  // Store-level checks
   const storeSetupDone = !!(store?.business_name && store?.store_logo_url && store?.business_address);
-  const kycApproved    = p?.isVerified && kycStatus === 'approved';
   const productCount   = store?.productCount || store?.product_count || 0;
   const totalSales     = store?.total_sales || 0;
 
-  let progress, color, html;
+  let progress = 0;
+  let color = '#2563eb';
+  let html = '';
+  let badgeText = '';
+  let badgeClass = '';
+  let hideTracker = false;
 
   if (!storeSetupDone) {
-    progress = 20; color = "#ef4444";
+    progress = 15;
+    color = '#ef4444';
     html = `<a href="sellers setting.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
-  } else if (kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted)) {
-    progress = 60; color = "#eab308";
+  } else if (!kycSubmitted && !kycApproved) {
+    progress = 30;
+    color = '#f97316';
+    html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
+  } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted)) && productCount < 1) {
+    progress = 45;
+    color = '#f59e0b';
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
-  } else if (!kycApproved) {
-    progress = 40; color = "#f97316";
-    html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC verification</a>`;
-  } else if (productCount < 1) {
-    progress = 60; color = "#eab308";
-    html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Add your first product</a>`;
-  } else if (totalSales < 1) {
-    progress = 75; color = "#86efac";
-    html = `Make your first sale`;
-  } else if (totalSales < 10) {
-    progress = 90; color = "#22c55e";
-    html = `Reach 10 sales`;
-  } else {
-    progress = 100; color = "#3b82f6";
-    html = `Verified Seller ✓`;
+  } else if (productCount >= 1 && !hasShoppingDetails) {
+    progress = 60;
+    color = '#eab308';
+    html = `<a href="sellers-account.html#address" style="color:#1e293b;text-decoration:underline">Setup your shopping details</a>`;
+  } else if (productCount >= 1 && hasShoppingDetails && totalSales < 1) {
+    progress = 75;
+    color = '#86efac';
+    html = `Make your first sales`;
+  } else if (totalSales >= 1 && !(productCount >= 1 && hasShoppingDetails && kycApproved)) {
+    progress = 90;
+    color = '#22c55e';
+    html = `<a href="sellers earning.html" style="color:#1e293b;text-decoration:underline">Withdraw your first earning</a>`;
   }
 
-  bar.style.width           = progress + "%";
+  if (kycApproved) {
+    badgeText = 'Verified ✓';
+    badgeClass = 'green';
+  }
+
+  if (kycApproved && storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
+    progress = 100;
+    color = '#3b82f6';
+    html = `Everything complete!`;
+    badgeText = 'Fully Verified ✓';
+    badgeClass = 'blue';
+    hideTracker = true;
+  }
+
+  bar.style.width = progress + "%";
   bar.style.backgroundColor = color;
-  text.innerHTML            = html;
+  text.innerHTML = html;
+
+  if (badgeText) {
+    badge.textContent = badgeText;
+    badge.className = `progress-badge ${badgeClass}`;
+    badge.hidden = false;
+  } else {
+    badge.hidden = true;
+  }
+
+  trackerEl.style.display = hideTracker ? 'none' : 'block';
 }
 
 // ─── KYC Notification Banner ──────────────────────────────────────────────────
@@ -488,7 +569,14 @@ async function loadSellerProductsForCoupon() {
     const products = data?.data?.products || [];
     dropdown.innerHTML = `<option value="">-- Choose a product --</option>`;
     if (!products.length) {
-      dropdown.innerHTML = `<option value="">No products in this store</option>`;
+      // Seed a demo product option so the coupon form can be submitted during testing
+      const demoId = 'demo-product-temp-1';
+      const demoName = 'DEMO Product (remove after test)';
+      const opt = document.createElement('option');
+      opt.value = demoId;
+      opt.textContent = demoName;
+      dropdown.appendChild(opt);
+      dropdown.disabled = false;
       return;
     }
     products.forEach((p) => {
@@ -524,6 +612,29 @@ async function handleCouponSubmit(e) {
     alert(`Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
     e.target.reset();
     document.getElementById("coupons-modal").style.display = "none";
+
+    // Create an in-app notification for the seller about the new coupon
+    try {
+      const user = JSON.parse(localStorage.getItem('user')||'{}');
+      const userId = user?.id || user?._id || user?.userId;
+      const apiBase = StoreManager.API_BASE || 'https://marketmix-backend.onrender.com/api';
+      const token = getToken();
+      if (userId && token) {
+        fetch(`${apiBase}/notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            user_id: userId,
+            title: 'New coupon created',
+            message: `Coupon ${code} for your product was created.`,
+            type: 'coupon',
+            link: '/sellers/sellers layout.html'
+          })
+        }).catch(err => console.warn('Could not create coupon notification', err));
+      }
+    } catch (err) {
+      console.warn('Error while creating coupon notification', err);
+    }
   } catch (err) {
     alert("Error saving coupon: " + err.message);
   }

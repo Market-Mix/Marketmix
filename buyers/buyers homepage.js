@@ -35,6 +35,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     return s ? String(s).toLowerCase().replace(/\s+/g,' ').trim() : '';
   }
 
+  function isInStock(product) {
+    return parseInt(product?.stock_quantity) > 0;
+  }
+
   function formatMs(ms) {
     if (ms <= 0) return '00:00:00';
     const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sc = s%60;
@@ -144,11 +148,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     const img = p.main_image_url||p.image||'marketplace.png';
     const price = typeof p.price==='number' ? p.price.toFixed(2) : p.price;
     const cat = normCat(p.category||p.category_name||'');
+    const inStock = isInStock(p);
     return `<div class="${cls}" data-product-id="${p.id}" data-category="${cat}">
       <img src="${img}" alt="${escapeHtml(p.name)}" loading="lazy">
       <div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div>
       <div class="meta"><div class="price">₦${price}</div></div></div>
-      <button class="add-to-cart">Add to Cart</button></div>`;
+      <button class="add-to-cart" ${inStock ? '' : 'disabled'}>${inStock ? 'Add to Cart' : 'Out of stock'}</button></div>`;
   }
 
   async function getCategories() {
@@ -263,7 +268,7 @@ function makeFloatingList(btn, items) {
       const items = (d.data||[]).filter(p => {
         if (!p.flash_start||!p.flash_end) return false;
         const s = Date.parse(p.flash_start), e = Date.parse(p.flash_end);
-        return !isNaN(s)&&!isNaN(e)&&now>=s&&now<=e;
+        return !isNaN(s)&&!isNaN(e)&&now>=s&&now<=e && isInStock(p);
       });
       const countEl = document.getElementById('countdown');
       if (flashCountdownInterval) clearInterval(flashCountdownInterval);
@@ -295,13 +300,29 @@ function makeFloatingList(btn, items) {
       const bsGrid = document.querySelector('.best-selling-grid');
       const naGrid = document.querySelector('.new-arrivals-grid');
       const recGrid = document.querySelector('.recommended-grid');
-      if (bsGrid) { bsGrid.innerHTML = products.slice(0,12).map(p=>renderCard(p)).join(''); attachCardClicks(bsGrid); }
-      if (naGrid) { naGrid.innerHTML = products.slice(0,12).map(p=>renderCard(p)).join(''); attachCardClicks(naGrid); }
+      const inStockProducts = products.filter(isInStock);
+      const bestSellers = inStockProducts.slice(0,12);
+      const newArrivals = inStockProducts.slice(0,12);
+      const recommended = inStockProducts.slice(0,6);
+      if (bsGrid) {
+        bsGrid.innerHTML = bestSellers.length
+          ? bestSellers.map(p=>renderCard(p)).join('')
+          : '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No products available</div>';
+        attachCardClicks(bsGrid);
+      }
+      if (naGrid) {
+        naGrid.innerHTML = newArrivals.length
+          ? newArrivals.map(p=>renderCard(p)).join('')
+          : '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No products available</div>';
+        attachCardClicks(naGrid);
+      }
       if (recGrid) {
-        recGrid.innerHTML = products.slice(0,6).map(p=>`<div class="recommended-item" data-product-id="${p.id}">
-          <img src="${p.main_image_url||'marketplace.png'}" alt="${escapeHtml(p.name)}" loading="lazy">
-          <h4>${escapeHtml(p.name)}</h4><p class="price">₦${typeof p.price==='number'?p.price.toFixed(2):p.price}</p>
-          <button class="add-to-cart">Add to Cart</button></div>`).join('');
+        recGrid.innerHTML = recommended.length
+          ? recommended.map(p=>`<div class="recommended-item" data-product-id="${p.id}">
+            <img src="${p.main_image_url||'marketplace.png'}" alt="${escapeHtml(p.name)}" loading="lazy">
+            <h4>${escapeHtml(p.name)}</h4><p class="price">₦${typeof p.price==='number'?p.price.toFixed(2):p.price}</p>
+            <button class="add-to-cart">Add to Cart</button></div>`).join('')
+          : '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No recommended products available</div>';
         attachCardClicks(recGrid);
       }
       attachCartListeners();
@@ -442,10 +463,24 @@ function makeFloatingList(btn, items) {
   if(flashRefreshInterval) clearInterval(flashRefreshInterval);
   flashRefreshInterval = setInterval(loadFlashProducts, 60000);
 
-  window.addEventListener('pageshow', syncCartFromStorage);
-  window.addEventListener('focus', syncCartFromStorage);
-  document.addEventListener('visibilitychange', ()=>!document.hidden&&syncCartFromStorage());
-  window.addEventListener('storage', e => e.key==='cart'&&syncCartFromStorage());
+  window.addEventListener('pageshow', () => {
+    syncCartFromStorage();
+    loadFollowedShops();
+  });
+  window.addEventListener('focus', () => {
+    syncCartFromStorage();
+    loadFollowedShops();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      syncCartFromStorage();
+      loadFollowedShops();
+    }
+  });
+  window.addEventListener('storage', e => {
+    if (e.key === 'cart') syncCartFromStorage();
+    if (e.key === 'followedShopsChanged') loadFollowedShops();
+  });
   window.addEventListener('beforeunload', ()=>{ clearInterval(flashCountdownInterval); clearInterval(flashRefreshInterval); });
 
   updateCartCount();

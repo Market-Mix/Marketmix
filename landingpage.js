@@ -18,6 +18,10 @@ function fmtNum(n) {
   return n + '+';
 }
 
+function isInStock(product) {
+  return parseInt(product?.stock_quantity) > 0;
+}
+
 // ===== TOAST =====
 function showToast(msg, type='success') {
   const t = document.createElement('div');
@@ -95,6 +99,7 @@ function renderCard(p) {
   const orig  = Number(p.price || 0);
   const hasFlash = p.flash_sale_active && price < orig;
   const disc = p.flash_sale_discount_percent ? Math.round(p.flash_sale_discount_percent) : 0;
+  const inStock = isInStock(p);
 
   // The product list endpoint hardcodes rating:4.5 and review_count:0.
   // Trust review_count as the source of truth — if it's 0, there are no reviews.
@@ -118,8 +123,9 @@ function renderCard(p) {
         <div>
           <span class="mm-prod-price">${fmtPrice(price)}</span>
           ${hasFlash ? `<span class="mm-prod-price-orig">${fmtPrice(orig)}</span>` : ''}
+          ${!inStock ? '<span style="color:#ef4444;font-weight:700;margin-left:8px">Out of stock</span>' : ''}
         </div>
-        <button class="mm-prod-cart-btn" data-id="${p.id}" data-name="${esc(p.name)}" data-price="${price}" data-img="${esc(img)}">Add to Cart</button>
+        <button class="mm-prod-cart-btn" data-id="${p.id}" data-name="${esc(p.name)}" data-price="${price}" data-img="${esc(img)}" ${inStock ? '' : 'disabled'}>${inStock ? 'Add to Cart' : 'Out of stock'}</button>
       </div>
     </div>
   </div>`;
@@ -192,12 +198,12 @@ function renderProductTab(tab) {
   if (!grid || !allProducts.length) return;
   let items;
   if (tab === 'trending') {
-    items = allProducts.slice(0, 8);
+    items = allProducts.filter(isInStock).slice(0, 8);
   } else if (tab === 'new') {
-    items = [...allProducts].reverse().slice(0, 8);
+    items = [...allProducts].filter(isInStock).reverse().slice(0, 8);
   } else if (tab === 'flash') {
-    items = allProducts.filter(p => p.flash_sale_active);
-    if (!items.length) items = allProducts.slice(4, 12);
+    items = allProducts.filter(p => p.flash_sale_active && isInStock(p));
+    if (!items.length) items = allProducts.filter(isInStock).slice(4, 12);
   }
   grid.innerHTML = items.length
     ? items.map(renderCard).join('')

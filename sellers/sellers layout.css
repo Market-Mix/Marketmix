@@ -1009,6 +1009,34 @@ table {
   border-radius: 10px;
   color: #233642;
 }
+.progress-tracker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.progress-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #d1fae5;
+  color: #166534;
+  border: 1px solid #34d399;
+}
+.progress-badge.blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #3b82f6;
+}
+.progress-badge.green {
+  background: #d1fae5;
+  color: #166534;
+  border-color: #34d399;
+}
 .progress-bar-container {
  background-color: #f0e9d2;
   border-radius: 20px;
