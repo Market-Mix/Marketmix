@@ -519,34 +519,27 @@
   }
 
   function normalizeDeliveryOptions(options) {
-    const list = Array.isArray(options) ? options : [];
-    const defaults = [
-      { id: 'seller_delivery', name: 'Seller Delivery', icon: 'fa-truck' },
-      { id: 'marketmix_delivery', name: 'MarketMix Delivery', icon: 'fa-truck' },
-      { id: 'shipbubble', name: 'Shipbubble Courier', icon: 'fa-truck' }
-    ];
-    if (list.length) {
-      return list.map((option, index) => {
-        const id = option.id || option.method || option.deliveryMethod || `delivery-${index}`;
-        const method = option.method || option.deliveryMethod || option.type || option.name || '';
-        const provider = option.provider || option.deliveryProvider || (method && typeof method === 'object' ? method.provider : '') || option.name;
-        const fallback = defaults.find((item) => String(id).includes(item.id) || String(provider).includes(item.id) || String(method?.id || method).includes(item.id));
-        const name = option.title || (method && typeof method === 'object' ? method.name || method.label || method.providerLabel : option.name) || option.providerLabel || labelFromMethod(method);
-
-        return {
-          id: fallback ? fallback.id : id,
-          method,
-          provider,
-          title: name,
-          name,
-          icon: provider === 'shipbubble' ? 'fa-truck' : (fallback?.icon || 'fa-credit-card'),
-          description: option.description || option.estimatedDays || option.estimated_days || option.etaDays || option.days || '',
-          fee: readMoney(option.fee ?? option.totalFee ?? option.shippingFee ?? option.price ?? option.amount),
-          estimatedDays: option.estimatedDays || option.estimated_days || option.etaDays || option.days,
-          estimatedDelivery: option.estimatedDelivery || option.estimated_delivery || option.eta
-        };
-      });
-    }
+  const list = Array.isArray(options) ? options : [];
+  if (!list.length) { /* fallback defaults unchanged */ }
+  
+  return list.map((option, index) => {
+    const id = option.providerId || option.id || option.method || `delivery-${index}`;
+    const provider = option.provider || option.providerId || '';
+    const name = option.providerLabel || option.title || option.name || labelFromMethod(id);
+    
+    return {
+      id,
+      method:      option.provider || option.method || id,
+      provider,
+      title:       name,
+      name,
+      icon:        'fa-truck',
+      description: option.estimatedDays || option.description || '',
+      fee:         readMoney(option.totalFee ?? option.fee ?? 0),
+      estimatedDays:     option.estimatedDays || option.estimated_days,
+      estimatedDelivery: option.estimatedDelivery || option.estimated_delivery,
+    };
+  });
 
     return [
       { id: 'seller_delivery', method: 'seller_delivery', provider: 'seller', title: 'Seller Delivery', name: 'Seller Delivery', icon: 'fa-truck', fee: 0, estimatedDays: '2-5' },
