@@ -512,6 +512,7 @@
   async function loadDeliveryOptions() {
     els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
     const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
+    console.log('Delivery response:', JSON.stringify(data));
     const rawOptions = data.options || data.deliveryOptions || data.data?.options || data.data?.all || data.data || [];
     state.deliveryOptions = normalizeDeliveryOptions(rawOptions);
     renderDeliveryOptions();
