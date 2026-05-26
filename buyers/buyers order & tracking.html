@@ -215,94 +215,13 @@
     
   </header>
   <section class="orders-container">
-   
-
-    <!-- Order 1 -->
-    <div class="order-card">
-      <div class="order-header">
-        <h2>Order #MMX12345</h2>
-        <span class="order-status status-shipped">Shipped</span>
-      </div>
-
-      <div class="order-items">
-        <img src="cloths and shoes.jpg" alt="Product">
-        <div class="order-details">
-          <h3>Men’s Classic Sneakers</h3>
-          <p>Quantity: 1 | Price: ₦14,500</p>
-          <p>Estimated Delivery: Oct 24 - Oct 27</p>
-        </div>
-      </div>
-
-      <div class="order-actions">
-        <button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>
-        <a href="view detail.html"><button class="btn btn-view">View Details</button></a>
-      </div>
-
-      <div class="tracking-progress">
-        <p>📦 <strong>Order Status:</strong> In Transit</p>
-        <p>🚚 Your package left our Lagos warehouse and is on its way.</p>
-        <p>Expected Delivery: <strong>2 days remaining</strong></p>
-      </div>
+    <div id="ordersContainer">
+      <p style="text-align:center;color:#64748b">Loading orders...</p>
     </div>
-
-    <!-- Order 2 -->
-    <div class="order-card">
-      <div class="order-header">
-        <h2>Order #MMX98765</h2>
-        <span class="order-status status-delivered">Delivered</span>
-      </div>
-
-      <div class="order-items">
-        <img src="electronics and accessories.jpg" alt="Product">
-        <div class="order-details">
-          <h3>Wireless Bluetooth Headphones</h3>
-          <p>Quantity: 1 | Price: ₦23,000</p>
-          <p>Delivered: Oct 15, 2025</p>
-        </div>
-      </div>
-
-      <div class="order-actions">
-          <a href="view detail.html"><button class="btn btn-view">View Details</button></a>
-      </div>
-    </div>
-
-    <!-- Order 3 -->
-    <div class="order-card">
-      <div class="order-header">
-        <h2>Order #MMX56789</h2>
-        <span class="order-status status-processing">Processing</span>
-      </div>
-
-      <div class="order-items">
-        <img src="home and kitchen.webp" alt="Product">
-        <div class="order-details">
-          <h3>Smart LED Lamp</h3>
-          <p>Quantity: 2 | Price: ₦8,000</p>
-          <p>Estimated Delivery: Oct 28 - Oct 30</p>
-        </div>
-      </div>
-
-      <div class="order-actions">
-        <button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>
-      </div>
-
-      <div class="tracking-progress">
-        <p>🕓 <strong>Order Status:</strong> Processing</p>
-        <p>Your items are being prepared and will ship soon.</p>
-      </div>
-    </div>
-
   </section>
  <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
-  <script>
-    function toggleTracking(button) {
-      const card = button.closest('.order-card');
-      const progress = card.querySelector('.tracking-progress');
-      progress.classList.toggle('active');
-    }
-  </script>
   <script src="notification-manager.js"></script>
   <script>
     // Initialize notification system on page load
@@ -314,6 +233,143 @@
       }
     });
   </script>
+  <script>
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
+
+const statusClass = {
+  pending: 'status-processing', confirmed: 'status-processing',
+  processing: 'status-processing', shipped: 'status-shipped',
+  delivered: 'status-delivered', cancelled: 'status-cancelled'
+};
+
+async function loadOrders() {
+  try {
+    const res = await fetch(`${API_BASE}/orders`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+
+    const orders = data.data?.orders || [];
+    const container = document.getElementById('ordersContainer');
+
+    if (!orders.length) {
+      container.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px">No orders yet. <a href="buyers homepage.html">Start shopping!</a></p>';
+      return;
+    }
+
+    container.innerHTML = orders.map(order => {
+      const items = order.items || [];
+      const firstItem = items[0] || {};
+      const extraCount = items.length > 1 ? `+${items.length - 1} more` : '';
+      const date = new Date(order.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
+
+      return `
+        <div class="order-card">
+          <div class="order-header">
+            <h2>Order #${String(order.id).substring(0,8).toUpperCase()}</h2>
+            <span class="order-status ${statusClass[order.status] || 'status-processing'}">${order.status}</span>
+          </div>
+          <div class="order-items">
+            <div class="order-details">
+              <h3>${firstItem.product_name || 'Product'} ${extraCount ? `<small style="color:#94a3b8">(${extraCount})</small>` : ''}</h3>
+              <p>Items: ${items.length} | Total: ₦${Number(order.total_amount).toLocaleString()}</p>
+              <p>Placed: ${date}</p>
+              ${order.shipping_address ? `<p style="font-size:0.85rem;color:#64748b">📍 ${order.shipping_address}</p>` : ''}
+            </div>
+          </div>
+          <div class="order-actions">
+            ${['shipped','processing','pending','confirmed'].includes(order.status) ? 
+              `<button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>` : ''}
+            <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
+            ${order.status === 'delivered' ? 
+              `<button class="btn" style="background:#22c55e;color:#fff" onclick="confirmDelivery('${order.id}', this)">Confirm Delivery</button>` : ''}
+            ${['pending','confirmed','processing'].includes(order.status) ?
+              `<button class="btn" style="background:#ef4444;color:#fff" onclick="cancelOrder('${order.id}', this)">Cancel</button>` : ''}
+          </div>
+          <div class="tracking-progress" data-order-id="${order.id}">
+            ${trackingSteps(order.status)}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    document.getElementById('ordersContainer').innerHTML = 
+      `<p style="color:#ef4444;text-align:center">Error loading orders: ${err.message}</p>`;
+  }
+}
+
+function trackingSteps(status) {
+  const steps = ['pending','confirmed','processing','shipped','delivered'];
+  const current = steps.indexOf(status);
+  return `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      ${steps.map((s, i) => `
+        <span style="padding:4px 10px;border-radius:20px;font-size:0.8rem;
+          background:${i <= current ? '#f97316' : '#e2e8f0'};
+          color:${i <= current ? '#fff' : '#94a3b8'}">${s}</span>
+        ${i < steps.length-1 ? '<span style="color:#cbd5e1">→</span>' : ''}
+      `).join('')}
+    </div>
+    <p style="margin-top:8px;font-size:0.85rem;color:#475569">
+      ${statusMessages[status] || 'Order is being processed.'}
+    </p>`;
+}
+
+const statusMessages = {
+  pending: '🕓 Your order has been placed and is awaiting confirmation.',
+  confirmed: '✅ Order confirmed! Being prepared for dispatch.',
+  processing: '📦 Your items are being packed and will ship soon.',
+  shipped: '🚚 Your package is on its way!',
+  delivered: '🎉 Delivered! Enjoy your purchase.',
+  cancelled: '❌ This order was cancelled.'
+};
+
+async function cancelOrder(orderId, btn) {
+  if (!confirm('Cancel this order?')) return;
+  btn.disabled = true; btn.textContent = 'Cancelling...';
+  try {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/cancel`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    alert('Order cancelled.');
+    loadOrders();
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false; btn.textContent = 'Cancel';
+  }
+}
+
+async function confirmDelivery(orderId, btn) {
+  if (!confirm('Confirm you received this order?')) return;
+  btn.disabled = true; btn.textContent = 'Confirming...';
+  try {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/confirm-delivery`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    alert('Delivery confirmed! You can now leave a review.');
+    loadOrders();
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false; btn.textContent = 'Confirm Delivery';
+  }
+}
+
+function viewOrder(orderId) {
+  window.location.href = `view detail.html?id=${orderId}`;
+}
+
+function toggleTracking(button) {
+  const card = button.closest('.order-card');
+  const progress = card.querySelector('.tracking-progress');
+  progress.classList.toggle('active');
+}
+
+loadOrders();
+</script>
 
 </body>
 </html>
