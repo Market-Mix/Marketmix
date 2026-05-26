@@ -1013,7 +1013,7 @@ body {
   min-width: 18px;
   text-align: center;
   line-height: 1;
-  display: none; /* hide if 0 */
+  display: none !important; /* Always hidden */
 }
 
 /* Active & hover */
