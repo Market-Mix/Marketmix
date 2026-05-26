@@ -515,21 +515,37 @@
 
   function normalizeDeliveryOptions(options) {
     const list = Array.isArray(options) ? options : [];
+    const defaults = [
+      { id: 'seller_delivery', name: 'Seller Delivery', icon: 'fa-truck' },
+      { id: 'marketmix_delivery', name: 'MarketMix Delivery', icon: 'fa-truck' },
+      { id: 'shipbubble', name: 'Shipbubble Courier', icon: 'fa-truck' }
+    ];
     if (list.length) {
-      return list.map((option, index) => ({
-        id: option.id || option.method || option.deliveryMethod || `delivery-${index}`,
-        method: option.method || option.deliveryMethod || option.type || option.name,
-        provider: option.provider || option.deliveryProvider || option.name,
-        title: option.title || option.name || option.providerLabel || labelFromMethod(option.method || option.deliveryMethod || option.type),
-        fee: readMoney(option.fee ?? option.totalFee ?? option.shippingFee ?? option.price ?? option.amount),
-        estimatedDays: option.estimatedDays || option.estimated_days || option.etaDays || option.days,
-        estimatedDelivery: option.estimatedDelivery || option.estimated_delivery || option.eta
-      }));
+      return list.map((option, index) => {
+        const id = option.id || option.method || option.deliveryMethod || `delivery-${index}`;
+        const method = option.method || option.deliveryMethod || option.type || option.name || '';
+        const provider = option.provider || option.deliveryProvider || (method && typeof method === 'object' ? method.provider : '') || option.name;
+        const fallback = defaults.find((item) => String(id).includes(item.id) || String(provider).includes(item.id) || String(method?.id || method).includes(item.id));
+        const name = option.title || (method && typeof method === 'object' ? method.name || method.label || method.providerLabel : option.name) || option.providerLabel || labelFromMethod(method);
+
+        return {
+          id: fallback ? fallback.id : id,
+          method,
+          provider,
+          title: name,
+          name,
+          icon: provider === 'shipbubble' ? 'fa-truck' : (fallback?.icon || 'fa-credit-card'),
+          description: option.description || option.estimatedDays || option.estimated_days || option.etaDays || option.days || '',
+          fee: readMoney(option.fee ?? option.totalFee ?? option.shippingFee ?? option.price ?? option.amount),
+          estimatedDays: option.estimatedDays || option.estimated_days || option.etaDays || option.days,
+          estimatedDelivery: option.estimatedDelivery || option.estimated_delivery || option.eta
+        };
+      });
     }
 
     return [
-      { id: 'seller_delivery', method: 'seller_delivery', provider: 'seller', title: 'Seller Delivery', fee: 0, estimatedDays: '2-5' },
-      { id: 'marketmix_delivery', method: 'marketmix_delivery', provider: 'marketmix', title: 'MarketMix Delivery', fee: 0, estimatedDays: '1-3' }
+      { id: 'seller_delivery', method: 'seller_delivery', provider: 'seller', title: 'Seller Delivery', name: 'Seller Delivery', icon: 'fa-truck', fee: 0, estimatedDays: '2-5' },
+      { id: 'marketmix_delivery', method: 'marketmix_delivery', provider: 'marketmix', title: 'MarketMix Delivery', name: 'MarketMix Delivery', icon: 'fa-truck', fee: 0, estimatedDays: '1-3' }
     ];
   }
 
@@ -756,9 +772,16 @@
     return 'Estimated delivery shown after selection';
   }
 
+
   function labelFromMethod(method) {
+    const labels = {
+      seller_delivery: 'Seller Delivery',
+      marketmix_delivery: 'MarketMix Delivery',
+      shipbubble: 'Shipbubble Courier'
+    };
+    if (labels[method]) return labels[method];
     const text = String(method || 'Delivery option').replace(/[_-]+/g, ' ');
-    return text.replace(/\b\w/g, (letter) => letter.toUpperCase());
+    return text.replace(/\b\w/g, l => l.toUpperCase());
   }
 
   function paymentDescription(id) {
