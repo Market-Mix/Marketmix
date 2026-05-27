@@ -344,23 +344,50 @@
                 const token = localStorage.getItem('token');
                 if (!token) return;
 
-                const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+                let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
                 if (!Array.isArray(wishlist) || wishlist.length === 0) return;
 
+                // Normalize wishlist entries to product IDs and attempt to add each to backend
+                const remaining = [];
                 for (const item of wishlist) {
+                    let productId = null;
                     try {
-                        await fetch(`${API_BASE_URL}/wishlist/add`, {
+                        if (!item) continue;
+                        if (typeof item === 'string' || typeof item === 'number') productId = String(item);
+                        else if (item.id) productId = String(item.id);
+                        else if (item.product_id) productId = String(item.product_id);
+                        else if (item.productId) productId = String(item.productId);
+
+                        if (!productId) {
+                            // keep unknown-shaped items for manual inspection later
+                            remaining.push(item);
+                            continue;
+                        }
+
+                        const res = await fetch(`${API_BASE_URL}/wishlist/add`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Authorization': `Bearer ${token}`
                             },
-                            body: JSON.stringify({ product_id: item.id })
-                        }).catch(() => null);
+                            body: JSON.stringify({ product_id: productId })
+                        });
+
+                        if (!res.ok) {
+                            // if backend rejected (eg. 403), keep it locally so user doesn't lose it
+                            remaining.push(item);
+                        }
                     } catch (e) {
                         console.warn('Failed to merge wishlist item', item, e);
+                        remaining.push(item);
                     }
                 }
+
+                // Persist any remaining items back to localStorage (if any)
+                try {
+                    if (remaining.length) localStorage.setItem('wishlist', JSON.stringify(remaining));
+                    else localStorage.removeItem('wishlist');
+                } catch (e) { console.warn('Could not update local wishlist after merge', e); }
 
                 // Remove guest wishlist id (server-side guest list preserved)
                 localStorage.removeItem('guest_wishlist_id');
