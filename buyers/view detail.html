@@ -213,6 +213,7 @@
   </header>
 
   <main id="orderMain">
+    <h2>Order Details</h2>
     <p style="text-align:center;padding:40px;color:#64748b">Loading order...</p>
   </main>
  <footer>
@@ -246,7 +247,8 @@ function render(o) {
   const currentStep = STATUS_STEPS.indexOf(o.status);
   const date = new Date(o.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
 
-  document.querySelector('h2').textContent = `Order #${String(o.id).substring(0,8).toUpperCase()}`;
+  const h2 = document.querySelector('h2');
+  if (h2) h2.textContent = `Order #${String(o.id).substring(0,8).toUpperCase()}`;
 
   document.getElementById('orderMain').innerHTML = `
     <div class="order-info">
