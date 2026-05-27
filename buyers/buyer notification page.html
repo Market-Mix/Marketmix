@@ -559,20 +559,36 @@
             e.stopPropagation();
             return;
           }
-          if (n.link) {
-            try {
-              let target = String(n.link || '').trim();
-              // If it's already an absolute URL, use it
-              const isAbsolute = /^https?:\/\//i.test(target);
-              if (!isAbsolute) {
-                // Ensure path starts with a leading slash so it resolves from origin
-                if (!target.startsWith('/')) target = '/' + target;
-                target = window.location.origin + target;
-              }
-              window.location.href = target;
-            } catch (linkErr) {
-              console.error('Invalid notification link:', n.link, linkErr);
+
+          // Determine target link: prefer stored link, otherwise fallback by type
+          const typeFallbacks = {
+            wishlist: '/buyers/buyers%20wishlist.html',
+            cart: '/buyers/cart.html',
+            account: '/buyers/buyers%20homepage.html',
+            order: '/buyers/purchase%20history.html',
+            refund: '/buyers/buyers%20return%20report.html'
+          };
+
+          let raw = (n.link || '').trim();
+          if (!raw) raw = typeFallbacks[n.type] || '/';
+
+          try {
+            // If absolute URL, navigate directly
+            if (/^https?:\/\//i.test(raw)) {
+              window.location.href = raw;
+              return;
             }
+
+            // If stored value already begins with '/', treat as absolute path on origin
+            if (raw.startsWith('/')) {
+              window.location.href = window.location.origin + raw;
+              return;
+            }
+
+            // Otherwise, treat as a relative path (resolve relative to current document)
+            window.location.href = raw;
+          } catch (linkErr) {
+            console.error('Invalid notification link:', raw, linkErr);
           }
         });
         

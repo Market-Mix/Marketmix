@@ -338,7 +338,8 @@ const NotificationManager = {
       title: isRemoved ? 'Product Removed from Wishlist' : 'Product Added to Wishlist',
       message: isRemoved ? `${productName} removed from wishlist` : `${productName} added to wishlist`,
       type: 'wishlist',
-      link: '/buyers/wishlist.html'
+      // Use the actual buyers wishlist page (file name contains a space on disk)
+      link: '/buyers/buyers%20wishlist.html'
     });
   },
 
