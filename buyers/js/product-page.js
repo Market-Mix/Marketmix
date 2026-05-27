@@ -318,8 +318,8 @@ function formatSellerName(rawName) {
 function renderSellerInfo(seller, storeId) {
   const avatar = document.getElementById('shop-avatar');
   if (avatar) {
-    avatar.src = seller?.shop_avatar_url || 'https://via.placeholder.com/32';
-    avatar.onerror = () => { avatar.src = 'https://via.placeholder.com/32'; };
+    avatar.src = seller?.shop_avatar_url || 'marketplace.png';
+    avatar.onerror = () => { avatar.src = 'marketplace.png'; };
     avatar.classList.add('mm-fade-in');
   }
 
@@ -589,7 +589,14 @@ async function proceedToCheckout(product) {
 }
 
 // ── Wishlist ──────────────────────────────────────────────────
-// Sends X-Store-Id header + store_id in body
+function getAuthRole() {
+  return localStorage.getItem('userRole') || null;
+}
+
+function isBuyerAccount() {
+  return Boolean(localStorage.getItem('token')) && getAuthRole() === 'buyer';
+}
+
 function isWishlisted(productId) {
   return JSON.parse(localStorage.getItem('wishlist') || '[]').includes(String(productId));
 }
@@ -620,41 +627,41 @@ async function handleWishlist(product) {
     return;
   }
 
-  const btn       = document.getElementById('product-add-to-wishlist');
-  const token     = localStorage.getItem('token');
-  const storeId   = getProductStoreId(product);
+  const btn = document.getElementById('product-add-to-wishlist');
+  const token = localStorage.getItem('token');
   const alreadyWishlisted = isWishlisted(product.id);
 
   if (btn) { btn.disabled = true; btn.textContent = alreadyWishlisted ? 'Removing…' : 'Adding…'; }
 
-  // No token — update local wishlist only
-  if (!token) {
+  if (!token || !isBuyerAccount()) {
+    if (token && !isBuyerAccount()) {
+      showToast('Signed in as seller. Saving wishlist locally only.', 'warning');
+    }
     setWishlisted(product.id, !alreadyWishlisted);
     refreshWishlistButton(product.id);
-    showToast(alreadyWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
-              alreadyWishlisted ? 'info' : 'success');
+    showToast(alreadyWishlisted ? 'Removed from wishlist' : 'Added to wishlist', alreadyWishlisted ? 'info' : 'success');
     if (btn) btn.disabled = false;
     return;
   }
 
   try {
     if (alreadyWishlisted) {
-      // Find the wishlist item id then delete it
       const wRes = await fetch(`${API_BASE}/wishlist`, {
-        headers: scopedHeaders({}, storeId),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       if (wRes.ok) {
         const wData = await wRes.json();
-        const item  = (wData.data?.items || []).find(
-          i => String(i.product_id) === String(product.id)
-        );
+        const item = (wData.data?.items || []).find(i => String(i.product_id) === String(product.id));
         if (item) {
           await fetch(`${API_BASE}/wishlist/remove/${item.id}`, {
-            method:  'DELETE',
-            headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
-            body: JSON.stringify(storeScopedBody({
-              product_id: product.id,
-            }, storeId)),
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
           });
         }
       }
@@ -670,14 +677,15 @@ async function handleWishlist(product) {
         }
       }
     } else {
-      // Add to wishlist — include store_id in body and X-Store-Id in header
       const res = await fetch(`${API_BASE}/wishlist/add`, {
-        method:  'POST',
-        headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
-        body: JSON.stringify(storeScopedBody({
-          product_id: product.id,
-        }, storeId)),
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ product_id: product.id })
       });
+
       if (res.ok || res.status === 200) {
         setWishlisted(product.id, true);
         showToast('Added to wishlist ❤️', 'success');
@@ -694,7 +702,14 @@ async function handleWishlist(product) {
         }
       } else {
         const err = await res.json().catch(() => ({}));
-        showToast(err.message || 'Could not update wishlist', 'error');
+        const msg = err.message || '';
+        if (res.status === 403 && /seller/i.test(msg)) {
+          console.warn('Wishlist endpoint rejected request (seller role). Falling back to local wishlist.');
+          setWishlisted(product.id, true);
+          showToast('Added to wishlist locally. Sign in as a buyer to sync.', 'success');
+        } else {
+          showToast(msg || 'Could not update wishlist', 'error');
+        }
       }
     }
   } catch (e) {
