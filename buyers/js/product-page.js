@@ -678,7 +678,6 @@ async function handleWishlist(product) {
           product_id: product.id,
         }, storeId)),
       });
-
       if (res.ok || res.status === 200) {
         setWishlisted(product.id, true);
         showToast('Added to wishlist ❤️', 'success');
@@ -694,19 +693,8 @@ async function handleWishlist(product) {
           }
         }
       } else {
-        // Handle backend errors gracefully. If backend responds with a seller-role restriction
-        // (some deployments protect this endpoint), fall back to local wishlist so the UX still works.
         const err = await res.json().catch(() => ({}));
-        const msg = err.message || '';
-        if (res.status === 403 && /seller/i.test(msg)) {
-          // Backend refused because token belongs to a seller or endpoint requires buyer role.
-          // Fallback: mark locally wishlisted and inform the user.
-          console.warn('Wishlist endpoint rejected request (seller role). Falling back to local wishlist.');
-          setWishlisted(product.id, true);
-          showToast('Added to wishlist (local). Sign in as a buyer to sync.', 'success');
-        } else {
-          showToast(msg || 'Could not update wishlist', 'error');
-        }
+        showToast(err.message || 'Could not update wishlist', 'error');
       }
     }
   } catch (e) {
