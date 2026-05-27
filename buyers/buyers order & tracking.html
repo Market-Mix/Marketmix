@@ -286,8 +286,10 @@ async function loadOrders() {
             ${['shipped','processing','pending','confirmed'].includes(order.status) ? 
               `<button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>` : ''}
             <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
-            ${order.status === 'delivered' ? 
-              `<button class="btn" style="background:#94a3b8;color:#fff;cursor:not-allowed" disabled>Delivery Confirmed</button>` : ''}
+            ${order.status === 'delivered' && order.delivery_confirmed_at ? 
+              `<button class="btn" style="background:#94a3b8;color:#fff;cursor:not-allowed" disabled>Delivery Confirmed ✓</button>` : 
+              order.status === 'delivered' ? 
+              `<button class="btn btn-track" onclick="confirmDelivery('${order.id}', this)">Confirm Delivery</button>` : ''}
             ${['pending','confirmed','processing'].includes(order.status) ?
               `<button class="btn" style="background:#ef4444;color:#fff" onclick="cancelOrder('${order.id}', this)">Cancel</button>` : ''}
           </div>
