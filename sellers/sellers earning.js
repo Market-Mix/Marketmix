@@ -113,11 +113,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Withdrawal Modal Trigger
     const withdrawBtn = document.getElementById("withdrawBtn");
-    const withdrawModal = document.getElementById("withdrawModal");
-    if (withdrawBtn && withdrawModal) {
-        withdrawBtn.addEventListener("click", () => {
-            withdrawModal.style.display = "flex";
-        });
+    if (withdrawBtn) {
+        withdrawBtn.addEventListener("click", openWithdrawModal);
     }
 
     const activeStore = await requireActiveStore();
@@ -126,7 +123,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Load earnings data
     loadProfile();
     fetchEarningsData();
-    setupWithdrawalForm();
 });
 
 window.addEventListener('storeChanged', () => {
@@ -325,62 +321,107 @@ async function createSellerNotification({ title, message, type = 'withdrawal', l
     }
 }
 
-function setupWithdrawalForm() {
-    const form = document.getElementById("withdrawForm");
-    if (!form) return;
+let withdrawalState = {};
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+async function openWithdrawModal() {
+    const withdrawModal = document.getElementById('withdrawModal');
+    if (!withdrawModal) return;
+    withdrawModal.style.display = 'flex';
 
-        const amount = parseFloat(form.amount.value);
-        const method = form.method.value;
+    try {
+        const data = await apiFetch('/withdrawals/bank-account');
+        const info = data.data;
+        withdrawalState = info || {};
 
-        if (!amount || amount <= 0) {
-            showToast("Please enter a valid amount.", false);
-            return;
-        }
-
-        try {
-            showToast("Processing withdrawal...", true);
-            
-            const response = await fetch(`${API_BASE}/withdrawals`, {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify({ amount, method })
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                showToast(`Withdrawal of ₦${amount.toFixed(2)} processed successfully!`);
-                const withdrawModal = document.getElementById("withdrawModal");
-                if (withdrawModal) withdrawModal.style.display = "none";
-                form.reset();
-
-                if (data.data && typeof data.data.newBalance === 'number') {
-                    const availableBalanceEl = document.getElementById("available-balance");
-                    if (availableBalanceEl) {
-                        availableBalanceEl.textContent = `₦${data.data.newBalance.toFixed(2)}`;
-                    }
-                }
-
-                createSellerNotification({
-                    title: 'Withdrawal Request Submitted',
-                    message: `Your withdrawal request for ₦${amount.toFixed(2)} was received. Pending Earnings and Available Balance have been updated.`,
-                    type: 'withdrawal',
-                    link: '/sellers/sellers earning.html'
-                });
-
-                // Refresh earnings summary and transaction data
-                fetchEarningsData();
-            } else {
-                showToast(data.message || 'Withdrawal failed', false);
+        if (!withdrawalState.withdrawal_pin_set) {
+            showStep('step-set-pin');
+        } else if (!withdrawalState.bank_account_number) {
+            showStep('step-add-bank');
+        } else {
+            showStep('step-withdraw');
+            const bankInfo = document.getElementById('withdraw-bank-info');
+            if (bankInfo) {
+                bankInfo.textContent =
+                    `Withdrawing to: ${withdrawalState.bank_name} — ${withdrawalState.bank_account_number} (${withdrawalState.bank_account_name})`;
             }
-        } catch (error) {
-            console.error('Withdrawal error:', error);
-            showToast('Network error during withdrawal', false);
         }
+    } catch (err) {
+        showToast('Error loading withdrawal info', false);
+    }
+}
+
+function showStep(stepId) {
+    ['step-set-pin','step-add-bank','step-withdraw'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === stepId ? 'block' : 'none';
     });
+}
+
+async function submitSetPin() {
+    const pin = document.getElementById('new-pin')?.value;
+    const confirmPin = document.getElementById('confirm-pin')?.value;
+    if (pin !== confirmPin) return showToast('PINs do not match', false);
+    if (!/^[0-9]{4,6}$/.test(pin)) return showToast('PIN must be 4-6 digits', false);
+
+    try {
+        await apiFetch('/withdrawals/set-pin', { method: 'POST', body: JSON.stringify({ pin }) });
+        showToast('PIN set successfully!');
+        withdrawalState.withdrawal_pin_set = true;
+        showStep(withdrawalState.bank_account_number ? 'step-withdraw' : 'step-add-bank');
+    } catch (err) {
+        showToast(err.message || 'Error setting PIN', false);
+    }
+}
+
+async function submitBankAccount() {
+    const body = {
+        bank_account_name: document.getElementById('bank-acct-name')?.value,
+        bank_account_number: document.getElementById('bank-acct-number')?.value,
+        bank_name: document.getElementById('bank-name-input')?.value,
+    };
+
+    if (!body.bank_account_name || !body.bank_account_number || !body.bank_name) {
+        return showToast('Fill all bank fields', false);
+    }
+
+    try {
+        await apiFetch('/withdrawals/bank-account', { method: 'POST', body: JSON.stringify(body) });
+        showToast('Bank account saved!');
+        withdrawalState = { ...withdrawalState, ...body };
+        showStep('step-withdraw');
+        const bankInfo = document.getElementById('withdraw-bank-info');
+        if (bankInfo) {
+            bankInfo.textContent =
+                `Withdrawing to: ${body.bank_name} — ${body.bank_account_number} (${body.bank_account_name})`;
+        }
+    } catch (err) {
+        showToast(err.message || 'Error saving bank', false);
+    }
+}
+
+async function submitWithdrawal() {
+    const amount = parseFloat(document.getElementById('withdraw-amount')?.value || '0');
+    const pin = document.getElementById('withdraw-pin')?.value;
+
+    if (!amount || amount <= 0) return showToast('Enter a valid amount', false);
+    if (!pin) return showToast('Enter your PIN', false);
+
+    try {
+        const data = await apiFetch('/withdrawals', { method: 'POST', body: JSON.stringify({ amount, pin }) });
+        showToast(`₦${amount.toFixed(2)} withdrawal submitted!`);
+        const withdrawModal = document.getElementById('withdrawModal');
+        if (withdrawModal) withdrawModal.style.display = 'none';
+
+        const availableBalanceEl = document.getElementById('available-balance');
+        if (availableBalanceEl && data.data && typeof data.data.newBalance === 'number') {
+            availableBalanceEl.textContent = `₦${data.data.newBalance.toFixed(2)}`;
+        }
+
+        document.getElementById('withdraw-amount').value = '';
+        document.getElementById('withdraw-pin').value = '';
+    } catch (err) {
+        showToast(err.message || 'Withdrawal failed', false);
+    }
 }
 
 // Global UI handlers

@@ -131,19 +131,40 @@
   <div class="modal-content">
     <span class="close-btn">&times;</span>
     <h2>Withdraw Funds</h2>
-    <form id="withdrawForm">
-      <label for="amount">Amount (₦):</label>
-      <input type="number" id="amount" name="amount" min="1" step="0.01" required />
-      
-      <label for="method">Withdrawal Method:</label>
-      <select id="method" name="method" required>
-        <option value="" disabled selected>Select method</option>
-        <option value="bank">Bank Transfer</option>
-        <option value="paypal">PayPal</option>
-      </select>
-      
-      <button type="submit" class="btn-primary">Submit</button>
-    </form>
+
+    <!-- Step 1: No PIN set -->
+    <div id="step-set-pin" style="display:none">
+      <p>You need to set a withdrawal PIN before withdrawing.</p>
+      <label>Create PIN (4-6 digits):</label>
+      <input type="password" id="new-pin" maxlength="6" inputmode="numeric" placeholder="••••"/>
+      <label>Confirm PIN:</label>
+      <input type="password" id="confirm-pin" maxlength="6" inputmode="numeric" placeholder="••••"/>
+      <button class="btn-primary" onclick="submitSetPin()">Set PIN</button>
+    </div>
+
+    <!-- Step 2: No bank account -->
+    <div id="step-add-bank" style="display:none">
+      <p>Add your bank account to receive withdrawals.</p>
+      <label>Account Name:</label>
+      <input type="text" id="bank-acct-name" placeholder="John Doe"/>
+      <label>Account Number:</label>
+      <input type="text" id="bank-acct-number" maxlength="10" inputmode="numeric"/>
+      <label>Bank Name:</label>
+      <input type="text" id="bank-name-input" placeholder="First Bank"/>
+      <button class="btn-primary" onclick="submitBankAccount()">Save Bank Account</button>
+    </div>
+
+    <!-- Step 3: Normal withdrawal -->
+    <div id="step-withdraw" style="display:none">
+      <p id="withdraw-bank-info" style="color:#64748b;font-size:0.9rem"></p>
+      <label>Amount (₦):</label>
+      <input type="number" id="withdraw-amount" min="1" step="0.01"/>
+      <label>Withdrawal PIN:</label>
+      <input type="password" id="withdraw-pin" maxlength="6" inputmode="numeric" placeholder="••••"/>
+      <button class="btn-primary" onclick="submitWithdrawal()">Withdraw</button>
+      <button style="background:none;border:none;color:#f97316;cursor:pointer;margin-top:8px;display:block" 
+              onclick="showStep('step-add-bank')">Change bank account</button>
+    </div>
   </div>
 </div>
 
