@@ -1428,17 +1428,32 @@
   // =====================================================
   window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
   window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
+  window.CLOUDINARY_UPLOAD_URL = window.CLOUDINARY_UPLOAD_URL || 'https://api.cloudinary.com/v1_1/dioy51alg/auto/upload';
+  window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET = window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET || '<your-unsigned-upload-preset>';
+  window.CLOUDINARY_UPLOAD_FOLDER = window.CLOUDINARY_UPLOAD_FOLDER || 'marketmix/refund_evidence';
 
   function getSupabaseClient() {
-    if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       console.error('❌ Supabase client library is not loaded.');
       return null;
     }
-    window.marketmixSupabaseClient = window.supabase.createClient(
-      window.MARKETMIX_SUPABASE_URL,
-      window.MARKETMIX_SUPABASE_ANON_KEY
-    );
+
+    if (!window.marketmixSupabaseClient) {
+      window.marketmixSupabaseClient = window.supabase.createClient(
+        window.MARKETMIX_SUPABASE_URL,
+        window.MARKETMIX_SUPABASE_ANON_KEY
+      );
+    }
+
+    const authToken = getAuthToken();
+    if (authToken && window.marketmixSupabaseClient.auth && typeof window.marketmixSupabaseClient.auth.setAuth === 'function') {
+      try {
+        window.marketmixSupabaseClient.auth.setAuth(authToken);
+      } catch (err) {
+        console.warn('Unable to restore Supabase auth session:', err);
+      }
+    }
+
     return window.marketmixSupabaseClient;
   }
 
@@ -1461,6 +1476,13 @@
         evidence_url: caseData.evidence_url || null
       };
 
+      if (caseData.evidence_type != null) {
+        refundCasePayload.evidence_type = caseData.evidence_type;
+      }
+      if (caseData.evidence_public_id != null) {
+        refundCasePayload.evidence_public_id = caseData.evidence_public_id;
+      }
+
       console.log('Inserting refund case payload:', refundCasePayload);
       const { data, error } = await getSupabaseClient()
         .from('refund_cases')
@@ -1482,32 +1504,41 @@
     }
   }
   /**
-   * Upload evidence file to Supabase Storage
+   * Upload evidence file to Cloudinary using unsigned uploads
    */
   async function uploadEvidenceFile(file, caseId) {
     try {
       if (!file) return null;
-      
-      const fileName = `${caseId}-${Date.now()}-${file.name}`;
-      const filePath = fileName; // Don't include bucket name - .from('refund-evidence') already specifies it
-      
-      const { data, error: uploadError } = await getSupabaseClient().storage
-        .from('refund-evidence')
-        .upload(filePath, file);
-      
-      if (uploadError) {
-        console.error('Error uploading file:', uploadError);
-        throw uploadError;
+
+      const uploadUrl = window.CLOUDINARY_UPLOAD_URL;
+      const uploadPreset = window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET;
+      if (!uploadUrl || !uploadPreset) {
+        throw new Error('Cloudinary upload configuration is missing.');
       }
-      
-      // Get public URL
-      const { data: publicData } = getSupabaseClient().storage
-        .from('refund-evidence')
-        .getPublicUrl(filePath);
-      
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset);
+      formData.append('folder', window.CLOUDINARY_UPLOAD_FOLDER || 'marketmix/refund_evidence');
+      formData.append('public_id', `refund_${caseId}_${Date.now()}`);
+
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.secure_url) {
+        const message = result.error?.message || result.message || 'Unknown Cloudinary upload error';
+        console.error('Cloudinary upload failed:', result);
+        throw new Error(message);
+      }
+
       return {
-        url: publicData?.publicUrl,
-        fileName: fileName
+        url: result.secure_url,
+        fileName: result.public_id,
+        public_id: result.public_id,
+        resource_type: result.resource_type
       };
     } catch (err) {
       console.error('Failed to upload evidence file:', err);
@@ -2387,7 +2418,9 @@
         buyer_id: userId,
         seller_id: currentChatData.seller_id || null,
         status: 'pending',
-        evidence_url: evidenceData.url
+        evidence_url: evidenceData.url,
+        evidence_type: evidenceData.resource_type || null,
+        evidence_public_id: evidenceData.public_id || null
       });
 
       if (!refundCase) {

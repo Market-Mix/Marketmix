@@ -569,24 +569,41 @@
             refund: '/buyers/buyers%20return%20report.html'
           };
 
-          let raw = (n.link || '').trim();
+          function normalizeNotificationLink(rawLink) {
+            let link = String(rawLink || '').trim().replace(/\\/g, '/');
+            if (!link) {
+              return typeFallbacks[n.type] || '/';
+            }
+
+            // Keep already absolute paths or URLs unchanged
+            if (/^https?:\/\//i.test(link) || link.startsWith('/')) {
+              return link;
+            }
+
+            // If path starts with buyers/ then it's already a folder path
+            if (/^buyers\//i.test(link)) {
+              return '/' + link;
+            }
+
+            // If path begins with buyers followed by a file name separator, treat it as a buyers folder file
+            if (/^buyers(?: |%20)/i.test(link)) {
+              return '/buyers/' + link;
+            }
+
+            // Otherwise assume it is a page name inside /buyers/
+            return '/buyers/' + link;
+          }
+
+          let raw = normalizeNotificationLink(n.link || '');
           if (!raw) raw = typeFallbacks[n.type] || '/';
 
           try {
-            // If absolute URL, navigate directly
             if (/^https?:\/\//i.test(raw)) {
               window.location.href = raw;
               return;
             }
 
-            // If stored value already begins with '/', treat as absolute path on origin
-            if (raw.startsWith('/')) {
-              window.location.href = window.location.origin + raw;
-              return;
-            }
-
-            // Otherwise, treat as a relative path (resolve relative to current document)
-            window.location.href = raw;
+            window.location.href = window.location.origin + raw;
           } catch (linkErr) {
             console.error('Invalid notification link:', raw, linkErr);
           }

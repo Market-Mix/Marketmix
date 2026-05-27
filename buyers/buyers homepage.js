@@ -10,6 +10,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   const buyerId = getBuyerId();
   if (buyerId && typeof NotificationManager !== 'undefined') {
     await NotificationManager.init(buyerId);
+
+    window.addEventListener('pageshow', async () => {
+      if (!buyerId || typeof NotificationManager === 'undefined') return;
+      await NotificationManager.syncUnreadCounts(buyerId);
+    });
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && buyerId && typeof NotificationManager !== 'undefined') {
+        await NotificationManager.syncUnreadCounts(buyerId);
+      }
+    });
   }
 
   // =====================================================
