@@ -593,8 +593,38 @@ function getAuthRole() {
   return localStorage.getItem('userRole') || null;
 }
 
+function getTokenPayload() {
+  const token = localStorage.getItem('token');
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.warn('Could not decode token payload:', e);
+    return null;
+  }
+}
+
+function getTokenRole() {
+  const payload = getTokenPayload();
+  if (payload?.role) {
+    const role = String(payload.role).toLowerCase();
+    const current = String(getAuthRole() || '').toLowerCase();
+    if (role && role !== current) {
+      localStorage.setItem('userRole', role);
+    }
+    return role;
+  }
+  return String(getAuthRole() || '').toLowerCase();
+}
+
 function isBuyerAccount() {
-  return Boolean(localStorage.getItem('token')) && getAuthRole() === 'buyer';
+  return Boolean(localStorage.getItem('token')) && getTokenRole() === 'buyer';
 }
 
 function isWishlisted(productId) {
@@ -634,8 +664,9 @@ async function handleWishlist(product) {
   if (btn) { btn.disabled = true; btn.textContent = alreadyWishlisted ? 'Removing…' : 'Adding…'; }
 
   if (!token || !isBuyerAccount()) {
-    if (token && !isBuyerAccount()) {
-      showToast('Signed in as seller. Saving wishlist locally only.', 'warning');
+    const tokenRole = getTokenRole();
+    if (token && tokenRole !== 'buyer') {
+      showToast('Logged in with a seller token. Wishlist stays local until you sign in as a buyer.', 'warning');
     }
     setWishlisted(product.id, !alreadyWishlisted);
     refreshWishlistButton(product.id);
@@ -706,7 +737,7 @@ async function handleWishlist(product) {
         if (res.status === 403 && /seller/i.test(msg)) {
           console.warn('Wishlist endpoint rejected request (seller role). Falling back to local wishlist.');
           setWishlisted(product.id, true);
-          showToast('Added to wishlist locally. Sign in as a buyer to sync.', 'success');
+          showToast('Your auth token appears seller-scoped, so wishlist was saved locally only. Please sign in as a buyer to sync.', 'warning');
         } else {
           showToast(msg || 'Could not update wishlist', 'error');
         }
