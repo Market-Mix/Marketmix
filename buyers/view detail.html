@@ -213,55 +213,108 @@
     <h1>Order Details</h1>
   </header>
 
-  <main>
-    <h2>Order #MMX12345</h2>
-
-    <div class="order-info">
-      <p><strong>Order Date:</strong> Oct 20, 2025</p>
-      <p><strong>Status:</strong> <span class="status">Shipped</span></p>
-      <p><strong>Payment Method:</strong> Card (MasterCard)</p>
-    </div>
-
-    <div class="product">
-      <img src="home and kitchen.webp" alt="Product">
-      <div class="product-details">
-        <h4>Men’s Classic Sneakers</h4>
-        <p>Quantity: 1</p>
-        <p>Price: ₦14,500</p>
-        <p>Delivery: Oct 24 - Oct 27</p>
-      </div>
-    </div>
-
-    <div class="progress">
-      <h3>Tracking Progress</h3>
-      <div class="progress-step completed">
-        <i class="fas fa-box"></i> Order Placed
-      </div>
-      <div class="progress-step completed">
-        <i class="fas fa-truck-loading"></i> Order Shipped
-      </div>
-      <div class="progress-step">
-        <i class="fas fa-truck"></i> Out for Delivery
-      </div>
-      <div class="progress-step">
-        <i class="fas fa-check-circle"></i> Delivered
-      </div>
-    </div>
-
-    <div class="address">
-      <h3>Shipping Address</h3>
-      <p><strong>Name:</strong> Emmanuel E.</p>
-      <p><strong>Address:</strong> 21 Adebayo Street, Ikeja, Lagos</p>
-      <p><strong>Phone:</strong> +234 812 345 6789</p>
-    </div>
-
-    <div class="actions">
-      <!-- <button class="track-btn"><i class="fas fa-truck"></i> Track Package</button> -->
-      <button class="support-btn"><i class="fas fa-headset"></i> Contact Support</button>
-    </div>
+  <main id="orderMain">
+    <p style="text-align:center;padding:40px;color:#64748b">Loading order...</p>
   </main>
  <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
+  <script>
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
+const token = localStorage.getItem('token');
+const orderId = new URLSearchParams(location.search).get('id');
+
+const STATUS_STEPS = ['pending','confirmed','processing','shipped','delivered'];
+const STATUS_ICONS = ['fas fa-file-alt','fas fa-check','fas fa-box','fas fa-truck','fas fa-check-circle'];
+const STATUS_LABELS = ['Order Placed','Confirmed','Processing','Shipped','Delivered'];
+
+async function loadOrder() {
+  if (!orderId) { document.getElementById('orderMain').innerHTML = '<p style="text-align:center;color:#ef4444">No order ID provided.</p>'; return; }
+  try {
+    const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    render(data.data.order);
+  } catch (e) {
+    document.getElementById('orderMain').innerHTML = `<p style="color:#ef4444;text-align:center">${e.message}</p>`;
+  }
+}
+
+function render(o) {
+  const items = o.items || [];
+  const currentStep = STATUS_STEPS.indexOf(o.status);
+  const date = new Date(o.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
+
+  document.querySelector('h2').textContent = `Order #${String(o.id).substring(0,8).toUpperCase()}`;
+
+  document.getElementById('orderMain').innerHTML = `
+    <div class="order-info">
+      <p><strong>Order Date:</strong> ${date}</p>
+      <p><strong>Status:</strong> <span class="status" style="background:${statusColor(o.status)}">${o.status}</span></p>
+      <p><strong>Total:</strong> ₦${Number(o.total_amount).toLocaleString()}</p>
+      ${o.payment_method ? `<p><strong>Payment:</strong> ${o.payment_method.toUpperCase()}</p>` : ''}
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+      ${items.map(item => `
+        <div class="product">
+          <div class="product-details">
+            <h4>${item.product_name || 'Product'}</h4>
+            <p>Qty: ${item.quantity}</p>
+            <p>Price: ₦${Number(item.price).toLocaleString()}</p>
+            <p>Subtotal: ₦${Number(item.price * item.quantity).toLocaleString()}</p>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <div class="progress">
+      <h3>Tracking Progress</h3>
+      ${STATUS_STEPS.map((s, i) => `
+        <div class="progress-step ${i <= currentStep ? 'completed' : ''}">
+          <i class="${STATUS_ICONS[i]}"></i> ${STATUS_LABELS[i]}
+          ${i === currentStep ? `<span style="font-size:12px;color:#64748b;margin-left:8px">← Current</span>` : ''}
+        </div>`).join('')}
+      ${o.status === 'cancelled' ? `<div class="progress-step" style="color:#ef4444"><i class="fas fa-times-circle" style="color:#ef4444"></i> Cancelled</div>` : ''}
+    </div>
+
+    ${o.shipping_address ? `
+    <div class="address">
+      <h3>Shipping Address</h3>
+      <p>${o.shipping_address}</p>
+    </div>` : ''}
+
+    <div class="actions">
+      ${o.status === 'shipped' ? `<button class="track-btn" onclick="alert('Tracking: Your package is on its way!')"><i class="fas fa-truck"></i> Track Package</button>` : ''}
+      ${['pending','confirmed','processing'].includes(o.status) ? `<button style="background:#ef4444;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="cancelOrder('${o.id}')">Cancel Order</button>` : ''}
+      ${o.status === 'delivered' ? `<button style="background:#22c55e;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="confirmDelivery('${o.id}')">Confirm Receipt</button>` : ''}
+      <button class="support-btn" onclick="alert('Support: support@marketmix.com')"><i class="fas fa-headset"></i> Contact Support</button>
+    </div>
+  `;
+}
+
+function statusColor(s) {
+  return {delivered:'#22c55e',shipped:'#0ea5e9',cancelled:'#ef4444',processing:'#f97316',confirmed:'#8b5cf6',pending:'#94a3b8'}[s] || '#64748b';
+}
+
+async function cancelOrder(id) {
+  if (!confirm('Cancel this order?')) return;
+  const res = await fetch(`${API_BASE}/orders/${id}/cancel`, { method:'PUT', headers:{ Authorization:`Bearer ${token}` } });
+  const d = await res.json();
+  if (!res.ok) { alert(d.message); return; }
+  alert('Order cancelled.'); loadOrder();
+}
+
+async function confirmDelivery(id) {
+  if (!confirm('Confirm you received this order?')) return;
+  const res = await fetch(`${API_BASE}/orders/${id}/confirm-delivery`, { method:'POST', headers:{ Authorization:`Bearer ${token}` } });
+  const d = await res.json();
+  if (!res.ok) { alert(d.message); return; }
+  alert('Delivery confirmed!'); loadOrder();
+}
+
+loadOrder();
+  </script>
 </body>
 </html>

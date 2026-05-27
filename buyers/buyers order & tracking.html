@@ -263,6 +263,7 @@ async function loadOrders() {
       const firstItem = items[0] || {};
       const extraCount = items.length > 1 ? `+${items.length - 1} more` : '';
       const date = new Date(order.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
+      const imgSrc = firstItem.image || firstItem.main_image_url || 'https://via.placeholder.com/80';
 
       return `
         <div class="order-card">
@@ -271,6 +272,9 @@ async function loadOrders() {
             <span class="order-status ${statusClass[order.status] || 'status-processing'}">${order.status}</span>
           </div>
           <div class="order-items">
+            <img src="${imgSrc}" alt="${firstItem.product_name || 'Product'}" 
+              style="width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0"
+              onerror="this.src='https://via.placeholder.com/80'">
             <div class="order-details">
               <h3>${firstItem.product_name || 'Product'} ${extraCount ? `<small style="color:#94a3b8">(${extraCount})</small>` : ''}</h3>
               <p>Items: ${items.length} | Total: ₦${Number(order.total_amount).toLocaleString()}</p>
