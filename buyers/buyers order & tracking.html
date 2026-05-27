@@ -287,7 +287,7 @@ async function loadOrders() {
               `<button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>` : ''}
             <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
             ${order.status === 'delivered' ? 
-              `<button class="btn" style="background:#22c55e;color:#fff" onclick="confirmDelivery('${order.id}', this)">Confirm Delivery</button>` : ''}
+              `<button class="btn" style="background:#94a3b8;color:#fff;cursor:not-allowed" disabled>Delivery Confirmed</button>` : ''}
             ${['pending','confirmed','processing'].includes(order.status) ?
               `<button class="btn" style="background:#ef4444;color:#fff" onclick="cancelOrder('${order.id}', this)">Cancel</button>` : ''}
           </div>
@@ -354,8 +354,13 @@ async function confirmDelivery(orderId, btn) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
-    alert('Delivery confirmed! You can now leave a review.');
-    loadOrders();
+    
+    // Make button gray after success
+    btn.textContent = 'Delivery Confirmed';
+    btn.style.background = '#94a3b8';
+    btn.style.cursor = 'not-allowed';
+    btn.disabled = true;
+    
   } catch (err) {
     alert(err.message);
     btn.disabled = false; btn.textContent = 'Confirm Delivery';
