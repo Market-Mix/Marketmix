@@ -1730,29 +1730,20 @@
    */
   async function fetchRefundCases(buyerId) {
     try {
-      console.log('🔍 Fetching refund cases for buyer:', buyerId);
-      
-      const { client } = await getAuthenticatedSupabaseClient();
-      if (!client) {
-        console.error('❌ Supabase client not available');
+      console.log('🔍 Fetching refund cases for buyer via backend API:', buyerId);
+
+      const response = await fetch(`${API_BASE_URL}/refunds/buyer/${encodeURIComponent(buyerId)}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ Backend API error fetching refund cases:', response.status, result);
         return [];
       }
 
-      const { data, error } = await client
-        .from('refund_cases')
-        .select('*')
-        .eq('buyer_id', buyerId)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('❌ Error fetching refund cases:', error);
-        throw error;
-      }
-      
-      console.log('✅ Successfully fetched', (data || []).length, 'refund cases');
-      return data || [];
+      console.log('✅ Successfully fetched refund cases from backend:', result.refundCases?.length || 0);
+      return result.refundCases || [];
     } catch (err) {
-      console.error('❌ Failed to fetch refund cases:', err.message || err);
+      console.error('❌ Failed to fetch refund cases from backend:', err.message || err);
       return [];
     }
   }
@@ -1791,26 +1782,25 @@
    */
   async function updateRefundCaseStatus(caseId, status) {
     try {
-      const { client } = await getAuthenticatedSupabaseClient();
-      if (!client) {
-        console.error('❌ Supabase client not available');
+      console.log('🔄 Updating refund case status through backend API:', caseId, status);
+
+      const response = await fetch(`${API_BASE_URL}/refunds/${encodeURIComponent(caseId)}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        console.error('❌ Backend API error updating refund status:', result);
         return null;
       }
 
-      const { data, error } = await client
-        .from('refund_cases')
-        .update({ status: status, updated_at: new Date().toISOString() })
-        .eq('id', caseId)
-        .select();
-      
-      if (error) {
-        console.error('Error updating case status:', error);
-        throw error;
-      }
-      
-      return data?.[0];
+      return result.refundCase || null;
     } catch (err) {
-      console.error('Failed to update case status:', err);
+      console.error('Failed to update case status via backend:', err);
       return null;
     }
   }
@@ -2005,25 +1995,22 @@
       const button = document.getElementById('devCreateMockRefundBtn');
       if (button) button.disabled = true;
 
-      const { data, error } = await getSupabaseClient()
-        .from('refund_cases')
-        .insert([mockRefund])
-        .select();
+      const refundCase = await createRefundCase({
+        order_id: mockRefund.order_id,
+        product_name: mockRefund.product_name,
+        complaint_text: mockRefund.complaint_text,
+        buyer_id: buyerId,
+        seller_id: mockRefund.seller_id,
+        evidence_url: mockRefund.evidence_url || null,
+        evidence_type: mockRefund.evidence_type || null,
+        evidence_public_id: mockRefund.evidence_public_id || null
+      });
 
-      if (error) throw error;
-
-      const refundCase = data?.[0];
-      if (!refundCase) throw new Error('No refund case returned from Supabase.');
-
-      if (shouldCreateNotification) {
-        await createBuyerNotification({
-          buyer_id: buyerId,
-          refund_case_id: refundCase.id,
-          type: 'refund_created',
-          title: 'Dev Test Refund Created',
-          message: `A mock refund case was created for order ${mockRefund.order_id}.`
-        });
+      if (!refundCase) {
+        throw new Error('No refund case returned from backend.');
       }
+
+      // Backend already creates refund notifications.
 
       if (shouldCreateMessage) {
         await createTestRefundMessage(
