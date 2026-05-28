@@ -1429,7 +1429,7 @@
   window.MARKETMIX_SUPABASE_URL = window.MARKETMIX_SUPABASE_URL || 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
   window.MARKETMIX_SUPABASE_ANON_KEY = window.MARKETMIX_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
   window.CLOUDINARY_UPLOAD_URL = window.CLOUDINARY_UPLOAD_URL || 'https://api.cloudinary.com/v1_1/dioy51alg/auto/upload';
-  window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET = window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET || '<marketmix_refunds>';
+  window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET = window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET || 'marketmix_refunds';
   window.CLOUDINARY_UPLOAD_FOLDER = window.CLOUDINARY_UPLOAD_FOLDER || 'marketmix/refund_evidence';
 
   function getSupabaseClient() {
@@ -1439,22 +1439,54 @@
     }
 
     if (!window.marketmixSupabaseClient) {
+      console.log('🔧 Creating new Supabase client instance');
       window.marketmixSupabaseClient = window.supabase.createClient(
         window.MARKETMIX_SUPABASE_URL,
         window.MARKETMIX_SUPABASE_ANON_KEY
       );
     }
 
-    const authToken = getAuthToken();
-    if (authToken && window.marketmixSupabaseClient.auth && typeof window.marketmixSupabaseClient.auth.setAuth === 'function') {
-      try {
-        window.marketmixSupabaseClient.auth.setAuth(authToken);
-      } catch (err) {
-        console.warn('Unable to restore Supabase auth session:', err);
-      }
-    }
-
     return window.marketmixSupabaseClient;
+  }
+
+  async function restoreSupabaseAuthSession(client) {
+    try {
+      if (!client || !client.auth) {
+        console.warn('⚠️ Supabase client or auth module unavailable');
+        return false;
+      }
+
+      const authToken = getAuthToken();
+      if (!authToken) {
+        console.log('📝 No stored auth token found, checking existing session...');
+        const { data: sessionData } = await client.auth.getSession();
+        if (sessionData?.session) {
+          console.log('✅ Supabase session already active');
+          return true;
+        }
+        console.warn('⚠️ No auth token or active session available');
+        return false;
+      }
+
+      console.log('🔑 Attempting to restore Supabase auth from stored token');
+      if (typeof client.auth.setAuth === 'function') {
+        client.auth.setAuth(authToken);
+        console.log('✅ Auth token set successfully');
+        return true;
+      }
+
+      const { data: sessionData, error: sessionError } = await client.auth.refreshSession();
+      if (sessionError) {
+        console.warn('⚠️ Session refresh failed:', sessionError.message);
+        return false;
+      }
+
+      console.log('✅ Supabase session restored successfully');
+      return true;
+    } catch (err) {
+      console.error('❌ Error restoring Supabase auth:', err);
+      return false;
+    }
   }
 
   // =====================================================
@@ -1466,6 +1498,18 @@
    */
   async function createRefundCase(caseData) {
     try {
+      console.log('📝 Creating refund case for order:', caseData.order_id);
+      
+      const client = getSupabaseClient();
+      if (!client) {
+        throw new Error('Supabase client not available');
+      }
+
+      const authRestored = await restoreSupabaseAuthSession(client);
+      if (!authRestored) {
+        console.warn('⚠️ Could not restore Supabase auth for refund case creation');
+      }
+
       const refundCasePayload = {
         order_id: caseData.order_id,
         product_name: caseData.product_name,
@@ -1483,22 +1527,24 @@
         refundCasePayload.evidence_public_id = caseData.evidence_public_id;
       }
 
-      console.log('Inserting refund case payload:', refundCasePayload);
-      const { data, error } = await getSupabaseClient()
+      console.log('📦 Inserting refund case payload:', refundCasePayload);
+      
+      const { data, error } = await client
         .from('refund_cases')
         .insert([refundCasePayload])
         .select()
         .single();
       
       if (error) {
-        console.error('Supabase error details:', error);
+        console.error('❌ Supabase error creating refund case:', error);
+        console.error('Error details:', { code: error.code, message: error.message, status: error.status, details: error.details });
         throw error;
       }
       
-      console.log('Refund case created:', data);
+      console.log('✅ Refund case created successfully:', data);
       return data;
     } catch (err) {
-      console.error('Failed to create refund case:', err);
+      console.error('❌ Failed to create refund case:', err.message || err);
       showNotification('Failed to create refund case. Please try again.', 'error');
       return null;
     }
@@ -1508,12 +1554,20 @@
    */
   async function uploadEvidenceFile(file, caseId) {
     try {
-      if (!file) return null;
+      if (!file) {
+        console.warn('⚠️ No file provided for upload');
+        return null;
+      }
+
+      console.log('📤 Starting Cloudinary upload for file:', file.name, 'size:', file.size);
 
       const uploadUrl = window.CLOUDINARY_UPLOAD_URL;
       const uploadPreset = window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET;
+      
+      console.log('🔧 Cloudinary config:', { uploadUrl, uploadPreset });
+      
       if (!uploadUrl || !uploadPreset) {
-        throw new Error('Cloudinary upload configuration is missing.');
+        throw new Error('Cloudinary upload configuration is missing. URL: ' + uploadUrl + ', Preset: ' + uploadPreset);
       }
 
       const formData = new FormData();
@@ -1522,17 +1576,27 @@
       formData.append('folder', window.CLOUDINARY_UPLOAD_FOLDER || 'marketmix/refund_evidence');
       formData.append('public_id', `refund_${caseId}_${Date.now()}`);
 
+      console.log('📡 Sending upload request to:', uploadUrl);
+      
       const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData
       });
 
       const result = await response.json();
+      
+      console.log('📥 Cloudinary response status:', response.status);
+      console.log('📥 Cloudinary response body:', result);
+
       if (!response.ok || !result.secure_url) {
-        const message = result.error?.message || result.message || 'Unknown Cloudinary upload error';
-        console.error('Cloudinary upload failed:', result);
+        const message = result.error?.message || result.message || result.error || 'Unknown Cloudinary upload error';
+        console.error('❌ Cloudinary upload failed with status', response.status, ':', message);
+        console.error('Full response:', result);
         throw new Error(message);
       }
+
+      console.log('✅ Cloudinary upload successful');
+      console.log('📦 Upload result:', { secure_url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type });
 
       return {
         url: result.secure_url,
@@ -1541,8 +1605,9 @@
         resource_type: result.resource_type
       };
     } catch (err) {
-      console.error('Failed to upload evidence file:', err);
-      showNotification('Failed to upload file. Please try again.', 'error');
+      console.error('❌ Failed to upload evidence file:', err.message);
+      console.error('Stack trace:', err);
+      showNotification('Failed to upload file: ' + err.message, 'error');
       return null;
     }
   }
@@ -1637,6 +1702,11 @@
         return null;
       }
 
+      const authRestored = await restoreSupabaseAuthSession(client);
+      if (!authRestored) {
+        console.warn('⚠️ Could not restore Supabase auth for seller notification');
+      }
+
       const { data, error } = await client
         .from('notifications')
         .insert([{
@@ -1667,20 +1737,34 @@
    */
   async function fetchRefundCases(buyerId) {
     try {
-      const { data, error } = await getSupabaseClient()
+      console.log('🔍 Fetching refund cases for buyer:', buyerId);
+      
+      const client = getSupabaseClient();
+      if (!client) {
+        throw new Error('Supabase client not available');
+      }
+
+      const authRestored = await restoreSupabaseAuthSession(client);
+      if (!authRestored) {
+        console.warn('⚠️ Could not restore Supabase auth, attempting fetch anyway...');
+      }
+
+      const { data, error } = await client
         .from('refund_cases')
         .select('*')
         .eq('buyer_id', buyerId)
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Error fetching refund cases:', error);
+        console.error('❌ Error fetching refund cases:', error);
+        console.error('Error details:', { code: error.code, message: error.message, status: error.status });
         throw error;
       }
       
+      console.log('✅ Successfully fetched', (data || []).length, 'refund cases');
       return data || [];
     } catch (err) {
-      console.error('Failed to fetch refund cases:', err);
+      console.error('❌ Failed to fetch refund cases:', err.message || err);
       showNotification('Failed to load refund cases.', 'error');
       return [];
     }
@@ -1691,7 +1775,17 @@
    */
   async function fetchRefundMessages(caseId) {
     try {
-      const { data, error } = await getSupabaseClient()
+      const client = getSupabaseClient();
+      if (!client) {
+        throw new Error('Supabase client not available');
+      }
+
+      const authRestored = await restoreSupabaseAuthSession(client);
+      if (!authRestored) {
+        console.warn('⚠️ Could not restore Supabase auth for fetching refund messages');
+      }
+
+      const { data, error } = await client
         .from('refund_messages')
         .select('*')
         .eq('refund_case_id', caseId)
@@ -1714,7 +1808,17 @@
    */
   async function updateRefundCaseStatus(caseId, status) {
     try {
-      const { data, error } = await getSupabaseClient()
+      const client = getSupabaseClient();
+      if (!client) {
+        throw new Error('Supabase client not available');
+      }
+
+      const authRestored = await restoreSupabaseAuthSession(client);
+      if (!authRestored) {
+        console.warn('⚠️ Could not restore Supabase auth for updating refund status');
+      }
+
+      const { data, error } = await client
         .from('refund_cases')
         .update({ status: status, updated_at: new Date().toISOString() })
         .eq('id', caseId)
@@ -2142,6 +2246,11 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const token = checkAuth();
     if (!token) return;
+
+    const client = getSupabaseClient();
+    if (client) {
+      await restoreSupabaseAuthSession(client);
+    }
     
     // Get buyer ID from the same auth data saved by the buyer login page.
     let userId = getCurrentBuyerId();
@@ -2396,6 +2505,8 @@
       const userId = getCurrentBuyerId();
       if (!userId) {
         showNotification('User not authenticated.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
         return;
       }
 
@@ -2406,6 +2517,8 @@
         evidenceData = await uploadEvidenceFile(fileInput.files[0], currentChatData.order_id);
         if (!evidenceData) {
           showNotification('Evidence upload failed. Please try again.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
           return;
         }
       }
@@ -2430,10 +2543,12 @@
         return;
       }
 
+      console.log('🔔 Creating seller notification');
       await createSellerNotification({
         seller_id: currentChatData.seller_id,
         order_id: currentChatData.order_id
       });
+      console.log('✅ Seller notification created');
 
       const notificationPayload = {
         buyer_id: userId,
