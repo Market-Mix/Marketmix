@@ -1531,8 +1531,8 @@
         throw new Error(result.message || 'Failed to create refund case');
       }
       
-      console.log('✅ Refund case created successfully via backend:', result.data?.refund_case);
-      return result.data?.refund_case || null;
+      console.log('✅ Refund case created successfully via backend:', result.refundCase);
+      return result.refundCase || null;
     } catch (err) {
       console.error('❌ Failed to create refund case:', err.message || err);
       showNotification('Failed to create refund case. Please try again.', 'error');
