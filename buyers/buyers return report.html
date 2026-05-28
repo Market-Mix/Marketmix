@@ -2494,9 +2494,11 @@
 
       // Create refund case in Supabase
       const sellerId = resolveRefundSellerId(currentChatData);
+      console.log('Resolved seller_id:', sellerId);
+      console.log('Order data:', currentChatData);
       if (!sellerId) {
         console.error('❌ seller_id could not be resolved for refund creation:', currentChatData);
-        showNotification('Unable to determine seller for this refund. Please refresh the page and try again.', 'error');
+        showNotification('Unable to resolve seller for this order.', 'error');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
         return;
