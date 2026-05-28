@@ -2554,6 +2554,11 @@
           text: `Please be patient while ${currentChatData.store_name || 'the store'} reviews your report and resolves this issue.`,
           time: new Date()
         });
+        
+        // Update localStorage with the new auto-reply message
+        const storageKey = `mm_buyer_return_chat_${currentChatData.id}`;
+        localStorage.setItem(storageKey, JSON.stringify(currentChatData.messages));
+        
         if (document.getElementById('chatPanel').classList.contains('active')) {
           loadChatMessages(currentChatData);
         }
