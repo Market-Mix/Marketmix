@@ -1491,29 +1491,18 @@
   // =====================================================
   
   /**
-   * Create a refund case in Supabase
+   * Create a refund case via backend API (no Supabase auth needed)
    */
   async function createRefundCase(caseData) {
     try {
       console.log('📝 Creating refund case for order:', caseData.order_id);
       
-      const { client, session } = await getAuthenticatedSupabaseClient();
-      if (!client) {
-        throw new Error('Supabase client not available');
-      }
-      if (!session) {
-        console.error('❌ Cannot create refund case because the Supabase auth session is missing.');
-        showNotification('Unable to submit refund. Please sign in again and refresh the page.', 'error');
-        return null;
-      }
-
       const refundCasePayload = {
-        buyer_id: caseData.buyer_id || session.user?.id,
+        buyer_id: caseData.buyer_id,
         order_id: caseData.order_id,
         product_name: caseData.product_name,
         complaint_text: caseData.complaint_text,
         seller_id: caseData.seller_id || null,
-        status: caseData.status || 'pending',
         evidence_url: caseData.evidence_url || null
       };
 
@@ -1524,22 +1513,26 @@
         refundCasePayload.evidence_public_id = caseData.evidence_public_id;
       }
 
-      console.log('📦 Inserting refund case payload:', refundCasePayload);
+      console.log('📦 Sending refund payload to backend:', refundCasePayload);
       
-      const { data, error } = await client
-        .from('refund_cases')
-        .insert([refundCasePayload])
-        .select()
-        .single();
+      const response = await fetch(`${API_BASE_URL}/refunds/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(refundCasePayload)
+      });
+
+      const result = await response.json();
       
-      if (error) {
-        console.error('❌ Supabase error creating refund case:', error);
-        console.error('Error details:', { code: error.code, message: error.message, status: error.status, details: error.details });
-        throw error;
+      if (!response.ok) {
+        console.error('❌ Backend API error creating refund case:', response.status);
+        console.error('Error details:', result);
+        throw new Error(result.message || 'Failed to create refund case');
       }
       
-      console.log('✅ Refund case created successfully:', data);
-      return data;
+      console.log('✅ Refund case created successfully via backend:', result.data?.refund_case);
+      return result.data?.refund_case || null;
     } catch (err) {
       console.error('❌ Failed to create refund case:', err.message || err);
       showNotification('Failed to create refund case. Please try again.', 'error');
@@ -1733,18 +1726,15 @@
   }
   
   /**
-   * Fetch all refund cases for a buyer from Supabase
+   * Fetch all refund cases for a buyer from Supabase (direct read)
    */
   async function fetchRefundCases(buyerId) {
     try {
       console.log('🔍 Fetching refund cases for buyer:', buyerId);
       
-      const { client, session } = await getAuthenticatedSupabaseClient();
+      const { client } = await getAuthenticatedSupabaseClient();
       if (!client) {
-        throw new Error('Supabase client not available');
-      }
-      if (!session) {
-        console.error('❌ No active Supabase auth session available for fetching refund cases.');
+        console.error('❌ Supabase client not available');
         return [];
       }
 
@@ -1756,7 +1746,6 @@
       
       if (error) {
         console.error('❌ Error fetching refund cases:', error);
-        console.error('Error details:', { code: error.code, message: error.message, status: error.status });
         throw error;
       }
       
@@ -1764,22 +1753,18 @@
       return data || [];
     } catch (err) {
       console.error('❌ Failed to fetch refund cases:', err.message || err);
-      showNotification('Failed to load refund cases.', 'error');
       return [];
     }
   }
   
   /**
-   * Fetch refund messages for a specific case
+   * Fetch refund messages for a specific case (direct read)
    */
   async function fetchRefundMessages(caseId) {
     try {
-      const { client, session } = await getAuthenticatedSupabaseClient();
+      const { client } = await getAuthenticatedSupabaseClient();
       if (!client) {
-        throw new Error('Supabase client not available');
-      }
-      if (!session) {
-        console.error('❌ No active Supabase auth session available for fetching refund messages.');
+        console.error('❌ Supabase client not available');
         return [];
       }
 
@@ -1802,16 +1787,13 @@
   }
   
   /**
-   * Update refund case status
+   * Update refund case status (direct update)
    */
   async function updateRefundCaseStatus(caseId, status) {
     try {
-      const { client, session } = await getAuthenticatedSupabaseClient();
+      const { client } = await getAuthenticatedSupabaseClient();
       if (!client) {
-        throw new Error('Supabase client not available');
-      }
-      if (!session) {
-        console.error('❌ No active Supabase auth session available for updating refund status.');
+        console.error('❌ Supabase client not available');
         return null;
       }
 
@@ -2244,9 +2226,9 @@
     const token = checkAuth();
     if (!token) return;
 
-    const { client, session } = await getAuthenticatedSupabaseClient();
-    if (!client || !session) {
-      console.warn('⚠️ Supabase auth session not established during page load. Refund features may require a sign-in.');
+    const { client } = await getAuthenticatedSupabaseClient();
+    if (!client) {
+      console.warn('⚠️ Supabase client could not be initialized.');
     }
 
     // Get buyer ID from the same auth data saved by the buyer login page.
@@ -2540,60 +2522,7 @@
         return;
       }
 
-      console.log('🔔 Creating seller notification');
-      await createSellerNotification({
-        seller_id: currentChatData.seller_id,
-        order_id: currentChatData.order_id
-      });
-      console.log('✅ Seller notification created');
-
-      const notificationPayload = {
-        buyer_id: userId,
-        refund_case_id: refundCase.id,
-        title: 'Refund Case Created',
-        message: `Your refund case for order ${currentChatData.order_id} has been created successfully.`,
-        type: 'refund',
-        link: '/buyers/buyers%20return%20report.html'
-      };
-
-      console.log('🔔 submitEvidence: Notification payload before creation', {
-        user_id: notificationPayload.buyer_id,
-        type: notificationPayload.type,
-        title: notificationPayload.title,
-        message: notificationPayload.message,
-        link: notificationPayload.link,
-        refund_case_id: notificationPayload.refund_case_id
-      });
-
-      let createdNotification = null;
-      if (typeof NotificationManager !== 'undefined' && NotificationManager.createNotification) {
-        console.log('🔔 submitEvidence: Using NotificationManager.createNotification');
-        try {
-          createdNotification = await NotificationManager.createNotification(userId, {
-            title: notificationPayload.title,
-            message: notificationPayload.message,
-            type: notificationPayload.type,
-            link: notificationPayload.link
-          });
-          console.log('🔔 submitEvidence: NotificationManager.createNotification result', createdNotification);
-        } catch (err) {
-          console.error('❌ submitEvidence: NotificationManager.createNotification threw', err);
-        }
-      }
-
-      if (!createdNotification) {
-        console.log('🔔 submitEvidence: Falling back to createBuyerNotification');
-        try {
-          createdNotification = await createBuyerNotification(notificationPayload);
-          console.log('🔔 submitEvidence: createBuyerNotification result', createdNotification);
-        } catch (err) {
-          console.error('❌ submitEvidence: createBuyerNotification threw', err);
-        }
-      }
-
-      if (!createdNotification) {
-        console.error('❌ Notification creation failed during evidence submission');
-      }
+      console.log('✅ Refund case created successfully by backend. Notifications sent.');
 
       // Update local data for UI consistency
       currentChatData.evidence_submitted_at = new Date().toISOString();
