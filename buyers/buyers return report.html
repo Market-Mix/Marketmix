@@ -1490,6 +1490,14 @@
   // SUPABASE HELPER FUNCTIONS
   // =====================================================
   
+  function resolveRefundSellerId(data) {
+    return data?.seller_id || data?.sellerId ||
+      data?.order?.seller_id || data?.order?.sellerId ||
+      data?.items?.[0]?.seller_id || data?.items?.[0]?.sellerId ||
+      data?.order?.items?.[0]?.seller_id || data?.order?.items?.[0]?.sellerId ||
+      data?.product?.seller_id || data?.product?.sellerId || null;
+  }
+
   /**
    * Create a refund case via backend API (no Supabase auth needed)
    */
