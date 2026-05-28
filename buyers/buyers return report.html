@@ -1802,7 +1802,7 @@
   // =====================================================
   // SUPABASE DATA MAPPING / REFRESH HELPERS
   // =====================================================
-  function mapRefundCaseToReport(caseData) {
+  function mapRefundCaseToReport(caseData, orderData = {}) {
     // If status is 'pending' (complaint started), use created_at as evidence submission time for countdown
     const evidenceSubmittedTime = caseData.evidence_submitted_at || (caseData.status !== 'purchased' ? caseData.created_at : null);
     
@@ -1811,25 +1811,26 @@
       status: caseData.status,
       created_at: caseData.created_at,
       evidence_submitted_at: caseData.evidence_submitted_at,
-      calculatedEvidenceTime: evidenceSubmittedTime
+      calculatedEvidenceTime: evidenceSubmittedTime,
+      orderData
     });
     
     return {
       id: caseData.id,
       order_id: caseData.order_id,
-      product_name: caseData.product_name,
-      total_amount: caseData.total_amount || 0,
+      product_name: caseData.product_name || orderData.product_name || 'Purchased item',
+      total_amount: caseData.total_amount || orderData.total_amount || 0,
       status: caseData.status,
       reason: caseData.reason || '',
       description: caseData.complaint_text || '',
-      purchase_date: caseData.purchase_date,
+      purchase_date: caseData.purchase_date || orderData.created_at,
       created_at: caseData.created_at,
       evidence_submitted_at: evidenceSubmittedTime,
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
       marketmix_reason: caseData.marketmix_reason,
-      store_name: caseData.store_name || 'Store',
-      seller_id: caseData.seller_id,
+      store_name: caseData.store_name || orderData.store_name || orderData.seller_name || 'Store',
+      seller_id: caseData.seller_id || orderData.seller_id,
       messages: []
     };
   }
@@ -1907,7 +1908,8 @@
   }
 
   function buildReturnReports(refundCases, buyerOrders) {
-    const refundReports = refundCases.map(mapRefundCaseToReport);
+    const orderMap = new Map((buyerOrders || []).map(order => [String(order.id), order]));
+    const refundReports = refundCases.map(caseData => mapRefundCaseToReport(caseData, orderMap.get(String(caseData.order_id)) || {}));
     const reportedOrderIds = new Set(refundReports.map(report => String(report.order_id)));
     const openOrderReports = buyerOrders
       .filter(order => order?.id && !reportedOrderIds.has(String(order.id)))
@@ -2487,9 +2489,8 @@
       }
 
       // Create refund case via backend order data
-      const sellerId = currentChatData?.seller_id || null;
+      const sellerId = resolveRefundSellerId(currentChatData);
       console.log('Fetched order data:', currentChatData);
-      console.log('seller_id from order:', currentChatData?.seller_id);
       console.log('Resolved seller_id:', sellerId);
       if (!sellerId) {
         console.error('❌ Order seller information missing:', currentChatData);
@@ -2542,7 +2543,7 @@
       setTimeout(() => {
         currentChatData.messages.push({
           type: 'system',
-          text: 'Please be patient while the store attends to you.',
+          text: `Please be patient while ${currentChatData.store_name || 'the store'} reviews your report and resolves this issue.`,
           time: new Date()
         });
         if (document.getElementById('chatPanel').classList.contains('active')) {
