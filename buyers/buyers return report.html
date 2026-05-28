@@ -1493,27 +1493,30 @@
   /**
    * Create a refund case via backend API (no Supabase auth needed)
    */
+  function resolveRefundSellerId(data) {
+    const fallbackSellerId = data?.seller_id || data?.sellerId ||
+      data?.order?.seller_id || data?.order?.sellerId ||
+      data?.items?.[0]?.seller_id || data?.items?.[0]?.sellerId ||
+      data?.order?.items?.[0]?.seller_id || data?.order?.items?.[0]?.sellerId ||
+      data?.product?.seller_id || data?.product?.sellerId || null;
+    return fallbackSellerId;
+  }
+
   async function createRefundCase(caseData) {
     try {
       console.log('📝 Creating refund case for order:', caseData.order_id);
       
       const refundCasePayload = {
         buyer_id: caseData.buyer_id,
+        seller_id: caseData.seller_id,
         order_id: caseData.order_id,
         product_name: caseData.product_name,
         complaint_text: caseData.complaint_text,
-        seller_id: caseData.seller_id || null,
-        evidence_url: caseData.evidence_url || null
+        evidence_url: caseData.evidence_url || null,
+        status: 'pending'
       };
 
-      if (caseData.evidence_type != null) {
-        refundCasePayload.evidence_type = caseData.evidence_type;
-      }
-      if (caseData.evidence_public_id != null) {
-        refundCasePayload.evidence_public_id = caseData.evidence_public_id;
-      }
-
-      console.log('📦 Sending refund payload to backend:', refundCasePayload);
+      console.log('Refund payload:', refundCasePayload);
       
       const response = await fetch(`${API_BASE_URL}/refunds/create`, {
         method: 'POST',
@@ -2490,16 +2493,22 @@
       }
 
       // Create refund case in Supabase
+      const sellerId = resolveRefundSellerId(currentChatData);
+      if (!sellerId) {
+        console.error('❌ seller_id could not be resolved for refund creation:', currentChatData);
+        showNotification('Unable to determine seller for this refund. Please refresh the page and try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        return;
+      }
+
       const refundCase = await createRefundCase({
         order_id: currentChatData.order_id,
         product_name: currentChatData.product_name,
         complaint_text: description,
         buyer_id: userId,
-        seller_id: currentChatData.seller_id || null,
-        status: 'pending',
-        evidence_url: evidenceData.url,
-        evidence_type: evidenceData.resource_type || null,
-        evidence_public_id: evidenceData.public_id || null
+        seller_id: sellerId,
+        evidence_url: evidenceData.url
       });
 
       if (!refundCase) {
