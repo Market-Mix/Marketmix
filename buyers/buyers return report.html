@@ -1493,15 +1493,6 @@
   /**
    * Create a refund case via backend API (no Supabase auth needed)
    */
-  function resolveRefundSellerId(data) {
-    const fallbackSellerId = data?.seller_id || data?.sellerId ||
-      data?.order?.seller_id || data?.order?.sellerId ||
-      data?.items?.[0]?.seller_id || data?.items?.[0]?.sellerId ||
-      data?.order?.items?.[0]?.seller_id || data?.order?.items?.[0]?.sellerId ||
-      data?.product?.seller_id || data?.product?.sellerId || null;
-    return fallbackSellerId;
-  }
-
   async function createRefundCase(caseData) {
     try {
       console.log('📝 Creating refund case for order:', caseData.order_id);
@@ -1855,11 +1846,14 @@
       });
 
       const result = await response.json().catch(() => ({}));
+      const orders = result.data?.orders || result.orders || [];
+      console.log('Fetched order data:', orders);
+      console.log('seller_id from fetched orders:', orders.map(order => order.seller_id));
       if (!response.ok) {
         throw new Error(result.message || 'Failed to fetch buyer orders.');
       }
 
-      return result.data?.orders || result.orders || [];
+      return orders;
     } catch (err) {
       console.error('Failed to load buyer orders for returns:', err);
       return [];
@@ -2492,13 +2486,14 @@
         }
       }
 
-      // Create refund case in Supabase
-      const sellerId = resolveRefundSellerId(currentChatData);
+      // Create refund case via backend order data
+      const sellerId = currentChatData?.seller_id || null;
+      console.log('Fetched order data:', currentChatData);
+      console.log('seller_id from order:', currentChatData?.seller_id);
       console.log('Resolved seller_id:', sellerId);
-      console.log('Order data:', currentChatData);
       if (!sellerId) {
-        console.error('❌ seller_id could not be resolved for refund creation:', currentChatData);
-        showNotification('Unable to resolve seller for this order.', 'error');
+        console.error('❌ Order seller information missing:', currentChatData);
+        showNotification('Order seller information missing.', 'error');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
         return;
