@@ -1433,60 +1433,57 @@
   window.CLOUDINARY_UPLOAD_FOLDER = window.CLOUDINARY_UPLOAD_FOLDER || 'marketmix/refund_evidence';
 
   function getSupabaseClient() {
+    if (window.marketmixSupabaseClient) return window.marketmixSupabaseClient;
+    if (window.supabaseClient) return window.supabaseClient;
+    if (window.supabase && typeof window.supabase.from === 'function' && typeof window.supabase.auth?.getSession === 'function') {
+      console.log('🔔 Reusing existing Supabase client instance from window.supabase');
+      return window.supabase;
+    }
+
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       console.error('❌ Supabase client library is not loaded.');
       return null;
     }
 
-    if (!window.marketmixSupabaseClient) {
-      console.log('🔧 Creating new Supabase client instance');
-      window.marketmixSupabaseClient = window.supabase.createClient(
-        window.MARKETMIX_SUPABASE_URL,
-        window.MARKETMIX_SUPABASE_ANON_KEY
-      );
+    if (!window.MARKETMIX_SUPABASE_URL || !window.MARKETMIX_SUPABASE_ANON_KEY) {
+      console.error('❌ Supabase configuration is missing.');
+      return null;
     }
+
+    console.log('🔧 Initializing Supabase client instance');
+    window.marketmixSupabaseClient = window.supabase.createClient(
+      window.MARKETMIX_SUPABASE_URL,
+      window.MARKETMIX_SUPABASE_ANON_KEY
+    );
 
     return window.marketmixSupabaseClient;
   }
 
-  async function restoreSupabaseAuthSession(client) {
-    try {
-      if (!client || !client.auth) {
-        console.warn('⚠️ Supabase client or auth module unavailable');
-        return false;
-      }
-
-      const authToken = getAuthToken();
-      if (!authToken) {
-        console.log('📝 No stored auth token found, checking existing session...');
-        const { data: sessionData } = await client.auth.getSession();
-        if (sessionData?.session) {
-          console.log('✅ Supabase session already active');
-          return true;
-        }
-        console.warn('⚠️ No auth token or active session available');
-        return false;
-      }
-
-      console.log('🔑 Attempting to restore Supabase auth from stored token');
-      if (typeof client.auth.setAuth === 'function') {
-        client.auth.setAuth(authToken);
-        console.log('✅ Auth token set successfully');
-        return true;
-      }
-
-      const { data: sessionData, error: sessionError } = await client.auth.refreshSession();
-      if (sessionError) {
-        console.warn('⚠️ Session refresh failed:', sessionError.message);
-        return false;
-      }
-
-      console.log('✅ Supabase session restored successfully');
-      return true;
-    } catch (err) {
-      console.error('❌ Error restoring Supabase auth:', err);
-      return false;
+  async function getAuthenticatedSupabaseClient() {
+    const client = getSupabaseClient();
+    if (!client) {
+      return { client: null, session: null };
     }
+
+    if (!client.auth || typeof client.auth.getSession !== 'function') {
+      console.error('❌ Supabase auth interface is unavailable.');
+      return { client, session: null };
+    }
+
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      console.error('❌ Error checking Supabase auth session:', error);
+      return { client, session: null };
+    }
+
+    const session = data?.session || null;
+    if (!session) {
+      console.warn('⚠️ No active Supabase auth session found. Buyer must be signed in.');
+    } else {
+      console.log('🔐 Supabase auth session active for user:', session.user?.id);
+    }
+
+    return { client, session };
   }
 
   // =====================================================
@@ -1500,21 +1497,21 @@
     try {
       console.log('📝 Creating refund case for order:', caseData.order_id);
       
-      const client = getSupabaseClient();
+      const { client, session } = await getAuthenticatedSupabaseClient();
       if (!client) {
         throw new Error('Supabase client not available');
       }
-
-      const authRestored = await restoreSupabaseAuthSession(client);
-      if (!authRestored) {
-        console.warn('⚠️ Could not restore Supabase auth for refund case creation');
+      if (!session) {
+        console.error('❌ Cannot create refund case because the Supabase auth session is missing.');
+        showNotification('Unable to submit refund. Please sign in again and refresh the page.', 'error');
+        return null;
       }
 
       const refundCasePayload = {
+        buyer_id: caseData.buyer_id || session.user?.id,
         order_id: caseData.order_id,
         product_name: caseData.product_name,
         complaint_text: caseData.complaint_text,
-        buyer_id: caseData.buyer_id,
         seller_id: caseData.seller_id || null,
         status: caseData.status || 'pending',
         evidence_url: caseData.evidence_url || null
@@ -1630,9 +1627,13 @@
       console.log('  - type:', type);
       console.log('  - link:', link);
 
-      const client = getSupabaseClient();
+      const { client, session } = await getAuthenticatedSupabaseClient();
       if (!client) {
         console.error('❌ createBuyerNotification: Supabase client not available');
+        return null;
+      }
+      if (!session) {
+        console.error('❌ createBuyerNotification: no active Supabase auth session available');
         return null;
       }
 
@@ -1696,15 +1697,14 @@
         return null;
       }
 
-      const client = getSupabaseClient();
+      const { client, session } = await getAuthenticatedSupabaseClient();
       if (!client) {
         console.error('createSellerNotification: Supabase client not available');
         return null;
       }
-
-      const authRestored = await restoreSupabaseAuthSession(client);
-      if (!authRestored) {
-        console.warn('⚠️ Could not restore Supabase auth for seller notification');
+      if (!session) {
+        console.error('createSellerNotification: no active Supabase auth session available');
+        return null;
       }
 
       const { data, error } = await client
@@ -1739,14 +1739,13 @@
     try {
       console.log('🔍 Fetching refund cases for buyer:', buyerId);
       
-      const client = getSupabaseClient();
+      const { client, session } = await getAuthenticatedSupabaseClient();
       if (!client) {
         throw new Error('Supabase client not available');
       }
-
-      const authRestored = await restoreSupabaseAuthSession(client);
-      if (!authRestored) {
-        console.warn('⚠️ Could not restore Supabase auth, attempting fetch anyway...');
+      if (!session) {
+        console.error('❌ No active Supabase auth session available for fetching refund cases.');
+        return [];
       }
 
       const { data, error } = await client
@@ -1775,14 +1774,13 @@
    */
   async function fetchRefundMessages(caseId) {
     try {
-      const client = getSupabaseClient();
+      const { client, session } = await getAuthenticatedSupabaseClient();
       if (!client) {
         throw new Error('Supabase client not available');
       }
-
-      const authRestored = await restoreSupabaseAuthSession(client);
-      if (!authRestored) {
-        console.warn('⚠️ Could not restore Supabase auth for fetching refund messages');
+      if (!session) {
+        console.error('❌ No active Supabase auth session available for fetching refund messages.');
+        return [];
       }
 
       const { data, error } = await client
@@ -1808,14 +1806,13 @@
    */
   async function updateRefundCaseStatus(caseId, status) {
     try {
-      const client = getSupabaseClient();
+      const { client, session } = await getAuthenticatedSupabaseClient();
       if (!client) {
         throw new Error('Supabase client not available');
       }
-
-      const authRestored = await restoreSupabaseAuthSession(client);
-      if (!authRestored) {
-        console.warn('⚠️ Could not restore Supabase auth for updating refund status');
+      if (!session) {
+        console.error('❌ No active Supabase auth session available for updating refund status.');
+        return null;
       }
 
       const { data, error } = await client
@@ -2247,11 +2244,11 @@
     const token = checkAuth();
     if (!token) return;
 
-    const client = getSupabaseClient();
-    if (client) {
-      await restoreSupabaseAuthSession(client);
+    const { client, session } = await getAuthenticatedSupabaseClient();
+    if (!client || !session) {
+      console.warn('⚠️ Supabase auth session not established during page load. Refund features may require a sign-in.');
     }
-    
+
     // Get buyer ID from the same auth data saved by the buyer login page.
     let userId = getCurrentBuyerId();
     
