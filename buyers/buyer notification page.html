@@ -571,7 +571,7 @@
           };
 
           function normalizeNotificationLink(rawLink) {
-            let link = String(rawLink || '').trim().replace(/\\/g, '/');
+            let link = String(rawLink || '').trim().replace(/\\/g, '/').replace(/\s+/g, '%20');
             if (!link) {
               return typeFallbacks[n.type] || '/';
             }
@@ -581,28 +581,36 @@
               return link;
             }
 
-            // Handle common stale root-level paths from older notifications
             const lowerLink = link.toLowerCase();
             if (lowerLink === 'dashboard' || lowerLink === '/dashboard') {
               return typeFallbacks.account;
             }
 
-            // Keep root-relative folder paths unchanged
+            // Special-case wishlist page paths to the actual filepath with encoded space
+            if (/^(?:\/)?(?:buyers\/)?buyers(?:%20|\s)wishlist\.html(?:\?.*)?$/i.test(link)
+             || /^(?:\/)?(?:buyers\/)?wishlist\.html(?:\?.*)?$/i.test(link)
+             || /^wishlist\.html(?:\?.*)?$/i.test(link)) {
+              return '/buyers/buyers%20wishlist.html';
+            }
+
+            // Special-case store page paths to the real buyers store page
+            if (/^(?:\/)?(?:buyers\/)?store-id\.html/i.test(link)) {
+              return '/buyers/store-id.html' + (link.includes('?') ? link.slice(link.indexOf('?')) : '');
+            }
+
+            // Keep root-relative longer folder paths unchanged
             if (/^(buyers|sellers|admin)\//i.test(link)) {
               return '/' + link;
             }
 
-            // Handle folder files whose path uses a space separator
             if (/^(buyers|sellers|admin)(?: |%20)/i.test(link)) {
               return '/' + link;
             }
 
-            // Keep already absolute paths unchanged
             if (link.startsWith('/')) {
               return link;
             }
 
-            // Otherwise assume it is a page name inside /buyers/
             return '/buyers/' + link;
           }
 
