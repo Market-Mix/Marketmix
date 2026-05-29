@@ -1812,6 +1812,10 @@
   // =====================================================
   // SUPABASE DATA MAPPING / REFRESH HELPERS
   // =====================================================
+  function resolveStoreName(source = {}) {
+    return source.store_name || source.seller_name || source.shop_name || source.seller?.name || source.seller?.shop_name || source.name || 'Store';
+  }
+
   function mapRefundCaseToReport(caseData, orderData = {}) {
     // If status is 'pending' (complaint started), use created_at as evidence submission time for countdown
     const evidenceSubmittedTime = caseData.evidence_submitted_at || (caseData.status !== 'purchased' ? caseData.created_at : null);
@@ -1839,7 +1843,7 @@
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
       marketmix_reason: caseData.marketmix_reason,
-      store_name: caseData.store_name || orderData.store_name || orderData.seller_name || 'Store',
+      store_name: resolveStoreName(caseData) || resolveStoreName(orderData),
       seller_id: caseData.seller_id || orderData.seller_id,
       messages: []
     };
@@ -1913,7 +1917,7 @@
         evidence_url: null,
         seller_response: null,
         marketmix_reason: null,
-        store_name: order.store_name || order.seller_name || 'Store',
+        store_name: resolveStoreName(item) || resolveStoreName(order),
         seller_id: item.seller_id || order.seller_id || null,
         messages: []
       };
@@ -1953,7 +1957,7 @@
             evidence_url: null,
             seller_response: null,
             marketmix_reason: null,
-            store_name: order.store_name || order.seller_name || 'Store',
+            store_name: resolveStoreName(item) || resolveStoreName(order),
             seller_id: item.seller_id || order.seller_id || null,
             messages: []
           }));
