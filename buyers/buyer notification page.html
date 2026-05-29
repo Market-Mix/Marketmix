@@ -562,11 +562,12 @@
 
           // Determine target link: prefer stored link, otherwise fallback by type
           const typeFallbacks = {
-            wishlist: '/buyers/wishlist.html', 
+            wishlist: '/buyers/buyers%20wishlist.html',
             cart: '/buyers/cart.html',
-            account: '/buyers/homepage.html',
+            account: '/buyers/buyers%20homepage.html',
             order: '/buyers/purchase%20history.html',
-            refund: '/buyers/buyers%20return%20report.html'
+            refund: '/buyers/buyers%20return%20report.html',
+            follow: '/buyers/following-shops.html'
           };
 
           function normalizeNotificationLink(rawLink) {
@@ -575,19 +576,30 @@
               return typeFallbacks[n.type] || '/';
             }
 
-            // Keep already absolute paths or URLs unchanged
-            if (/^https?:\/\//i.test(link) || link.startsWith('/')) {
+            // Keep already absolute URLs unchanged
+            if (/^https?:\/\//i.test(link)) {
               return link;
             }
 
-            // If path starts with buyers/ then it's already a folder path
-            if (/^buyers\//i.test(link)) {
+            // Handle common stale root-level paths from older notifications
+            const lowerLink = link.toLowerCase();
+            if (lowerLink === 'dashboard' || lowerLink === '/dashboard') {
+              return typeFallbacks.account;
+            }
+
+            // Keep root-relative folder paths unchanged
+            if (/^(buyers|sellers|admin)\//i.test(link)) {
               return '/' + link;
             }
 
-            // If path begins with buyers followed by a file name separator, treat it as a buyers folder file
-            if (/^buyers(?: |%20)/i.test(link)) {
-              return '/buyers/' + link;
+            // Handle folder files whose path uses a space separator
+            if (/^(buyers|sellers|admin)(?: |%20)/i.test(link)) {
+              return '/' + link;
+            }
+
+            // Keep already absolute paths unchanged
+            if (link.startsWith('/')) {
+              return link;
             }
 
             // Otherwise assume it is a page name inside /buyers/
