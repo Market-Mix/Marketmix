@@ -1904,7 +1904,7 @@
         product_id: item.product_id || item.id,
         product_name: item.product_name || item.name || 'Purchased item',
         total_amount: (item.price || 0) * (item.quantity || 1),
-        status: order.status || 'purchased',
+        status: 'purchased',
         reason: '',
         description: '',
         purchase_date: order.created_at,
@@ -2402,7 +2402,7 @@
         if (timeLeft > 0 && !isRejected) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const label = complaintStarted ? `Chat (${daysLeft}d ${hoursLeft}h)` : `Start Complaint (${daysLeft}d ${hoursLeft}h)`;
+          const label = complaintStarted ? `Chat (${daysLeft}d ${hoursLeft}h)` : `Report issue (${daysLeft}d ${hoursLeft}h)`;
           const unreadCount = getUnreadCount(report.id);
           chatBtnHtml = `
             <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
