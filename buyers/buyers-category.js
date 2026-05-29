@@ -22,8 +22,10 @@ function showToast(msg) {
 
 function updateCartCount() {
   const c = cart.reduce((s,i) => s+(i.quantity||1), 0);
-  const el = document.querySelector('.cart-count');
-  if (el) { el.textContent = c; el.style.display = c > 0 ? 'inline-block' : 'none'; }
+  document.querySelectorAll('.cart-count, #mm-cart-count, [data-cart-badge]').forEach(el => {
+    el.textContent = c;
+    el.style.display = c > 0 ? 'inline-block' : 'none';
+  });
 }
 
 function saveCart() { localStorage.setItem('cart', JSON.stringify(cart)); updateCartCount(); }

@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ===== CART COUNT UPDATE =====
   (function() {
-    const cartCountEl = document.getElementById('mm-cart-count');
-    if (!cartCountEl) return;
+    const cartCountEls = document.querySelectorAll('#mm-cart-count, .cart-count, [data-cart-badge]');
+    if (!cartCountEls || cartCountEls.length === 0) return;
     
     // Get cart from localStorage
     function updateCartCount() {
@@ -48,10 +48,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const raw = localStorage.getItem('cart') || localStorage.getItem('marketmix-cart') || '[]';
         const cart = JSON.parse(raw);
         const totalCount = Array.isArray(cart) ? cart.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
-        cartCountEl.textContent = totalCount;
+        cartCountEls.forEach(el => {
+          el.textContent = totalCount;
+          el.style.display = totalCount > 0 ? 'inline-block' : 'none';
+        });
       } catch (error) {
         console.error('Error updating cart count:', error);
-        cartCountEl.textContent = '0';
+        cartCountEls.forEach(el => {
+          el.textContent = '0';
+          el.style.display = 'none';
+        });
       }
     }
     

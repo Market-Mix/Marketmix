@@ -368,13 +368,16 @@
       }
     }
 
+    function getCartCount() {
+      return cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    }
+
     function updateCartCount() {
-      const count = cart.reduce((sum, item) => sum + (item.quantity||0), 0);
-      const cartCount = document.querySelector('.cart-count');
-      if(cartCount){
-        cartCount.textContent = count;
-        cartCount.style.display = count > 0 ? 'inline-block' : 'none';
-      }
+      const count = getCartCount();
+      document.querySelectorAll('.cart-count, #mm-cart-count, [data-cart-badge]').forEach(el => {
+        el.textContent = count;
+        el.style.display = count > 0 ? 'inline-block' : 'none';
+      });
     }
 
     function saveCart() {
@@ -722,6 +725,18 @@
         renderCart();
         updateCartCount();
       }
+
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) {
+          try {
+            cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+          } catch (err) {
+            cart = [];
+          }
+          renderCart();
+          updateCartCount();
+        }
+      });
 
       // 🔥 PROCEED TO CHECKOUT WITH EMPTY CART CHECK
       const proceed = document.getElementById('proceedCheckout');
