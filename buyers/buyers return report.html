@@ -1509,6 +1509,8 @@
         buyer_id: caseData.buyer_id,
         seller_id: caseData.seller_id,
         order_id: caseData.order_id,
+        order_item_id: caseData.order_item_id || null,
+        product_id: caseData.product_id || null,
         product_name: caseData.product_name,
         complaint_text: caseData.complaint_text,
         evidence_url: caseData.evidence_url || null,
@@ -1889,40 +1891,50 @@
       }]
     }];
   }
+  // Map an order into an array of per-item complaint reports (one report per order item)
   function mapOrderToComplaintReport(order) {
     const items = Array.isArray(order.items) ? order.items : [];
-    const productNames = items
-      .map(item => item.product_name || item.name || item.productName)
-      .filter(Boolean);
 
-    return {
-      id: `order-${order.id}`,
-      order_id: order.id,
-      product_name: productNames.length ? productNames.join(', ') : 'Purchased item',
-      total_amount: order.total_amount || 0,
-      status: 'purchased',
-      reason: '',
-      description: '',
-      purchase_date: order.created_at,
-      created_at: order.created_at,
-      evidence_submitted_at: null,
-      evidence_url: null,
-      seller_response: null,
-      marketmix_reason: null,
-      store_name: order.store_name || order.seller_name || 'Store',
-      seller_id: items[0]?.seller_id || order.seller_id || null,
-      messages: []
-    };
+    // For multi-vendor orders we create one report per item so refunds target a single order item
+    return items.map(item => {
+      return {
+        id: `order-${order.id}-item-${item.id}`,
+        order_id: order.id,
+        order_item_id: item.id,
+        product_id: item.product_id || item.id,
+        product_name: item.product_name || item.name || 'Purchased item',
+        total_amount: (item.price || 0) * (item.quantity || 1),
+        status: order.status || 'purchased',
+        reason: '',
+        description: '',
+        purchase_date: order.created_at,
+        created_at: order.created_at,
+        evidence_submitted_at: null,
+        evidence_url: null,
+        seller_response: null,
+        marketmix_reason: null,
+        store_name: order.store_name || order.seller_name || 'Store',
+        seller_id: item.seller_id || order.seller_id || null,
+        messages: []
+      };
+    });
   }
 
   function buildReturnReports(refundCases, buyerOrders) {
     const orderMap = new Map((buyerOrders || []).map(order => [String(order.id), order]));
-    const refundReports = refundCases.map(caseData => mapRefundCaseToReport(caseData, orderMap.get(String(caseData.order_id)) || {}));
+
+    // Map refund cases (existing refunds) to reports, enriching with matching order item data when available
+    const refundReports = refundCases.flatMap(caseData => {
+      const orderData = orderMap.get(String(caseData.order_id)) || {};
+      return [mapRefundCaseToReport(caseData, orderData)];
+    });
+
+    // Build open order item reports (one entry per order item) for items without a refund case yet
     const reportedOrderIds = new Set(refundReports.map(report => String(report.order_id)));
-    const openOrderReports = buyerOrders
+    const openOrderReports = (buyerOrders || [])
       .filter(order => order?.id && !reportedOrderIds.has(String(order.id)))
       .filter(order => !['cancelled', 'canceled', 'refunded'].includes(String(order.status || '').toLowerCase()))
-      .map(mapOrderToComplaintReport);
+      .flatMap(order => mapOrderToComplaintReport(order));
 
     return [...refundReports, ...openOrderReports];
   }
@@ -2510,6 +2522,8 @@
 
       const refundCase = await createRefundCase({
         order_id: currentChatData.order_id,
+        order_item_id: currentChatData.order_item_id || currentChatData.order_item || null,
+        product_id: currentChatData.product_id || currentChatData.productId || null,
         product_name: currentChatData.product_name,
         complaint_text: description,
         buyer_id: userId,
