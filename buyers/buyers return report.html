@@ -1924,17 +1924,40 @@
     const orderMap = new Map((buyerOrders || []).map(order => [String(order.id), order]));
 
     // Map refund cases (existing refunds) to reports, enriching with matching order item data when available
-    const refundReports = refundCases.flatMap(caseData => {
+    const refundReports = refundCases.map(caseData => {
       const orderData = orderMap.get(String(caseData.order_id)) || {};
-      return [mapRefundCaseToReport(caseData, orderData)];
+      return mapRefundCaseToReport(caseData, orderData);
     });
 
-    // Build open order item reports (one entry per order item) for items without a refund case yet
-    const reportedOrderIds = new Set(refundReports.map(report => String(report.order_id)));
+    // Build open order item reports (one entry per order item) for order items without a refund case yet
+    const reportedItemIds = new Set(refundReports.map(report => String(report.order_item_id || report.id)));
     const openOrderReports = (buyerOrders || [])
-      .filter(order => order?.id && !reportedOrderIds.has(String(order.id)))
       .filter(order => !['cancelled', 'canceled', 'refunded'].includes(String(order.status || '').toLowerCase()))
-      .flatMap(order => mapOrderToComplaintReport(order));
+      .flatMap(order => {
+        const items = Array.isArray(order.items) ? order.items : [];
+        return items
+          .filter(item => !reportedItemIds.has(String(item.id)))
+          .map(item => ({
+            id: `order-${order.id}-item-${item.id}`,
+            order_id: order.id,
+            order_item_id: item.id,
+            product_id: item.product_id || item.id,
+            product_name: item.product_name || item.name || 'Purchased item',
+            total_amount: (item.price || 0) * (item.quantity || 1),
+            status: order.status || 'purchased',
+            reason: '',
+            description: '',
+            purchase_date: order.created_at,
+            created_at: order.created_at,
+            evidence_submitted_at: null,
+            evidence_url: null,
+            seller_response: null,
+            marketmix_reason: null,
+            store_name: order.store_name || order.seller_name || 'Store',
+            seller_id: item.seller_id || order.seller_id || null,
+            messages: []
+          }));
+      });
 
     return [...refundReports, ...openOrderReports];
   }
