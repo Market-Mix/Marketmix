@@ -2352,7 +2352,7 @@
     });
 
     container.innerHTML = sortedReports.map(report => {
-      const complaintStarted = report.status && report.status !== 'purchased';
+      const complaintStarted = !!report.evidence_submitted_at;
       const isRejected = report.status === 'rejected';
       let statusHtml = '';
       let viewBtnHtml = `
@@ -2375,7 +2375,7 @@
         `;
       }
 
-      if (report.purchase_date || report.evidence_submitted_at) {
+      if (report.evidence_submitted_at || report.purchase_date) {
         const now = Date.now();
         let expiryTime;
         let timeLeft;
@@ -2407,7 +2407,7 @@
           chatBtnHtml = `
             <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
               <i class="fas fa-comments"></i> ${label}
-              ${unreadCount > 0 ? `<span class="notification-badge">${unreadCount}</span>` : ''}
+              ${unreadCount > 0 && complaintStarted ? `<span class="notification-badge">${unreadCount}</span>` : ''}
             </button>
           `;
         } else if (isRejected) {
@@ -2434,7 +2434,7 @@
         <div class="col-status">
           ${statusHtml}
         </div>
-        <div class="col-date">${complaintStarted ? formatDate(report.evidence_submitted_at || report.created_at) : ''}</div>
+        <div class="col-date">${complaintStarted ? formatDate(report.evidence_submitted_at) : ''}</div>
         <div class="col-action">
           ${viewBtnHtml}
         </div>
@@ -2566,12 +2566,8 @@
       // Update local data for UI consistency
       currentChatData.evidence_submitted_at = new Date().toISOString();
       currentChatData.supabase_case_id = refundCase.id;
-      
-      // If status is still 'purchased', change it to 'pending' to mark complaint as started
-      if (currentChatData.status === 'purchased') {
-        currentChatData.status = 'pending';
-        currentChatData.reason = 'complaint';
-      }
+      currentChatData.status = 'pending';
+      currentChatData.reason = 'complaint';
       
       if (!currentChatData.messages) currentChatData.messages = [];
       
