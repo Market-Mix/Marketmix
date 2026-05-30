@@ -177,6 +177,12 @@ function populateCategorySelects() {
       select.appendChild(opt);
     });
   });
+
+  // Wire dynamic fields
+  const addCat = document.getElementById('newProductCategory');
+  const editCat = document.getElementById('editCategory');
+  if (addCat) addCat.addEventListener('change', () => renderDynamicFields(addCat.value, 'addDynamicFields'));
+  if (editCat) editCat.addEventListener('change', () => renderDynamicFields(editCat.value, 'editDynamicFields'));
 }
 
 // ─── Image preview ─────────────────────────────────────────────────────────────
@@ -351,6 +357,9 @@ async function addProduct() {
     const weight = document.getElementById('newProductWeight').value;
     if (weight) formData.append('weight_kg', weight);
 
+    const addDynamic = collectDynamicFields('#addProductForm');
+    if (addDynamic) formData.append('category_meta', JSON.stringify(addDynamic));
+
     const imageFiles = Array.from(document.getElementById('newProductImages').files).slice(0, 5);
     imageFiles.forEach(f => formData.append('images', f));
 
@@ -444,6 +453,23 @@ function openEditModal(id) {
   // Set weight
   document.getElementById('editWeight').value = product.weight_kg || '';
 
+  // Restore dynamic fields when editing
+  if (product.category_id) {
+    renderDynamicFields(product.category_id, 'editDynamicFields');
+    // Restore saved meta values if they exist
+    if (product.category_meta) {
+      const meta = typeof product.category_meta === 'string' 
+        ? JSON.parse(product.category_meta) 
+        : product.category_meta;
+      setTimeout(() => {
+        Object.entries(meta).forEach(([key, val]) => {
+          const el = document.querySelector(`#editDynamicFields [name="cat_${key}"]`);
+          if (el) el.value = val;
+        });
+      }, 50);
+    }
+  }
+
   // Show existing images
   const container = document.getElementById('editCurrentImages');
   if (container) {
@@ -500,6 +526,9 @@ async function handleEditSubmit(e) {
 
     const weightInput = document.getElementById('editWeight');
     if (weightInput && weightInput.value) formData.append('weight_kg', weightInput.value);
+
+    const editDynamic = collectDynamicFields('#editForm');
+    if (editDynamic) formData.append('category_meta', JSON.stringify(editDynamic));
 
     // Keep existing images from editingProductId's data
     const existing = allProducts.find(p => p.id === editingProductId);
@@ -637,4 +666,92 @@ function formatPriceInput(input) {
 
 function parsePriceInput(value) {
   return parseFloat(value.replace(/,/g, '')) || 0;
+}
+
+// ─── Dynamic Category Fields ───────────────────────────────────────────────────
+const CATEGORY_FIELDS = {
+  'Books & Media': `
+    <div class="dynamic-fields">
+      <label>Type</label>
+      <select name="cat_type"><option value="">Select type</option><option>Textbook</option><option>Novel</option><option>Magazine</option><option>Educational Material</option></select>
+      <label>Author (optional)</label>
+      <input type="text" name="cat_author" placeholder="Author name">
+      <label>Condition</label>
+      <select name="cat_condition"><option value="">Select condition</option><option>New</option><option>Fairly Used</option></select>
+    </div>`,
+  'Electronics': `
+    <div class="dynamic-fields">
+      <label>Brand</label>
+      <input type="text" name="cat_brand" placeholder="e.g. Samsung, Apple">
+      <label>Type</label>
+      <select name="cat_type"><option value="">Select type</option><option>Phone</option><option>Laptop</option><option>TV</option><option>Game Console</option><option>Accessory</option></select>
+      <label>Model (optional)</label>
+      <input type="text" name="cat_model" placeholder="e.g. iPhone 14">
+    </div>`,
+  'Fashion': `
+    <div class="dynamic-fields">
+      <label>Gender</label>
+      <select name="cat_gender"><option value="">Select gender</option><option>Men</option><option>Women</option><option>Unisex</option></select>
+      <label>Type</label>
+      <select name="cat_type"><option value="">Select type</option><option>Shirt</option><option>Trouser</option><option>Shoe</option><option>Bag</option><option>Watch</option></select>
+      <label>Size</label>
+      <input type="text" name="cat_size" placeholder="e.g. M, L, 42">
+      <label>Color</label>
+      <input type="text" name="cat_color" placeholder="e.g. Red, Blue">
+    </div>`,
+  'Health & Beauty': `
+    <div class="dynamic-fields">
+      <label>Brand</label>
+      <input type="text" name="cat_brand" placeholder="e.g. Nivea, L'Oreal">
+      <label>Product Type</label>
+      <select name="cat_type"><option value="">Select type</option><option>Skincare</option><option>Makeup</option><option>Haircare</option><option>Perfume</option></select>
+      <label>Size/Volume</label>
+      <input type="text" name="cat_size" placeholder="e.g. 200ml, 50g">
+    </div>`,
+  'Jewelry': `
+    <div class="dynamic-fields">
+      <label>Type</label>
+      <select name="cat_type"><option value="">Select type</option><option>Ring</option><option>Necklace</option><option>Bracelet</option><option>Earrings</option></select>
+      <label>Material</label>
+      <select name="cat_material"><option value="">Select material</option><option>Gold</option><option>Silver</option><option>Stainless Steel</option><option>Beads</option></select>
+      <label>Color</label>
+      <input type="text" name="cat_color" placeholder="e.g. Gold, Rose Gold">
+    </div>`,
+  'Sports & Outdoors': `
+    <div class="dynamic-fields">
+      <label>Sport Type</label>
+      <select name="cat_sport"><option value="">Select sport</option><option>Football</option><option>Gym</option><option>Basketball</option><option>Running</option></select>
+      <label>Product Type</label>
+      <input type="text" name="cat_type" placeholder="e.g. Jersey, Dumbbell">
+      <label>Brand (optional)</label>
+      <input type="text" name="cat_brand" placeholder="e.g. Nike, Adidas">
+    </div>`,
+  'Toys & Games': `
+    <div class="dynamic-fields">
+      <label>Product Type</label>
+      <select name="cat_type"><option value="">Select type</option><option>Educational Toy</option><option>Action Figure</option><option>Board Game</option><option>Video Game</option></select>
+      <label>Age Range</label>
+      <select name="cat_age"><option value="">Select age range</option><option>0-3</option><option>4-7</option><option>8-12</option><option>13+</option></select>
+    </div>`,
+  'Home & Garden': ''
+};
+
+function getCategoryNameById(categoryId) {
+  const cat = allCategories.find(c => String(c.id) === String(categoryId));
+  return cat ? cat.name : null;
+}
+
+function renderDynamicFields(categoryId, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const name = getCategoryNameById(categoryId);
+  container.innerHTML = (name && CATEGORY_FIELDS[name]) ? CATEGORY_FIELDS[name] : '';
+}
+
+function collectDynamicFields(formSelector) {
+  const fields = {};
+  document.querySelectorAll(`${formSelector} [name^="cat_"]`).forEach(el => {
+    if (el.value.trim()) fields[el.name.replace('cat_', '')] = el.value.trim();
+  });
+  return Object.keys(fields).length ? fields : null;
 }
