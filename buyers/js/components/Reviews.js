@@ -44,7 +44,7 @@ function createReviews(product) {
           ${reviews.slice(0, 5).map((review, idx) => `
             <div style="padding:12px 0;border-bottom:1px solid #e2e8f0">
               <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-                <div style="font-weight:600;color:#334155">${review.userName || 'Anonymous User'}</div>
+                <div style="font-weight:600;color:#334155">${[review.firstName, review.lastName].filter(Boolean).join(' ') || 'Anonymous'}</div>
                 <div style="display:flex;gap:2px;font-size:12px">${renderStars(review.rating || 0, '12')}</div>
               </div>
               <p style="margin:0;font-size:14px;color:#475569;line-height:1.5">${review.body || review.comment || 'Good product'}</p>
