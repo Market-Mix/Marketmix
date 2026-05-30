@@ -119,7 +119,7 @@ function formatDate(dateString) {
 
 // Profile Image
 function renderProfileImage(profile) {
-  const images = document.querySelectorAll('#sellerProfileImage, #sellerProfileImageMobile');
+  const images = document.querySelectorAll('#sellerProfileImage, #sellerProfileImageMobile, .navbar-toggler-icon');
   if (!images.length) return;
   const store = window.StoreManager?.getActiveStore?.();
   const logo = store?.store_logo_url || profile?.profile?.storeLogo || profile?.avatarUrl || '';
