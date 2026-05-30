@@ -827,6 +827,7 @@ function getMockProduct(productId) {
     views: 0,
     seller: { id: null, store_id: null, shop_name: 'MarketMix Store', rating: 4.5, shop_avatar_url: '' },
     reviews: [],
+    images: [],
     relatedProducts: [],
     sellerProducts: [],
   };

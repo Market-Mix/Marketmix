@@ -22,6 +22,7 @@ function createCategoryOptions(product) {
     }
 
     return [];
+    
   }
 
   // Options come from product data when available
@@ -112,6 +113,36 @@ function createCategoryOptions(product) {
     });
   }
 
+  function renderCategoryMeta(product, container) {
+  const meta = product.category_meta;
+  if (!meta || typeof meta !== 'object' || !Object.keys(meta).length) return;
+
+  const labels = {
+    type: 'Type', brand: 'Brand', model: 'Model', gender: 'Gender',
+    size: 'Size', color: 'Color', material: 'Material', condition: 'Condition',
+    author: 'Author', sport: 'Sport Type', age: 'Age Range', volume: 'Volume'
+  };
+
+  const items = Object.entries(meta)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+        <span style="font-size:13px;color:#64748b;font-weight:500">${labels[k] || k}</span>
+        <span style="font-size:13px;color:#1e293b;font-weight:600">${v}</span>
+      </div>
+    `).join('');
+
+  if (!items) return;
+
+  const metaDiv = document.createElement('div');
+  metaDiv.style.cssText = 'margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;';
+  metaDiv.innerHTML = `
+    <p style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Product Details</p>
+    ${items}
+  `;
+  container.appendChild(metaDiv);
+}
+
   function checkCanAddToCart() {
     const addToCartBtn = document.getElementById('product-add-to-cart');
     const wishlistBtn = document.getElementById('product-add-to-wishlist');
@@ -159,6 +190,9 @@ function createCategoryOptions(product) {
 
   // Ensure initial enable/disable state is applied
   setTimeout(checkCanAddToCart, 50);
+
+  // Show category meta details from seller
+  renderCategoryMeta(product, container);
 
   // Expose selections
   window.productOptions = { color: () => selectedColor, size: () => selectedSize };

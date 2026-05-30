@@ -158,7 +158,17 @@
       <p>Have questions? <a href="../contact.html" style="color:#f97316;text-decoration:none">Contact us</a></p>
     </div>
   </div>
-
+<!-- Lightbox -->
+<div id="mm-lightbox" style="
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.92);align-items:center;justify-content:center;
+">
+  <button id="mm-lightbox-close" style="
+    position:absolute;top:20px;right:24px;background:none;border:none;
+    color:#fff;font-size:32px;cursor:pointer;z-index:10;
+  ">✕</button>
+  <img id="mm-lightbox-img" src="" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;">
+</div>
   <!-- Scripts -->
 
   <script src="wishlist-util.js"></script>
@@ -182,6 +192,32 @@
         initializeBadgeUpdates(buyerId);
       }
     });
+
+    // Lightbox logic
+  document.addEventListener('click', e => {
+    if (e.target && e.target.id === 'gallery-main-img') {
+      const lb = document.getElementById('mm-lightbox');
+      document.getElementById('mm-lightbox-img').src = e.target.src;
+      lb.style.display = 'flex';
+    }
+  });
+  document.getElementById('mm-lightbox-close')?.addEventListener('click', () => {
+    document.getElementById('mm-lightbox').style.display = 'none';
+  });
+  document.getElementById('mm-lightbox')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('mm-lightbox').style.display = 'none';
+  });
+
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
