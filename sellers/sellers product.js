@@ -320,8 +320,8 @@ function openAddModal() {
 function closeAddModal() {
   document.getElementById('addProductModal').style.display = 'none';
   document.getElementById('addProductForm').reset();
-  const preview = document.getElementById('addImagePreview');
-  if (preview) preview.style.display = 'none';
+  const preview = document.getElementById('addImagesPreview');
+  if (preview) preview.innerHTML = '';
 }
 
 async function addProduct() {
@@ -330,7 +330,6 @@ async function addProduct() {
   const stock       = document.getElementById('newProductStock').value.trim();
   const description = document.getElementById('newProductDescription').value.trim();
   const categoryId  = document.getElementById('newProductCategory').value;
-  const imageFile   = document.getElementById('newProductImage').files[0];
 
   if (!name || !price) {
     showToast('Product name and price are required.', 'error');
@@ -468,8 +467,8 @@ function openEditModal(id) {
 function closeModal() {
   document.getElementById('editModal').style.display = 'none';
   editingProductId = null;
-  const editPreview = document.getElementById('editImagePreview');
-  if (editPreview) editPreview.style.display = 'none';
+  const editPreview = document.getElementById('editImagesPreview');
+  if (editPreview) editPreview.innerHTML = '';
 }
 
 async function handleEditSubmit(e) {
@@ -481,7 +480,6 @@ async function handleEditSubmit(e) {
   const stock       = document.getElementById('editStock').value.trim();
   const description = document.getElementById('editDescription').value.trim();
   const categoryId  = document.getElementById('editCategory').value;
-  const imageFile   = document.getElementById('editProductImage').files[0];
 
   if (!name || !price) {
     showToast('Name and price are required.', 'error');
@@ -500,14 +498,15 @@ async function handleEditSubmit(e) {
     formData.append('description', description);
     if (categoryId) formData.append('category_id', categoryId);
 
-    const weight = document.getElementById('editWeight').value;
-    if (weight) formData.append('weight_kg', weight);
+    const weightInput = document.getElementById('editWeight');
+    if (weightInput && weightInput.value) formData.append('weight_kg', weightInput.value);
 
     // Keep existing images from editingProductId's data
     const existing = allProducts.find(p => p.id === editingProductId);
     if (existing?.images?.length) formData.append('existing_images', JSON.stringify(existing.images));
 
-    const imageFiles = Array.from(document.getElementById('editProductImages').files).slice(0, 5);
+    const imageInput = document.getElementById('editProductImages');
+    const imageFiles = imageInput ? Array.from(imageInput.files).slice(0, 5) : [];
     imageFiles.forEach(f => formData.append('images', f));
 
     const res = await fetch(`${API_BASE}/seller/products/${editingProductId}`, {
