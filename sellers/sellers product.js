@@ -44,15 +44,16 @@ async function apiFetch(path, opts = {}) {
 
 // ─── Profile Image ─────────────────────────────────────────────────────────────
 function renderProfileImage(profile) {
-  ['sellerProfileImage', 'sellerProfileImageMobile'].forEach(id => {
-    const img = document.getElementById(id);
-    if (!img) return;
-    const logo = profile?.profile?.storeLogo;
-    if (logo) {
+  const images = document.querySelectorAll('#sellerProfileImage, #sellerProfileImageMobile');
+  if (!images.length) return;
+  const store = window.StoreManager?.getActiveStore?.();
+  const logo = store?.store_logo_url || profile?.profile?.storeLogo || profile?.avatarUrl || '';
+  if (logo) {
+    images.forEach((img) => {
       img.src = logo;
       img.onerror = () => { img.src = ''; };
-    }
-  });
+    });
+  }
 }
 
 // ─── Logout ────────────────────────────────────────────────────────────────────

@@ -119,14 +119,15 @@ function formatDate(dateString) {
 
 // Profile Image
 function renderProfileImage(profile) {
-  const img = document.getElementById('sellerProfileImage');
-  if (!img) return;
-  const logo = profile?.profile?.storeLogo;
+  const images = document.querySelectorAll('#sellerProfileImage, #sellerProfileImageMobile');
+  if (!images.length) return;
+  const store = window.StoreManager?.getActiveStore?.();
+  const logo = store?.store_logo_url || profile?.profile?.storeLogo || profile?.avatarUrl || '';
   if (logo) {
-    img.src = logo;
-    img.onerror = () => {
-      img.src = '';
-    };
+    images.forEach((img) => {
+      img.src = logo;
+      img.onerror = () => { img.src = ''; };
+    });
   }
 }
 

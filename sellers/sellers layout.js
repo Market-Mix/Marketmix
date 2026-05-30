@@ -243,16 +243,21 @@ function renderWelcome(store) {
 
 // ─── Profile Image — shows active store logo ─────────────────────────────────
 function renderProfileImage(profile) {
-  const img = document.getElementById("sellerProfileImage");
-  if (!img) return;
+  const images = [
+    document.getElementById("sellerProfileImage"),
+    document.getElementById("sellerProfileImageMobile"),
+  ].filter(Boolean);
+  if (!images.length) return;
 
   // Prefer active store logo, fall back to seller avatar
   const store = StoreManager.getActiveStore();
   const logo  = store?.store_logo_url || profile?.avatarUrl || '';
 
   if (logo) {
-    img.src     = logo;
-    img.onerror = () => { img.src = ""; };
+    images.forEach((img) => {
+      img.src = logo;
+      img.onerror = () => { img.src = ""; };
+    });
   }
 }
 
