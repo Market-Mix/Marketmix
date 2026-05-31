@@ -124,6 +124,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Load earnings data
     loadProfile();
     fetchEarningsData();
+    loadWithdrawalHistory();
 });
 
 window.addEventListener('storeChanged', () => {
@@ -168,6 +169,38 @@ async function fetchEarningsData() {
     } catch (error) {
         console.error('Fetch earnings error:', error);
         showToast('Network error while fetching earnings', false);
+    }
+}
+
+async function loadWithdrawalHistory() {
+    try {
+        const data = await apiFetch('/withdrawals');
+        const withdrawals = data?.data?.withdrawals || [];
+        const container = document.getElementById('transactions-list');
+        if (!container) return;
+
+        const withdrawalItems = withdrawals.map(w => {
+            const statusColor = {
+                success: '#28a745', pending: '#ffc107',
+                processing: '#17a2b8', failed: '#dc3545'
+            }[w.status] || '#6c757d';
+
+            const div = document.createElement('div');
+            div.classList.add('transaction');
+            div.innerHTML = `
+                <span>${new Date(w.created_at).toLocaleDateString()}</span>
+                <span>Withdrawal → ${w.bank_name || 'Bank'}</span>
+                <span class="amount negative" style="color:${statusColor}">
+                  – ₦${Number(w.amount).toFixed(2)}
+                  <small>[${(w.status || '').toUpperCase()}]</small>
+                </span>
+            `;
+            return div;
+        });
+
+        withdrawalItems.forEach(el => container.prepend(el));
+    } catch (err) {
+        console.error('Error loading withdrawal history:', err);
     }
 }
 
