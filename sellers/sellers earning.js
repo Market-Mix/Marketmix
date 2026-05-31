@@ -442,19 +442,40 @@ async function submitWithdrawal() {
     if (!pin) return showToast('Enter your PIN', false);
 
     try {
-        const data = await apiFetch('/withdrawals', { method: 'POST', body: JSON.stringify({ amount, pin }) });
+        const res = await fetch(`${API_BASE}/withdrawals`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ amount, pin })
+        });
+
+        const rawText = await res.text();
+        console.log('=== WITHDRAWAL RESPONSE ===');
+        console.log('Status:', res.status);
+        console.log('Body:', rawText);
+
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch (e) {
+            return showToast('Invalid server response', false);
+        }
+
+        if (!res.ok) {
+            return showToast(data.message || `Error: ${res.status}`, false);
+        }
+
         showToast(`₦${amount.toFixed(2)} withdrawal submitted!`);
         const withdrawModal = document.getElementById('withdrawModal');
         if (withdrawModal) withdrawModal.style.display = 'none';
 
-        const availableBalanceEl = document.getElementById('available-balance');
-        if (availableBalanceEl && data.data && typeof data.data.newBalance === 'number') {
-            availableBalanceEl.textContent = `₦${data.data.newBalance.toFixed(2)}`;
-        }
+        // Refresh earnings data
+        fetchEarningsData();
+        loadWithdrawalHistory();
 
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-pin').value = '';
     } catch (err) {
+        console.error('Withdrawal error:', err);
         showToast(err.message || 'Withdrawal failed', false);
     }
 }
