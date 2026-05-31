@@ -828,6 +828,7 @@
       pointer-events: none;
       width: calc(100% - 2rem);
       max-width: 420px;
+      padding: 0;
     }
 
     /* Notification Badge */
@@ -861,6 +862,11 @@
       opacity: 0;
       animation: toastSlide 0.4s ease forwards;
       pointer-events: auto;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      line-height: 1.4;
     }
 
     .toast-success {
@@ -878,6 +884,48 @@
     @keyframes toastSlide {
       from { transform: translate(-50%, -10px); opacity: 0; }
       to { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    /* ========== RESPONSIVE TOAST ========== */
+    @media (max-width: 768px) {
+      .toast-notification {
+        width: calc(100% - 1rem);
+        max-width: 95vw;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .toast-message {
+        padding: 0.75rem 0.85rem;
+        font-size: 0.9rem;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .toast-notification {
+        width: calc(100% - 0.75rem);
+        max-width: 100%;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0 0.375rem;
+      }
+
+      .toast-message {
+        padding: 0.7rem 0.75rem;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+        line-height: 1.3;
+      }
     }
 
     /* 42 HOURS COUNTDOWN BANNER */
