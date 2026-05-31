@@ -595,7 +595,18 @@
 
             // Special-case store page paths to the real buyers store page
             if (/^(?:\/)?(?:buyers\/)?store-id\.html/i.test(link)) {
-              return '/buyers/store-id.html' + (link.includes('?') ? link.slice(link.indexOf('?')) : '');
+              const parts = link.split('?');
+              const queryPart = parts.length > 1 ? '?' + parts.slice(1).join('?') : '';
+              console.log('🔗 Normalizing store-id link:', link, '→', '/buyers/store-id.html' + queryPart);
+              return '/buyers/store-id.html' + queryPart;
+            }
+
+            // Fallback: catch any remaining store-id links in other formats
+            if (/store-id\.html/i.test(link)) {
+              const parts = link.split('?');
+              const queryPart = parts.length > 1 ? '?' + parts.slice(1).join('?') : '';
+              console.log('🔗 Fallback normalizing store-id link:', link, '→', '/buyers/store-id.html' + queryPart);
+              return '/buyers/store-id.html' + queryPart;
             }
 
             // Keep root-relative longer folder paths unchanged

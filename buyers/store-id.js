@@ -466,14 +466,19 @@ async function toggleFollow() {
       if (typeof window.NotificationManager !== 'undefined' && window.NotificationManager.createNotification) {
         const buyerId = window.getBuyerId?.();
         if (buyerId) {
-          await window.NotificationManager.createNotification(buyerId, {
-            title: nowFollowing ? 'Store Followed' : 'Store Unfollowed',
-            message: nowFollowing
-              ? `You started following ${storeName}`
-              : `You just unfollowed ${storeName}`,
-            type: 'follow',
-            link: `store-id.html?store=${encodeURIComponent(resolvedStoreId || storeData?.storeId || storeData?.store_id || '')}`
-          });
+          const storeId = resolvedStoreId || storeData?.storeId || storeData?.store_id;
+          
+          // Only create notification if we have a valid store ID
+          if (storeId) {
+            await window.NotificationManager.createNotification(buyerId, {
+              title: nowFollowing ? 'Store Followed' : 'Store Unfollowed',
+              message: nowFollowing
+                ? `You started following ${storeName}`
+                : `You just unfollowed ${storeName}`,
+              type: 'follow',
+              link: `store-id.html?store=${encodeURIComponent(storeId)}`
+            });
+          }
         }
       }
 
