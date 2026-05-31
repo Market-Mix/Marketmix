@@ -3,6 +3,7 @@
  */
 
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
+let earningsChartInstance = null;
 
 // Auth helpers
 const getToken = () => localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -179,6 +180,8 @@ async function loadWithdrawalHistory() {
         const container = document.getElementById('transactions-list');
         if (!container) return;
 
+        container.querySelectorAll('.withdrawal-entry').forEach(el => el.remove());
+
         const withdrawalItems = withdrawals.map(w => {
             const statusColor = {
                 success: '#28a745', pending: '#ffc107',
@@ -186,7 +189,7 @@ async function loadWithdrawalHistory() {
             }[w.status] || '#6c757d';
 
             const div = document.createElement('div');
-            div.classList.add('transaction');
+            div.classList.add('transaction', 'withdrawal-entry');
             div.innerHTML = `
                 <span>${new Date(w.created_at).toLocaleDateString()}</span>
                 <span>Withdrawal → ${w.bank_name || 'Bank'}</span>
@@ -267,15 +270,19 @@ function renderEarnings(data) {
 function renderChart(transactions) {
     const chartCanvas = document.getElementById("earningsChart");
     if (!chartCanvas) return;
+    
+    if (earningsChartInstance) {
+        earningsChartInstance.destroy();
+        earningsChartInstance = null;
+    }
+    
     const ctx = chartCanvas.getContext("2d");
     
-    // Process transactions for chart (group by month)
     const monthlyData = {};
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     
-    // Last 6 months
-    const labels = [];
     const now = new Date();
+    const labels = [];
     for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const label = months[d.getMonth()];
@@ -293,10 +300,10 @@ function renderChart(transactions) {
 
     const values = labels.map(l => monthlyData[l]);
 
-    new Chart(ctx, {
+    earningsChartInstance = new Chart(ctx, {
         type: "line",
         data: {
-            labels: labels,
+            labels,
             datasets: [{
                 label: 'Monthly Earnings',
                 data: values,
@@ -469,8 +476,8 @@ async function submitWithdrawal() {
         if (withdrawModal) withdrawModal.style.display = 'none';
 
         // Refresh earnings data
-        fetchEarningsData();
-        loadWithdrawalHistory();
+        await fetchEarningsData();
+        await loadWithdrawalHistory();
 
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-pin').value = '';
