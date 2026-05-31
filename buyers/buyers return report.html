@@ -828,49 +828,6 @@
       pointer-events: none;
       width: calc(100% - 2rem);
       max-width: 420px;
-      padding: 0 1rem;
-    }
-
-    .toast-message {
-      padding: 0.95rem 1rem;
-      border-radius: 10px;
-      color: #fff;
-      font-weight: 600;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.15);
-      opacity: 0;
-      animation: toastSlide 0.4s ease forwards;
-      pointer-events: auto;
-      word-wrap: break-word;
-      line-height: 1.4;
-    }
-
-    @media (max-width: 768px) {
-      .toast-notification {
-        top: 15px;
-        width: calc(100% - 1rem);
-        padding: 0 0.5rem;
-      }
-
-      .toast-message {
-        padding: 0.75rem 0.85rem;
-        font-size: 0.9rem;
-        border-radius: 8px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .toast-notification {
-        top: 10px;
-        width: calc(100% - 0.75rem);
-        max-width: 100%;
-        padding: 0 0.375rem;
-      }
-
-      .toast-message {
-        padding: 0.7rem 0.75rem;
-        font-size: 0.85rem;
-        border-radius: 6px;
-      }
     }
 
     /* Notification Badge */
@@ -893,6 +850,17 @@
 
     .btn-chat {
       position: relative;
+    }
+
+    .toast-message {
+      padding: 0.95rem 1rem;
+      border-radius: 10px;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+      opacity: 0;
+      animation: toastSlide 0.4s ease forwards;
+      pointer-events: auto;
     }
 
     .toast-success {
