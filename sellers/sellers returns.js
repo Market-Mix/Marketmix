@@ -213,15 +213,16 @@ function renderTable(data = returnsData) {
 
     if (pending && hasEvidence) {
       const evidenceTime = new Date(item.evidence_submitted_at).getTime();
-      const expiryTime = evidenceTime + (42 * 60 * 60 * 1000);
+      const expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
       const timeLeft = expiryTime - now;
       const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       chatDate = formatDate(item.evidence_submitted_at);
       if (timeLeft > 0) {
         chatBtnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
-            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)
           </button>
         `;
       } else {
@@ -237,11 +238,12 @@ function renderTable(data = returnsData) {
       const timeLeft = expiryTime - now;
       const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       chatDate = formatDate(item.purchase_date);
       if (timeLeft > 0) {
         chatBtnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
-            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+            <i class="fas fa-comments"></i> Report issue (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)
           </button>
         `;
       } else {
@@ -519,13 +521,14 @@ function updateChatCountdown(returnItem) {
 
   if (returnItem.evidence_submitted_at) {
     const evidenceTime = new Date(returnItem.evidence_submitted_at).getTime();
-    const decisionTime = evidenceTime + (42 * 60 * 60 * 1000);
+    const decisionTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
     const timeLeft = decisionTime - Date.now();
 
     if (timeLeft > 0) {
-      const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+      const dLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      countdownBanner.textContent = `You have ${hLeft}h ${mLeft}m to resolve the issue with the buyer before MarketMix takes a decision.`;
+      countdownBanner.textContent = `You have ${dLeft}d ${hLeft}h ${mLeft}m to resolve the issue with the buyer before MarketMix takes a decision.`;
       countdownBanner.classList.add('active');
     } else {
       countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
