@@ -144,8 +144,20 @@ function clearActivityTicker() {
 
 // ─── Central data loader ──────────────────────────────────────────────────────
 async function loadDashboardData() {
-  const store = StoreManager.getActiveStore();
+  let store = StoreManager.getActiveStore();
   if (!store) return;
+
+  // Refresh active store data so dashboard progress stays in sync after setup/KYC flow.
+  try {
+    const freshStores = await StoreManager.loadStores(true);
+    const freshStore = Array.isArray(freshStores) ? freshStores.find(s => s?.id === store?.id) : null;
+    if (freshStore) {
+      StoreManager.setActiveStore(freshStore);
+      store = freshStore;
+    }
+  } catch (err) {
+    console.warn('Could not refresh active store data:', err);
+  }
 
   // All calls go through StoreManager.apiFetch which auto-adds X-Store-Id
   const [profileRes, userRes, statsRes, earningsRes, activityRes] = await Promise.allSettled([
@@ -354,7 +366,9 @@ function renderProgressTracker(profile, store, user) {
     p?.city || p?.state || p?.postalCode || p?.country
   );
 
-  const storeSetupDone = !!(store?.business_name && store?.store_logo_url && store?.business_address);
+  const storeLogoUrl = store?.store_logo_url || store?.storeLogo || store?.logo_url || store?.logo;
+  const storeAddress = store?.business_address || store?.address || store?.store_address;
+  const storeSetupDone = !!(store?.business_name && storeLogoUrl && storeAddress);
   const productCount   = store?.productCount || store?.product_count || 0;
   const totalSales     = store?.total_sales || 0;
 
