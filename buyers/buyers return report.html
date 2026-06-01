@@ -1933,7 +1933,8 @@
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
       marketmix_reason: caseData.marketmix_reason,
-      store_name: resolveStoreName(caseData) || resolveStoreName(orderData),
+      // Prefer store name from order data (more likely to be populated), fall back to case data
+      store_name: resolveStoreName(orderData) || resolveStoreName(caseData) || 'Store',
       seller_id: caseData.seller_id || orderData.seller_id,
       messages: []
     };
@@ -2705,6 +2706,8 @@
       currentChatData.supabase_case_id = refundCase.id;
       currentChatData.status = 'pending';
       currentChatData.reason = 'complaint';
+      // Ensure store name is preserved from existing data or backend response
+      currentChatData.store_name = currentChatData.store_name || refundCase.store_name || resolveStoreName(currentChatData) || resolveStoreName(refundCase) || 'Store';
       
       if (!currentChatData.messages) currentChatData.messages = [];
       
