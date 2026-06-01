@@ -2538,9 +2538,11 @@
         }
 
         if (timeLeft > 0 && !isRejected) {
-          const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-          const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const label = complaintStarted ? `Chat (${daysLeft}d ${hoursLeft}h)` : `Report issue (${daysLeft}d ${hoursLeft}h)`;
+          const dayMs = 24 * 60 * 60 * 1000;
+          const daysLeft = Math.floor(timeLeft / dayMs);
+          const hoursLeft = Math.ceil(timeLeft / (1000 * 60 * 60));
+          const countLabel = timeLeft >= dayMs ? `${daysLeft}d` : `${hoursLeft}h`;
+          const label = complaintStarted ? `Chat (${countLabel})` : `Report issue (${countLabel})`;
           const unreadCount = getUnreadCount(report.id);
           chatBtnHtml = `
             <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
@@ -2762,24 +2764,29 @@
     statusElement.className = `resolution-status ${report.status}`;
     statusElement.innerHTML = `<i class="fas fa-circle"></i> ${report.status.replace(/_/g, ' ').toUpperCase()}`;
 
-    // Update 42 hours countdown banner
     const countdownBanner = document.getElementById('chatCountdownBanner');
     if (report.evidence_submitted_at) {
       const evidenceTime = new Date(report.evidence_submitted_at).getTime();
-      const decisionTime = evidenceTime + (42 * 60 * 60 * 1000);
+      const decisionTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
       const timeLeft = decisionTime - Date.now();
-      
+      const dayMs = 24 * 60 * 60 * 1000;
+
       if (timeLeft > 0) {
-        const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-        const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-        countdownBanner.textContent = `The store has ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
+        const daysLeft = Math.floor(timeLeft / dayMs);
+        if (daysLeft >= 1) {
+          countdownBanner.textContent = `The store has ${daysLeft} day${daysLeft > 1 ? 's' : ''} to resolve the issue before MarketMix takes a decision.`;
+        } else {
+          const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+          const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+          countdownBanner.textContent = `The store has ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
+        }
         countdownBanner.classList.add('active');
       } else {
         countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
         countdownBanner.classList.add('active');
       }
     } else {
-      countdownBanner.textContent = 'Submit your evidence to begin chat. After you send it, the store will have 42 hours to resolve the issue.';
+      countdownBanner.textContent = 'Submit your evidence to begin chat. After you send it, the store will have 2 days to resolve the issue.';
       countdownBanner.classList.add('active');
     }
 

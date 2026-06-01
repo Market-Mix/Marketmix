@@ -30,13 +30,13 @@ function getCurrentSellerId() {
 function mapRefundCaseFromSupabase(caseData) {
   return {
     id: caseData.id,
-    buyerName: caseData.buyer_name || caseData.buyer_id || 'Buyer',
+    buyerName: caseData.buyer_name || caseData.buyer_full_name || caseData.buyer_id || 'Buyer',
     productName: caseData.product_name || 'Purchased Item',
     orderId: caseData.order_id || 'N/A',
     reason: caseData.reason || caseData.complaint_text || '',
     notes: caseData.complaint_text || caseData.reason || '',
     productImage: caseData.product_image || caseData.product_image_url || 'https://via.placeholder.com/200?text=Product',
-    amount: Number(caseData.total_amount || caseData.amount || 0),
+    amount: Number(caseData.total_amount || caseData.amount || caseData.order_item_amount || 0),
     status: caseData.status ? String(caseData.status).charAt(0).toUpperCase() + String(caseData.status).slice(1) : 'Pending',
     marketMixReason: caseData.marketmix_reason || caseData.seller_response || 'Awaiting review.',
     purchase_date: caseData.purchase_date || caseData.created_at,
@@ -213,15 +213,17 @@ function renderTable(data = returnsData) {
 
     if (pending && hasEvidence) {
       const evidenceTime = new Date(item.evidence_submitted_at).getTime();
-      const expiryTime = evidenceTime + (42 * 60 * 60 * 1000);
+      const expiryTime = evidenceTime + (48 * 60 * 60 * 1000);
       const timeLeft = expiryTime - now;
-      const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-      const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const dayMs = 24 * 60 * 60 * 1000;
+      const hoursLeft = Math.ceil(timeLeft / (1000 * 60 * 60));
+      const daysLeft = Math.floor(timeLeft / dayMs);
       chatDate = formatDate(item.evidence_submitted_at);
       if (timeLeft > 0) {
+        const countLabel = timeLeft >= dayMs ? `${daysLeft}d` : `${hoursLeft}h`;
         chatBtnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
-            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+            <i class="fas fa-comments"></i> Chat (${countLabel})
           </button>
         `;
       } else {
@@ -235,13 +237,15 @@ function renderTable(data = returnsData) {
       const purchaseTime = new Date(item.purchase_date).getTime();
       const expiryTime = purchaseTime + (5 * 24 * 60 * 60 * 1000);
       const timeLeft = expiryTime - now;
-      const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-      const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const dayMs = 24 * 60 * 60 * 1000;
+      const hoursLeft = Math.ceil(timeLeft / (1000 * 60 * 60));
+      const daysLeft = Math.floor(timeLeft / dayMs);
       chatDate = formatDate(item.purchase_date);
       if (timeLeft > 0) {
+        const countLabel = timeLeft >= dayMs ? `${daysLeft}d` : `${hoursLeft}h`;
         chatBtnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
-            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+            <i class="fas fa-comments"></i> Chat (${countLabel})
           </button>
         `;
       } else {
@@ -519,13 +523,19 @@ function updateChatCountdown(returnItem) {
 
   if (returnItem.evidence_submitted_at) {
     const evidenceTime = new Date(returnItem.evidence_submitted_at).getTime();
-    const decisionTime = evidenceTime + (42 * 60 * 60 * 1000);
+    const decisionTime = evidenceTime + (48 * 60 * 60 * 1000);
     const timeLeft = decisionTime - Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
 
     if (timeLeft > 0) {
-      const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      countdownBanner.textContent = `You have ${hLeft}h ${mLeft}m to resolve the issue with the buyer before MarketMix takes a decision.`;
+      const daysLeft = Math.floor(timeLeft / dayMs);
+      if (daysLeft >= 1) {
+        countdownBanner.textContent = `You have ${daysLeft} day${daysLeft > 1 ? 's' : ''} to resolve the issue with the buyer before MarketMix takes a decision.`;
+      } else {
+        const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+        const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        countdownBanner.textContent = `You have ${hLeft}h ${mLeft}m to resolve the issue with the buyer before MarketMix takes a decision.`;
+      }
       countdownBanner.classList.add('active');
     } else {
       countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
