@@ -189,6 +189,27 @@ async function loadDashboardData() {
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
   renderStoreShareLink(store);
+
+  // Ensure Returns overview reflects actual refund cases count (fallback if stats endpoint lacks it)
+  (async () => {
+    try {
+      const refundsRes = await StoreManager.apiFetch('/seller/refund-cases');
+      const refunds = refundsRes?.data || (Array.isArray(refundsRes) ? refundsRes : []);
+      const count = refunds.length || 0;
+      // Find the Returns card and update its numeric value
+      const cards = document.querySelectorAll('.overview-card');
+      for (const card of cards) {
+        const p = card.querySelector('p');
+        if (p && p.textContent.trim().toLowerCase() === 'returns') {
+          const h3 = card.querySelector('h3');
+          if (h3) h3.textContent = count;
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch refund cases for dashboard count:', err);
+    }
+  })();
 }
 
 // ─── Nav Toggle ───────────────────────────────────────────────────────────────
