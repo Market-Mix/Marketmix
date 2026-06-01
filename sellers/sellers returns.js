@@ -291,7 +291,8 @@ function openModal(returnId) {
   document.getElementById('modalAmount').textContent = `$${returnItem.amount.toFixed(2)}`;
   document.getElementById('modalReason').textContent = returnItem.reason;
   document.getElementById('modalNotes').textContent = returnItem.notes || 'No additional notes';
-  document.getElementById('modalProductImage').src = returnItem.productImage;
+  const modalProductImage = document.getElementById('modalProductImage');
+  if (modalProductImage) modalProductImage.src = returnItem.productImage;
 
   // Debug: evidence URL
   console.log('Refund evidence URL:', returnItem.evidence_url || returnItem.evidenceUrl || returnItem.evidenceUrl);
