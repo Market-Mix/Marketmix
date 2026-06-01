@@ -821,7 +821,7 @@
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 9999;
+      z-index: 99999;
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
@@ -829,6 +829,9 @@
       width: calc(100% - 2rem);
       max-width: 420px;
       padding: 0;
+      overflow: visible;
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     /* Notification Badge */
@@ -867,6 +870,8 @@
       overflow-wrap: break-word;
       white-space: normal;
       line-height: 1.4;
+      max-width: 100%;
+      min-width: 0;
     }
 
     .toast-success {
@@ -894,6 +899,7 @@
         top: 15px;
         left: 50%;
         transform: translateX(-50%);
+        z-index: 99999;
       }
 
       .toast-message {
@@ -914,6 +920,7 @@
         left: 50%;
         transform: translateX(-50%);
         padding: 0 0.375rem;
+        z-index: 99999;
       }
 
       .toast-message {
@@ -1982,13 +1989,21 @@
     });
 
     // Build open order item reports (one entry per order item) for order items without a refund case yet
-    const reportedItemIds = new Set(refundReports.map(report => String(report.order_item_id || report.id)));
+    // Exclude both refund cases AND items that have evidence submitted (those are already shown in refundReports)
+    const reportedItemIds = new Set();
+    refundReports.forEach(report => {
+      reportedItemIds.add(String(report.order_item_id || report.id));
+      // Also exclude by product + order combo to avoid duplicates of items with evidence
+      if (report.order_item_id && report.order_id) {
+        reportedItemIds.add(`${report.order_id}-${report.order_item_id}`);
+      }
+    });
     const openOrderReports = (buyerOrders || [])
       .filter(order => !['cancelled', 'canceled', 'refunded'].includes(String(order.status || '').toLowerCase()))
       .flatMap(order => {
         const items = Array.isArray(order.items) ? order.items : [];
         return items
-          .filter(item => !reportedItemIds.has(String(item.id)))
+          .filter(item => !reportedItemIds.has(String(item.id)) && !reportedItemIds.has(`${order.id}-${item.id}`))
           .map(item => ({
             id: `order-${order.id}-item-${item.id}`,
             order_id: order.id,
