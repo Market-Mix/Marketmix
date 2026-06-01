@@ -1610,8 +1610,6 @@
       
       const refundCasePayload = {
         buyer_id: caseData.buyer_id,
-        buyer_name: caseData.buyer_name || caseData.buyerName || getCurrentBuyerName() || null,
-        total_amount: Number(caseData.total_amount ?? caseData.amount ?? 0),
         seller_id: caseData.seller_id || caseData.sellerId || null,
         order_id: caseData.order_id,
         order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || caseData.id || null,
@@ -2736,8 +2734,6 @@
         product_name: productName,
         complaint_text: description,
         buyer_id: userId,
-        buyer_name: buyerName,
-        total_amount: totalAmount,
         seller_id: sellerId,
         evidence_url: evidenceData.url
       });
