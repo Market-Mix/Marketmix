@@ -492,14 +492,42 @@
           </div>
         `;
         
-        // Add click handler to navigate to the notification link
+        // Add click handler to navigate to the notification link (normalize link to avoid 404s)
         el.addEventListener('click', function(e) {
           if (e.target.closest('.notif-actions')) {
             e.stopPropagation();
             return;
           }
+
+          function normalizeSellerLink(rawLink) {
+            if (!rawLink) return null;
+            let link = String(rawLink).trim();
+            // Replace backslashes and collapse whitespace
+            link = link.replace(/\\/g, '/').replace(/\s+/g, '%20');
+            // If already absolute URL
+            if (/^https?:\/\//i.test(link)) return link;
+            // Ensure leading slash for root-relative seller/buyer pages
+            if (!link.startsWith('/')) {
+              // If path already contains 'sellers/' or 'buyers/', prefix with '/'
+              if (/^(sellers|buyers)\//i.test(link) || /^\/(sellers|buyers)\//i.test('/' + link)) {
+                link = '/' + link;
+              } else {
+                // Default to treating seller notifications as pointing to seller pages
+                link = '/sellers/' + link.replace(/^\/+/, '');
+              }
+            }
+            return window.location.origin + link;
+          }
+
           if (n.link) {
-            window.location.href = n.link;
+            try {
+              const target = normalizeSellerLink(n.link);
+              if (target) window.location.href = target;
+            } catch (linkErr) {
+              console.error('Invalid notification link:', n.link, linkErr);
+              // fallback to raw link
+              window.location.href = n.link;
+            }
           }
         });
         
