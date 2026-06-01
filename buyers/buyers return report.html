@@ -823,6 +823,7 @@
       transform: translateX(-50%);
       z-index: 99999;
       display: flex;
+      align-items: center;
       flex-direction: column;
       gap: 0.75rem;
       pointer-events: none;
@@ -857,13 +858,15 @@
     }
 
     .toast-message {
+      display: inline-block;
       padding: 0.95rem 1rem;
       border-radius: 10px;
       color: #fff;
       font-weight: 600;
       box-shadow: 0 12px 30px rgba(0,0,0,0.15);
       opacity: 0;
-      animation: toastSlide 0.4s ease forwards;
+      transform: translateY(-10px);
+      animation: toastSlideY 0.4s ease forwards;
       pointer-events: auto;
       word-wrap: break-word;
       word-break: break-word;
@@ -872,6 +875,36 @@
       line-height: 1.4;
       max-width: 100%;
       min-width: 0;
+      margin: 0 auto;
+    }
+
+    .toast-content {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      max-width: calc(100% - 32px);
+      overflow-wrap: anywhere;
+    }
+
+    .toast-text {
+      display: block;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      line-height: 1.3;
+    }
+
+    .toast-close {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.95);
+      font-size: 1.05rem;
+      cursor: pointer;
+      padding: 0 6px;
+      line-height: 1;
+      margin-left: 6px;
+      opacity: 0.95;
     }
 
     .toast-success {
@@ -886,9 +919,9 @@
       background: #2563eb;
     }
 
-    @keyframes toastSlide {
-      from { transform: translate(-50%, -10px); opacity: 0; }
-      to { transform: translate(-50%, 0); opacity: 1; }
+    @keyframes toastSlideY {
+      from { transform: translateY(-10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     /* ========== RESPONSIVE TOAST ========== */
@@ -1885,6 +1918,8 @@
     });
     
     return {
+      // Ensure we expose the original order item id so open-order items can be excluded
+      order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || null,
       id: caseData.id,
       order_id: caseData.order_id,
       product_name: caseData.product_name || orderData.product_name || 'Purchased item',
@@ -2256,17 +2291,52 @@
     const container = document.getElementById('toastNotification');
     if (!container) return;
 
+    // Sanitize plain text to avoid accidental HTML injection
+    function escapeHtml(unsafe) {
+      return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast-message toast-${type}`;
-    toast.textContent = message;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+
+    const content = document.createElement('div');
+    content.className = 'toast-content';
+    content.innerHTML = `<span class="toast-text">${escapeHtml(message)}</span>`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close';
+    closeBtn.setAttribute('aria-label', 'Close notification');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('click', () => removeToast());
+
+    toast.appendChild(content);
+    toast.appendChild(closeBtn);
     container.appendChild(toast);
 
-    setTimeout(() => {
+    // Trigger animation frame to ensure CSS animation runs
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+    });
+
+    const duration = 3200;
+    let hideTimeout = setTimeout(removeToast, duration);
+
+    function removeToast() {
+      clearTimeout(hideTimeout);
       toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-10px)';
       setTimeout(() => {
-        toast.remove();
+        try { toast.remove(); } catch (e) {}
       }, 300);
-    }, 3200);
+    }
   }
 
   // =====================================================
