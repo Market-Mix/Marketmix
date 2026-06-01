@@ -1580,10 +1580,25 @@
   
   function resolveRefundSellerId(data) {
     return data?.seller_id || data?.sellerId ||
+      data?.seller?.id || data?.seller?.seller_id || data?.seller?.sellerId ||
       data?.order?.seller_id || data?.order?.sellerId ||
       data?.items?.[0]?.seller_id || data?.items?.[0]?.sellerId ||
+      data?.item?.seller_id || data?.item?.sellerId ||
       data?.order?.items?.[0]?.seller_id || data?.order?.items?.[0]?.sellerId ||
       data?.product?.seller_id || data?.product?.sellerId || null;
+  }
+
+  function getCurrentBuyerName() {
+    const storedUser = getStoredAuthUser() || {};
+    const firstName = storedUser.first_name || storedUser.firstName || storedUser.first || '';
+    const lastName = storedUser.last_name || storedUser.lastName || storedUser.last || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    if (fullName) return fullName;
+
+    const tokenPayload = getTokenPayload() || {};
+    const payloadFirst = tokenPayload.first_name || tokenPayload.firstName || tokenPayload.first || '';
+    const payloadLast = tokenPayload.last_name || tokenPayload.lastName || tokenPayload.last || '';
+    return `${payloadFirst} ${payloadLast}`.trim() || null;
   }
 
   /**
@@ -1595,11 +1610,13 @@
       
       const refundCasePayload = {
         buyer_id: caseData.buyer_id,
-        seller_id: caseData.seller_id,
+        buyer_name: caseData.buyer_name || caseData.buyerName || getCurrentBuyerName() || null,
+        total_amount: Number(caseData.total_amount ?? caseData.amount ?? 0),
+        seller_id: caseData.seller_id || caseData.sellerId || null,
         order_id: caseData.order_id,
-        order_item_id: caseData.order_item_id || null,
-        product_id: caseData.product_id || null,
-        product_name: caseData.product_name,
+        order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || caseData.id || null,
+        product_id: caseData.product_id || caseData.productId || caseData.item_id || null,
+        product_name: caseData.product_name || caseData.productName || caseData.name || 'Purchased item',
         complaint_text: caseData.complaint_text,
         evidence_url: caseData.evidence_url || null,
         status: 'pending'
@@ -1615,12 +1632,15 @@
         body: JSON.stringify(refundCasePayload)
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
       
       if (!response.ok) {
         console.error('❌ Backend API error creating refund case:', response.status);
-        console.error('Error details:', result);
-        throw new Error(result.message || 'Failed to create refund case');
+        console.error('Error details:', result || 'No response body');
+        if (result?.missing) {
+          console.error('❌ Missing fields from payload:', result.missing);
+        }
+        throw new Error(result?.message || 'Failed to create refund case');
       }
       
       console.log('✅ Refund case created successfully via backend:', result.refundCase);
@@ -2671,8 +2691,20 @@
 
       // Create refund case via backend order data
       const sellerId = resolveRefundSellerId(currentChatData);
+      const orderItemId = currentChatData.order_item_id || currentChatData.order_item || currentChatData.item_id || currentChatData.id || null;
+      const productId = currentChatData.product_id || currentChatData.productId || currentChatData.item_id || null;
+      const productName = currentChatData.product_name || currentChatData.productName || currentChatData.name || 'Purchased item';
+      const buyerName = currentChatData.buyer_name || currentChatData.buyerName || getCurrentBuyerName();
+      const totalAmount = Number(currentChatData.total_amount ?? currentChatData.amount ?? currentChatData.total ?? 0);
+
       console.log('Fetched order data:', currentChatData);
       console.log('Resolved seller_id:', sellerId);
+      console.log('Resolved order_item_id:', orderItemId);
+      console.log('Resolved product_id:', productId);
+      console.log('Resolved product_name:', productName);
+      console.log('Resolved buyer_name:', buyerName);
+      console.log('Resolved total_amount:', totalAmount);
+
       if (!sellerId) {
         console.error('❌ Order seller information missing:', currentChatData);
         showNotification('Order seller information missing.', 'error');
@@ -2681,13 +2713,31 @@
         return;
       }
 
+      if (!orderItemId) {
+        console.error('❌ Order item identifier missing:', currentChatData);
+        showNotification('Order item identifier missing. Please select a valid item.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        return;
+      }
+
+      if (!productId) {
+        console.error('❌ Product identifier missing:', currentChatData);
+        showNotification('Product identifier missing. Please select a valid item.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        return;
+      }
+
       const refundCase = await createRefundCase({
         order_id: currentChatData.order_id,
-        order_item_id: currentChatData.order_item_id || currentChatData.order_item || null,
-        product_id: currentChatData.product_id || currentChatData.productId || null,
-        product_name: currentChatData.product_name,
+        order_item_id: orderItemId,
+        product_id: productId,
+        product_name: productName,
         complaint_text: description,
         buyer_id: userId,
+        buyer_name: buyerName,
+        total_amount: totalAmount,
         seller_id: sellerId,
         evidence_url: evidenceData.url
       });
