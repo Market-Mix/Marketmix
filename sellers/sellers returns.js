@@ -43,6 +43,7 @@ function mapRefundCaseFromSupabase(caseData) {
     evidence_submitted_at: caseData.evidence_submitted_at || caseData.created_at,
     messages: [],
     date: caseData.evidence_submitted_at || caseData.created_at,
+    evidence_url: caseData.evidence_url || null,
     seller_id: caseData.seller_id,
     store_name: caseData.store_name || 'Store'
   };
@@ -291,6 +292,70 @@ function openModal(returnId) {
   document.getElementById('modalReason').textContent = returnItem.reason;
   document.getElementById('modalNotes').textContent = returnItem.notes || 'No additional notes';
   document.getElementById('modalProductImage').src = returnItem.productImage;
+
+  // Debug: evidence URL
+  console.log('Refund evidence URL:', returnItem.evidence_url || returnItem.evidenceUrl || returnItem.evidenceUrl);
+
+  // Render Buyer Evidence into modalEvidence
+  const evidenceContainer = document.getElementById('modalEvidence');
+  const evidenceEmpty = document.getElementById('modalEvidenceEmpty');
+  // Clear previous content except the empty placeholder
+  if (evidenceContainer) {
+    // Remove any existing children
+    while (evidenceContainer.firstChild) evidenceContainer.removeChild(evidenceContainer.firstChild);
+  }
+
+  const evidenceUrl = returnItem.evidence_url || returnItem.evidenceUrl || null;
+  if (!evidenceContainer) {
+    console.warn('modalEvidence container not found in DOM');
+  } else if (!evidenceUrl) {
+    const p = document.createElement('p');
+    p.id = 'modalEvidenceEmpty';
+    p.textContent = 'No evidence uploaded.';
+    evidenceContainer.appendChild(p);
+  } else {
+    // determine file type
+    const url = String(evidenceUrl).split('?')[0].split('#')[0];
+    const lower = url.toLowerCase();
+    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(lower);
+    const isVideo = /\.(mp4|webm|mov)$/i.test(lower);
+
+    if (isImage) {
+      const a = document.createElement('a');
+      a.href = evidenceUrl;
+      a.target = '_blank';
+      const img = document.createElement('img');
+      img.src = evidenceUrl;
+      img.alt = 'Buyer Evidence';
+      img.loading = 'lazy';
+      img.addEventListener('click', () => { /* open in new tab handled by anchor */ });
+      a.appendChild(img);
+      evidenceContainer.appendChild(a);
+    } else if (isVideo) {
+      const video = document.createElement('video');
+      video.controls = true;
+      const src = document.createElement('source');
+      src.src = evidenceUrl;
+      video.appendChild(src);
+      evidenceContainer.appendChild(video);
+    } else {
+      // Unknown type - try to render as image, fallback to link
+      const tryImg = document.createElement('img');
+      tryImg.src = evidenceUrl;
+      tryImg.alt = 'Buyer Evidence';
+      tryImg.loading = 'lazy';
+      tryImg.onerror = function() {
+        // replace with link
+        evidenceContainer.removeChild(tryImg);
+        const a = document.createElement('a');
+        a.href = evidenceUrl;
+        a.target = '_blank';
+        a.textContent = 'Open evidence in new tab';
+        evidenceContainer.appendChild(a);
+      };
+      evidenceContainer.appendChild(tryImg);
+    }
+  }
   
   const statusElement = document.getElementById('modalStatus');
   statusElement.textContent = returnItem.status;
