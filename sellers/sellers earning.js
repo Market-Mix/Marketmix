@@ -461,7 +461,7 @@ async function submitSetPin() {
         withdrawalState.withdrawal_pin_set = true;
         showStep(withdrawalState.bank_account_number ? 'step-withdraw' : 'step-add-bank');
         // Notify seller that PIN was set
-        try { createSellerNotification({ title: 'Withdrawal PIN set', message: 'You have successfully set your withdrawal PIN.', type: 'account', link: '/sellers/sellers%20earning.html' }); } catch(e){console.warn('PIN notification failed',e)}
+        try { createSellerNotification({ title: 'Withdrawal PIN set', message: 'You have successfully set your withdrawal PIN.', type: 'account', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('PIN notification failed',e)}
     } catch (err) {
         showToast(err.message || 'Error setting PIN', false);
     }
@@ -489,7 +489,7 @@ async function submitBankAccount() {
                 `Withdrawing to: ${body.bank_name} — ${body.bank_account_number} (${body.bank_account_name})`;
         }
         // Notify seller that bank account was added
-        try { createSellerNotification({ title: 'Bank account added', message: `Bank account ${body.bank_account_number} (${body.bank_name}) saved for withdrawals.`, type: 'account', link: '/sellers/sellers%20earning.html' }); } catch (e) { console.warn('Bank account notification failed', e); }
+        try { createSellerNotification({ title: 'Bank account added', message: `Bank account ${body.bank_account_number} (${body.bank_name}) saved for withdrawals.`, type: 'account', link: '/sellers/sellers earning.html' }); } catch (e) { console.warn('Bank account notification failed', e); }
     } catch (err) {
         showToast(err.message || 'Error saving bank', false);
     }
@@ -523,7 +523,7 @@ async function submitWithdrawal() {
 
         if (!res.ok) {
             // Create a notification for failed withdrawal attempt
-            try { createSellerNotification({ title: 'Withdrawal failed', message: data.message || `Withdrawal failed: ${res.status}`, type: 'withdrawal', link: '/sellers/sellers%20earning.html' }); } catch(e){console.warn('Withdrawal fail notification failed',e)}
+            try { createSellerNotification({ title: 'Withdrawal failed', message: data.message || `Withdrawal failed: ${res.status}`, type: 'withdrawal', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('Withdrawal fail notification failed',e)}
             return showToast(data.message || `Error: ${res.status}`, false);
         }
 
@@ -538,7 +538,7 @@ async function submitWithdrawal() {
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-pin').value = '';
         // Notify seller of successful withdrawal submission
-        try { createSellerNotification({ title: 'Withdrawal submitted', message: `₦${amount.toFixed(2)} withdrawal submitted.`, type: 'withdrawal', link: '/sellers/sellers%20earning.html' }); } catch(e){console.warn('Withdrawal success notification failed',e)}
+        try { createSellerNotification({ title: 'Withdrawal submitted', message: `₦${amount.toFixed(2)} withdrawal submitted.`, type: 'withdrawal', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('Withdrawal success notification failed',e)}
     } catch (err) {
         console.error('Withdrawal error:', err);
         showToast(err.message || 'Withdrawal failed', false);
