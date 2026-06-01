@@ -623,7 +623,8 @@
               return;
             }
 
-            window.location.href = window.location.origin + raw;
+            // Use relative path navigation to avoid %20 encoding issues with static files
+            window.location.href = raw.startsWith('/') ? raw : '/' + raw;
           } catch (linkErr) {
             console.error('Invalid notification link:', raw, linkErr);
           }
