@@ -61,29 +61,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Auto-refresh every 30 seconds
   setInterval(loadDashboardData, 30_000);
-  
-  // Force refresh when page regains focus or becomes visible (after returning from other pages)
-  // This ensures store updates are picked up immediately
+
+  let lastVisible = Date.now();
+
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      console.log('Page became visible - refreshing dashboard');
-      // Clear store cache to force fresh API fetch
-      if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
-        StoreManager.setCachedStores(null);
-      }
-      loadDashboardData();
+    if (document.visibilityState === 'hidden') {
+      lastVisible = Date.now();
+      return;
     }
-  });
-
- 
-
-  window.addEventListener('pageshow', (event) => {
-    if (event.persisted) {
-      console.log('Page restored from bfcache - refreshing dashboard');
-      // Clear store cache to force fresh API fetch
-      if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
-        StoreManager.setCachedStores(null);
-      }
+    // Only refresh if hidden for more than 60 seconds
+    if (Date.now() - lastVisible > 60_000) {
+      StoreManager.setCachedStores?.(null);
       loadDashboardData();
     }
   });
