@@ -145,8 +145,10 @@ localStorage.removeItem("mm_stores_cache");
     }
 
     // ─── Save session ─────────────────────────────────────────────────────────
-    function saveSession(token, user) {
-      localStorage.setItem('token', token);
+    function saveSession(token, user) {      // Role-specific keys
+      localStorage.setItem('seller_token', token);
+      localStorage.setItem('seller_user', JSON.stringify(user));
+      // Keep legacy keys for backward compat      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
     }
 
