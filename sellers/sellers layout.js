@@ -75,14 +75,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  window.addEventListener('focus', () => {
-    console.log('Window regained focus - refreshing dashboard');
-    // Clear store cache to force fresh API fetch
-    if (typeof StoreManager !== 'undefined' && StoreManager.setCachedStores) {
-      StoreManager.setCachedStores(null);
-    }
-    loadDashboardData();
-  });
+ 
 
   window.addEventListener('pageshow', (event) => {
     if (event.persisted) {
