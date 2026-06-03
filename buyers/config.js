@@ -49,9 +49,7 @@ function isLoggedIn() {
 
 // Helper function to logout
 function logout() {
-  localStorage.removeItem(CONFIG.STORAGE_KEYS.TOKEN);
-  localStorage.removeItem(CONFIG.STORAGE_KEYS.USER);
-  localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_ROLE);
+  ['token','user','buyer_token','buyer_user','userRole'].forEach(k => localStorage.removeItem(k));
   window.location.href = 'login.html';
 }
 

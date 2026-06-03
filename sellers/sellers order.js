@@ -7,7 +7,8 @@ const API_BASE = 'https://marketmix-backend.onrender.com/api';
 /* ── helpers ─────────────────────────────────────────────── */
 
 function getToken() {
-  return localStorage.getItem('token') || '';
+  // Prefer seller-scoped token to avoid buyer session overwrite
+  return localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
 }
 
 function getActiveStoreId() {

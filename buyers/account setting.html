@@ -8,6 +8,10 @@
   
   <!-- 🔒 BLOCK UNAUTHORIZED USERS -->
   <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.replace("login for buyers.html");

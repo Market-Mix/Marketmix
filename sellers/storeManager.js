@@ -20,7 +20,8 @@ const StoreManager = (() => {
 
   /* ── Token ────────────────────────────────────────────────────────────── */
   function getToken() {
-    return localStorage.getItem('token') || '';
+    // Prefer seller-scoped token to avoid buyer session overwrite
+    return localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
   }
 
   /* ── Active store ─────────────────────────────────────────────────────── */

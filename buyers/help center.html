@@ -459,6 +459,10 @@ header {
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
   <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
     const helpCategories = document.querySelectorAll('.help-category');
 
     helpCategories.forEach(category => {

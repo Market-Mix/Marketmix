@@ -301,6 +301,10 @@
   </footer>
 
   <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
     function sendMessage(event) {
       event.preventDefault();
 

@@ -6,7 +6,8 @@
 
 // ─── Auth helpers (kept for logout which doesn't need store scope) ────────────
 function getToken() {
-  return localStorage.getItem("token") || "";
+  // Prefer seller-scoped token to avoid buyer session overwrite
+  return localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
 }
 
 async function handleLogout() {
@@ -16,10 +17,8 @@ async function handleLogout() {
       headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
     });
   } catch (_) {}
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  localStorage.removeItem("mm_active_store");
-  localStorage.removeItem("mm_stores_cache");
+  ['token','user','seller_token','seller_user','userRole',
+   'mm_active_store','mm_stores_cache'].forEach(k => localStorage.removeItem(k));
   window.location.href = "login.html";
 }
 
@@ -177,6 +176,29 @@ async function loadDashboardData() {
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
   renderStoreShareLink(store);
+
+  // Wrap in role check before calling seller-only refund endpoint
+  const isSellerToken = (() => {
+    try {
+      const tok = getToken();
+      if (!tok) return false;
+      const payload = JSON.parse(atob(tok.split('.')[1]));
+      return payload.role === 'seller';
+    } catch {
+      return false;
+    }
+  })();
+
+  if (isSellerToken) {
+    (async () => {
+      try {
+        const refundsRes = await StoreManager.apiFetch('/seller/refund-cases');
+        // ... existing refund count logic
+      } catch (err) {
+        console.warn('Could not fetch refund cases:', err);
+      }
+    })();
+  }
 }
 
 // ─── Nav Toggle ───────────────────────────────────────────────────────────────

@@ -404,6 +404,10 @@
   </footer>
 
   <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
     let notifications = [];
     let currentFilter = 'all';
 

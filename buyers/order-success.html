@@ -19,6 +19,10 @@
   <a href="buyers order & tracking.html" class="btn" style="background:#111;margin-left:10px">Track Order</a>
   <script src="notification-manager.js"></script>
   <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
     const params = new URLSearchParams(location.search);
     const orderId = params.get('orderId');
     const ref = params.get('ref');

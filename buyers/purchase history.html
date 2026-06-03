@@ -605,6 +605,10 @@
 
 
 <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
 const API_BASE_URL = 'https://marketmix-backend.onrender.com';
 let currentPage = 1;
 let totalPages = 1;

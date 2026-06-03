@@ -221,6 +221,10 @@
   </footer>
 
   <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
     // Expandable FAQ toggle
     document.querySelectorAll('.faq-question').forEach(item => {
       item.addEventListener('click', () => {

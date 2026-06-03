@@ -45,6 +45,10 @@
     </div>
 
     <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
         // =====================================================
         // CONFIGURATION
         // =====================================================
@@ -92,7 +96,8 @@
             // Prepare login data
             const loginData = {
                 email: email.toLowerCase(),
-                password: password
+                password: password,
+                role: 'buyer'
             };
 
             console.log('📤 Sending login request...');

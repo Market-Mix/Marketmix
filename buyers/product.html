@@ -183,6 +183,10 @@
   <script src="notification-manager.js"></script>
   <script src="js/product-page.js"></script>
   <script>
+function getToken() {
+  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+}
+
     // Initialize notification system on product page load
     document.addEventListener('DOMContentLoaded', async function() {
       const buyerId = getBuyerId?.();

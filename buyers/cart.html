@@ -347,6 +347,10 @@
 
     const CART_KEY = 'cart';
 
+    function getToken() {
+      return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
+    }
+
     let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
     let recentDeleted = JSON.parse(localStorage.getItem('recentDeleted') || '[]');
 

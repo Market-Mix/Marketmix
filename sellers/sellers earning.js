@@ -6,7 +6,10 @@ const API_BASE = 'https://marketmix-backend.onrender.com/api';
 let earningsChartInstance = null;
 
 // Auth helpers
-const getToken = () => localStorage.getItem('token') || sessionStorage.getItem('token');
+function getToken() {
+    // Prefer seller-scoped token to avoid buyer session overwrite
+    return localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
+}
 const getActiveStoreId = () => (
     window.StoreManager?.getActiveStoreId?.()
     || window.StoreManager?.getActiveStore?.()?.id
