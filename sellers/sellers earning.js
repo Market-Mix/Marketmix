@@ -4,6 +4,7 @@
 
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
 let earningsChartInstance = null;
+let _prevEarningsSummary = null;
 
 // Auth helpers
 function getToken() {
@@ -213,6 +214,43 @@ async function loadWithdrawalHistory() {
 function renderEarnings(data) {
     const { summary, transactions, productEarnings } = data;
 
+    // Compare with previous summary and create notifications for meaningful changes
+    try {
+        if (_prevEarningsSummary) {
+            // Total Earnings changed
+            if (Number(summary.totalEarnings) !== Number(_prevEarningsSummary.totalEarnings)) {
+                const diff = Number(summary.totalEarnings) - Number(_prevEarningsSummary.totalEarnings);
+                const title = 'Total Earnings updated';
+                const message = diff > 0
+                    ? `Your total earnings increased by ₦${Math.abs(diff).toFixed(2)}`
+                    : `Your total earnings changed by ₦${Math.abs(diff).toFixed(2)}`;
+                createSellerNotification({ title, message, type: 'earnings', link: '/sellers/sellers%20earning.html' });
+            }
+
+            // Available Balance changed
+            if (Number(summary.availableBalance) !== Number(_prevEarningsSummary.availableBalance)) {
+                const diff = Number(summary.availableBalance) - Number(_prevEarningsSummary.availableBalance);
+                const title = 'Available balance updated';
+                const message = diff > 0
+                    ? `Your available balance increased by ₦${Math.abs(diff).toFixed(2)}.`
+                    : `Your available balance changed by ₦${Math.abs(diff).toFixed(2)}.`;
+                createSellerNotification({ title, message, type: 'earnings', link: '/sellers/sellers%20earning.html' });
+            }
+
+            // Pending Earnings changed
+            if (Number(summary.pendingEarnings) !== Number(_prevEarningsSummary.pendingEarnings)) {
+                const diff = Number(summary.pendingEarnings) - Number(_prevEarningsSummary.pendingEarnings);
+                const title = 'Pending earnings updated';
+                const message = diff > 0
+                    ? `Your pending earnings increased by ₦${Math.abs(diff).toFixed(2)}.`
+                    : `Your pending earnings changed by ₦${Math.abs(diff).toFixed(2)}.`;
+                createSellerNotification({ title, message, type: 'earnings', link: '/sellers/sellers%20earning.html' });
+            }
+        }
+    } catch (e) {
+        console.warn('Notification comparison failed:', e);
+    }
+
     // Update Summary Cards
     if (document.getElementById("total-earnings"))
         document.getElementById("total-earnings").textContent = `₦${summary.totalEarnings.toFixed(2)}`;
@@ -267,6 +305,18 @@ function renderEarnings(data) {
                 tableBody.innerHTML += row;
             });
         }
+    }
+
+    // store current summary for next comparison
+    try {
+        _prevEarningsSummary = {
+            totalEarnings: Number(summary.totalEarnings || 0),
+            availableBalance: Number(summary.availableBalance || 0),
+            pendingEarnings: Number(summary.pendingEarnings || 0),
+            totalWithdrawn: Number(summary.totalWithdrawn || 0)
+        };
+    } catch (e) {
+        console.warn('Could not set prev earnings summary:', e);
     }
 }
 
@@ -413,6 +463,8 @@ async function submitSetPin() {
         showToast('PIN set successfully!');
         withdrawalState.withdrawal_pin_set = true;
         showStep(withdrawalState.bank_account_number ? 'step-withdraw' : 'step-add-bank');
+        // Notify seller that PIN was set
+        try { createSellerNotification({ title: 'Withdrawal PIN set', message: 'You have successfully set your withdrawal PIN.', type: 'account', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('PIN notification failed',e)}
     } catch (err) {
         showToast(err.message || 'Error setting PIN', false);
     }
@@ -439,6 +491,8 @@ async function submitBankAccount() {
             bankInfo.textContent =
                 `Withdrawing to: ${body.bank_name} — ${body.bank_account_number} (${body.bank_account_name})`;
         }
+        // Notify seller that bank account was added
+        try { createSellerNotification({ title: 'Bank account added', message: `Bank account ${body.bank_account_number} (${body.bank_name}) saved for withdrawals.`, type: 'account', link: '/sellers/sellers earning.html' }); } catch (e) { console.warn('Bank account notification failed', e); }
     } catch (err) {
         showToast(err.message || 'Error saving bank', false);
     }
@@ -471,6 +525,8 @@ async function submitWithdrawal() {
         }
 
         if (!res.ok) {
+            // Create a notification for failed withdrawal attempt
+            try { createSellerNotification({ title: 'Withdrawal failed', message: data.message || `Withdrawal failed: ${res.status}`, type: 'withdrawal', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('Withdrawal fail notification failed',e)}
             return showToast(data.message || `Error: ${res.status}`, false);
         }
 
@@ -484,6 +540,8 @@ async function submitWithdrawal() {
 
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-pin').value = '';
+        // Notify seller of successful withdrawal submission
+        try { createSellerNotification({ title: 'Withdrawal submitted', message: `₦${amount.toFixed(2)} withdrawal submitted.`, type: 'withdrawal', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('Withdrawal success notification failed',e)}
     } catch (err) {
         console.error('Withdrawal error:', err);
         showToast(err.message || 'Withdrawal failed', false);

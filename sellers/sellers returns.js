@@ -43,6 +43,7 @@ function mapRefundCaseFromSupabase(caseData) {
     evidence_submitted_at: caseData.evidence_submitted_at || caseData.created_at,
     messages: [],
     date: caseData.evidence_submitted_at || caseData.created_at,
+    evidence_url: caseData.evidence_url || null,
     seller_id: caseData.seller_id,
     store_name: caseData.store_name || 'Store'
   };
@@ -214,15 +215,16 @@ function renderTable(data = returnsData) {
 
     if (pending && hasEvidence) {
       const evidenceTime = new Date(item.evidence_submitted_at).getTime();
-      const expiryTime = evidenceTime + (42 * 60 * 60 * 1000);
+      const expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
       const timeLeft = expiryTime - now;
       const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       chatDate = formatDate(item.evidence_submitted_at);
       if (timeLeft > 0) {
         chatBtnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
-            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)
           </button>
         `;
       } else {
@@ -238,11 +240,12 @@ function renderTable(data = returnsData) {
       const timeLeft = expiryTime - now;
       const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       chatDate = formatDate(item.purchase_date);
       if (timeLeft > 0) {
         chatBtnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
-            <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h)
+            <i class="fas fa-comments"></i> Report issue (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)
           </button>
         `;
       } else {
@@ -289,7 +292,72 @@ function openModal(returnId) {
   document.getElementById('modalAmount').textContent = `$${returnItem.amount.toFixed(2)}`;
   document.getElementById('modalReason').textContent = returnItem.reason;
   document.getElementById('modalNotes').textContent = returnItem.notes || 'No additional notes';
-  document.getElementById('modalProductImage').src = returnItem.productImage;
+  const modalProductImage = document.getElementById('modalProductImage');
+  if (modalProductImage) modalProductImage.src = returnItem.productImage;
+
+  // Debug: evidence URL
+  console.log('Refund evidence URL:', returnItem.evidence_url || returnItem.evidenceUrl || returnItem.evidenceUrl);
+
+  // Render Buyer Evidence into modalEvidence
+  const evidenceContainer = document.getElementById('modalEvidence');
+  const evidenceEmpty = document.getElementById('modalEvidenceEmpty');
+  // Clear previous content except the empty placeholder
+  if (evidenceContainer) {
+    // Remove any existing children
+    while (evidenceContainer.firstChild) evidenceContainer.removeChild(evidenceContainer.firstChild);
+  }
+
+  const evidenceUrl = returnItem.evidence_url || returnItem.evidenceUrl || null;
+  if (!evidenceContainer) {
+    console.warn('modalEvidence container not found in DOM');
+  } else if (!evidenceUrl) {
+    const p = document.createElement('p');
+    p.id = 'modalEvidenceEmpty';
+    p.textContent = 'No evidence uploaded.';
+    evidenceContainer.appendChild(p);
+  } else {
+    // determine file type
+    const url = String(evidenceUrl).split('?')[0].split('#')[0];
+    const lower = url.toLowerCase();
+    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(lower);
+    const isVideo = /\.(mp4|webm|mov)$/i.test(lower);
+
+    if (isImage) {
+      const a = document.createElement('a');
+      a.href = evidenceUrl;
+      a.target = '_blank';
+      const img = document.createElement('img');
+      img.src = evidenceUrl;
+      img.alt = 'Buyer Evidence';
+      img.loading = 'lazy';
+      img.addEventListener('click', () => { /* open in new tab handled by anchor */ });
+      a.appendChild(img);
+      evidenceContainer.appendChild(a);
+    } else if (isVideo) {
+      const video = document.createElement('video');
+      video.controls = true;
+      const src = document.createElement('source');
+      src.src = evidenceUrl;
+      video.appendChild(src);
+      evidenceContainer.appendChild(video);
+    } else {
+      // Unknown type - try to render as image, fallback to link
+      const tryImg = document.createElement('img');
+      tryImg.src = evidenceUrl;
+      tryImg.alt = 'Buyer Evidence';
+      tryImg.loading = 'lazy';
+      tryImg.onerror = function() {
+        // replace with link
+        evidenceContainer.removeChild(tryImg);
+        const a = document.createElement('a');
+        a.href = evidenceUrl;
+        a.target = '_blank';
+        a.textContent = 'Open evidence in new tab';
+        evidenceContainer.appendChild(a);
+      };
+      evidenceContainer.appendChild(tryImg);
+    }
+  }
   
   const statusElement = document.getElementById('modalStatus');
   statusElement.textContent = returnItem.status;
@@ -520,13 +588,14 @@ function updateChatCountdown(returnItem) {
 
   if (returnItem.evidence_submitted_at) {
     const evidenceTime = new Date(returnItem.evidence_submitted_at).getTime();
-    const decisionTime = evidenceTime + (42 * 60 * 60 * 1000);
+    const decisionTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
     const timeLeft = decisionTime - Date.now();
 
     if (timeLeft > 0) {
-      const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+      const dLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      countdownBanner.textContent = `You have ${hLeft}h ${mLeft}m to resolve the issue with the buyer before MarketMix takes a decision.`;
+      countdownBanner.textContent = `You have ${dLeft}d ${hLeft}h ${mLeft}m to resolve the issue with the buyer before MarketMix takes a decision.`;
       countdownBanner.classList.add('active');
     } else {
       countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;

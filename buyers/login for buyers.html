@@ -333,9 +333,13 @@ function getToken() {
                     expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
                     role: user.role
                 };
-                localStorage.setItem('user', JSON.stringify(user));
+                // Role-specific keys
+                localStorage.setItem('buyer_token', token);
+                localStorage.setItem('buyer_user', JSON.stringify(user));
+                // Keep legacy keys for backward compat
                 localStorage.setItem('token', token);
-                localStorage.setItem('userRole', user.role);
+                localStorage.setItem('user', JSON.stringify(user));
+                localStorage.setItem('userRole', 'buyer');
                 localStorage.setItem('authData', JSON.stringify(authData));
                 console.log('💾 Auth data stored successfully');
             } catch (error) {

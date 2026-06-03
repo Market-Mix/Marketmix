@@ -498,6 +498,10 @@ prevBtns.forEach((btn) => {
         }
 
         // Persist token for subsequent pages
+        // Role-specific keys
+        localStorage.setItem('seller_token', token);
+        localStorage.setItem('seller_user', JSON.stringify(registerData.data?.user || {}));
+        // Keep legacy keys for backward compat
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(registerData.data?.user || {}));
 

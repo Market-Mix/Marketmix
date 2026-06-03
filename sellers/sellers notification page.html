@@ -492,14 +492,43 @@
           </div>
         `;
         
-        // Add click handler to navigate to the notification link
+        // Add click handler to navigate to the notification link (normalize link to avoid 404s)
         el.addEventListener('click', function(e) {
           if (e.target.closest('.notif-actions')) {
             e.stopPropagation();
             return;
           }
+
+          function normalizeSellerLink(rawLink) {
+            if (!rawLink) return null;
+            let link = String(rawLink).trim();
+            // Replace backslashes with slashes and normalize the path if it contains encoded characters
+            link = link.replace(/\\/g, '/');
+            try {
+              link = decodeURI(link);
+            } catch (decodeError) {
+              // ignore invalid URI sequences
+            }
+            // If already absolute URL, use it directly
+            if (/^https?:\/\//i.test(link)) return link;
+            // For relative/root paths, return as-is to preserve proper navigation
+            return link;
+          }
+
           if (n.link) {
-            window.location.href = n.link;
+            try {
+              const target = normalizeSellerLink(n.link);
+              if (target) {
+                // Use relative path navigation for static files
+                window.location.href = target.startsWith('/') ? target : './' + target;
+              }
+            } catch (linkErr) {
+              console.error('Invalid notification link:', n.link, linkErr);
+              // fallback to raw link
+              if (n.link) {
+                window.location.href = n.link.startsWith('/') ? n.link : './' + n.link;
+              }
+            }
           }
         });
         

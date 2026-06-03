@@ -821,13 +821,18 @@
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 9999;
+      z-index: 99999;
       display: flex;
+      align-items: center;
       flex-direction: column;
       gap: 0.75rem;
       pointer-events: none;
       width: calc(100% - 2rem);
       max-width: 420px;
+      padding: 0;
+      overflow: visible;
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     /* Notification Badge */
@@ -853,14 +858,53 @@
     }
 
     .toast-message {
+      display: inline-block;
       padding: 0.95rem 1rem;
       border-radius: 10px;
       color: #fff;
       font-weight: 600;
       box-shadow: 0 12px 30px rgba(0,0,0,0.15);
       opacity: 0;
-      animation: toastSlide 0.4s ease forwards;
+      transform: translateY(-10px);
+      animation: toastSlideY 0.4s ease forwards;
       pointer-events: auto;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      line-height: 1.4;
+      max-width: 100%;
+      min-width: 0;
+      margin: 0 auto;
+    }
+
+    .toast-content {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      max-width: calc(100% - 32px);
+      overflow-wrap: anywhere;
+    }
+
+    .toast-text {
+      display: block;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      line-height: 1.3;
+    }
+
+    .toast-close {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.95);
+      font-size: 1.05rem;
+      cursor: pointer;
+      padding: 0 6px;
+      line-height: 1;
+      margin-left: 6px;
+      opacity: 0.95;
     }
 
     .toast-success {
@@ -875,9 +919,53 @@
       background: #2563eb;
     }
 
-    @keyframes toastSlide {
-      from { transform: translate(-50%, -10px); opacity: 0; }
-      to { transform: translate(-50%, 0); opacity: 1; }
+    @keyframes toastSlideY {
+      from { transform: translateY(-10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* ========== RESPONSIVE TOAST ========== */
+    @media (max-width: 768px) {
+      .toast-notification {
+        width: calc(100% - 1rem);
+        max-width: 95vw;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 99999;
+      }
+
+      .toast-message {
+        padding: 0.75rem 0.85rem;
+        font-size: 0.9rem;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .toast-notification {
+        width: calc(100% - 0.75rem);
+        max-width: 100%;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0 0.375rem;
+        z-index: 99999;
+      }
+
+      .toast-message {
+        padding: 0.7rem 0.75rem;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+        line-height: 1.3;
+      }
     }
 
     /* 42 HOURS COUNTDOWN BANNER */
@@ -1492,10 +1580,25 @@
   
   function resolveRefundSellerId(data) {
     return data?.seller_id || data?.sellerId ||
+      data?.seller?.id || data?.seller?.seller_id || data?.seller?.sellerId ||
       data?.order?.seller_id || data?.order?.sellerId ||
       data?.items?.[0]?.seller_id || data?.items?.[0]?.sellerId ||
+      data?.item?.seller_id || data?.item?.sellerId ||
       data?.order?.items?.[0]?.seller_id || data?.order?.items?.[0]?.sellerId ||
       data?.product?.seller_id || data?.product?.sellerId || null;
+  }
+
+  function getCurrentBuyerName() {
+    const storedUser = getStoredAuthUser() || {};
+    const firstName = storedUser.first_name || storedUser.firstName || storedUser.first || '';
+    const lastName = storedUser.last_name || storedUser.lastName || storedUser.last || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    if (fullName) return fullName;
+
+    const tokenPayload = getTokenPayload() || {};
+    const payloadFirst = tokenPayload.first_name || tokenPayload.firstName || tokenPayload.first || '';
+    const payloadLast = tokenPayload.last_name || tokenPayload.lastName || tokenPayload.last || '';
+    return `${payloadFirst} ${payloadLast}`.trim() || null;
   }
 
   /**
@@ -1507,11 +1610,11 @@
       
       const refundCasePayload = {
         buyer_id: caseData.buyer_id,
-        seller_id: caseData.seller_id,
+        seller_id: caseData.seller_id || caseData.sellerId || null,
         order_id: caseData.order_id,
-        order_item_id: caseData.order_item_id || null,
-        product_id: caseData.product_id || null,
-        product_name: caseData.product_name,
+        order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || caseData.id || null,
+        product_id: caseData.product_id || caseData.productId || caseData.item_id || null,
+        product_name: caseData.product_name || caseData.productName || caseData.name || 'Purchased item',
         complaint_text: caseData.complaint_text,
         evidence_url: caseData.evidence_url || null,
         status: 'pending'
@@ -1527,12 +1630,15 @@
         body: JSON.stringify(refundCasePayload)
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
       
       if (!response.ok) {
         console.error('❌ Backend API error creating refund case:', response.status);
-        console.error('Error details:', result);
-        throw new Error(result.message || 'Failed to create refund case');
+        console.error('Error details:', result || 'No response body');
+        if (result?.missing) {
+          console.error('❌ Missing fields from payload:', result.missing);
+        }
+        throw new Error(result?.message || 'Failed to create refund case');
       }
       
       console.log('✅ Refund case created successfully via backend:', result.refundCase);
@@ -1830,6 +1936,8 @@
     });
     
     return {
+      // Ensure we expose the original order item id so open-order items can be excluded
+      order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || null,
       id: caseData.id,
       order_id: caseData.order_id,
       product_name: caseData.product_name || orderData.product_name || 'Purchased item',
@@ -1843,7 +1951,8 @@
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
       marketmix_reason: caseData.marketmix_reason,
-      store_name: resolveStoreName(caseData) || resolveStoreName(orderData),
+      // Prefer store name from order data (more likely to be populated), fall back to case data
+      store_name: resolveStoreName(orderData) || resolveStoreName(caseData) || 'Store',
       seller_id: caseData.seller_id || orderData.seller_id,
       messages: []
     };
@@ -1934,13 +2043,21 @@
     });
 
     // Build open order item reports (one entry per order item) for order items without a refund case yet
-    const reportedItemIds = new Set(refundReports.map(report => String(report.order_item_id || report.id)));
+    // Exclude both refund cases AND items that have evidence submitted (those are already shown in refundReports)
+    const reportedItemIds = new Set();
+    refundReports.forEach(report => {
+      reportedItemIds.add(String(report.order_item_id || report.id));
+      // Also exclude by product + order combo to avoid duplicates of items with evidence
+      if (report.order_item_id && report.order_id) {
+        reportedItemIds.add(`${report.order_id}-${report.order_item_id}`);
+      }
+    });
     const openOrderReports = (buyerOrders || [])
       .filter(order => !['cancelled', 'canceled', 'refunded'].includes(String(order.status || '').toLowerCase()))
       .flatMap(order => {
         const items = Array.isArray(order.items) ? order.items : [];
         return items
-          .filter(item => !reportedItemIds.has(String(item.id)))
+          .filter(item => !reportedItemIds.has(String(item.id)) && !reportedItemIds.has(`${order.id}-${item.id}`))
           .map(item => ({
             id: `order-${order.id}-item-${item.id}`,
             order_id: order.id,
@@ -2193,17 +2310,52 @@
     const container = document.getElementById('toastNotification');
     if (!container) return;
 
+    // Sanitize plain text to avoid accidental HTML injection
+    function escapeHtml(unsafe) {
+      return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast-message toast-${type}`;
-    toast.textContent = message;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+
+    const content = document.createElement('div');
+    content.className = 'toast-content';
+    content.innerHTML = `<span class="toast-text">${escapeHtml(message)}</span>`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close';
+    closeBtn.setAttribute('aria-label', 'Close notification');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('click', () => removeToast());
+
+    toast.appendChild(content);
+    toast.appendChild(closeBtn);
     container.appendChild(toast);
 
-    setTimeout(() => {
+    // Trigger animation frame to ensure CSS animation runs
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+    });
+
+    const duration = 3200;
+    let hideTimeout = setTimeout(removeToast, duration);
+
+    function removeToast() {
+      clearTimeout(hideTimeout);
       toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-10px)';
       setTimeout(() => {
-        toast.remove();
+        try { toast.remove(); } catch (e) {}
       }, 300);
-    }, 3200);
+    }
   }
 
   // =====================================================
@@ -2406,7 +2558,10 @@
         if (timeLeft > 0 && !isRejected) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const label = complaintStarted ? `Chat (${daysLeft}d ${hoursLeft}h)` : `Report issue (${daysLeft}d ${hoursLeft}h)`;
+          const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+          const label = complaintStarted ?
+            `Chat (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)` :
+            `Report issue (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)`;
           const unreadCount = getUnreadCount(report.id);
           chatBtnHtml = `
             <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
@@ -2537,8 +2692,20 @@
 
       // Create refund case via backend order data
       const sellerId = resolveRefundSellerId(currentChatData);
+      const orderItemId = currentChatData.order_item_id || currentChatData.order_item || currentChatData.item_id || currentChatData.id || null;
+      const productId = currentChatData.product_id || currentChatData.productId || currentChatData.item_id || null;
+      const productName = currentChatData.product_name || currentChatData.productName || currentChatData.name || 'Purchased item';
+      const buyerName = currentChatData.buyer_name || currentChatData.buyerName || getCurrentBuyerName();
+      const totalAmount = Number(currentChatData.total_amount ?? currentChatData.amount ?? currentChatData.total ?? 0);
+
       console.log('Fetched order data:', currentChatData);
       console.log('Resolved seller_id:', sellerId);
+      console.log('Resolved order_item_id:', orderItemId);
+      console.log('Resolved product_id:', productId);
+      console.log('Resolved product_name:', productName);
+      console.log('Resolved buyer_name:', buyerName);
+      console.log('Resolved total_amount:', totalAmount);
+
       if (!sellerId) {
         console.error('❌ Order seller information missing:', currentChatData);
         showNotification('Order seller information missing.', 'error');
@@ -2547,11 +2714,27 @@
         return;
       }
 
+      if (!orderItemId) {
+        console.error('❌ Order item identifier missing:', currentChatData);
+        showNotification('Order item identifier missing. Please select a valid item.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        return;
+      }
+
+      if (!productId) {
+        console.error('❌ Product identifier missing:', currentChatData);
+        showNotification('Product identifier missing. Please select a valid item.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        return;
+      }
+
       const refundCase = await createRefundCase({
         order_id: currentChatData.order_id,
-        order_item_id: currentChatData.order_item_id || currentChatData.order_item || null,
-        product_id: currentChatData.product_id || currentChatData.productId || null,
-        product_name: currentChatData.product_name,
+        order_item_id: orderItemId,
+        product_id: productId,
+        product_name: productName,
         complaint_text: description,
         buyer_id: userId,
         seller_id: sellerId,
@@ -2572,6 +2755,8 @@
       currentChatData.supabase_case_id = refundCase.id;
       currentChatData.status = 'pending';
       currentChatData.reason = 'complaint';
+      // Ensure store name is preserved from existing data or backend response
+      currentChatData.store_name = currentChatData.store_name || refundCase.store_name || resolveStoreName(currentChatData) || resolveStoreName(refundCase) || 'Store';
       
       if (!currentChatData.messages) currentChatData.messages = [];
       
@@ -2626,24 +2811,25 @@
     statusElement.className = `resolution-status ${report.status}`;
     statusElement.innerHTML = `<i class="fas fa-circle"></i> ${report.status.replace(/_/g, ' ').toUpperCase()}`;
 
-    // Update 42 hours countdown banner
+    // Update 2-day countdown banner after evidence submission
     const countdownBanner = document.getElementById('chatCountdownBanner');
     if (report.evidence_submitted_at) {
       const evidenceTime = new Date(report.evidence_submitted_at).getTime();
-      const decisionTime = evidenceTime + (42 * 60 * 60 * 1000);
+      const decisionTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
       const timeLeft = decisionTime - Date.now();
       
       if (timeLeft > 0) {
-        const hLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+        const dLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+        const hLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-        countdownBanner.textContent = `The store has ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
+        countdownBanner.textContent = `The store has ${dLeft}d ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
         countdownBanner.classList.add('active');
       } else {
         countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
         countdownBanner.classList.add('active');
       }
     } else {
-      countdownBanner.textContent = 'Submit your evidence to begin chat. After you send it, the store will have 42 hours to resolve the issue.';
+      countdownBanner.textContent = 'Submit your evidence to begin chat. After you send it, the store will have 2 days to resolve the issue.';
       countdownBanner.classList.add('active');
     }
 
