@@ -30,6 +30,8 @@ document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
 
 // ─── DOM Ready ────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
+  // dashboardLoaded prevents clearing cards on subsequent refreshes
+  window._dashboardLoaded = false;
   initNavToggle();
   initMobilePanel();
   initProfileDropdownClose();
@@ -37,7 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initActivityModal();
   initModals();
 
-  // Clear static demo content immediately
+  // Clear static demo content immediately (only on first load)
   clearOverviewCards();
   clearActivityTicker();
 
@@ -110,8 +112,11 @@ async function updateNavbarNotificationBadge() {
 
 // ─── Clear placeholder content ────────────────────────────────────────────────
 function clearOverviewCards() {
+  // Don't clear once dashboard has completed its initial load
+  if (window._dashboardLoaded) return;
+
   document.querySelectorAll(".overview-card h3").forEach((h3) => {
-    // Only clear if it looks like placeholder text (numbers only), not "—"
+    // Only clear if it looks like placeholder numeric text (numbers only), not "—"
     const text = h3.textContent.trim();
     if (/^\d+$/.test(text) || /^\d+,\d+$/.test(text) || /^₦/.test(text)) {
       h3.textContent = "Loading...";
@@ -199,6 +204,9 @@ async function loadDashboardData() {
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
   renderStoreShareLink(store);
+
+  // Mark initial load complete — subsequent refreshes won't show loading placeholders
+  if (!window._dashboardLoaded) window._dashboardLoaded = true;
 }
 
 // ─── Nav Toggle ───────────────────────────────────────────────────────────────
