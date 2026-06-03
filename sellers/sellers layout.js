@@ -111,15 +111,30 @@ async function updateNavbarNotificationBadge() {
 // ─── Clear placeholder content ────────────────────────────────────────────────
 function clearOverviewCards() {
   document.querySelectorAll(".overview-card h3").forEach((h3) => {
-    h3.textContent = "—";
+    // Only clear if it looks like placeholder text (numbers only), not "—"
+    const text = h3.textContent.trim();
+    if (/^\d+$/.test(text) || /^\d+,\d+$/.test(text) || /^₦/.test(text)) {
+      h3.textContent = "Loading...";
+    }
   });
 }
 
 function clearActivityTicker() {
   const tickerList = document.getElementById("tickerList");
-  if (tickerList) tickerList.innerHTML = "<li>Loading activity...</li>";
+  if (tickerList) {
+    const currentHtml = tickerList.innerHTML.trim();
+    // Only update if not already loading
+    if (!currentHtml.includes("Loading activity") && tickerList.innerText !== "Loading activity...") {
+      tickerList.innerHTML = "<li>Loading activity...</li>";
+    }
+  }
   const fullLog = document.querySelector(".full-log");
-  if (fullLog) fullLog.innerHTML = "<li>Loading activity...</li>";
+  if (fullLog) {
+    const currentHtml = fullLog.innerHTML.trim();
+    if (!currentHtml.includes("Loading activity") && fullLog.innerText !== "Loading activity...") {
+      fullLog.innerHTML = "<li>Loading activity...</li>";
+    }
+  }
 }
 
 // ─── Central data loader ──────────────────────────────────────────────────────
@@ -140,12 +155,22 @@ async function loadDashboardData() {
   }
 
   // All calls go through StoreManager.apiFetch which auto-adds X-Store-Id
-  const [profileRes, userRes, statsRes, earningsRes, activityRes] = await Promise.allSettled([
+  const [profileRes, userRes, statsRes, earningsRes, activityRes, refundsRes] = await Promise.allSettled([
     StoreManager.apiFetch("/seller/profile"),
     StoreManager.apiFetch("/auth/me"),
     StoreManager.apiFetch(`/seller/stores/${store.id}/stats`),
     StoreManager.apiFetch("/earnings"),
     StoreManager.apiFetch("/seller/activity?limit=50"),
+    // Fetch returns/refunds count from the seller endpoint
+    (async () => {
+      try {
+        const result = await StoreManager.apiFetch("/refunds/seller");
+        return result || { data: { count: 0, refunds: [] } };
+      } catch (e) {
+        console.warn('Could not fetch refunds count:', e.message);
+        return { data: { count: 0, refunds: [] } };
+      }
+    })(),
   ]);
 
   const profile    = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller      : null;
@@ -155,6 +180,11 @@ async function loadDashboardData() {
   const activities = activityRes.status === "fulfilled"
     ? (activityRes.value?.data?.activities || [])
     : [];
+  
+  let refundsCount = 0;
+  if (refundsRes.status === "fulfilled" && refundsRes.value?.data) {
+    refundsCount = refundsRes.value.data.count || 0;
+  }
 
   // Merge stats into store object for progress tracker
   if (stats) {
@@ -164,7 +194,7 @@ async function loadDashboardData() {
 
   renderWelcome(store);
   renderProfileImage(profile);
-  renderOverviewCards(stats, earnings, store);
+  renderOverviewCards(stats, earnings, store, refundsCount);
   renderProgressTracker(profile, store, user);
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
@@ -247,8 +277,17 @@ function renderProfileImage(profile) {
 
   if (logo) {
     images.forEach((img) => {
-      img.src = logo;
-      img.onerror = () => { img.src = ""; };
+      // Only update if src actually changed to prevent unnecessary re-renders
+      if (img.src !== logo) {
+        img.src = logo;
+        // Only clear on error if we have a valid logo URL - don't clear on first load
+        img.onerror = function handleImgError() {
+          if (this.src && this.src === logo) {
+            // Use a placeholder or leave as is instead of clearing completely
+            this.style.backgroundColor = '#e2e8f0';
+          }
+        };
+      }
     });
   }
 }
@@ -298,33 +337,57 @@ window.copyStoreLink = function () {
 };
 
 // ─── Overview Cards — store-scoped stats ─────────────────────────────────────
-function renderOverviewCards(stats, earnings, store) {
+function renderOverviewCards(stats, earnings, store, refundsCount = 0) {
   function setCard(labelText, value) {
     const cards = document.querySelectorAll(".overview-card");
     for (const card of cards) {
       const p = card.querySelector("p");
       if (p && p.textContent.trim().toLowerCase() === labelText.toLowerCase()) {
         const h3 = card.querySelector("h3");
-        if (h3) h3.textContent = value;
+        if (h3) {
+          // Only update if value actually changed to prevent blinking
+          const currentText = h3.textContent;
+          const newText = String(value);
+          if (currentText !== newText) {
+            h3.textContent = newText;
+          }
+        }
         return;
       }
     }
   }
 
-  setCard("Orders", stats?.totalOrders ?? "—");
+  // Use normalized stats with fallbacks for field name variations
+  const totalOrders = stats?.totalOrders ?? stats?.total_orders ?? 0;
+  const productCount = stats?.productCount ?? stats?.product_count ?? store?.product_count ?? 0;
+  
+  // Returns can come from refunds count OR cancelled orders from stats
+  const returnsCancelled = refundsCount > 0 ? refundsCount : (stats?.cancelled ?? stats?.cancelledOrders ?? 0);
+  
+  // Handle earnings from multiple possible sources
+  let totalEarnings = null;
+  if (earnings?.totalEarnings) {
+    totalEarnings = earnings.totalEarnings;
+  } else if (earnings?.total_earnings) {
+    totalEarnings = earnings.total_earnings;
+  } else if (stats?.totalEarnings) {
+    totalEarnings = stats.totalEarnings;
+  } else if (stats?.total_earnings) {
+    totalEarnings = stats.total_earnings;
+  }
 
-  // Product count from store object (updated by stats endpoint)
-  setCard("Products", stats?.productCount ?? store?.product_count ?? "—");
+  // Update cards with actual data or placeholder
+  setCard("Orders", totalOrders > 0 ? totalOrders : "—");
+  setCard("Products", productCount > 0 ? productCount : "—");
+  
+  if (totalEarnings !== null && totalEarnings > 0) {
+    setCard("Earnings", "₦" + Number(totalEarnings).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }));
+  } else {
+    setCard("Earnings", "—");
+  }
 
-  const total = earnings?.totalEarnings ?? stats?.totalEarnings ?? null;
-  setCard(
-    "Earnings",
-    total !== null
-      ? "₦" + Number(total).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-      : "—"
-  );
-
-  setCard("Returns", stats?.cancelled ?? "—");
+  // For returns - this should pull from refunds table or cancelled orders
+  setCard("Returns", returnsCancelled > 0 ? returnsCancelled : "—");
 }
 
 // ─── Progress Tracker ─────────────────────────────────────────────────────────
