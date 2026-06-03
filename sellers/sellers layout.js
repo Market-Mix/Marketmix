@@ -409,7 +409,8 @@ function renderProgressTracker(profile, store, user) {
   const p            = profile?.profile || profile;
   const kycStatus    = p?.kycDocumentUrls?.kyc_status || p?.kyc_status || null;
   const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at || !!p?.kyc_submitted_at;
-  const kycApproved  = !!p?.isVerified && kycStatus === 'approved';
+  const isVerifiedFlag = p?.isVerified === true;
+  const kycApproved  = isVerifiedFlag && kycStatus === 'approved';
   const userAddress  = user?.address || user?.business_address || p?.address || p?.business_address || null;
   const hasShoppingDetails = !!(
     userAddress ||
@@ -459,6 +460,18 @@ function renderProgressTracker(profile, store, user) {
   if (kycApproved) {
     badgeText = 'Verified ✓';
     badgeClass = 'green';
+  }
+
+  // If KYC explicitly failed, show a failure badge and banner
+  if (p?.isVerified === false && (kycStatus === 'rejected' || kycStatus === 'failed')) {
+    badgeText = 'KYC Failed';
+    badgeClass = 'red';
+    // show banner with next steps
+    const banner = document.getElementById('kycNotificationBanner');
+    if (banner) {
+      banner.style.display = 'block';
+      document.getElementById('kycNotificationText').textContent = 'Your KYC verification was not approved. Please resubmit your documents or contact support.';
+    }
   }
 
   if (kycApproved && storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
