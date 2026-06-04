@@ -185,6 +185,7 @@ async function loadProfile() {
 async function loadCategories() {
   try {
     const store = window.StoreManager?.getActiveStore?.();
+    const storeCategoryId = store?.category_id || '';
     const storeCategoryName = store?.category || '';
 
     const res = await fetch(`${API_BASE}/categories`);
@@ -192,6 +193,7 @@ async function loadCategories() {
     allCategories = data?.data || [];
 
     const storeCategory = allCategories.find(c =>
+      String(c.id) === String(storeCategoryId) ||
       c.name.toLowerCase() === storeCategoryName.toLowerCase()
     );
 
@@ -211,9 +213,19 @@ async function loadCategories() {
       if (storeCategory) {
         select.value = storeCategory.id;
         select.disabled = true;
-        select.title = 'Category is set by your store. Change in Store Settings.';
-        const subcatSelectId = id === 'newProductCategory' ? 'newProductSubcategory' : 'editSubcategory';
-        loadSubcategories(storeCategory.id, subcatSelectId);
+        select.style.cssText = 'background:#f1f5f9;color:#64748b;cursor:not-allowed;border-color:#e2e8f0;';
+        select.title = 'Category is locked to your store. Change in Shop Settings.';
+
+        const hint = document.getElementById(`${id}_hint`) || document.createElement('small');
+        hint.id = `${id}_hint`;
+        hint.style.cssText = 'display:block;color:#94a3b8;font-size:11px;margin-top:3px;';
+        hint.innerHTML = `🔒 Locked to store category. <a href="sellers setting.html" style="color:#2563eb;">Change in Settings</a>`;
+        if (!document.getElementById(`${id}_hint`)) {
+          select.parentNode.insertBefore(hint, select.nextSibling);
+        }
+
+        const subcatId = id === 'newProductCategory' ? 'newProductSubcategory' : 'editSubcategory';
+        loadSubcategories(storeCategory.id, subcatId);
       }
     });
   } catch (err) {
@@ -399,7 +411,8 @@ async function addProduct() {
   const price       = document.getElementById('newProductPrice').value.trim();
   const stock       = document.getElementById('newProductStock').value.trim();
   const description = document.getElementById('newProductDescription').value.trim();
-  const categoryId  = document.getElementById('newProductCategory').value;
+  const catEl       = document.getElementById('newProductCategory');
+  const categoryId  = catEl?.value || catEl?.options?.[catEl.selectedIndex]?.value || '';
 
   if (!name || !price) {
     showToast('Product name and price are required.', 'error');
