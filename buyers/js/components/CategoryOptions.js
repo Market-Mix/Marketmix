@@ -1,199 +1,171 @@
-// Category Options Component
-// Displays color and size options based on category rules
-// Disables Add to Cart until required options are selected
-
 function createCategoryOptions(product) {
   const container = document.getElementById('category-options');
   if (!container) return;
 
-  // Helper function to parse color/size data from various formats
-  function parseOptions(data) {
+  function parseOpts(data) {
     if (!data) return [];
-
     if (Array.isArray(data)) return data.filter(Boolean);
-
     if (typeof data === 'string') {
-      try {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) return parsed.filter(Boolean);
-      } catch (e) {
-        return data.split(',').map(s => s.trim()).filter(Boolean);
-      }
+      try { const p = JSON.parse(data); if (Array.isArray(p)) return p.filter(Boolean); } catch(_) {}
+      return data.split(',').map(s => s.trim()).filter(Boolean);
     }
-
     return [];
-    
   }
 
-  // Options come from product data when available
-  let colors = parseOptions(product.color);
-  let sizes = parseOptions(product.size);
+  const colors = parseOpts(product.color);
+  const sizes = parseOpts(product.size);
 
-  // Determine final show flags by combining category rules with actual product data
-  const rules = getCategoryRules(product.category);
-  const showColors = colors.length > 0 || !!rules.showColors;
-  const showSizes = sizes.length > 0 || !!rules.showSizes;
+  let variants = [];
+  try {
+    const raw = product.variants;
+    if (raw) variants = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(variants)) variants = [];
+    variants = variants.filter(v => v && v.name);
+  } catch (_) { variants = []; }
 
-  // Debug info (safe to remove in production)
-  console.log('Product data:', {
-    id: product.id,
-    name: product.name,
-    category: product.category,
-    color_raw: product.color,
-    color_parsed: colors,
-    size_raw: product.size,
-    size_parsed: sizes,
-    categoryRules: { showColors: rules.showColors, showSizes: rules.showSizes },
-    finalShowColors: showColors,
-    finalShowSizes: showSizes
-  });
+  let specs = {};
+  try {
+    const rawMeta = product.category_meta;
+    if (rawMeta) specs = typeof rawMeta === 'string' ? JSON.parse(rawMeta) : rawMeta;
+  } catch (_) { specs = {}; }
 
-  // Fallback defaults if we need to show options but product has none
-  if (colors.length === 0 && showColors) colors = ['Black', 'White', 'Red', 'Blue', 'Green'];
-  if (sizes.length === 0 && showSizes) sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const dynFields = product.dynamic_fields || {};
+  const allSpecs = { ...specs, ...dynFields };
+
+  const showColors = colors.length > 0;
+  const showSizes = sizes.length > 0;
+  const showVariants = variants.length > 0;
+  const showSpecs = Object.keys(allSpecs).length > 0;
 
   let selectedColor = null;
   let selectedSize = null;
+  let selectedVariant = null;
 
-  const html = `
-    <div style="padding:16px;border:1px solid #e2e8f0;border-radius:12px;background:#fafafa">
-      ${showColors ? `
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-weight:600;margin-bottom:8px;color:#334155">Color</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap" id="color-options">
-            ${colors.map(color => `
-              <button class="color-btn" data-color="${color}" style="padding:8px 12px;border:2px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.2s ease;color:#475569">${color}</button>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
+  let html = '';
 
-      ${showSizes ? `
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-weight:600;margin-bottom:8px;color:#334155">Size</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap" id="size-options">
-            ${sizes.map(size => `
-              <button class="size-btn" data-size="${size}" style="padding:8px 12px;border:2px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.2s ease;color:#475569;min-width:40px;text-align:center">${size}</button>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
+  if (showSpecs) {
+    const specLabels = {
+      type:'Type', brand:'Brand', model:'Model', gender:'Gender',
+      size:'Size', color:'Color', material:'Material', condition:'Condition',
+      author:'Author', sport:'Sport', age:'Age Range', volume:'Volume',
+      storage:'Storage', ram:'RAM', processor:'Processor', battery:'Battery',
+      os:'Operating System', screen_size:'Screen Size', connectivity:'Connectivity',
+      weight:'Weight', strap_material:'Strap', power_rating:'Power',
+      set_size:'Set Size', num_pieces:'Pieces', age_range:'Age Range',
+      hair_type:'Hair Type', length:'Length', texture:'Texture'
+    };
+    html += `<div class="spec-section">
+      <div class="spec-title">Product Specifications</div>
+      <div class="spec-grid">`;
+    Object.entries(allSpecs).forEach(([k, v]) => {
+      if (!v) return;
+      const val = Array.isArray(v) ? v.join(', ') : v;
+      const label = specLabels[k] || k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      html += `<div class="spec-row"><span class="spec-key">${label}</span><span class="spec-val">${escapeHtml(val)}</span></div>`;
+    });
+    html += `</div></div>`;
+  }
 
-      <div id="options-status" style="font-size:12px;color:#f97316;margin-top:8px;display:none">⚠️ Please select all options above before adding to cart</div>
-    </div>
-  `;
+  if (showVariants) {
+    html += `<div class="opt-section">
+      <div class="opt-label">Select Variant</div>
+      <div class="opt-chips" id="variant-chips">`;
+    variants.forEach((v,i) => {
+      const extra = v.price ? ` · ₦${parseFloat(v.price).toLocaleString()}` : '';
+      html += `<button type="button" class="opt-chip" data-variant="${i}">${escapeHtml(v.name)}${escapeHtml(extra)}</button>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (showColors) {
+    html += `<div class="opt-section">
+      <div class="opt-label">Color: <span id="color-label" style="font-weight:600;color:#f97316"></span></div>
+      <div class="opt-chips" id="color-chips">`;
+    colors.forEach(c => {
+      html += `<button type="button" class="opt-chip" data-color="${escapeHtml(c)}">${escapeHtml(c)}</button>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (showSizes) {
+    html += `<div class="opt-section">
+      <div class="opt-label">Size</div>
+      <div class="opt-chips" id="size-chips">`;
+    sizes.forEach(s => {
+      html += `<button type="button" class="opt-chip" data-size="${escapeHtml(s)}">${escapeHtml(s)}</button>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (showColors || showSizes || showVariants) {
+    html += `<div id="opts-warn" style="display:none;font-size:12px;color:#f97316;margin-top:6px">⚠️ Please select all options before adding to cart</div>`;
+  }
 
   container.innerHTML = html;
 
-  // Color handlers
-  if (showColors) {
-    document.querySelectorAll('.color-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.color-btn').forEach(b => { b.style.borderColor = '#d1d5db'; b.style.backgroundColor = '#fff'; b.style.color = '#475569'; });
-        e.currentTarget.style.borderColor = '#f97316';
-        e.currentTarget.style.backgroundColor = '#f97316';
-        e.currentTarget.style.color = '#fff';
-        selectedColor = e.currentTarget.getAttribute('data-color');
-        checkCanAddToCart();
+  if (!document.getElementById('cat-opt-styles')) {
+    const style = document.createElement('style');
+    style.id = 'cat-opt-styles';
+    style.textContent = `
+      .spec-section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px}
+      .spec-title{font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+      .spec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0}
+      .spec-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;gap:8px}
+      .spec-row:last-child{border-bottom:none}
+      .spec-key{color:#64748b;flex-shrink:0}
+      .spec-val{color:#1e293b;font-weight:500;text-align:right;word-break:break-word}
+      .opt-section{margin-bottom:14px}
+      .opt-label{font-size:13px;font-weight:600;color:#334155;margin-bottom:8px}
+      .opt-chips{display:flex;flex-wrap:wrap;gap:8px}
+      .opt-chip{padding:7px 14px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#475569;transition:all .15s}
+      .opt-chip:hover{border-color:#f97316;color:#f97316}
+      .opt-chip.selected{border-color:#f97316;background:#f97316;color:#fff}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function wireChips(containerId, attr, onSelect) {
+    document.querySelectorAll(`#${containerId} .opt-chip`).forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll(`#${containerId} .opt-chip`).forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        onSelect(btn.dataset[attr], btn);
+        checkCanAdd();
       });
     });
   }
 
-  // Size handlers
-  if (showSizes) {
-    document.querySelectorAll('.size-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.size-btn').forEach(b => { b.style.borderColor = '#d1d5db'; b.style.backgroundColor = '#fff'; b.style.color = '#475569'; });
-        e.currentTarget.style.borderColor = '#f97316';
-        e.currentTarget.style.backgroundColor = '#f97316';
-        e.currentTarget.style.color = '#fff';
-        selectedSize = e.currentTarget.getAttribute('data-size');
-        checkCanAddToCart();
-      });
-    });
-  }
-
-  function renderCategoryMeta(product, container) {
-  const meta = product.category_meta;
-  if (!meta || typeof meta !== 'object' || !Object.keys(meta).length) return;
-
-  const labels = {
-    type: 'Type', brand: 'Brand', model: 'Model', gender: 'Gender',
-    size: 'Size', color: 'Color', material: 'Material', condition: 'Condition',
-    author: 'Author', sport: 'Sport Type', age: 'Age Range', volume: 'Volume'
-  };
-
-  const items = Object.entries(meta)
-    .filter(([, v]) => v)
-    .map(([k, v]) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;">
-        <span style="font-size:13px;color:#64748b;font-weight:500">${labels[k] || k}</span>
-        <span style="font-size:13px;color:#1e293b;font-weight:600">${v}</span>
-      </div>
-    `).join('');
-
-  if (!items) return;
-
-  const metaDiv = document.createElement('div');
-  metaDiv.style.cssText = 'margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;';
-  metaDiv.innerHTML = `
-    <p style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Product Details</p>
-    ${items}
-  `;
-  container.appendChild(metaDiv);
-}
-
-  function checkCanAddToCart() {
-    const addToCartBtn = document.getElementById('product-add-to-cart');
-    const wishlistBtn = document.getElementById('product-add-to-wishlist');
-    const checkoutBtn = document.getElementById('product-checkout');
-    const statusDiv = document.getElementById('options-status');
-    const colorRequired = showColors && !selectedColor;
-    const sizeRequired = showSizes && !selectedSize;
-
-    if (colorRequired || sizeRequired) {
-      if (addToCartBtn) {
-        addToCartBtn.disabled = true;
-        addToCartBtn.style.opacity = '0.5';
-        addToCartBtn.style.cursor = 'not-allowed';
-      }
-      if (wishlistBtn) {
-        wishlistBtn.disabled = true;
-        wishlistBtn.style.opacity = '0.5';
-        wishlistBtn.style.cursor = 'not-allowed';
-      }
-      if (checkoutBtn) {
-        checkoutBtn.disabled = true;
-        checkoutBtn.style.opacity = '0.5';
-        checkoutBtn.style.cursor = 'not-allowed';
-      }
-      statusDiv.style.display = 'block';
-    } else {
-      if (addToCartBtn) {
-        addToCartBtn.disabled = false;
-        addToCartBtn.style.opacity = '1';
-        addToCartBtn.style.cursor = 'pointer';
-      }
-      if (wishlistBtn) {
-        wishlistBtn.disabled = false;
-        wishlistBtn.style.opacity = '1';
-        wishlistBtn.style.cursor = 'pointer';
-      }
-      if (checkoutBtn) {
-        checkoutBtn.disabled = false;
-        checkoutBtn.style.opacity = '1';
-        checkoutBtn.style.cursor = 'pointer';
-      }
-      statusDiv.style.display = 'none';
+  wireChips('color-chips', 'color', (v) => { selectedColor = v; const l = document.getElementById('color-label'); if (l) l.textContent = v; });
+  wireChips('size-chips', 'size', (v) => { selectedSize = v; });
+  wireChips('variant-chips', 'variant', (i) => {
+    selectedVariant = variants[parseInt(i, 10)];
+    if (selectedVariant?.price) {
+      const priceEl = document.getElementById('product-price');
+      if (priceEl) priceEl.textContent = `₦${parseFloat(selectedVariant.price).toLocaleString()}`;
     }
+  });
+
+  function checkCanAdd() {
+    const needColor = showColors && !selectedColor;
+    const needSize = showSizes && !selectedSize;
+    const needVariant = showVariants && !selectedVariant;
+    const blocked = needColor || needSize || needVariant;
+    const warn = document.getElementById('opts-warn');
+    if (warn) warn.style.display = blocked ? 'block' : 'none';
+    ['product-add-to-cart','product-add-to-wishlist','product-checkout'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.disabled = blocked;
+      btn.style.opacity = blocked ? '0.5' : '1';
+      btn.style.cursor = blocked ? 'not-allowed' : 'pointer';
+    });
   }
 
-  // Ensure initial enable/disable state is applied
-  setTimeout(checkCanAddToCart, 50);
+  checkCanAdd();
 
-  // Show category meta details from seller
-  renderCategoryMeta(product, container);
-
-  // Expose selections
-  window.productOptions = { color: () => selectedColor, size: () => selectedSize };
+  window.productOptions = {
+    color: () => selectedColor,
+    size: () => selectedSize,
+    variant: () => selectedVariant
+  };
 }

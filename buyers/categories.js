@@ -1,42 +1,133 @@
-document.addEventListener('DOMContentLoaded', async function(){
+const API_BASE = 'https://marketmix-backend.onrender.com/api';
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/[&<>'"]/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
+async function loadCategories() {
   const grid = document.getElementById('allCategoriesGrid');
   if (!grid) return;
 
   try {
-    const API_BASE = 'https://marketmix-backend.onrender.com/api';
-    const resp = await fetch(`${API_BASE}/categories?limit=200`);
-    if (!resp.ok) throw new Error('Failed to fetch categories');
-    const json = await resp.json();
-    const cats = json.data || [];
+    const [catRes, prodRes] = await Promise.all([
+      fetch(`${API_BASE}/categories/with-count`),
+      fetch(`${API_BASE}/products?limit=200`)
+    ]);
 
-    if (cats.length === 0) {
+    if (!catRes.ok) throw new Error('Failed to load categories');
+    if (!prodRes.ok) throw new Error('Failed to load products');
+
+    const catData = await catRes.json();
+    const prodData = await prodRes.json();
+    const cats = catData.data || [];
+    const products = prodData.data || [];
+
+    const catImageMap = {};
+    products.forEach((p) => {
+      if (p.category_id && p.main_image_url && !catImageMap[p.category_id]) {
+        catImageMap[p.category_id] = p.main_image_url;
+      }
+    });
+
+    if (!cats.length) {
       grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No categories found.</div>';
       return;
     }
 
-    grid.innerHTML = cats.map(c => `
-      <div class="category-card">
-        <img src="${c.image || 'https://via.placeholder.com/200'}" alt="${c.name}" />
-        <div class="category-name">${escapeHtml(c.name)}</div>
-        <div class="meta" style="margin-top:8px;color:#666">${c.product_count || 0} product(s)</div>
-        <button class="view-category" data-id="${c.id}" style="margin-top:12px;background:#667eea;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">View Category</button>
-      </div>
-    `).join('');
-
-    // Attach handlers
-    grid.querySelectorAll('.view-category').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const id = btn.dataset.id;
-        if (id) window.location.href = `buyers-category.html?id=${id}`;
-      });
-    });
+    grid.innerHTML = cats.map((c) => {
+      const img = catImageMap[c.id] || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300';
+      return `
+        <div class="cat-card" data-id="${escapeHtml(c.id)}" data-name="${escapeHtml(c.name)}" onclick="openCategory(this)">
+          <div class="cat-img-wrap">
+            <img src="${escapeHtml(img)}" alt="${escapeHtml(c.name)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300'">
+          </div>
+          <div class="cat-info">
+            <div class="cat-name">${escapeHtml(c.name)}</div>
+            <div class="cat-count">${c.product_count || 0} products</div>
+          </div>
+          <div class="cat-arrow"><i class="fas fa-chevron-right"></i></div>
+        </div>`;
+    }).join('');
   } catch (err) {
-    console.error(err);
+    console.error('Error loading categories:', err);
     grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">Error loading categories.</div>';
   }
+}
 
-  function escapeHtml(text){
-    if (!text) return '';
-    return String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function openCategory(el) {
+  if (!el) return;
+  const id = el.dataset?.id;
+  const name = el.dataset?.name || '';
+  if (!id) return;
+
+  const panel = document.getElementById('subcatPanel');
+  const panelTitle = document.getElementById('subcatTitle');
+  const subcatGrid = document.getElementById('subcatGrid');
+
+  if (!panel || !panelTitle || !subcatGrid) {
+    window.location.href = `buyers-category.html?id=${encodeURIComponent(id)}`;
+    return;
   }
-});
+
+  panelTitle.textContent = name;
+  subcatGrid.innerHTML = '<div style="padding:16px;color:#888;text-align:center">Loading...</div>';
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  try {
+    const [subRes, prodRes] = await Promise.all([
+      fetch(`${API_BASE}/categories/${encodeURIComponent(id)}/subcategories`),
+      fetch(`${API_BASE}/products?limit=200`)
+    ]);
+
+    if (!subRes.ok) throw new Error('Failed to load subcategories');
+    if (!prodRes.ok) throw new Error('Failed to load products');
+
+    const subs = (await subRes.json()).data || [];
+    const products = ((await prodRes.json()).data || []).filter(
+      (p) => String(p.category_id) === String(id)
+    );
+
+    const subImageMap = {};
+    products.forEach((p) => {
+      if (p.subcategory_id && p.main_image_url && !subImageMap[p.subcategory_id]) {
+        subImageMap[p.subcategory_id] = p.main_image_url;
+      }
+    });
+
+    const defaultImg = products[0]?.main_image_url || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300';
+
+    let html = `
+      <div class="subcat-item" onclick="window.location.href='buyers-category.html?id=${encodeURIComponent(id)}'" style="cursor:pointer">
+        <div class="subcat-icon" style="background:#fff7ed"><i class="fas fa-th" style="color:#f97316"></i></div>
+        <span>All ${escapeHtml(name)}</span>
+      </div>`;
+
+    subs.forEach((s) => {
+      const img = subImageMap[s.id] || defaultImg;
+      html += `
+        <div class="subcat-item" onclick="window.location.href='buyers-category.html?id=${encodeURIComponent(id)}&sub=${encodeURIComponent(s.id)}'" style="cursor:pointer">
+          <div class="subcat-icon"><img src="${escapeHtml(img)}" alt="${escapeHtml(s.name)}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-tag\\' style=\\'color:#f97316\\'></i>'"></div>
+          <span>${escapeHtml(s.name)}</span>
+        </div>`;
+    });
+
+    if (!subs.length) {
+      html += '<div style="padding:12px;color:#888;font-size:13px">No subcategories available. Browse all products.</div>';
+    }
+
+    subcatGrid.innerHTML = html;
+  } catch (e) {
+    console.error('Error loading subcategories:', e);
+    subcatGrid.innerHTML = '<div style="padding:16px;color:#e53e3e">Error loading subcategories.</div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadCategories);
