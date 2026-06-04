@@ -954,6 +954,42 @@ function renderSubcategoryFields(fields, containerId, existingValues = {}) {
   container.innerHTML = html;
 }
 
+function collectDynamicFields(formSelector) {
+  const fields = {};
+  const form = document.querySelector(formSelector);
+  if (!form) return fields;
+
+  form.querySelectorAll('[name^="cat_"]').forEach(el => {
+    const name = el.name.replace(/^cat_/, '');
+    if (!name) return;
+
+    if (el.type === 'checkbox') {
+      if (!el.checked) return;
+      if (!fields[name]) fields[name] = [];
+      fields[name].push(el.value);
+      return;
+    }
+
+    if (el.name.endsWith('[]')) {
+      if (!fields[name]) fields[name] = [];
+      if (el.checked) fields[name].push(el.value);
+      return;
+    }
+
+    if (el.tagName === 'SELECT' || el.type === 'date' || el.type === 'text' || el.type === 'number' || el.type === 'email' || el.tagName === 'TEXTAREA') {
+      const value = el.value.trim();
+      if (!value) return;
+      if (el.type === 'text' && value.includes(',')) {
+        fields[name] = value.split(',').map(item => item.trim()).filter(Boolean);
+      } else {
+        fields[name] = value;
+      }
+    }
+  });
+
+  return fields;
+}
+
 function collectDynamicFields2(formSelector) {
   const fields = {};
   const form = document.querySelector(formSelector);

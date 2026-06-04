@@ -38,12 +38,19 @@
     </form>
   </div>
 
-  <main class="main-content">
-    <section class="popular-categories" style="padding:80px 16px 100px">
-      <h2 style="font-size:20px;font-weight:700;margin-bottom:16px;color:#1e293b">All Categories</h2>
-      <div id="allCategoriesGrid" style="display:flex;flex-direction:column;gap:10px">
+  <main class="main-content category-page">
+    <section class="popular-categories">
+      <div class="category-header">
+        <div>
+          <h2>All Categories</h2>
+          <p class="page-intro">Browse curated category collections on MarketMix. Tap a category to reveal matching subcategories and shop the latest products.</p>
+        </div>
+      </div>
+
+      <div id="allCategoriesGrid" class="categories-container">
         <div style="padding:20px;color:#666;text-align:center">Loading categories...</div>
       </div>
+
       <!-- Subcategory slide-down panel -->
       <div id="subcatPanel">
         <h3 id="subcatTitle"></h3>
