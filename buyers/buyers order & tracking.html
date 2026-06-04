@@ -16,6 +16,13 @@ function getToken() {
         if (!token) {
             window.location.replace("login for buyers.html");
         }
+
+        try {
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            if (userData.role && userData.role !== 'buyer') {
+                window.location.replace("login for buyers.html");
+            }
+        } catch (e) {}
     </script>
   <style>
     body {

@@ -145,11 +145,19 @@ localStorage.removeItem("mm_stores_cache");
     }
 
     // ─── Save session ─────────────────────────────────────────────────────────
-    function saveSession(token, user) {      // Role-specific keys
+    function saveSession(token, user) {
+      // Role-specific keys
       localStorage.setItem('seller_token', token);
       localStorage.setItem('seller_user', JSON.stringify(user));
-      // Keep legacy keys for backward compat      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+
+      // Don't overwrite buyer session tokens
+      const existingRole = localStorage.getItem('userRole');
+      if (existingRole !== 'buyer') {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+
+      localStorage.setItem('userRole', 'seller');
     }
 
     // ─── Redirect after login ─────────────────────────────────────────────────

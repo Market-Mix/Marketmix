@@ -121,7 +121,10 @@ function getToken() {
 
                 if (response.ok && data.status === 'success') {
                     // Store user data securely
-                    storeAuthData(data.data.user, data.data.token);
+                    if (!storeAuthData(data.data.user, data.data.token)) {
+                        showLoading(false);
+                        return;
+                    }
                     
                     console.log('✅ User logged in successfully');
                     showAlert('success', 'Login successful! Redirecting...');
@@ -222,7 +225,10 @@ function getToken() {
                 showLoading(false);
 
                 if (apiResponse.ok && data.status === 'success') {
-                    storeAuthData(data.data.user, data.data.token);
+                    if (!storeAuthData(data.data.user, data.data.token)) {
+                        showLoading(false);
+                        return;
+                    }
                     showAlert('success', 'Logged in with Google! Redirecting...');
                     try {
                         await mergeGuestWishlist();
@@ -327,6 +333,13 @@ function getToken() {
 
         function storeAuthData(user, token) {
             try {
+                // CRITICAL: Only store as buyer if role is buyer
+                if (user.role && user.role !== 'buyer') {
+                    showAlert('error', `This account is registered as a "${user.role}". Please use the seller login page.`);
+                    showLoading(false);
+                    return false;
+                }
+
                 const authData = {
                     user,
                     token,
@@ -342,8 +355,10 @@ function getToken() {
                 localStorage.setItem('userRole', 'buyer');
                 localStorage.setItem('authData', JSON.stringify(authData));
                 console.log('💾 Auth data stored successfully');
+                return true;
             } catch (error) {
                 console.error('❌ Failed to store auth data:', error);
+                return false;
             }
         }
 
