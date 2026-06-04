@@ -298,6 +298,60 @@ function renderProfileImage(profile) {
       }
     });
   }
+
+  renderProfileVerifiedBadge(profile);
+}
+
+function renderProfileVerifiedBadge(profile) {
+  const status = profile?.profile?.isVerified ?? profile?.isVerified;
+  const kycStatus = profile?.profile?.kycDocumentUrls?.kyc_status || profile?.kyc_status || null;
+  const isRejected = status === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
+  const isVerified = status === true && String(kycStatus).toLowerCase() === 'approved';
+
+  const containers = [
+    document.querySelector('.profile-container'),
+    document.querySelector('.mobile-profile-container')
+  ].filter(Boolean);
+
+  containers.forEach((container) => {
+    if (!container) return;
+    let badge = container.querySelector('#profileVerifiedBadge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'profileVerifiedBadge';
+      badge.style.position = 'absolute';
+      badge.style.right = '-3px';
+      badge.style.bottom = '-3px';
+      badge.style.width = '22px';
+      badge.style.height = '22px';
+      badge.style.borderRadius = '999px';
+      badge.style.fontSize = '12px';
+      badge.style.fontWeight = '700';
+      badge.style.color = '#fff';
+      badge.style.display = 'none';
+      badge.style.alignItems = 'center';
+      badge.style.justifyContent = 'center';
+      badge.style.textAlign = 'center';
+      badge.style.lineHeight = '1';
+      badge.style.zIndex = '50';
+      container.style.position = 'relative';
+      container.appendChild(badge);
+    }
+
+    if (isVerified) {
+      badge.textContent = '✓';
+      badge.style.background = '#16a34a';
+      badge.title = 'Verified seller';
+      badge.style.display = 'flex';
+    } else if (isRejected) {
+      badge.textContent = '!';
+      badge.style.background = '#dc2626';
+      badge.title = 'KYC failed';
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  });
 }
 
 // ─── Store Share Link — uses store.id not seller user id ─────────────────────
@@ -409,7 +463,8 @@ function renderProgressTracker(profile, store, user) {
   const p            = profile?.profile || profile;
   const kycStatus    = p?.kycDocumentUrls?.kyc_status || p?.kyc_status || null;
   const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at || !!p?.kyc_submitted_at;
-  const kycApproved  = !!p?.isVerified && kycStatus === 'approved';
+  const isVerified   = p?.isVerified === true && String(kycStatus).toLowerCase() === 'approved';
+  const isRejected   = p?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
   const userAddress  = user?.address || user?.business_address || p?.address || p?.business_address || null;
   const hasShoppingDetails = !!(
     userAddress ||
@@ -434,11 +489,15 @@ function renderProgressTracker(profile, store, user) {
     progress = 15;
     color = '#ef4444';
     html = `<a href="sellers setting.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
-  } else if (!kycSubmitted && !kycApproved) {
+  } else if (isRejected) {
+    progress = 30;
+    color = '#dc2626';
+    html = `Your KYC verification was not approved. Please resubmit or contact support.`;
+  } else if (!kycSubmitted && !isVerified) {
     progress = 30;
     color = '#f97316';
     html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
-  } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted)) && productCount < 1) {
+  } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted) || isVerified) && productCount < 1) {
     progress = 45;
     color = '#f59e0b';
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
@@ -450,18 +509,21 @@ function renderProgressTracker(profile, store, user) {
     progress = 75;
     color = '#86efac';
     html = `Make your first sales`;
-  } else if (totalSales >= 1 && !(productCount >= 1 && hasShoppingDetails && kycApproved)) {
+  } else if (totalSales >= 1 && !(productCount >= 1 && hasShoppingDetails && isVerified)) {
     progress = 90;
     color = '#22c55e';
     html = `<a href="sellers earning.html" style="color:#1e293b;text-decoration:underline">Withdraw your first earning</a>`;
   }
 
-  if (kycApproved) {
+  if (isRejected) {
+    badgeText = 'KYC Failed';
+    badgeClass = 'red';
+  } else if (isVerified) {
     badgeText = 'Verified ✓';
     badgeClass = 'green';
   }
 
-  if (kycApproved && storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
+  if (isVerified && storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
     progress = 100;
     color = '#3b82f6';
     html = `Everything complete!`;
@@ -494,7 +556,11 @@ function updateKYCNotificationBanner(profile) {
   const kycUrls   = profile?.profile?.kycDocumentUrls || {};
   const kycStatus = kycUrls.kyc_status || null;
 
-  if (kycStatus === 'under_review' || (kycStatus === 'pending' && kycUrls.kyc_submitted_at)) {
+  if (profile?.profile?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase())) {
+    banner.style.display = "block";
+    document.getElementById("kycNotificationText").textContent =
+      "Your KYC verification was not approved. Please resubmit your documents or contact support.";
+  } else if (kycStatus === 'under_review' || (kycStatus === 'pending' && kycUrls.kyc_submitted_at)) {
     banner.style.display = "block";
     document.getElementById("kycNotificationText").textContent =
       "Your KYC verification is under review. We'll notify you once approved.";
