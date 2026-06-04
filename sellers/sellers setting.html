@@ -435,7 +435,13 @@ async function loadSettings() {
   const token = getToken();
   if (!token) { window.location.href = 'sellers login.html'; return; }
 
-    await loadCategoryOptions();
+  await loadCategoryOptions();
+
+  const store = window.StoreManager?.getActiveStore?.() || null;
+  if (!store) {
+    renderNoStore();
+    return;
+  }
 
   document.getElementById('navStoreBadge').innerHTML =
     `<i class="fas fa-store" style="font-size:11px;opacity:.7"></i><span>${store.business_name || 'Store'}</span>`;
