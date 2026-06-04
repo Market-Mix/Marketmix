@@ -2,6 +2,17 @@ function createCategoryOptions(product) {
   const container = document.getElementById('category-options');
   if (!container) return;
 
+  function escapeHtml(text) {
+    if (!text) return '';
+    return String(text).replace(/[&<>'"]/g, (c) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+  }
+
   function parseOpts(data) {
     if (!data) return [];
     if (Array.isArray(data)) return data.filter(Boolean);
