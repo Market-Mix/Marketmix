@@ -86,16 +86,13 @@
             <input id="website" type="url" placeholder="https://yourstore.com">
           </div>
 
-          <!-- Categories: chips + add (modal) -->
+          <!-- Categories: actual categories table -->
           <div class="form-group">
-            <label>Category <span class="required">*</span></label>
-            <div class="chips-wrap" id="categoryChips">
-              <!-- chips inserted via JS -->
-            </div>
-            <div class="chips-actions">
-              <button type="button" id="openAddCategory" class="icon-btn">+ Add category</button>
-            </div>
-            <small class="error-msg" id="error-category"></small>
+            <label for="storeCategory">Category <span class="required">*</span></label>
+            <select id="storeCategory" required>
+              <option value="">Select a category</option>
+            </select>
+            <small class="error-msg" id="error-storeCategory"></small>
           </div>
 
           <!-- Multiple showcase images (up to 3) -->
@@ -167,18 +164,6 @@
     </aside>
   </main>
 
-  <!-- Add Category Modal -->
-  <div id="categoryModal" class="modal" aria-hidden="true">
-    <div class="modal-content">
-      <button class="close-modal" id="closeCategoryModal">×</button>
-      <h3>Add New Category</h3>
-      <input id="newCategoryInput" type="text" placeholder="e.g. Handmade, Pet Supplies">
-      <div class="modal-actions">
-        <button id="saveCategoryBtn" class="btn-primary">Add</button>
-        <button id="cancelCategoryBtn" class="btn-ghost">Cancel</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Footer -->
   <footer class="footer">

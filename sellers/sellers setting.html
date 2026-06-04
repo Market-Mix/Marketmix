@@ -228,8 +228,20 @@
 <script>
 const API = 'https://marketmix-backend.onrender.com/api';
 let updatingActiveStoreCache = false;
+let availableCategories = [];
 
 function getToken() { return localStorage.getItem('token') || ''; }
+
+async function loadCategoryOptions() {
+  try {
+    const res = await fetch(`${API}/categories`);
+    const data = await res.json();
+    availableCategories = data?.data || [];
+  } catch (e) {
+    console.warn('Could not load category options:', e);
+    availableCategories = [];
+  }
+}
 
 function updateActiveStoreCache(store) {
   if (!window.StoreManager?.setActiveStore) return;
@@ -322,7 +334,14 @@ function renderForm(store) {
       <div class="form-row">
         <div class="form-group">
           <label>Category <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
-          <input type="text" id="storeCategory" value="${esc(store.category)}" placeholder="e.g. Fashion, Electronics" />
+          <select id="storeCategory">
+            ${!store.category_id && store.category ? `<option value="" selected>${esc(store.category)}</option>` : '<option value="">Select a store category</option>'}
+            ${availableCategories.map(cat => `
+              <option value="${esc(cat.id)}" ${String(cat.id) === String(store.category_id || '') ? 'selected' : ''}>
+                ${esc(cat.name)}
+              </option>
+            `).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label>Website <small style="font-weight:400;color:var(--ink2)">(optional)</small></label>
@@ -416,10 +435,8 @@ async function loadSettings() {
   const token = getToken();
   if (!token) { window.location.href = 'sellers login.html'; return; }
 
-  const store = window.StoreManager?.getActiveStore();
-  if (!store?.id) { renderNoStore(); return; }
+    await loadCategoryOptions();
 
-  // Update nav badge
   document.getElementById('navStoreBadge').innerHTML =
     `<i class="fas fa-store" style="font-size:11px;opacity:.7"></i><span>${store.business_name || 'Store'}</span>`;
   document.getElementById('pageSubtitle').textContent =
@@ -515,7 +532,8 @@ async function saveStore(storeId) {
       businessAddress:  val('storeAddress')     || null,
       businessEmail:    val('storeEmail')        || null,
       businessPhone:    val('storePhone')        || null,
-      category:         val('storeCategory')     || null,
+      category_id:      val('storeCategory')     || null,
+      category:         document.getElementById('storeCategory')?.selectedOptions?.[0]?.text || null,
       website:          val('storeWebsite')      || null,
       instagram:        val('socialInstagram')   || null,
       facebook:         val('socialFacebook')    || null,

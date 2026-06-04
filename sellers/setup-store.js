@@ -34,14 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let galleryFiles   = [];
 
   // Category
-  const categoryChips   = document.getElementById('categoryChips');
-  const openAddCategory = document.getElementById('openAddCategory');
-  const categoryModal   = document.getElementById('categoryModal');
-  const closeCatModal   = document.getElementById('closeCategoryModal');
-  const cancelCatBtn    = document.getElementById('cancelCategoryBtn');
-  const saveCatBtn      = document.getElementById('saveCategoryBtn');
-  const newCatInput     = document.getElementById('newCategoryInput');
-  const errorCategory   = document.getElementById('error-category');
+  const storeCategory   = document.getElementById('storeCategory');
+  const errorStoreCategory = document.getElementById('error-storeCategory');
+  let categories        = [];
+  let selectedCategoryId = '';
 
   // Socials
   const toggleSocials  = document.getElementById('toggleSocials');
@@ -116,6 +112,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (input) input.style.borderColor = '';
   }
 
+  async function fetchCategories() {
+    try {
+      const res = await fetch(`${API_BASE}/categories`);
+      const data = await res.json();
+      categories = data?.data || [];
+      renderCategoryOptions();
+    } catch (err) {
+      console.warn('Could not load categories:', err);
+    }
+  }
+
+  function renderCategoryOptions() {
+    if (!storeCategory) return;
+    storeCategory.innerHTML = '<option value="">Select a category</option>';
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      if (cat.id === selectedCategoryId) opt.selected = true;
+      storeCategory.appendChild(opt);
+    });
+  }
+
   /* ─── Load existing store #1 if it exists ───────────────────────────────── */
   async function loadProfile() {
     try {
@@ -167,13 +186,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Category
-    if (store.category) {
-      const found = defaultCategories.find(c => c.toLowerCase() === store.category.toLowerCase());
-      if (found) {
-        selectedCategory = found;
-        renderChips();
-        updatePreviewCategories();
-      }
+    if (store.category_id) {
+      selectedCategoryId = store.category_id;
+    } else if (store.category) {
+      const found = categories.find(c => c.name.toLowerCase() === store.category.toLowerCase());
+      if (found) selectedCategoryId = found.id;
+    }
+    if (storeCategory) {
+      storeCategory.value = selectedCategoryId || '';
+      updatePreviewCategories();
     }
 
     // Update previews
@@ -291,58 +312,24 @@ document.addEventListener('DOMContentLoaded', () => {
     clearFieldError('email');
   }
 
-  /* ─── Categories ────────────────────────────────────────────────────────── */
-  const defaultCategories = ['Fashion','Electronics','Beauty & Personal Care','Home & Living','Sports & Outdoors'];
-  let selectedCategory    = '';
-
-  function renderChips() {
-    categoryChips.innerHTML = '';
-    defaultCategories.forEach(cat => {
-      const chip = document.createElement('button');
-      chip.type      = 'button';
-      chip.className = 'chip' + (cat === selectedCategory ? ' selected' : '');
-      chip.textContent = cat;
-      chip.addEventListener('click', () => {
-        selectedCategory = cat;
-        renderChips();
-        updatePreviewCategories();
-        clearFieldError('category');
-      });
-      categoryChips.appendChild(chip);
-    });
-  }
-  renderChips();
-
+  /* ─── Category preview ─────────────────────────────────────────────────── */
   function updatePreviewCategories() {
     previewCats.innerHTML = '';
-    if (selectedCategory) {
+    const categoryName = storeCategory?.selectedOptions?.[0]?.text || '';
+    if (categoryName) {
       const c = document.createElement('div');
       c.className   = 'preview-cat';
-      c.textContent = selectedCategory;
+      c.textContent = categoryName;
       previewCats.appendChild(c);
     }
   }
 
-  /* ─── Category modal ────────────────────────────────────────────────────── */
-  openAddCategory.addEventListener('click', () => {
-    categoryModal.style.display = 'flex';
-    newCatInput.value = '';
-    newCatInput.focus();
-  });
-  closeCatModal.addEventListener('click',  () => categoryModal.style.display = 'none');
-  cancelCatBtn.addEventListener('click',   () => categoryModal.style.display = 'none');
-  window.addEventListener('click', e => { if (e.target === categoryModal) categoryModal.style.display = 'none'; });
-
-  saveCatBtn.addEventListener('click', () => {
-    const v = newCatInput.value.trim();
-    if (!v) return alert('Please enter a category name.');
-    defaultCategories.push(v);
-    selectedCategory = v;
-    renderChips();
-    updatePreviewCategories();
-    categoryModal.style.display = 'none';
-    clearFieldError('category');
-  });
+  if (storeCategory) {
+    storeCategory.addEventListener('change', () => {
+      updatePreviewCategories();
+      clearFieldError('storeCategory');
+    });
+  }
 
   /* ─── Logo drag & drop ──────────────────────────────────────────────────── */
   logoDrop.addEventListener('dragover',  e => { e.preventDefault(); logoDrop.classList.add('dragover'); });
@@ -465,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async e => {
     e.preventDefault();
 
-    ['logo','storeName','email','phone','address','category'].forEach(clearFieldError);
+    ['logo','storeName','email','phone','address','storeCategory'].forEach(clearFieldError);
 
     let valid = true;
 
@@ -478,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!emailInput.value.trim())   { showFieldError('email', 'Email is required.');             valid = false; }
     if (!phoneInput.value.trim())   { showFieldError('phone', 'Phone number is required.');      valid = false; }
     if (!addressInput.value.trim()) { showFieldError('address', 'Store address is required.');   valid = false; }
-    if (!selectedCategory)          { showFieldError('category', 'Please select a category.');   valid = false; }
+    if (!storeCategory?.value)      { showFieldError('storeCategory', 'Please select a category.'); valid = false; }
 
     if (!otpVerified) {
       showFieldError('email', 'Please verify your email before saving.');
@@ -514,7 +501,8 @@ document.addEventListener('DOMContentLoaded', () => {
           businessPhone:    phoneInput.value.trim(),
           businessAddress:  addressInput.value.trim(),
           website:          websiteInput.value.trim(),
-          category:         selectedCategory,
+          category_id:      storeCategory?.value || null,
+          category:         storeCategory?.selectedOptions?.[0]?.text || null,
           storeLogoUrl:     logoPreview.src || null,
           facebook:  document.getElementById('social-facebook').value.trim(),
           twitter:   document.getElementById('social-x').value.trim(),
@@ -594,6 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
   previewNoImg.style.display = 'block';
   previewLogo.style.display  = 'none';
   updatePreviewCategories();
+  await fetchCategories();
   loadProfile();
 
   const footerCopy = document.querySelector('.footer-copy');

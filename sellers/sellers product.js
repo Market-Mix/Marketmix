@@ -122,6 +122,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupMultiImagePreview('newProductImages', 'addImagesPreview', 'addUploadPlaceholder');
   setupMultiImagePreview('editProductImages', 'editImagesPreview');
 
+  // Category change → load subcategories
+  document.getElementById('newProductCategory')?.addEventListener('change', async function() {
+    variants = [];
+    if (!this.value) {
+      document.getElementById('newProductSubcategory').innerHTML = '<option value="">— Select Subcategory —</option>';
+      document.getElementById('addDynamicFields2').innerHTML = '';
+      return;
+    }
+    await loadSubcategories(this.value, 'newProductSubcategory');
+    renderVariantsSection('addVariantsSection');
+  });
+
+  document.getElementById('newProductSubcategory')?.addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const fields = opt.dataset.fields ? JSON.parse(opt.dataset.fields) : [];
+    renderSubcategoryFields(fields, 'addDynamicFields2');
+  });
+
+  // Video preview
+  document.getElementById('newProductVideo')?.addEventListener('change', function() {
+    const file = this.files[0];
+    const preview = document.getElementById('videoPreviewAdd');
+    if (file && preview) {
+      const url = URL.createObjectURL(file);
+      preview.innerHTML = `<video src="${url}" controls style="width:100%;max-height:120px;border-radius:6px"></video>`;
+    }
+  });
+
   const activeStore = await requireActiveStore();
   if (!activeStore) return;
 
@@ -156,10 +184,38 @@ async function loadProfile() {
 // ─── Load Categories ───────────────────────────────────────────────────────────
 async function loadCategories() {
   try {
+    const store = window.StoreManager?.getActiveStore?.();
+    const storeCategoryName = store?.category || '';
+
     const res = await fetch(`${API_BASE}/categories`);
     const data = await res.json();
     allCategories = data?.data || [];
-    populateCategorySelects();
+
+    const storeCategory = allCategories.find(c =>
+      c.name.toLowerCase() === storeCategoryName.toLowerCase()
+    );
+
+    const selects = ['newProductCategory', 'editCategory'];
+    selects.forEach(id => {
+      const select = document.getElementById(id);
+      if (!select) return;
+      while (select.options.length > 1) select.remove(1);
+
+      allCategories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.name;
+        select.appendChild(opt);
+      });
+
+      if (storeCategory) {
+        select.value = storeCategory.id;
+        select.disabled = true;
+        select.title = 'Category is set by your store. Change in Store Settings.';
+        const subcatSelectId = id === 'newProductCategory' ? 'newProductSubcategory' : 'editSubcategory';
+        loadSubcategories(storeCategory.id, subcatSelectId);
+      }
+    });
   } catch (err) {
     console.error('Error loading categories:', err);
   }
@@ -183,8 +239,14 @@ function populateCategorySelects() {
   // Wire dynamic fields
   const addCat = document.getElementById('newProductCategory');
   const editCat = document.getElementById('editCategory');
-  if (addCat) addCat.addEventListener('change', () => renderDynamicFields(addCat.value, 'addDynamicFields'));
-  if (editCat) editCat.addEventListener('change', () => renderDynamicFields(editCat.value, 'editDynamicFields'));
+  if (addCat) addCat.addEventListener('change', async () => {
+    await loadSubcategories(addCat.value, 'newProductSubcategory');
+    renderDynamicFields(addCat.value, 'addDynamicFields');
+  });
+  if (editCat) editCat.addEventListener('change', async () => {
+    await loadSubcategories(editCat.value, 'editSubcategory');
+    renderDynamicFields(editCat.value, 'editDynamicFields');
+  });
 }
 
 // ─── Image preview ─────────────────────────────────────────────────────────────
@@ -356,14 +418,37 @@ async function addProduct() {
     formData.append('description', description);
     if (categoryId) formData.append('category_id', categoryId);
 
+    const subcategoryId = document.getElementById('newProductSubcategory')?.value;
+    if (subcategoryId) formData.append('subcategory_id', subcategoryId);
+
     const weight = document.getElementById('newProductWeight').value;
     if (weight) formData.append('weight_kg', weight);
 
     const addDynamic = collectDynamicFields('#addProductForm');
     if (addDynamic) formData.append('category_meta', JSON.stringify(addDynamic));
 
+    const dynFields = collectDynamicFields2('#addProductModal');
+    if (Object.keys(dynFields).length) formData.append('dynamic_fields', JSON.stringify(dynFields));
+
+    if (variants.length) formData.append('variants', JSON.stringify(variants));
+
+    const discountPrice = document.getElementById('newDiscountPrice')?.value;
+    if (discountPrice) formData.append('discount_price', parsePriceInput(discountPrice));
+
+    const sku = document.getElementById('newProductSku')?.value?.trim();
+    if (sku) formData.append('sku', sku);
+
+    const vendorLoc = document.getElementById('newVendorLocation')?.value?.trim();
+    if (vendorLoc) formData.append('vendor_location', vendorLoc);
+
+    formData.append('delivery_available', document.getElementById('newDeliveryAvailable')?.checked ? 'true' : 'false');
+    formData.append('return_accepted', document.getElementById('newReturnAccepted')?.checked ? 'true' : 'false');
+
     const imageFiles = Array.from(document.getElementById('newProductImages').files).slice(0, 5);
     imageFiles.forEach(f => formData.append('images', f));
+
+    const videoFile = document.getElementById('newProductVideo')?.files[0];
+    if (videoFile) formData.append('images', videoFile);
 
     const res = await fetch(`${API_BASE}/seller/products`, {
       method: 'POST',
@@ -436,7 +521,7 @@ async function addProduct() {
 }
 
 // ─── Edit Product ──────────────────────────────────────────────────────────────
-function openEditModal(id) {
+async function openEditModal(id) {
   const product = allProducts.find(p => p.id === id);
   if (!product) return;
 
@@ -457,6 +542,7 @@ function openEditModal(id) {
 
   // Restore dynamic fields when editing
   if (product.category_id) {
+    await loadSubcategories(product.category_id, 'editSubcategory');
     renderDynamicFields(product.category_id, 'editDynamicFields');
     // Restore saved meta values if they exist
     if (product.category_meta) {
@@ -743,17 +829,188 @@ function getCategoryNameById(categoryId) {
   return cat ? cat.name : null;
 }
 
-function renderDynamicFields(categoryId, containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  const name = getCategoryNameById(categoryId);
-  container.innerHTML = (name && CATEGORY_FIELDS[name]) ? CATEGORY_FIELDS[name] : '';
+async function loadSubcategories(categoryId, selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+
+  select.innerHTML = '<option>Loading...</option>';
+  select.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/categories/${categoryId}/subcategories`);
+    const data = await res.json();
+    const subs = data.data || [];
+
+    select.innerHTML = '<option value="">— Select Subcategory —</option>';
+    subs.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      if (s.fields) opt.dataset.fields = JSON.stringify(s.fields);
+      select.appendChild(opt);
+    });
+    select.disabled = false;
+  } catch (e) {
+    select.innerHTML = '<option value="">Failed to load</option>';
+    select.disabled = true;
+    console.error('loadSubcategories:', e);
+  }
 }
 
-function collectDynamicFields(formSelector) {
+function renderDynamicFields(categoryId, containerId, existingValues = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const categoryName = getCategoryNameById(categoryId);
+  const staticFields = (categoryName && CATEGORY_FIELDS[categoryName]) ? CATEGORY_FIELDS[categoryName] : '';
+  container.innerHTML = staticFields;
+
+  const subcategorySelectId = containerId === 'addDynamicFields' ? 'newProductSubcategory' : 'editSubcategory';
+  const subSelect = document.getElementById(subcategorySelectId);
+  if (subSelect && subSelect.dataset.fields) {
+    try {
+      const fields = JSON.parse(subSelect.dataset.fields);
+      renderSubcategoryFields(fields, containerId, existingValues);
+    } catch (e) {
+      console.error('renderDynamicFields: invalid subcategory schema', e);
+    }
+  }
+}
+
+function renderSubcategoryFields(fields, containerId, existingValues = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!fields || !fields.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const html = fields.map(field => {
+    const requiredMark = field.required ? '*' : ' (optional)';
+    const value = existingValues[field.key] || '';
+    const escapedLabel = escapeHtml(field.label || field.key);
+    const nameAttr = `dyn_${escapeHtml(field.key)}`;
+
+    if (field.type === 'select') {
+      const options = field.options.map(option => `\n          <option value="${escapeHtml(option)}"${option === value ? ' selected' : ''}>${escapeHtml(option)}</option>`).join('');
+      return `
+        <label>${escapedLabel}${requiredMark}</label>
+        <select name="${nameAttr}">
+          <option value="">Select ${escapedLabel}</option>${options}
+        </select>
+      `;
+    }
+
+    if (field.type === 'multiselect') {
+      const selected = Array.isArray(value) ? value : (value ? [value] : []);
+      const options = field.options.map(option => `
+          <label style="display:block;margin:4px 0;">
+            <input type="checkbox" name="${nameAttr}[]" value="${escapeHtml(option)}"${selected.includes(option) ? ' checked' : ''}>
+            ${escapeHtml(option)}
+          </label>`).join('');
+      return `
+        <div>
+          <span>${escapedLabel}${requiredMark}</span>
+          ${options}
+        </div>
+      `;
+    }
+
+    if (field.type === 'tags') {
+      const tagValue = Array.isArray(value) ? value.join(', ') : value;
+      return `
+        <label>${escapedLabel}${requiredMark} (comma separated)</label>
+        <input type="text" name="${nameAttr}" value="${escapeHtml(tagValue)}" placeholder="Enter comma separated values">
+      `;
+    }
+
+    if (field.type === 'date') {
+      return `
+        <label>${escapedLabel}${requiredMark}</label>
+        <input type="date" name="${nameAttr}" value="${escapeHtml(value)}">
+      `;
+    }
+
+    return `
+      <label>${escapedLabel}${requiredMark}</label>
+      <input type="text" name="${nameAttr}" value="${escapeHtml(value)}" placeholder="Enter ${escapedLabel}">
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+function collectDynamicFields2(formSelector) {
   const fields = {};
-  document.querySelectorAll(`${formSelector} [name^="cat_"]`).forEach(el => {
-    if (el.value.trim()) fields[el.name.replace('cat_', '')] = el.value.trim();
+  const form = document.querySelector(formSelector);
+  if (!form) return fields;
+
+  form.querySelectorAll('[name^="dyn_"]').forEach(el => {
+    if (el.name.endsWith('[]')) return;
+    const key = el.name.replace('dyn_', '');
+    if (el.tagName === 'SELECT' || el.type === 'date' || el.type === 'text') {
+      const value = el.value.trim();
+      if (!value) return;
+      if (el.type === 'text' && value.includes(',')) {
+        fields[key] = value.split(',').map(item => item.trim()).filter(Boolean);
+      } else {
+        fields[key] = value;
+      }
+    }
   });
-  return Object.keys(fields).length ? fields : null;
+
+  const checkGroups = {};
+  form.querySelectorAll('[name$="[]"]:checked').forEach(el => {
+    const key = el.name.replace('dyn_', '').replace('[]', '');
+    if (!checkGroups[key]) checkGroups[key] = [];
+    checkGroups[key].push(el.value);
+  });
+  Object.assign(fields, checkGroups);
+
+  return fields;
+}
+
+let variants = [];
+
+function renderVariantsSection(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-weight:600;">Product Variants</div>
+      <button type="button" onclick="addVariant('${containerId}')" style="padding:8px 12px;border:none;background:#2563eb;color:#fff;border-radius:6px;cursor:pointer;">+ Add Variant</button>
+    </div>
+    <div id="${containerId}_list"></div>
+  `;
+
+  variants.forEach((variant, index) => renderVariantRow(containerId, variant, index));
+}
+
+function addVariant(containerId) {
+  variants.push({ name: '', price: '', stock: '', sku: '' });
+  renderVariantsSection(containerId);
+}
+
+function removeVariant(containerId, index) {
+  variants.splice(index, 1);
+  renderVariantsSection(containerId);
+}
+
+function renderVariantRow(containerId, variant, index) {
+  const list = document.getElementById(`${containerId}_list`);
+  if (!list) return;
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 80px 80px 30px;gap:8px;align-items:center;padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;background:#f8fafc;';
+  row.innerHTML = `
+    <input type="text" placeholder="Variant name" value="${escapeHtml(variant.name)}" onchange="variants[${index}].name = this.value" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+    <input type="text" placeholder="Price" value="${escapeHtml(variant.price)}" onchange="variants[${index}].price = this.value" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+    <input type="text" placeholder="Stock" value="${escapeHtml(variant.stock)}" onchange="variants[${index}].stock = this.value" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+    <input type="text" placeholder="SKU" value="${escapeHtml(variant.sku)}" onchange="variants[${index}].sku = this.value" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+    <button type="button" onclick="removeVariant('${containerId}', ${index})" style="background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;">×</button>
+  `;
+
+  list.appendChild(row);
 }

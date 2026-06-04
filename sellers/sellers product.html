@@ -124,10 +124,46 @@
           <option value="">— Select a category —</option>
         </select>
 
-        <div id="addDynamicFields"></div>
+        <label for="newProductSubcategory">Subcategory</label>
+        <select id="newProductSubcategory" required>
+          <option value="">— Select Subcategory —</option>
+        </select>
+
+        <div id="addDynamicFields" style="margin-top:4px"></div>
+        <div id="addDynamicFields2" style="margin-top:4px"></div>
+
+        <div id="addVariantsSection"></div>
 
         <label for="newProductPrice">Price (₦) <span class="req">*</span></label>
         <input type="text" id="newProductPrice" placeholder="0" inputmode="numeric" required>
+
+        <label for="newDiscountPrice">Discount Price (₦) <small style="color:#aaa">(optional)</small></label>
+        <input type="text" id="newDiscountPrice" placeholder="0" inputmode="numeric">
+
+        <label for="newProductSku">SKU <small style="color:#aaa">(optional)</small></label>
+        <input type="text" id="newProductSku" placeholder="e.g. PROD-001">
+
+        <label for="newVendorLocation">Vendor Location</label>
+        <input type="text" id="newVendorLocation" placeholder="e.g. Lagos, Nigeria">
+
+        <div style="display:flex;gap:16px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="newDeliveryAvailable" checked style="width:auto"> Delivery Available
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="newReturnAccepted" checked style="width:auto"> Returns Accepted
+          </label>
+        </div>
+
+        <label>Product Video <small style="color:#aaa">(optional, max 50MB)</small></label>
+        <div class="image-upload-area" onclick="document.getElementById('newProductVideo').click()" style="background:#f0fdf4;border-color:#86efac">
+          <div id="videoPreviewAdd" style="margin-bottom:6px"></div>
+          <div class="upload-placeholder">
+            <i class="fas fa-video" style="font-size:1.5rem;color:#22c55e"></i>
+            <p style="color:#16a34a;font-size:0.85rem">Click to upload video (MP4, WebM)</p>
+          </div>
+          <input type="file" id="newProductVideo" accept="video/*" style="display:none">
+        </div>
 
         <label for="newProductStock">Stock Quantity</label>
         <input type="number" min="0" id="newProductStock" placeholder="0" value="0">
