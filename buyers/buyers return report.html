@@ -1863,26 +1863,22 @@
    */
   async function fetchRefundMessages(caseId) {
     try {
-      const { client } = await getAuthenticatedSupabaseClient();
-      if (!client) {
-        console.error('❌ Supabase client not available');
+      if (!window.API_BASE_URL) {
+        console.error('❌ API_BASE_URL is not defined for backend chat fetch');
         return [];
       }
 
-      const { data, error } = await client
-        .from('refund_messages')
-        .select('*')
-        .eq('refund_case_id', caseId)
-        .order('created_at', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching messages:', error);
-        throw error;
+      const response = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`);
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        console.error('❌ Backend API error fetching refund messages:', response.status, result);
+        return [];
       }
-      
-      return data || [];
+
+      return result.data?.messages || [];
     } catch (err) {
-      console.error('Failed to fetch refund messages:', err);
+      console.error('Failed to fetch refund messages from backend:', err);
       return [];
     }
   }
