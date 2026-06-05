@@ -1863,12 +1863,17 @@
    */
   async function fetchRefundMessages(caseId) {
     try {
-      if (!window.API_BASE_URL) {
+      if (!window.API_BASE_URL && typeof API_BASE_URL === 'undefined') {
         console.error('❌ API_BASE_URL is not defined for backend chat fetch');
         return [];
       }
 
-      const response = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`);
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
       const result = await response.json().catch(() => null);
 
       if (!response.ok) {
@@ -3029,9 +3034,13 @@
       const caseId = currentChatData.supabase_case_id || currentChatData.id;
       if (!String(caseId).startsWith('order-')) {
         try {
+          const token = getAuthToken();
           await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : ''
+            },
             body: JSON.stringify({ message_text: textToSend })
           });
           await loadChatMessages(currentChatData);
