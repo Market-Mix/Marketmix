@@ -446,29 +446,19 @@ function openChat(returnId) {
   currentChatId = returnId;
   currentChatData = returnItem;
 
-  // Update chat header
   document.getElementById('chatBuyerName').textContent = `Chat with ${returnItem.buyerName}`;
-  document.getElementById('chatStoreName').textContent = `Store: MarketMix Store`;
   document.getElementById('chatOrderId').textContent = `Order ID: ${returnItem.orderId}`;
 
-  // Update resolution status
-  const statusElement = document.getElementById('chatResolutionStatus');
-  const statusClass = returnItem.status.toLowerCase();
-  statusElement.className = `resolution-status ${statusClass}`;
-  statusElement.innerHTML = `<i class="fas fa-circle"></i> ${returnItem.status}`;
-
-  updateChatCountdown(returnItem);
-
-  // Load and display chat history
-  loadChatMessages(returnId);
-
-  // Show chat panel with animation
   chatPanel.classList.add('active');
   chatOverlay.classList.add('active');
   document.body.style.overflow = 'hidden';
 
-  // Focus on input
-  setTimeout(() => chatInput.focus(), 300);
+  loadAndRenderChat(returnId);
+  updateChatCountdown(returnItem);
+
+  // Start polling every 5 seconds
+  if (window._chatPollInterval) clearInterval(window._chatPollInterval);
+  window._chatPollInterval = setInterval(() => loadAndRenderChat(currentChatId), 5000);
 }
 
 // Close Chat Panel
@@ -477,106 +467,47 @@ function closeChat() {
   chatOverlay.classList.remove('active');
   document.body.style.overflow = 'auto';
   currentChatId = null;
-  currentChatData = null;
-  chatInput.value = '';
-  removeAttachment();
+
+  if (window._chatPollInterval) {
+    clearInterval(window._chatPollInterval);
+    window._chatPollInterval = null;
+  }
 }
 
-// Load Chat Messages
-function loadChatMessages(returnId) {
-  const storageKey = getChatStorageKey(returnId);
-  const savedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
-  let messages = savedMessages.length ? savedMessages : (currentChatData?.messages || []);
-
-  if (!savedMessages.length && currentChatData?.messages?.length) {
-    localStorage.setItem(storageKey, JSON.stringify(messages));
-  }
-
-  chatMessages.innerHTML = '';
-
-  if (messages.length === 0) {
-    chatMessages.innerHTML = `
-      <div class="chat-message system">
-        <p><i class="fas fa-info-circle"></i> Chat opened for Order ${currentChatData.orderId}</p>
-      </div>
-    `;
-    return;
-  }
-
-  messages.forEach((msg, idx) => {
-    const senderType = msg.sender === 'seller' ? 'seller' : msg.sender === 'buyer' ? 'buyer' : msg.sender === 'marketmix' ? 'marketmix' : 'system';
-    const msgEl = document.createElement('div');
-    msgEl.className = `chat-message ${senderType}`;
-
-    const timestamp = new Date(msg.timestamp);
-    const timeStr = timestamp.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
+async function loadAndRenderChat(caseId) {
+  const token = getToken();
+  try {
+    const res = await fetch(`${API_BASE}/refund-chat/${caseId}`, {
+      headers: { Authorization: `Bearer ${token}` }
     });
+    const data = await res.json();
+    const messages = data.data?.messages || [];
+    renderChatMessages(messages);
+  } catch (err) {
+    console.error('Load chat failed:', err);
+  }
+}
 
-    let senderLabel = '';
-    if (msg.sender === 'seller') {
-      senderLabel = '<span class="message-sender">Seller</span>';
-    } else if (msg.sender === 'buyer') {
-      senderLabel = '<span class="message-sender">Buyer</span>';
-    } else if (msg.sender === 'marketmix' || msg.sender === 'system') {
-      senderLabel = '<span class="message-sender">MarketMix</span>';
-    }
-
-    // Determine message status
-    let statusIcon = '';
-    let statusTitle = '';
-    if (msg.sender === 'seller') {
-      if (msg.status === 'seen') {
-        statusIcon = '<i class="fas fa-check-double"></i>';
-        statusTitle = 'Seen';
-      } else if (msg.status === 'delivered') {
-        statusIcon = '<i class="fas fa-check-double"></i>';
-        statusTitle = 'Delivered';
-      } else {
-        statusIcon = '<i class="fas fa-check"></i>';
-        statusTitle = 'Sent';
-      }
-    }
-
-    let content = `
-      <div class="message-content">
-        ${senderLabel}
-        <p class="message-text">${escapeHtml(msg.text)}</p>
-    `;
-
-    if (msg.file) {
-      if (msg.file.type === 'image') {
-        content += `<img src="${msg.file.data}" class="message-image" alt="Uploaded image" />`;
-      } else if (msg.file.type === 'video') {
-        content += `<video controls class="message-video"><source src="${msg.file.data}" type="video/mp4">Your browser does not support this video.</video>`;
-      } else {
-        content += `<a href="${msg.file.data}" class="message-file" download><i class="fas fa-file"></i> ${escapeHtml(msg.file.name)}</a>`;
-      }
-    }
-
-    content += `
-        <span class="message-time">${timeStr}</span>
-    `;
-
-    if (msg.sender === 'seller') {
-      content += `<span class="read-status" title="${statusTitle}">${statusIcon}</span>`;
-    }
-
-    content += `
+function renderChatMessages(messages) {
+  chatMessages.innerHTML = messages.length ? messages.map(msg => {
+    const isSeller = msg.sender_type === 'seller';
+    const time = new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return `
+      <div class="chat-message ${isSeller ? 'seller' : 'buyer'}">
+        <div class="message-content">
+          <span class="message-sender">${isSeller ? 'You' : 'Buyer'}</span>
+          ${msg.message_text ? `<p class="message-text">${escapeHtml(msg.message_text)}</p>` : ''}
+          ${msg.file_url ? `<a href="${msg.file_url}" class="message-file" target="_blank">📎 Attachment</a>` : ''}
+          <span class="message-time">${time}</span>
+        </div>
       </div>
     `;
-
-    msgEl.innerHTML = content;
-    chatMessages.appendChild(msgEl);
-  });
-
-  // Scroll to bottom
+  }).join('') : '<div class="chat-message system"><p>No messages yet.</p></div>';
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
-  // Mark messages as read
-  setTimeout(() => markMessagesAsRead(returnId), 500);
+function loadChatMessages(returnId) {
+  return loadAndRenderChat(returnId);
 }
 
 function updateChatCountdown(returnItem) {
@@ -633,50 +564,26 @@ function markMessagesAsRead(returnId) {
 }
 
 // Send Chat Message
-function sendChatMessage() {
+async function sendChatMessage() {
   const text = chatInput.value.trim();
   if (!text && !attachedFile) return;
   if (!currentChatId) return;
 
-  const storageKey = getChatStorageKey(currentChatId);
-  const existingMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
-  const messages = existingMessages.length ? existingMessages : (currentChatData?.messages || []);
-
-  const message = {
-    id: Date.now(),
-    sender: 'seller',
-    text: text,
-    timestamp: new Date().toISOString(),
-    status: 'sent',
-    file: attachedFile ? { ...attachedFile } : null
-  };
-
-  messages.push(message);
-  localStorage.setItem(storageKey, JSON.stringify(messages));
-
-  // Clear input
-  chatInput.value = '';
-  removeAttachment();
-
-  // Reload messages
-  loadChatMessages(currentChatId);
-
-  // Simulate message delivery after 1 second
-  setTimeout(() => {
-    const updatedMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    const lastMsg = updatedMessages[updatedMessages.length - 1];
-    if (lastMsg && lastMsg.status === 'sent') {
-      lastMsg.status = 'delivered';
-      localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
-      loadChatMessages(currentChatId);
-    }
-  }, 1000);
-
-  // Simulate buyer response after 3 seconds (for demo)
-  if (Math.random() > 0.5) {
-    setTimeout(() => {
-      simulateBuyerResponse(currentChatId);
-    }, 3000);
+  const token = getToken();
+  try {
+    await fetch(`${API_BASE}/refund-chat/${currentChatId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ message_text: text || null })
+    });
+    chatInput.value = '';
+    removeAttachment();
+    await loadAndRenderChat(currentChatId); // reload messages
+  } catch (err) {
+    console.error('Send failed:', err);
   }
 }
 
