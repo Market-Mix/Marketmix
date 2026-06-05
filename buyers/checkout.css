@@ -648,6 +648,7 @@ textarea {
 
 .payment-options .option-card i,
 .option-card .option-icon {
+  /* Payment options are currently limited to Paystack in checkout.js. */
   display: grid;
   place-items: center;
   width: 42px;

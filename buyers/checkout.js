@@ -598,17 +598,21 @@
     els.paymentOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
     const data = await api('/payments/methods');
     state.paymentMethods = normalizePaymentMethods(data.methods || data.paymentMethods || data.data?.methods || data.data || []);
+    state.selectedPayment = state.paymentMethods.some((method) => method.id === state.selectedPayment)
+      ? state.selectedPayment
+      : state.paymentMethods[0]?.id || null;
     renderPaymentMethods();
   }
 
   function normalizePaymentMethods(methods) {
     const defaults = [
-      { id: 'cod', name: 'Cash on Delivery', icon: 'fa-money-bill-wave' },
       { id: 'paystack', name: 'Paystack', icon: 'fa-credit-card' },
-      { id: 'flutterwave', name: 'Flutterwave', icon: 'fa-wallet' }
+      // Flutterwave and Cash on Delivery are intentionally hidden for now.
+      // { id: 'cod', name: 'Cash on Delivery', icon: 'fa-money-bill-wave' },
+      // { id: 'flutterwave', name: 'Flutterwave', icon: 'fa-wallet' }
     ];
     if (!Array.isArray(methods) || !methods.length) return defaults;
-    return methods.map((method) => {
+    const normalized = methods.map((method) => {
       const id = String(method.id || method.code || method.method || method.name).toLowerCase();
       const fallback = defaults.find((item) => id.includes(item.id));
       return {
@@ -618,6 +622,8 @@
         description: method.description || ''
       };
     });
+    const paystackMethods = normalized.filter((method) => method.id === 'paystack');
+    return paystackMethods.length ? paystackMethods : defaults;
   }
 
   function renderPaymentMethods() {
@@ -656,10 +662,7 @@
       body: JSON.stringify({ sessionId: state.sessionId, method: state.selectedPayment })
       });
       const paymentUrl = data.paymentUrl || data.authorizationUrl || data.authorization_url || data.data?.paymentUrl || data.data?.authorization_url;
-      if (state.selectedPayment === 'cod' || !paymentUrl) {
-        await confirmOrder();
-        return;
-      }
+      if (!paymentUrl) throw new Error('Could not start Paystack payment.');
       sessionStorage.setItem(SESSION_KEY, state.sessionId);
       window.location.href = paymentUrl;
     } catch (error) {
@@ -686,9 +689,8 @@
     const data = await api(`/checkout/session/${state.sessionId}/confirm`, { method: 'POST' });
     absorbSessionPayload(data);
     showConfirmation(data);
-    if (state.selectedPayment === 'cod') {
-      await notifyCodOrderPlaced(data);
-    }
+    // Cash on Delivery confirmation notifications are disabled while COD is hidden.
+    // if (state.selectedPayment === 'cod') await notifyCodOrderPlaced(data);
   }
 
   function showConfirmation(data) {
@@ -847,9 +849,9 @@
   }
 
   function paymentDescription(id) {
-    if (id === 'cod') return 'Pay when your order arrives.';
     if (id === 'paystack') return 'Pay securely with card, bank, or transfer.';
-    if (id === 'flutterwave') return 'Pay securely with Flutterwave checkout.';
+    // if (id === 'cod') return 'Pay when your order arrives.';
+    // if (id === 'flutterwave') return 'Pay securely with Flutterwave checkout.';
     return 'Secure payment method.';
   }
 
