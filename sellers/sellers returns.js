@@ -492,11 +492,12 @@ function renderChatMessages(messages) {
   chatMessages.innerHTML = messages.length ? messages.map(msg => {
     const isSeller = msg.sender_type === 'seller';
     const time = new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const messageText = msg.message || msg.message_text || '';
     return `
       <div class="chat-message ${isSeller ? 'seller' : 'buyer'}">
         <div class="message-content">
           <span class="message-sender">${isSeller ? 'You' : 'Buyer'}</span>
-          ${msg.message_text ? `<p class="message-text">${escapeHtml(msg.message_text)}</p>` : ''}
+          ${messageText ? `<p class="message-text">${escapeHtml(messageText)}</p>` : ''}
           ${msg.file_url ? `<a href="${msg.file_url}" class="message-file" target="_blank">📎 Attachment</a>` : ''}
           <span class="message-time">${time}</span>
         </div>
