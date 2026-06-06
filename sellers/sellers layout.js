@@ -741,38 +741,16 @@ async function handleCouponSubmit(e) {
   if (!productId)                     return alert("Please select a product.");
 
   try {
-    const store   = StoreManager.getActiveStore();
-    const coupons = JSON.parse(localStorage.getItem("mm_coupons") || "[]");
-    coupons.push({ code, discount, productId, storeId: store?.id, expiryDate, usageLimit, createdAt: new Date().toISOString() });
-    localStorage.setItem("mm_coupons", JSON.stringify(coupons));
+    const data = await StoreManager.apiFetch("/coupons", {
+      method: "POST",
+      body: JSON.stringify({ code, discount_percent: discount, product_id: productId, expiry_date: expiryDate || null, usage_limit: usageLimit })
+    });
+    if (data.status === 'error') { alert(data.message); return; }
     alert(`Coupon created!\nCode: ${code}  |  Discount: ${discount}%`);
     e.target.reset();
     document.getElementById("coupons-modal").style.display = "none";
-
-    // Create an in-app notification for the seller about the new coupon
-    try {
-      const user = JSON.parse(localStorage.getItem('user')||'{}');
-      const userId = user?.id || user?._id || user?.userId;
-      const apiBase = StoreManager.API_BASE || 'https://marketmix-backend.onrender.com/api';
-      const token = getToken();
-      if (userId && token) {
-        fetch(`${apiBase}/notifications`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            user_id: userId,
-            title: 'New coupon created',
-            message: `Coupon ${code} for your product was created.`,
-            type: 'coupon',
-            link: '/sellers/sellers layout.html'
-          })
-        }).catch(err => console.warn('Could not create coupon notification', err));
-      }
-    } catch (err) {
-      console.warn('Error while creating coupon notification', err);
-    }
   } catch (err) {
-    alert("Error saving coupon: " + err.message);
+    alert("Error: " + err.message);
   }
 }
 
