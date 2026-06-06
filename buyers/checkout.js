@@ -596,14 +596,26 @@
     if (!option) return;
 
     try {
+      const savedCoupon = state.session?.couponCode || state.session?.coupon_code;
+      const savedDiscount = state.session?.couponDiscount || state.session?.coupon_discount;
+
       const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
         method: 'POST',
-      body: JSON.stringify({
-        method: option.provider,      // 'marketmix'
-        provider_id: option.providerId || option.id  // 'mock_standard'
-            })
+        body: JSON.stringify({
+          method: option.provider,
+          provider_id: option.providerId || option.id
+        })
       });
+
       absorbSessionPayload(data);
+
+      if (savedCoupon && state.session) {
+        state.session.couponCode = state.session.couponCode || savedCoupon;
+        state.session.coupon_code = state.session.coupon_code || savedCoupon;
+        state.session.couponDiscount = state.session.couponDiscount || savedDiscount;
+        state.session.coupon_discount = state.session.coupon_discount || savedDiscount;
+      }
+
       state.selectedDelivery = option;
       renderDeliveryOptions();
       renderSummary();
