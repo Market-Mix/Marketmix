@@ -130,6 +130,24 @@
     if (inner.addressId || inner.address_id) {
       state.selectedAddressId = inner.addressId || inner.address_id;
     }
+
+    // If the response contains updated session totals or coupon fields but no full session object,
+    // merge them into the current session so renderSummary() reflects the new total.
+    if (state.session && (inner.total !== undefined || inner.subtotal !== undefined || inner.couponDiscount !== undefined || inner.coupon_discount !== undefined || inner.couponCode !== undefined || inner.coupon_code !== undefined || inner.shippingFee !== undefined || inner.shipping_fee !== undefined)) {
+      state.session = {
+        ...state.session,
+        ...inner,
+        coupon_code: inner.coupon_code ?? inner.couponCode ?? state.session.coupon_code,
+        couponDiscount: inner.couponDiscount ?? inner.coupon_discount ?? state.session.couponDiscount,
+        shipping_fee: inner.shipping_fee ?? inner.shippingFee ?? state.session.shipping_fee,
+        subtotal: inner.subtotal ?? state.session.subtotal,
+        total: inner.total ?? state.session.total
+      };
+      if (Array.isArray(items) && items.length) {
+        state.items = items;
+      }
+    }
+
     return; // don't throw, just return
   }
 
@@ -308,6 +326,7 @@
       const data = await api(`/checkout/session/${state.sessionId}/coupon`, {
         method: 'POST', body: JSON.stringify({ code })
       });
+      console.log('applyCoupon response:', data);
       absorbSessionPayload(data);
       renderSummary();
       setInlineMessage(els.couponMessage, 'Coupon applied successfully.', 'success');
