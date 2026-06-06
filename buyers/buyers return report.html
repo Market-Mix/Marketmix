@@ -1952,10 +1952,17 @@
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
       marketmix_reason: caseData.marketmix_reason,
-      // Prefer store name from order data (more likely to be populated), fall back to case data
       store_name: resolveStoreName(orderData) || resolveStoreName(caseData) || 'Store',
       seller_id: caseData.seller_id || orderData.seller_id,
-      messages: []
+      messages: [],
+      chat_started: caseData.chat_started || false,
+      resolution_status: caseData.resolution_status || 'pending',
+      seller_marked_resolved: caseData.seller_marked_resolved || false,
+      buyer_confirmed_resolution: caseData.buyer_confirmed_resolution || false,
+      escalated_to_marketmix: caseData.escalated_to_marketmix || false,
+      seller_resolved_at: caseData.seller_resolved_at || null,
+      escalated_at: caseData.escalated_at || null,
+      buyer_confirmed_at: caseData.buyer_confirmed_at || null
     };
   }
 
@@ -2601,6 +2608,12 @@
         <div class="col-chat">
           ${chatBtnHtml}
         </div>
+        ${report.resolution_status === 'waiting_buyer_confirmation' ? `
+        <div style="grid-column: span 8; padding: 0.9rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmBuyerSatisfied('${report.id}')">Satisfied</button>
+          <button class="btn-action" style="background: #f97316; color: white;" onclick="showConfirmEscalateBuyer('${report.id}')">Escalate</button>
+        </div>
+        ` : ''}
       </div>
       `;
     }).join('');
@@ -2621,6 +2634,94 @@
       (r.order_id || '').toLowerCase().includes(searchTerm)
     );
     renderReports(filtered);
+  }
+
+  // ─── Buyer Refund Workflow Confirmation Modals ──────────────────────────────
+  function showConfirmBuyerSatisfied(reportId) {
+    const report = currentReports.find(r => String(r.id) === String(reportId));
+    if (!report) return;
+
+    const confirmed = confirm(
+      `Are you satisfied with the resolution?\n\nProduct: ${report.product_name}\nOrder: ${report.order_id}\n\nThis will mark the refund as fully resolved.`
+    );
+
+    if (confirmed) {
+      buyerConfirmSatisfied(reportId);
+    }
+  }
+
+  function showConfirmEscalateBuyer(reportId) {
+    const report = currentReports.find(r => String(r.id) === String(reportId));
+    if (!report) return;
+
+    const confirmed = confirm(
+      `Escalate this refund to MarketMix?\n\nProduct: ${report.product_name}\nOrder: ${report.order_id}\n\nMarketMix support will review and make a final decision.`
+    );
+
+    if (confirmed) {
+      buyerEscalateRefund(reportId);
+    }
+  }
+
+  async function buyerConfirmSatisfied(reportId) {
+    try {
+      console.log('🔄 Buyer confirming satisfaction for refund:', reportId);
+      const response = await fetch(`${API_BASE_URL}/refunds/buyer-satisfied`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : ''
+        },
+        body: JSON.stringify({ refund_id: reportId })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        console.error('❌ Failed to confirm satisfaction:', result);
+        alert('Error: ' + (result.message || 'Failed to confirm'));
+        return;
+      }
+
+      console.log('✅ Buyer satisfaction confirmed');
+      showNotification('Thank you! Refund marked as resolved.', 'success');
+      await loadReturnReportsAndRefresh();
+    } catch (err) {
+      console.error('❌ Error confirming satisfaction:', err);
+      alert('Error: ' + err.message);
+    }
+  }
+
+  async function buyerEscalateRefund(reportId) {
+    try {
+      console.log('🔄 Buyer escalating refund to MarketMix:', reportId);
+      const response = await fetch(`${API_BASE_URL}/refunds/escalate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : ''
+        },
+        body: JSON.stringify({ refund_id: reportId, escalated_by: 'buyer' })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        console.error('❌ Failed to escalate:', result);
+        alert('Error: ' + (result.message || 'Failed to escalate'));
+        return;
+      }
+
+      console.log('✅ Refund escalated to MarketMix');
+      showNotification('Refund escalated to MarketMix support for review.', 'success');
+      await loadReturnReportsAndRefresh();
+    } catch (err) {
+      console.error('❌ Error escalating refund:', err);
+      alert('Error: ' + err.message);
+    }
+  }
+
+  async function loadReturnReportsAndRefresh() {
+    currentReports = await loadReturnReportsForCurrentBuyer();
+    renderReports(currentReports);
   }
 
   function openChat(reportId) {

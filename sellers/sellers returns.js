@@ -45,7 +45,15 @@ function mapRefundCaseFromSupabase(caseData) {
     date: caseData.evidence_submitted_at || caseData.created_at,
     evidence_url: caseData.evidence_url || null,
     seller_id: caseData.seller_id,
-    store_name: caseData.store_name || 'Store'
+    store_name: caseData.store_name || 'Store',
+    chat_started: caseData.chat_started || false,
+    resolution_status: caseData.resolution_status || 'pending',
+    seller_marked_resolved: caseData.seller_marked_resolved || false,
+    buyer_confirmed_resolution: caseData.buyer_confirmed_resolution || false,
+    escalated_to_marketmix: caseData.escalated_to_marketmix || false,
+    seller_resolved_at: caseData.seller_resolved_at || null,
+    escalated_at: caseData.escalated_at || null,
+    buyer_confirmed_at: caseData.buyer_confirmed_at || null
   };
 }
 
@@ -208,6 +216,7 @@ function renderTable(data = returnsData) {
     const statusClass = item.status.toLowerCase();
     const now = Date.now();
     let chatBtnHtml = '';
+    let workflowBtnHtml = '';
     let chatDate = item.date;
 
     const pending = item.status.toLowerCase() === 'pending';
@@ -263,15 +272,26 @@ function renderTable(data = returnsData) {
       `;
     }
 
+    // Show workflow buttons if chat started AND resolution status is pending
+    if (item.chat_started && item.resolution_status === 'pending') {
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmMarkResolved('${item.id}')">Issue Resolved</button>
+          <button class="btn-action" style="background: #f97316; color: white;" onclick="showConfirmEscalateSeller('${item.id}')">Escalate</button>
+        </div>
+      `;
+    }
+
     row.innerHTML = `
       <div class="col-buyer">${item.buyerName}</div>
       <div class="col-product">${item.productName}</div>
       <div class="col-order">${item.orderId}</div>
-      <div class="col-amount">$${item.amount.toFixed(2)}</div>
+      <div class="col-amount">\₦${item.amount.toFixed(2)}</div>
       <div class="col-status"><span class="status-badge ${statusClass}">${item.status}</span></div>
       <div class="col-date">${chatDate}</div>
       <div class="col-action"><button class="btn-action" onclick="openModal('${item.id}')">View</button></div>
       <div class="col-chat">${chatBtnHtml}</div>
+      ${workflowBtnHtml ? `<div class="col-workflow" style="grid-column: span 8; padding: 0.9rem;">${workflowBtnHtml}</div>` : ''}
     `;
     
     returnsTableBody.appendChild(row);
@@ -395,6 +415,92 @@ document.addEventListener('keydown', (e) => {
     closeModal();
   }
 });
+
+// ─── Refund Workflow Confirmation Modals (Seller) ─────────────────────────────
+function showConfirmMarkResolved(refundId) {
+  const refund = returnsData.find(r => r.id === refundId);
+  if (!refund) return;
+
+  const confirmed = confirm(
+    `Mark refund as resolved?\n\nBuyer: ${refund.buyerName}\nProduct: ${refund.productName}\n\nThe buyer will be asked to confirm if they are satisfied.`
+  );
+
+  if (confirmed) {
+    markRefundResolved(refundId);
+  }
+}
+
+function showConfirmEscalateSeller(refundId) {
+  const refund = returnsData.find(r => r.id === refundId);
+  if (!refund) return;
+
+  const confirmed = confirm(
+    `Escalate this refund to MarketMix?\n\nBuyer: ${refund.buyerName}\nProduct: ${refund.productName}\n\nMarketMix support will review and make a final decision.`
+  );
+
+  if (confirmed) {
+    escalateRefund(refundId, 'seller');
+  }
+}
+
+async function markRefundResolved(refundId) {
+  try {
+    console.log('📤 Marking refund as resolved:', refundId);
+    const response = await fetch(`${API_BASE}/refunds/mark-resolved`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ refund_id: refundId })
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('❌ Failed to mark refund resolved:', result);
+      alert('Error: ' + (result.message || 'Failed to mark resolved'));
+      return;
+    }
+
+    console.log('✅ Refund marked as resolved');
+    showNotification('Refund marked as resolved. Buyer will confirm.', 'success');
+    await loadSellerRefundCases();
+    renderTable();
+  } catch (err) {
+    console.error('❌ Error marking refund resolved:', err);
+    alert('Error: ' + err.message);
+  }
+}
+
+async function escalateRefund(refundId, escalatedBy) {
+  try {
+    console.log('📤 Escalating refund to MarketMix:', refundId);
+    const response = await fetch(`${API_BASE}/refunds/escalate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ refund_id: refundId, escalated_by: escalatedBy })
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('❌ Failed to escalate refund:', result);
+      alert('Error: ' + (result.message || 'Failed to escalate'));
+      return;
+    }
+
+    console.log('✅ Refund escalated to MarketMix');
+    showNotification('Refund escalated to MarketMix support.', 'success');
+    await loadSellerRefundCases();
+    renderTable();
+  } catch (err) {
+    console.error('❌ Error escalating refund:', err);
+    alert('Error: ' + err.message);
+  }
+}
+
 
 // Filter and Search
 function filterTable() {
