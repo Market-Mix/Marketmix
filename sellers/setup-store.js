@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
   /* ─── Config ────────────────────────────────────────────────────────────── */
   const API_BASE = 'https://marketmix-backend.onrender.com/api';
