@@ -19,10 +19,10 @@ function getBuyerId() {
   }
 }
 
-// Get JWT token from localStorage
+// Get JWT token from localStorage/sessionStorage
 function getAuthToken() {
   try {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('buyer_token') || localStorage.getItem('seller_token');
     return token || null;
   } catch (e) {
     console.error('❌ Error getting auth token:', e);
@@ -85,9 +85,10 @@ async function apiCall(endpoint, options = {}) {
     return { error: 'No auth token' };
   }
 
+  const authHeader = String(token).startsWith('Bearer ') ? token : `Bearer ${token}`;
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    'Authorization': authHeader,
     ...options.headers
   };
 
