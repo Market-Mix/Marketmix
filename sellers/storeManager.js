@@ -182,13 +182,14 @@ window.StoreManager = StoreManager;
 // Define only if a page hasn't already provided one (e.g., sellers layout.js)
 if (typeof window.updateNavbarNotificationBadge === 'undefined') {
   window.updateNavbarNotificationBadge = async function() {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
     if (!token) return;
     const apiBase = 'https://marketmix-backend.onrender.com/api';
     try {
       const res = await fetch(`${apiBase}/notifications?unread=true`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000)
       });
       if (!res.ok) return;
       const json = await res.json().catch(() => ({}));

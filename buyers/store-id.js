@@ -331,13 +331,15 @@ async function loadReviews() {
       attempts++;
     }
 
-    // sellerId can come from different response shapes
+    // sellerId / storeId can come from different response shapes
     const sellerId = storeData?.sellerId || storeData?.seller_id;
+    const storeId  = storeData?.storeId  || storeData?.store_id;
     if (!sellerId) return;
 
-    const res  = await fetch(`${API}/reviews/seller/${sellerId}?limit=10`, {
-      headers: authHeaders()
-    });
+    const res  = await fetch(
+      `${API}/reviews/seller/${sellerId}?limit=10${storeId ? `&store_id=${storeId}` : ''}`,
+      { headers: authHeaders() }
+    );
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
 

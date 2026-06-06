@@ -163,7 +163,7 @@ async function loadDashboardData() {
   const [profileRes, userRes, statsRes, earningsRes, activityRes, refundsRes] = await Promise.allSettled([
     StoreManager.apiFetch("/seller/profile"),
     StoreManager.apiFetch("/auth/me"),
-    StoreManager.apiFetch(`/seller/stores/${store.id}/stats`),
+    StoreManager.apiFetch("/seller/dashboard-stats"),
     StoreManager.apiFetch("/earnings"),
     StoreManager.apiFetch("/seller/activity?limit=50"),
     // Fetch returns/refunds count from the seller endpoint

@@ -153,12 +153,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   injectSkeletons();
 
-  const headers = scopedHeaders({ 'Content-Type': 'application/json' }, urlStoreId);
+  let headers = scopedHeaders({ 'Content-Type': 'application/json' }, urlStoreId);
 
   // Kick off product + reviews in parallel
   const [productResult, reviewsResult] = await Promise.allSettled([
     fetchWithTimeout(`${API_BASE}/products/${productId}`, { headers }),
-    fetchWithTimeout(`${API_BASE}/reviews/product/${productId}`, { headers }),
+    fetchWithTimeout(`${API_BASE}/reviews/product/${productId}?${urlStoreId ? `store_id=${urlStoreId}` : ''}`, { headers }),
   ]);
 
   // Parse product (critical path)
@@ -171,10 +171,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Resolve and persist store id on the product object
   const productStoreId = getProductStoreId(product);
   if (productStoreId && !product.store_id) product.store_id = productStoreId;
-  syncStoreParam(productStoreId);
 
   // Render product immediately
   renderProduct(product);
+  if (productStoreId && !urlStoreId) {
+    syncStoreParam(productStoreId);
+    Object.assign(headers, scopedHeaders({ 'Content-Type': 'application/json' }, productStoreId));
+  }
+
   setupEventListeners(product);
   updateCartCount();
 
@@ -224,49 +228,60 @@ async function fetchSellerFromBackend(product) {
     if (hasRating) return;
   }
 
-  // 1) Try seller_id endpoint
+  const storeId = getProductStoreId(product) || product.store_id || product.storeId || null;
   const sellerId = product.seller_id || product.sellerId || product.seller?.id || null;
-  if (sellerId) {
+
+  // Priority 1: store_id endpoint (most accurate)
+  if (storeId) {
     try {
-      const res = await fetchWithTimeout(`${API_BASE}/seller/public/${sellerId}`, { headers: scopedHeaders({}, getProductStoreId(product)) }, 5000);
+      const res = await fetchWithTimeout(
+        `${API_BASE}/seller/stores/public/${storeId}`,
+        { headers: scopedHeaders({}, storeId) },
+        5000
+      );
       if (res && res.ok) {
         const j = await res.json();
         const store = j.data?.store;
         if (store) {
           product.seller = product.seller || {};
+          product.seller.id = store.sellerId || store.seller_id || sellerId;
+          product.seller.store_id = storeId;
           product.seller.shop_name = formatSellerName(store.businessName || store.business_name || store.name || '');
-          product.seller.shop_avatar_url = store.storeLogo || store.store_logo_url || '';
           product.seller.rating = store.rating || product.seller.rating;
-          product.seller.store_id = store.storeId || store.store_id || product.store_id || null;
-          renderSellerInfo(product.seller, product.seller.store_id || getProductStoreId(product));
+          product.seller.shop_avatar_url = store.storeLogo || store.store_logo_url || '';
+          renderSellerInfo(product.seller, storeId);
           return;
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (_) {}
   }
 
-  // 2) Try store_id endpoint
-  const storeId = getProductStoreId(product) || product.store_id || product.storeId || null;
-  if (storeId) {
+  // Priority 2: seller_id endpoint
+  if (sellerId) {
     try {
-      const res2 = await fetchWithTimeout(`${API_BASE}/seller/stores/public/${storeId}`, { headers: scopedHeaders({}, storeId) }, 5000);
-      if (res2 && res2.ok) {
-        const j2 = await res2.json();
-        const store2 = j2.data?.store;
-        if (store2) {
-          product.seller = product.seller || {};
-          product.seller.shop_name = formatSellerName(store2.businessName || store2.business_name || store2.name || '');
-          product.seller.shop_avatar_url = store2.storeLogo || store2.store_logo_url || '';
-          product.seller.rating = store2.rating || product.seller.rating;
-          product.seller.store_id = store2.storeId || store2.store_id || storeId;
-          renderSellerInfo(product.seller, product.seller.store_id || storeId);
-          return;
+      const res = await fetchWithTimeout(
+        `${API_BASE}/seller/public/${sellerId}`,
+        { headers: scopedHeaders({}, storeId) },
+        5000
+      );
+      if (res && res.ok) {
+        const j = await res.json();
+        const store = j.data?.store;
+        if (store) {
+          const returnedStoreId = store.storeId || store.store_id;
+          if (!storeId || !returnedStoreId || returnedStoreId === storeId) {
+            product.seller = product.seller || {};
+            product.seller.id = sellerId;
+            product.seller.store_id = returnedStoreId || storeId;
+            product.seller.shop_name = formatSellerName(store.businessName || store.business_name || store.name || '');
+            product.seller.rating = store.rating || product.seller.rating;
+            product.seller.shop_avatar_url = store.storeLogo || store.store_logo_url || '';
+            renderSellerInfo(product.seller, product.seller.store_id || storeId);
+          }
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (_) {}
   }
-
-  // Nothing found — leave default
 }
 
 // ── Fetch seller/store profile from public endpoints ──────────────
@@ -333,10 +348,16 @@ function renderSellerInfo(seller, storeId) {
   if (link) {
     if (shopName) {
       link.textContent = shopName;
-      const resolvedStoreId = seller?.store_id || seller?.storeId || storeId || seller?.sellerId || seller?.seller_id || '';
-      link.href = resolvedStoreId
-        ? `./store-id.html?store=${encodeURIComponent(resolvedStoreId)}`
-        : '#';
+      const resolvedStoreId = storeId || seller?.store_id || seller?.storeId || '';
+      const resolvedSellerId = seller?.id || seller?.sellerId || seller?.seller_id || '';
+
+      if (resolvedStoreId) {
+        link.href = `./store-id.html?store=${encodeURIComponent(resolvedStoreId)}`;
+      } else if (resolvedSellerId) {
+        link.href = `./store-id.html?seller=${encodeURIComponent(resolvedSellerId)}`;
+      } else {
+        link.href = '#';
+      }
     } else {
       link.textContent = '';
       link.href = '#';
@@ -361,6 +382,23 @@ async function enrichWithReviews(product, reviewsResult) {
       if (j.status === 'success' && j.data) reviewData = j.data;
     } catch (_) {}
   }
+
+  // If no reviews yet, try fetching with store context
+  if (!reviewData) {
+    const storeId = getProductStoreId(product);
+    try {
+      const res = await fetchWithTimeout(
+        `${API_BASE}/reviews/product/${product.id}${storeId ? `?store_id=${storeId}` : ''}`,
+        { headers: scopedHeaders({}, storeId) },
+        5000
+      );
+      if (res && res.ok) {
+        const j = await res.json();
+        if (j.data) reviewData = j.data;
+      }
+    } catch (_) {}
+  }
+
   if (!reviewData) return;
 
   product.reviews      = reviewData.reviews || [];
@@ -525,10 +563,12 @@ async function addToCart(product) {
     fetch(`${API_BASE}/cart/add`, {
       method: 'POST',
       headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
-      body: JSON.stringify(storeScopedBody({
+      body: JSON.stringify({
         product_id: product.id,
         quantity,
-      }, storeId)),
+        store_id: storeId || null,
+        seller_id: product.seller_id || product.seller?.id || null,
+      }),
     }).catch(e => console.warn('Cart sync error:', e));
   }
 }
