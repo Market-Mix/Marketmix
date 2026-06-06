@@ -143,6 +143,66 @@
       display: flex; align-items: center; gap: 6px;
     }
 
+    /* Create Store Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.52);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .store-modal {
+      width: min(620px, 100%);
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      background: var(--card);
+      border-radius: var(--r);
+      box-shadow: 0 24px 80px rgba(0,0,0,.24);
+    }
+    .modal-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px; padding: 22px 24px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-head h2 { font-size: 1.2rem; margin-bottom: 4px; }
+    .modal-head p { font-size: 13px; color: var(--ink2); }
+    .modal-close {
+      width: 34px; height: 34px; border: 1px solid var(--border);
+      border-radius: 8px; background: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink2);
+    }
+    .create-store-form {
+      padding: 20px 24px 24px;
+      display: grid; gap: 14px;
+    }
+    .form-row { display: grid; gap: 7px; }
+    .form-row label { font-size: 13px; font-weight: 700; }
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 11px 12px; font: inherit; background: #fff; color: var(--ink);
+      outline: none;
+    }
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .form-row.two { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .logo-picker {
+      display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center;
+    }
+    .logo-preview-box {
+      width: 72px; height: 72px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; color: var(--ink2);
+    }
+    .logo-preview-box img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .field-error { min-height: 16px; font-size: 12px; color: var(--red); }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+    .modal-actions .btn { flex: initial; min-width: 124px; }
+
     /* ── Real-time Preview Section ── */
     .preview-section { margin-top: 36px; }
     .preview-header {
@@ -224,6 +284,8 @@
     @media (max-width: 640px) {
       .store-grid { grid-template-columns: 1fr; }
       .preview-frame { height: 400px; }
+      .form-row.two { grid-template-columns: 1fr; }
+      .store-modal { max-height: calc(100vh - 24px); }
     }
   </style>
 </head>
@@ -289,9 +351,90 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- Create Store Modal -->
+<div class="modal-overlay" id="createStoreModal" aria-hidden="true">
+  <div class="store-modal" role="dialog" aria-modal="true" aria-labelledby="createStoreTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="createStoreTitle">Create Second Store</h2>
+        <p>Add another storefront under your verified seller account.</p>
+      </div>
+      <button type="button" class="modal-close" id="closeCreateStore" aria-label="Close modal">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <form class="create-store-form" id="createStoreForm" novalidate>
+      <div class="form-row">
+        <label for="newStoreLogo">Store Logo</label>
+        <div class="logo-picker">
+          <div class="logo-preview-box">
+            <img id="newStoreLogoPreview" alt="Store logo preview">
+            <i class="fas fa-store" id="newStoreLogoIcon"></i>
+          </div>
+          <input id="newStoreLogo" type="file" accept="image/*">
+        </div>
+        <small class="field-error" id="newStoreLogoError"></small>
+      </div>
+
+      <div class="form-row">
+        <label for="newStoreName">Store Name</label>
+        <input id="newStoreName" type="text" placeholder="Store name" required>
+        <small class="field-error" id="newStoreNameError"></small>
+      </div>
+
+      <div class="form-row">
+        <label for="newStoreDesc">Description</label>
+        <textarea id="newStoreDesc" rows="3" placeholder="Short description"></textarea>
+        <small class="field-error" id="newStoreDescError"></small>
+      </div>
+
+      <div class="form-row two">
+        <div class="form-row">
+          <label for="newStoreEmail">Email</label>
+          <input id="newStoreEmail" type="email" placeholder="store@example.com" required>
+          <small class="field-error" id="newStoreEmailError"></small>
+        </div>
+        <div class="form-row">
+          <label for="newStorePhone">Phone</label>
+          <input id="newStorePhone" type="tel" placeholder="+234 000 0000" required>
+          <small class="field-error" id="newStorePhoneError"></small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label for="newStoreAddress">Store Address</label>
+        <input id="newStoreAddress" type="text" placeholder="City, State, Country" required>
+        <small class="field-error" id="newStoreAddressError"></small>
+      </div>
+
+      <div class="form-row">
+        <label for="newStoreCategory">Category</label>
+        <select id="newStoreCategory" required>
+          <option value="">Select a category</option>
+        </select>
+        <small class="field-error" id="newStoreCategoryError"></small>
+      </div>
+
+      <div class="form-row">
+        <label for="newStoreWebsite">Website</label>
+        <input id="newStoreWebsite" type="url" placeholder="https://yourstore.com">
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="cancelCreateStore">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submitCreateStore">
+          <i class="fas fa-plus"></i> Create Store
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script src="storeManager.js"></script>
 <script>
 const API = 'https://marketmix-backend.onrender.com/api';
+let categoryOptionsLoaded = false;
+let newStoreLogoUrl = '';
 
 function getToken() {
   return localStorage.getItem('token') || '';
@@ -366,7 +509,7 @@ function renderStores(stores, canCreate) {
   // Create card
   if (canCreate && stores.length < 2) {
     html += `
-      <div class="create-card" onclick="window.location.href='setup-store.html'">
+      <div class="create-card" onclick="openCreateStoreModal()">
         <div class="create-icon"><i class="fas fa-plus"></i></div>
         <h3>Add Second Store</h3>
         <p>Expand your business with a second storefront under your account.</p>
@@ -452,6 +595,149 @@ function previewStore(storeId, storeName) {
 }
 
 // ── Load stores ──────────────────────────────────────────────────────────────
+// Create second store modal
+async function openCreateStoreModal() {
+  const modal = document.getElementById('createStoreModal');
+  resetCreateStoreForm();
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  await loadCategoryOptions();
+  document.getElementById('newStoreName').focus();
+}
+
+function closeCreateStoreModal() {
+  const modal = document.getElementById('createStoreModal');
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+function setCreateFieldError(id, message = '') {
+  const error = document.getElementById(`${id}Error`);
+  const input = document.getElementById(id);
+  if (error) error.textContent = message;
+  if (input) input.style.borderColor = message ? 'rgba(220,38,38,.7)' : '';
+}
+
+function resetCreateStoreForm() {
+  const form = document.getElementById('createStoreForm');
+  const preview = document.getElementById('newStoreLogoPreview');
+  const icon = document.getElementById('newStoreLogoIcon');
+  form.reset();
+  newStoreLogoUrl = '';
+  preview.src = '';
+  preview.style.display = 'none';
+  icon.style.display = 'block';
+  ['newStoreLogo','newStoreName','newStoreDesc','newStoreEmail','newStorePhone','newStoreAddress','newStoreCategory'].forEach(id => setCreateFieldError(id));
+  const submit = document.getElementById('submitCreateStore');
+  submit.disabled = false;
+  submit.innerHTML = '<i class="fas fa-plus"></i> Create Store';
+}
+
+async function loadCategoryOptions() {
+  if (categoryOptionsLoaded) return;
+  const select = document.getElementById('newStoreCategory');
+  select.innerHTML = '<option value="">Loading categories...</option>';
+
+  try {
+    const res = await fetch(`${API}/categories`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+
+    const categories = data?.data || [];
+    select.innerHTML = '<option value="">Select a category</option>';
+    categories.forEach(cat => {
+      const option = document.createElement('option');
+      option.value = cat.id;
+      option.textContent = cat.name;
+      select.appendChild(option);
+    });
+    categoryOptionsLoaded = true;
+  } catch (e) {
+    select.innerHTML = '<option value="">Could not load categories</option>';
+    toast(e.message || 'Could not load categories', 'error');
+  }
+}
+
+function getCreateStoreValues() {
+  const category = document.getElementById('newStoreCategory');
+  return {
+    storeName: document.getElementById('newStoreName').value.trim(),
+    storeDescription: document.getElementById('newStoreDesc').value.trim(),
+    businessEmail: document.getElementById('newStoreEmail').value.trim(),
+    businessPhone: document.getElementById('newStorePhone').value.trim(),
+    businessAddress: document.getElementById('newStoreAddress').value.trim(),
+    website: document.getElementById('newStoreWebsite').value.trim(),
+    category_id: category.value || null,
+    category: category.selectedOptions?.[0]?.text || null,
+    storeLogoUrl: newStoreLogoUrl
+  };
+}
+
+function validateCreateStoreForm() {
+  let valid = true;
+  const values = getCreateStoreValues();
+
+  ['newStoreLogo','newStoreName','newStoreDesc','newStoreEmail','newStorePhone','newStoreAddress','newStoreCategory'].forEach(id => setCreateFieldError(id));
+
+  if (!newStoreLogoUrl) { setCreateFieldError('newStoreLogo', 'Store logo is required.'); valid = false; }
+  if (!values.storeName) { setCreateFieldError('newStoreName', 'Store name is required.'); valid = false; }
+  if (!values.businessEmail) {
+    setCreateFieldError('newStoreEmail', 'Email is required.');
+    valid = false;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.businessEmail)) {
+    setCreateFieldError('newStoreEmail', 'Enter a valid email address.');
+    valid = false;
+  }
+  if (!values.businessPhone) { setCreateFieldError('newStorePhone', 'Phone number is required.'); valid = false; }
+  if (!values.businessAddress) { setCreateFieldError('newStoreAddress', 'Store address is required.'); valid = false; }
+  if (!values.category_id) { setCreateFieldError('newStoreCategory', 'Please select a category.'); valid = false; }
+
+  const wordTotal = values.storeDescription.split(/\s+/).filter(Boolean).length;
+  if (wordTotal > 250) {
+    setCreateFieldError('newStoreDesc', 'Description must be 250 words or fewer.');
+    valid = false;
+  }
+
+  return valid;
+}
+
+async function createSecondStore(e) {
+  e.preventDefault();
+  if (!validateCreateStoreForm()) return;
+
+  const submit = document.getElementById('submitCreateStore');
+  submit.disabled = true;
+  submit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+  try {
+    const res = await fetch(`${API}/seller/update-store`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`
+      },
+      body: JSON.stringify(getCreateStoreValues())
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to create store');
+
+    if (data.data?.store) {
+      window.StoreManager.setActiveStore(data.data.store);
+      localStorage.removeItem('mm_stores_cache');
+    }
+
+    toast('Second store created successfully', 'success');
+    closeCreateStoreModal();
+    await loadStores();
+  } catch (e) {
+    toast(e.message || 'Failed to create store', 'error');
+    submit.disabled = false;
+    submit.innerHTML = '<i class="fas fa-plus"></i> Create Store';
+  }
+}
+
 async function loadStores() {
   const token = getToken();
   if (!token) { window.location.href = 'sellers login.html'; return; }
@@ -478,8 +764,49 @@ async function loadStores() {
   }
 }
 
+function initCreateStoreModal() {
+  document.getElementById('createStoreForm').addEventListener('submit', createSecondStore);
+  document.getElementById('closeCreateStore').addEventListener('click', closeCreateStoreModal);
+  document.getElementById('cancelCreateStore').addEventListener('click', closeCreateStoreModal);
+  document.getElementById('createStoreModal').addEventListener('click', e => {
+    if (e.target.id === 'createStoreModal') closeCreateStoreModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('createStoreModal').classList.contains('show')) {
+      closeCreateStoreModal();
+    }
+  });
+
+  document.getElementById('newStoreLogo').addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setCreateFieldError('newStoreLogo', 'Please upload an image file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const preview = document.getElementById('newStoreLogoPreview');
+      newStoreLogoUrl = ev.target.result;
+      preview.src = newStoreLogoUrl;
+      preview.style.display = 'block';
+      document.getElementById('newStoreLogoIcon').style.display = 'none';
+      setCreateFieldError('newStoreLogo');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  ['newStoreName','newStoreEmail','newStorePhone','newStoreAddress','newStoreCategory','newStoreDesc'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => setCreateFieldError(id));
+  });
+}
+
 // Init
-document.addEventListener('DOMContentLoaded', loadStores);
+document.addEventListener('DOMContentLoaded', () => {
+  initCreateStoreModal();
+  loadStores();
+});
 </script>
 </body>
 </html>
