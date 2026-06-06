@@ -420,6 +420,28 @@
         <input id="newStoreWebsite" type="url" placeholder="https://yourstore.com">
       </div>
 
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);margin-top:4px;">Social links <span style="font-weight:400;text-transform:none">(optional)</span></div>
+      <div class="form-row two">
+        <div class="form-row">
+          <label for="newStoreInstagram">Instagram</label>
+          <input id="newStoreInstagram" type="url" placeholder="https://instagram.com/yourstore">
+        </div>
+        <div class="form-row">
+          <label for="newStoreFacebook">Facebook</label>
+          <input id="newStoreFacebook" type="url" placeholder="https://facebook.com/yourstore">
+        </div>
+      </div>
+      <div class="form-row two">
+        <div class="form-row">
+          <label for="newStoreTiktok">TikTok</label>
+          <input id="newStoreTiktok" type="url" placeholder="https://tiktok.com/@yourstore">
+        </div>
+        <div class="form-row">
+          <label for="newStoreTwitter">Twitter / X</label>
+          <input id="newStoreTwitter" type="url" placeholder="https://x.com/yourstore">
+        </div>
+      </div>
+
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" id="cancelCreateStore">Cancel</button>
         <button type="submit" class="btn btn-primary" id="submitCreateStore">
@@ -450,6 +472,18 @@ function toast(msg, type = '') {
 function formatNum(n) {
   const v = parseFloat(n) || 0;
   return v >= 1000 ? '₦' + (v/1000).toFixed(1) + 'k' : '₦' + v.toFixed(0);
+}
+
+async function fetchStoreStats(storeId) {
+  try {
+    const res = await fetch(`${API}/seller/stores/${storeId}/stats`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    const data = await res.json();
+    return data?.data?.stats || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 // ── Render stores ──────────────────────────────────────────────────────────────
@@ -483,11 +517,11 @@ function renderStores(stores, canCreate) {
             <div class="stat-lbl">Products</div>
           </div>
           <div class="stat">
-            <div class="stat-val">${parseInt(s.total_orders || 0)}</div>
+            <div class="stat-val" id="stat-orders-${s.id}">—</div>
             <div class="stat-lbl">Orders</div>
           </div>
           <div class="stat">
-            <div class="stat-val">${formatNum(s.total_earnings)}</div>
+            <div class="stat-val" id="stat-earned-${s.id}">—</div>
             <div class="stat-lbl">Earned</div>
           </div>
         </div>
@@ -533,6 +567,25 @@ function renderStores(stores, canCreate) {
     const s = stores.find(s => s.id === activeId);
     if (s) previewStore(s.id, s.business_name);
   }
+
+  // Fetch per-store stats in parallel and fill in the cards
+  stores.forEach(async (s) => {
+    const stats = await fetchStoreStats(s.id);
+    if (!stats) return;
+
+    const ordersEl = document.getElementById(`stat-orders-${s.id}`);
+    const earnedEl = document.getElementById(`stat-earned-${s.id}`);
+
+    if (ordersEl) {
+      ordersEl.textContent = parseInt(stats.totalOrders || stats.total_orders || 0);
+    }
+    if (earnedEl) {
+      const earned = parseFloat(stats.totalRevenue || stats.total_revenue || stats.totalEarnings || 0) || 0;
+      earnedEl.textContent = earned >= 1000
+        ? '₦' + (earned / 1000).toFixed(1) + 'k'
+        : '₦' + earned.toFixed(0);
+    }
+  });
 }
 
 // ── Select store ──────────────────────────────────────────────────────────────
@@ -599,6 +652,26 @@ function previewStore(storeId, storeName) {
 async function openCreateStoreModal() {
   const modal = document.getElementById('createStoreModal');
   resetCreateStoreForm();
+
+  // Prefill from profile (read-only)
+  const profile = window._sellerProfile;
+  if (profile) {
+    const emailEl = document.getElementById('newStoreEmail');
+    const phoneEl = document.getElementById('newStorePhone');
+    if (emailEl) {
+      emailEl.value = profile.email || '';
+      emailEl.readOnly = true;
+      emailEl.style.opacity = '0.7';
+      emailEl.style.cursor = 'not-allowed';
+    }
+    if (phoneEl) {
+      phoneEl.value = profile.phone || '';
+      phoneEl.readOnly = true;
+      phoneEl.style.opacity = '0.7';
+      phoneEl.style.cursor = 'not-allowed';
+    }
+  }
+
   modal.classList.add('show');
   modal.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
@@ -629,10 +702,38 @@ function resetCreateStoreForm() {
   preview.src = '';
   preview.style.display = 'none';
   icon.style.display = 'block';
+
+  // Re-enable read-only fields after reset
+  ['newStoreEmail', 'newStorePhone'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.readOnly = false;
+      el.style.opacity = '';
+      el.style.cursor = '';
+    }
+  });
+
   ['newStoreLogo','newStoreName','newStoreDesc','newStoreEmail','newStorePhone','newStoreAddress','newStoreCategory'].forEach(id => setCreateFieldError(id));
   const submit = document.getElementById('submitCreateStore');
   submit.disabled = false;
   submit.innerHTML = '<i class="fas fa-plus"></i> Create Store';
+}
+
+function prefillCreateStoreContactFields() {
+  const profile = window._sellerProfile;
+  if (!profile) return;
+
+  const emailInput = document.getElementById('newStoreEmail');
+  const phoneInput = document.getElementById('newStorePhone');
+  const email = profile.email || profile.profile?.businessEmail || profile.profile?.email || '';
+  const phone = profile.phone || profile.profile?.businessPhone || profile.profile?.phone || '';
+
+  if (email && emailInput && !emailInput.value) {
+    emailInput.value = email;
+  }
+  if (phone && phoneInput && !phoneInput.value) {
+    phoneInput.value = phone;
+  }
 }
 
 async function loadCategoryOptions() {
@@ -663,15 +764,19 @@ async function loadCategoryOptions() {
 function getCreateStoreValues() {
   const category = document.getElementById('newStoreCategory');
   return {
-    storeName: document.getElementById('newStoreName').value.trim(),
+    storeName:        document.getElementById('newStoreName').value.trim(),
     storeDescription: document.getElementById('newStoreDesc').value.trim(),
-    businessEmail: document.getElementById('newStoreEmail').value.trim(),
-    businessPhone: document.getElementById('newStorePhone').value.trim(),
-    businessAddress: document.getElementById('newStoreAddress').value.trim(),
-    website: document.getElementById('newStoreWebsite').value.trim(),
-    category_id: category.value || null,
-    category: category.selectedOptions?.[0]?.text || null,
-    storeLogoUrl: newStoreLogoUrl
+    businessEmail:    document.getElementById('newStoreEmail').value.trim(),
+    businessPhone:    document.getElementById('newStorePhone').value.trim(),
+    businessAddress:  document.getElementById('newStoreAddress').value.trim(),
+    website:          document.getElementById('newStoreWebsite').value.trim(),
+    instagram:        document.getElementById('newStoreInstagram')?.value.trim() || null,
+    facebook:         document.getElementById('newStoreFacebook')?.value.trim()  || null,
+    tiktok:           document.getElementById('newStoreTiktok')?.value.trim()    || null,
+    twitter:          document.getElementById('newStoreTwitter')?.value.trim()   || null,
+    category_id:      category.value || null,
+    category:         category.selectedOptions?.[0]?.text || null,
+    storeLogoUrl:     newStoreLogoUrl
   };
 }
 
@@ -683,14 +788,24 @@ function validateCreateStoreForm() {
 
   if (!newStoreLogoUrl) { setCreateFieldError('newStoreLogo', 'Store logo is required.'); valid = false; }
   if (!values.storeName) { setCreateFieldError('newStoreName', 'Store name is required.'); valid = false; }
-  if (!values.businessEmail) {
-    setCreateFieldError('newStoreEmail', 'Email is required.');
-    valid = false;
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.businessEmail)) {
-    setCreateFieldError('newStoreEmail', 'Enter a valid email address.');
+
+  const emailEl = document.getElementById('newStoreEmail');
+  if (!emailEl?.readOnly) {
+    if (!values.businessEmail) {
+      setCreateFieldError('newStoreEmail', 'Email is required.');
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.businessEmail)) {
+      setCreateFieldError('newStoreEmail', 'Enter a valid email address.');
+      valid = false;
+    }
+  }
+
+  const phoneEl = document.getElementById('newStorePhone');
+  if (!phoneEl?.readOnly && !values.businessPhone) {
+    setCreateFieldError('newStorePhone', 'Phone number is required.');
     valid = false;
   }
-  if (!values.businessPhone) { setCreateFieldError('newStorePhone', 'Phone number is required.'); valid = false; }
+
   if (!values.businessAddress) { setCreateFieldError('newStoreAddress', 'Store address is required.'); valid = false; }
   if (!values.category_id) { setCreateFieldError('newStoreCategory', 'Please select a category.'); valid = false; }
 
@@ -712,13 +827,40 @@ async function createSecondStore(e) {
   submit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
 
   try {
-    const res = await fetch(`${API}/seller/update-store`, {
+    const values = getCreateStoreValues();
+
+    // Upload logo to Cloudinary first if it's a data URL
+    if (newStoreLogoUrl && newStoreLogoUrl.startsWith('data:')) {
+      const blob = await fetch(newStoreLogoUrl).then(r => r.blob());
+      const formData = new FormData();
+      formData.append('file', blob, 'store-logo.jpg');
+      const upRes = await fetch(`${API}/seller/logo/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData
+      });
+      const upData = await upRes.json();
+      if (!upRes.ok) throw new Error(upData.message || 'Logo upload failed');
+      values.storeLogoUrl = upData.data?.url || newStoreLogoUrl;
+    }
+
+    // POST to /api/seller/stores (creates store #2, requires KYC)
+    const res = await fetch(`${API}/seller/stores`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${getToken()}`
       },
-      body: JSON.stringify(getCreateStoreValues())
+      body: JSON.stringify({
+        storeName:        values.storeName,
+        storeDescription: values.storeDescription || null,
+        businessEmail:    values.businessEmail || null,
+        businessPhone:    values.businessPhone || null,
+        businessAddress:  values.businessAddress || null,
+        website:          values.website || null,
+        category:         values.category || null,
+        storeLogoUrl:     values.storeLogoUrl || null
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to create store');
@@ -728,7 +870,7 @@ async function createSecondStore(e) {
       localStorage.removeItem('mm_stores_cache');
     }
 
-    toast('Second store created successfully', 'success');
+    toast('Second store created successfully!', 'success');
     closeCreateStoreModal();
     await loadStores();
   } catch (e) {
@@ -743,14 +885,20 @@ async function loadStores() {
   if (!token) { window.location.href = 'sellers login.html'; return; }
 
   try {
-    const res  = await fetch(`${API}/seller/stores`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    const [storesRes, profileRes] = await Promise.all([
+      fetch(`${API}/seller/stores`, { headers: { Authorization: `Bearer ${token}` } }),
+      fetch(`${API}/seller/profile`, { headers: { Authorization: `Bearer ${token}` } })
+    ]);
 
-    const stores    = data.data?.stores || [];
-    const canCreate = data.data?.canCreateMore !== false;
+    const storesData  = await storesRes.json();
+    const profileData = profileRes.ok ? await profileRes.json() : null;
+
+    if (!storesRes.ok) throw new Error(storesData.message || 'Failed to load stores');
+
+    const stores    = storesData.data?.stores || [];
+    const canCreate = storesData.data?.canCreateMore !== false;
+
+    window._sellerProfile = profileData?.data?.seller || null;
 
     // If no active store set and stores exist, auto-set first
     if (!window.StoreManager.getActiveStore() && stores.length) {
