@@ -50,6 +50,44 @@ function getToken() {
     @media (min-width: 768px) { .shops-grid { grid-template-columns: repeat(4, 1fr); } }
     @media (min-width: 1024px) { .shops-grid { grid-template-columns: repeat(5, 1fr); } }
 
+    .browse-sellers-banner {
+      margin: 16px 16px 0;
+      background: #fff;
+      border: 1px solid #fed7aa;
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .browse-sellers-banner h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      color: #222;
+    }
+    .browse-sellers-banner p {
+      margin: 0;
+      color: #777;
+      font-size: 13px;
+    }
+    .browse-sellers-banner a {
+      background: #F97316;
+      color: white;
+      border-radius: 20px;
+      padding: 9px 16px;
+      text-decoration: none;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    @media (max-width: 520px) {
+      .browse-sellers-banner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
     .shop-card {
       background: white;
       border-radius: 14px;
@@ -170,6 +208,13 @@ function getToken() {
   </div>
 
   <main style="padding-bottom: 80px;">
+    <section class="browse-sellers-banner">
+      <div>
+        <h2>Discover more MarketMix sellers</h2>
+        <p>Browse stores by category, rating, sales, and name.</p>
+      </div>
+      <a href="sellers.html"><i class="fas fa-store" style="margin-right:6px"></i>Browse Sellers</a>
+    </section>
     <div class="shops-grid" id="shopsGrid">
       <!-- skeletons -->
       <div class="skeleton"></div>
@@ -281,6 +326,12 @@ function getToken() {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (r.ok) {
+          try {
+            const followed = JSON.parse(localStorage.getItem('followedSellerIds') || '[]')
+              .filter(id => String(id) !== String(sellerId));
+            localStorage.setItem('followedSellerIds', JSON.stringify(followed));
+            localStorage.setItem('followedShopsChanged', String(Date.now()));
+          } catch (_) {}
           const card = document.querySelector(`.shop-card-wrap[data-seller="${sellerId}"]`);
           card?.remove();
           total = Math.max(0, total - 1);

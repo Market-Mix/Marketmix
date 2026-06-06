@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Sellers - MarketMix</title>
+  <link rel="stylesheet" href="buyers homepage.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="shortcut icon" href="marketplace.png" type="image/x-icon">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      background: #FFF7ED;
+    }
+
+    .sellers-page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 86px 16px 94px;
+    }
+
+    .sellers-header {
+      background: #fff;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .sellers-header h1 {
+      margin: 0 0 6px;
+      color: #1f2937;
+      font-size: clamp(24px, 4vw, 34px);
+      line-height: 1.15;
+    }
+
+    .sellers-header p {
+      color: #64748b;
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .count-badge {
+      background: #F97316;
+      color: #fff;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      min-width: max-content;
+      padding: 9px 14px;
+      box-shadow: 0 10px 18px rgba(249, 115, 22, 0.22);
+    }
+
+    .seller-controls {
+      margin: 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .seller-controls select,
+    .seller-search input,
+    .sort-btn {
+      height: 40px;
+      border-radius: 20px;
+      border: 1px solid #fed7aa;
+      background: #fff;
+      color: #334155;
+      font-weight: 700;
+      outline: none;
+      flex: 0 0 auto;
+    }
+
+    .seller-controls select {
+      min-width: 172px;
+      padding: 0 12px;
+      cursor: pointer;
+    }
+
+    .sort-btn {
+      padding: 0 15px;
+      cursor: pointer;
+      transition: background .2s, color .2s, border-color .2s;
+    }
+
+    .sort-btn.active,
+    .sort-btn:hover {
+      background: #F97316;
+      color: #fff;
+      border-color: #F97316;
+    }
+
+    .seller-search {
+      position: relative;
+      flex: 1 0 230px;
+      min-width: 230px;
+    }
+
+    .seller-search input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0 38px 0 14px;
+      font-weight: 500;
+    }
+
+    .seller-search i {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #F97316;
+    }
+
+    .sellers-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (min-width: 700px) {
+      .sellers-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .sellers-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    .seller-card {
+      background: #fff;
+      border: 1px solid #ffedd5;
+      border-radius: 8px;
+      padding: 14px;
+      min-width: 0;
+      position: relative;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .seller-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 22px rgba(249, 115, 22, 0.14);
+    }
+
+    .seller-logo {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto 10px;
+      border: 2px solid #F97316;
+      background: #fff7ed;
+      padding: 2px;
+    }
+
+    .seller-name {
+      color: #1f2937;
+      font-size: 15px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.3;
+      min-height: 39px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .category-badge {
+      background: #fff7ed;
+      color: #EA580C;
+      border-radius: 999px;
+      display: block;
+      width: fit-content;
+      max-width: 100%;
+      margin: 8px auto 10px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .seller-meta {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      color: #64748b;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    .seller-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .seller-meta i {
+      color: #F97316;
+    }
+
+    .verified-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #16a34a;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25);
+    }
+
+    .seller-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .visit-btn,
+    .follow-toggle {
+      border-radius: 20px;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid #F97316;
+      font-size: 13px;
+    }
+
+    .visit-btn {
+      background: #F97316;
+      color: #fff;
+    }
+
+    .follow-toggle {
+      background: #fff;
+      color: #F97316;
+    }
+
+    .follow-toggle.following {
+      background: #fff7ed;
+      color: #EA580C;
+      border-color: #fed7aa;
+    }
+
+    .follow-toggle:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+
+    .load-more-wrap {
+      text-align: center;
+      padding: 22px 0 0;
+    }
+
+    .load-more-btn {
+      background: #fff;
+      border: 2px solid #F97316;
+      color: #F97316;
+      padding: 11px 28px;
+      border-radius: 22px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .load-more-btn:hover {
+      background: #F97316;
+      color: #fff;
+    }
+
+    .load-more-btn:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    .state-card {
+      grid-column: 1 / -1;
+      background: #fff;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      min-height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 28px 18px;
+      color: #64748b;
+    }
+
+    .state-card i {
+      color: #F97316;
+      font-size: 34px;
+      margin-bottom: 12px;
+    }
+
+    .state-card h2 {
+      color: #1f2937;
+      font-size: 19px;
+      margin: 0 0 8px;
+    }
+
+    .skeleton-card {
+      height: 245px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #fff 25%, #ffedd5 50%, #fff 75%);
+      background-size: 200% 100%;
+      animation: sellerShimmer 1.15s infinite;
+      border: 1px solid #ffedd5;
+    }
+
+    @keyframes sellerShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 88px;
+      transform: translateX(-50%) translateY(20px);
+      background: #111827;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      z-index: 2000;
+      max-width: calc(100vw - 32px);
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 620px) {
+      .sellers-page {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .sellers-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .count-badge {
+        align-self: flex-start;
+      }
+
+      .seller-card {
+        padding: 12px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="buyers homepage.html" class="logo">MarketMix</a>
+
+    <form id="searchForm" class="search-container" action="search-results.html" method="get">
+      <input type="search" name="q" id="searchInput" placeholder="Search on MarketMix" aria-label="Search">
+      <button type="submit" aria-label="Search">
+        <i class="fas fa-search"></i>
+      </button>
+      <div id="searchAutocomplete" class="autocomplete-dropdown"></div>
+    </form>
+
+    <div class="notification" id="bell">
+      <a href="buyer notification page.html" aria-label="Notifications">
+        <i class="fas fa-bell"></i>
+        <span class="badge" data-notification-badge style="display: none;">0</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="navbar-mobile-search" style="display:none;background:white;padding:12px 15px;position:sticky;top:60px;z-index:999;border-bottom:1px solid #e0e0e0">
+    <form id="searchFormMobile" class="search-container-mobile" action="search-results.html" method="get" style="display:flex;align-items:center;gap:8px;margin:0">
+      <input type="search" name="q" id="searchInputMobile" placeholder="Search on MarketMix" aria-label="Search" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #ddd;outline:none;font-size:14px">
+      <button type="submit" style="background:#F97316;border:none;color:white;padding:10px 16px;border-radius:8px;cursor:pointer" aria-label="Search">
+        <i class="fas fa-search"></i>
+      </button>
+      <div id="searchAutocompleteMobile" class="autocomplete-dropdown"></div>
+    </form>
+  </div>
+
+  <main class="sellers-page">
+    <section class="sellers-header">
+      <div>
+        <h1>Browse Sellers</h1>
+        <p>Discover trusted stores, compare ratings, and follow your favorites.</p>
+      </div>
+      <span class="count-badge"><i class="fas fa-store"></i><span id="totalCount">0</span> sellers</span>
+    </section>
+
+    <section class="seller-controls" aria-label="Seller filters and sorting">
+      <select id="categoryFilter" aria-label="Filter by category">
+        <option value="all">All Categories</option>
+      </select>
+      <button class="sort-btn active" type="button" data-sort="sales-desc">Most Sales</button>
+      <button class="sort-btn" type="button" data-sort="newest">Newest</button>
+      <button class="sort-btn" type="button" data-sort="rating-desc">Top Rated</button>
+      <button class="sort-btn" type="button" data-sort="sales-asc">Low Sales</button>
+      <label class="seller-search" for="sellerSearch">
+        <input type="search" id="sellerSearch" placeholder="Search store name" autocomplete="off">
+        <i class="fas fa-search"></i>
+      </label>
+    </section>
+
+    <section class="sellers-grid" id="sellersGrid" aria-live="polite">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </section>
+
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none">
+      <button class="load-more-btn" id="loadMoreBtn" type="button">Load More</button>
+    </div>
+  </main>
+
+  <div class="bottom-nav">
+    <a href="buyers homepage.html" class="nav-link">
+      <span class="icon-wrapper"><i class="fas fa-home"></i></span>
+      <span class="link-text">Home</span>
+    </a>
+    <a href="categories.html" class="nav-link">
+      <span class="icon-wrapper"><i class="fas fa-th-large"></i></span>
+      <span class="link-text">Categories</span>
+    </a>
+    <a href="cart.html" class="nav-link cart-link">
+      <span class="icon-wrapper"><i class="fas fa-shopping-cart"></i><span class="cart-count">0</span></span>
+      <span class="link-text">Cart</span>
+    </a>
+    <a href="buyers profile.html" class="nav-link account-link">
+      <span class="icon-wrapper">
+        <i class="fas fa-user"></i>
+        <span class="account-notification-badge" id="accountNotificationBadge" data-account-badge style="display: none;background:#F97316;"></span>
+      </span>
+      <span class="link-text">Account</span>
+    </a>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../utils/autocomplete.js"></script>
+  <script src="notification-manager.js"></script>
+  <script>
+    const API = 'https://marketmix-backend.onrender.com/api';
+    const PAGE_SIZE = 20;
+    const MAX_FETCH = 200;
+    const FOLLOWED_KEY = 'followedSellerIds';
+
+    let allSellers = [];
+    let filteredSellers = [];
+    let visiblePage = 1;
+    let currentSort = 'sales-desc';
+    let currentCategory = 'all';
+    let currentSearch = '';
+    let followedSellerIds = readFollowedIds();
+
+    const grid = document.getElementById('sellersGrid');
+    const totalCount = document.getElementById('totalCount');
+    const loadMoreWrap = document.getElementById('loadMoreWrap');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const sellerSearch = document.getElementById('sellerSearch');
+
+    function getToken() {
+      return localStorage.getItem('token') || '';
+    }
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function sellerIdOf(seller) {
+      return seller.sellerId || seller.seller_id || seller.id || '';
+    }
+
+    function storeIdOf(seller) {
+      return seller.storeId || seller.store_id || '';
+    }
+
+    function nameOf(seller) {
+      return seller.businessName || seller.business_name || seller.storeName || seller.store_name || 'MarketMix Store';
+    }
+
+    function categoryOf(seller) {
+      return seller.category || seller.category_name || 'Marketplace';
+    }
+
+    function numeric(value) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function ratingOf(seller) {
+      return numeric(seller.rating || seller.avgRating || seller.avg_rating);
+    }
+
+    function totalReviewsOf(seller) {
+      return numeric(seller.totalReviews || seller.total_reviews || seller.reviewCount || seller.review_count);
+    }
+
+    function productCountOf(seller) {
+      return numeric(seller.productCount || seller.product_count);
+    }
+
+    function totalSalesOf(seller) {
+      return numeric(seller.totalSales || seller.total_sales);
+    }
+
+    function createdAtOf(seller) {
+      return Date.parse(seller.createdAt || seller.created_at || seller.memberSince || seller.member_since || '') || 0;
+    }
+
+    function isVerified(seller) {
+      return Boolean(seller.isVerified || seller.is_verified);
+    }
+
+    function avatarUrl(name) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F97316&color=fff&size=160&bold=true`;
+    }
+
+    function logoOf(seller) {
+      const name = nameOf(seller);
+      return seller.storeLogo || seller.store_logo || seller.store_logo_url || seller.logo || avatarUrl(name);
+    }
+
+    function storeHref(seller) {
+      const storeId = storeIdOf(seller);
+      const sellerId = sellerIdOf(seller);
+      return storeId
+        ? `store-id.html?store=${encodeURIComponent(storeId)}`
+        : `store-id.html?seller=${encodeURIComponent(sellerId)}`;
+    }
+
+    function readFollowedIds() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(FOLLOWED_KEY) || '[]');
+        return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveFollowedIds() {
+      localStorage.setItem(FOLLOWED_KEY, JSON.stringify([...followedSellerIds]));
+    }
+
+    function setCartCount() {
+      try {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const count = cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+        document.querySelectorAll('.cart-count').forEach(el => {
+          el.textContent = count;
+          el.style.display = count > 0 ? 'inline-block' : 'none';
+        });
+      } catch (_) {}
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2300);
+    }
+
+    function renderStars(rating) {
+      const safeRating = Math.max(0, Math.min(5, ratingOf({ rating })));
+      const full = Math.round(safeRating);
+      return Array.from({ length: 5 }, (_, index) =>
+        `<i class="${index < full ? 'fas' : 'far'} fa-star"></i>`
+      ).join('');
+    }
+
+    function sellerCard(seller) {
+      const sellerId = String(sellerIdOf(seller));
+      const name = nameOf(seller);
+      const category = categoryOf(seller);
+      const rating = ratingOf(seller);
+      const reviews = totalReviewsOf(seller);
+      const productCount = productCountOf(seller);
+      const following = followedSellerIds.has(sellerId);
+
+      return `
+        <article class="seller-card" data-seller-id="${escapeHtml(sellerId)}">
+          ${isVerified(seller) ? '<span class="verified-badge" title="Verified"><i class="fas fa-check"></i></span>' : ''}
+          <img class="seller-logo" src="${escapeHtml(logoOf(seller))}" alt="${escapeHtml(name)} logo" loading="lazy"
+            onerror="this.src='${avatarUrl(name)}'">
+          <h2 class="seller-name">${escapeHtml(name)}</h2>
+          <span class="category-badge">${escapeHtml(category)}</span>
+          <div class="seller-meta">
+            <span title="${rating.toFixed(1)} out of 5">${renderStars(rating)} ${rating > 0 ? rating.toFixed(1) : 'New'} (${reviews})</span>
+            <span><i class="fas fa-box"></i>${productCount.toLocaleString()} products</span>
+          </div>
+          <div class="seller-actions">
+            <a class="visit-btn" href="${storeHref(seller)}"><i class="fas fa-store"></i>Visit Store</a>
+            <button class="follow-toggle ${following ? 'following' : ''}" type="button" data-seller-id="${escapeHtml(sellerId)}">
+              <i class="${following ? 'fas' : 'far'} fa-heart"></i>${following ? 'Unfollow' : 'Follow'}
+            </button>
+          </div>
+        </article>`;
+    }
+
+    function showState(iconClass, title, message) {
+      grid.innerHTML = `
+        <div class="state-card">
+          <div>
+            <i class="${iconClass}"></i>
+            <h2>${escapeHtml(title)}</h2>
+            <p>${escapeHtml(message)}</p>
+          </div>
+        </div>`;
+      loadMoreWrap.style.display = 'none';
+    }
+
+    function applyFilters() {
+      const search = currentSearch.trim().toLowerCase();
+      filteredSellers = allSellers.filter(seller => {
+        const matchesCategory = currentCategory === 'all' || categoryOf(seller) === currentCategory;
+        const matchesSearch = !search || nameOf(seller).toLowerCase().includes(search);
+        return matchesCategory && matchesSearch;
+      });
+
+      filteredSellers.sort((a, b) => {
+        if (currentSort === 'newest') return createdAtOf(b) - createdAtOf(a);
+        if (currentSort === 'rating-desc') return ratingOf(b) - ratingOf(a) || totalReviewsOf(b) - totalReviewsOf(a);
+        if (currentSort === 'sales-asc') return totalSalesOf(a) - totalSalesOf(b);
+        return totalSalesOf(b) - totalSalesOf(a);
+      });
+
+      visiblePage = 1;
+      renderSellers();
+    }
+
+    function renderSellers() {
+      totalCount.textContent = filteredSellers.length.toLocaleString();
+      if (!filteredSellers.length) {
+        showState('fas fa-store-slash', 'No sellers found', 'Try another category, sort, or store name.');
+        return;
+      }
+
+      const visible = filteredSellers.slice(0, visiblePage * PAGE_SIZE);
+      grid.innerHTML = visible.map(sellerCard).join('');
+      loadMoreWrap.style.display = visible.length < filteredSellers.length ? 'block' : 'none';
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch(`${API}/categories`);
+        const data = await res.json();
+        const categories = Array.isArray(data?.data) ? data.data : [];
+        categoryFilter.innerHTML = '<option value="all">All Categories</option>' +
+          categories.map(category => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join('');
+      } catch (error) {
+        console.warn('Could not load categories', error);
+      }
+    }
+
+    async function loadSellers() {
+      grid.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>';
+      try {
+        const res = await fetch(`${API}/seller/public?limit=${MAX_FETCH}&page=1`);
+        const data = await res.json();
+        const sellers = data?.data?.sellers || [];
+        allSellers = sellers.filter(seller => sellerIdOf(seller));
+        applyFilters();
+      } catch (error) {
+        console.error('Could not load sellers', error);
+        showState('fas fa-triangle-exclamation', 'Could not load sellers', 'Please refresh and try again.');
+      }
+    }
+
+    async function verifyFollowedShops() {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${API}/shops/following?limit=200`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to load followed shops');
+
+        const shops = data?.data?.shops || [];
+        followedSellerIds = new Set(shops.map(shop => String(shop.seller_id || shop.sellerId || shop.id || '')).filter(Boolean));
+        saveFollowedIds();
+        renderSellers();
+      } catch (error) {
+        console.warn('Could not verify followed shops', error);
+      }
+    }
+
+    async function toggleFollow(button) {
+      const token = getToken();
+      if (!token) {
+        localStorage.setItem('after_login_redirect', 'sellers.html');
+        window.location.href = 'login for buyers.html';
+        return;
+      }
+
+      const sellerId = button.dataset.sellerId;
+      if (!sellerId) return;
+
+      const isFollowing = followedSellerIds.has(String(sellerId));
+      button.disabled = true;
+
+      try {
+        const res = await fetch(`${API}/shops/following/${encodeURIComponent(sellerId)}`, {
+          method: isFollowing ? 'DELETE' : 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Could not update follow status');
+
+        if (isFollowing) {
+          followedSellerIds.delete(String(sellerId));
+        } else {
+          followedSellerIds.add(String(sellerId));
+        }
+
+        saveFollowedIds();
+        localStorage.setItem('followedShopsChanged', String(Date.now()));
+        renderSellers();
+        showToast(isFollowing ? 'Seller unfollowed' : 'Seller followed');
+      } catch (error) {
+        showToast(error.message || 'Could not update follow status');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function debounce(fn, wait) {
+      let timer = null;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    document.querySelectorAll('.sort-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        currentSort = button.dataset.sort;
+        applyFilters();
+      });
+    });
+
+    categoryFilter.addEventListener('change', () => {
+      currentCategory = categoryFilter.value;
+      applyFilters();
+    });
+
+    sellerSearch.addEventListener('input', debounce(() => {
+      currentSearch = sellerSearch.value;
+      applyFilters();
+    }, 300));
+
+    loadMoreBtn.addEventListener('click', () => {
+      visiblePage++;
+      renderSellers();
+    });
+
+    grid.addEventListener('click', event => {
+      const button = event.target.closest('.follow-toggle');
+      if (button) toggleFollow(button);
+    });
+
+    window.addEventListener('storage', event => {
+      if (event.key === FOLLOWED_KEY) {
+        followedSellerIds = readFollowedIds();
+        renderSellers();
+      }
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    const searchAC = document.getElementById('searchAutocomplete');
+    if (searchInput && searchAC && typeof setupAutocomplete === 'function') {
+      setupAutocomplete(searchInput, searchAC, item => {
+        window.location.href = item.type === 'product' ? `product.html?id=${item.id}` : `buyers-category.html?id=${item.id}`;
+      });
+    }
+    const searchMob = document.getElementById('searchInputMobile');
+    const searchACMob = document.getElementById('searchAutocompleteMobile');
+    if (searchMob && searchACMob && typeof setupAutocomplete === 'function') {
+      setupAutocomplete(searchMob, searchACMob, item => {
+        window.location.href = item.type === 'product' ? `product.html?id=${item.id}` : `buyers-category.html?id=${item.id}`;
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      setCartCount();
+      const buyerId = window.getBuyerId?.();
+      if (buyerId && window.NotificationManager?.init) {
+        await window.NotificationManager.init(buyerId);
+        if (typeof window.initializeBadgeUpdates === 'function') {
+          window.initializeBadgeUpdates(buyerId);
+        }
+      }
+      await Promise.all([loadCategories(), loadSellers()]);
+      verifyFollowedShops();
+    });
+  </script>
+</body>
+</html>
