@@ -486,6 +486,7 @@
     let currentCategory = 'all';
     let currentSearch = '';
     let followedSellerIds = readFollowedIds();
+    let categoryLookup = new Map();
 
     const grid = document.getElementById('sellersGrid');
     const totalCount = document.getElementById('totalCount');
@@ -509,19 +510,22 @@
     }
 
     function sellerIdOf(seller) {
-      return seller.sellerId || seller.seller_id || seller.id || '';
+      return seller.sellerId || seller.seller_id || seller.sellerID || seller.id || seller.user_id || '';
     }
 
     function storeIdOf(seller) {
-      return seller.storeId || seller.store_id || '';
+      return seller.storeId || seller.store_id || seller.store?.id || seller.store?.storeId || seller.store?.store_id || '';
     }
 
     function nameOf(seller) {
-      return seller.businessName || seller.business_name || seller.storeName || seller.store_name || 'MarketMix Store';
+      return seller.businessName || seller.business_name || seller.storeName || seller.store_name || seller.store?.businessName || seller.store?.business_name || 'MarketMix Store';
     }
 
     function categoryOf(seller) {
-      return seller.category || seller.category_name || 'Marketplace';
+      const category = seller.category || seller.category_name || seller.categoryName || seller.category_name || seller.store?.category || seller.store?.category_name;
+      if (category && typeof category === 'object') return category.name || category.title || category.categoryName || 'Marketplace';
+      const categoryId = seller.categoryId || seller.category_id || seller.store?.categoryId || seller.store?.category_id;
+      return category || categoryLookup.get(String(categoryId)) || 'Marketplace';
     }
 
     function numeric(value) {
@@ -530,15 +534,35 @@
     }
 
     function ratingOf(seller) {
-      return numeric(seller.rating || seller.avgRating || seller.avg_rating);
+      return numeric(
+        seller.rating ||
+        seller.avgRating ||
+        seller.avg_rating ||
+        seller.averageRating ||
+        seller.average_rating ||
+        seller.reviewSummary?.avgRating ||
+        seller.reviewSummary?.avg_rating ||
+        seller.reviewSummary?.averageRating ||
+        seller.reviewSummary?.average_rating
+      );
     }
 
     function totalReviewsOf(seller) {
-      return numeric(seller.totalReviews || seller.total_reviews || seller.reviewCount || seller.review_count);
+      return numeric(
+        seller.totalReviews ||
+        seller.total_reviews ||
+        seller.reviewCount ||
+        seller.review_count ||
+        seller.reviewSummary?.total ||
+        seller.reviewSummary?.totalReviews ||
+        seller.reviewSummary?.total_reviews ||
+        seller.reviewSummary?.reviewCount ||
+        seller.reviewSummary?.review_count
+      );
     }
 
     function productCountOf(seller) {
-      return numeric(seller.productCount || seller.product_count);
+      return numeric(seller.productCount || seller.product_count || seller.store?.productCount || seller.store?.product_count);
     }
 
     function totalSalesOf(seller) {
@@ -550,7 +574,7 @@
     }
 
     function isVerified(seller) {
-      return Boolean(seller.isVerified || seller.is_verified);
+      return Boolean(seller.isVerified || seller.is_verified || seller.store?.isVerified || seller.store?.is_verified);
     }
 
     function avatarUrl(name) {
@@ -559,7 +583,22 @@
 
     function logoOf(seller) {
       const name = nameOf(seller);
-      return seller.storeLogo || seller.store_logo || seller.store_logo_url || seller.logo || avatarUrl(name);
+      return seller.storeLogo ||
+        seller.store_logo ||
+        seller.storeLogoUrl ||
+        seller.store_logo_url ||
+        seller.logo ||
+        seller.logoUrl ||
+        seller.logo_url ||
+        seller.profilePicture ||
+        seller.profile_picture ||
+        seller.profileImage ||
+        seller.profile_image ||
+        seller.store?.storeLogo ||
+        seller.store?.store_logo ||
+        seller.store?.store_logo_url ||
+        seller.store?.logo ||
+        avatarUrl(name);
     }
 
     function storeHref(seller) {
@@ -568,6 +607,94 @@
       return storeId
         ? `store-id.html?store=${encodeURIComponent(storeId)}`
         : `store-id.html?seller=${encodeURIComponent(sellerId)}`;
+    }
+
+    function normalizeSellerPayload(data) {
+      const payload = data?.data || data || {};
+      return payload.store || payload.seller || payload.profile || payload;
+    }
+
+    function normalizeReviewSummary(data) {
+      const payload = data?.data || data || {};
+      const summary = payload.summary || payload.ratingSummary || payload.reviewSummary || payload;
+      return {
+        avgRating: summary.avgRating || summary.avg_rating || summary.averageRating || summary.average_rating || summary.rating || 0,
+        totalReviews: summary.total || summary.totalReviews || summary.total_reviews || summary.reviewCount || summary.review_count || 0
+      };
+    }
+
+    function mergeSellerData(base, extra) {
+      const normalized = normalizeSellerPayload(extra);
+      return {
+        ...base,
+        ...normalized,
+        store: {
+          ...(base.store || {}),
+          ...(normalized.store || {})
+        },
+        sellerId: sellerIdOf(base) || sellerIdOf(normalized),
+        seller_id: sellerIdOf(base) || sellerIdOf(normalized),
+        storeId: storeIdOf(base) || storeIdOf(normalized),
+        store_id: storeIdOf(base) || storeIdOf(normalized)
+      };
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || `Request failed: ${res.status}`);
+      return data;
+    }
+
+    async function enrichSeller(seller) {
+      let enriched = { ...seller };
+      const sellerId = sellerIdOf(enriched);
+
+      if (sellerId) {
+        try {
+          enriched = mergeSellerData(enriched, await fetchJson(`${API}/seller/public/${encodeURIComponent(sellerId)}`));
+        } catch (error) {
+          console.warn('Could not load seller profile', sellerId, error);
+        }
+      }
+
+      const storeId = storeIdOf(enriched);
+      if (storeId) {
+        try {
+          enriched = mergeSellerData(enriched, await fetchJson(`${API}/seller/stores/public/${encodeURIComponent(storeId)}`));
+        } catch (error) {
+          console.warn('Could not load public store profile', storeId, error);
+        }
+      }
+
+      if (sellerId) {
+        try {
+          const reviewSummary = normalizeReviewSummary(await fetchJson(`${API}/reviews/seller/${encodeURIComponent(sellerId)}`));
+          enriched = {
+            ...enriched,
+            rating: reviewSummary.avgRating || ratingOf(enriched),
+            totalReviews: reviewSummary.totalReviews || totalReviewsOf(enriched),
+            reviewSummary
+          };
+        } catch (error) {
+          console.warn('Could not load seller reviews', sellerId, error);
+        }
+      }
+
+      return enriched;
+    }
+
+    async function mapWithConcurrency(items, limit, worker) {
+      const results = new Array(items.length);
+      let index = 0;
+      async function runNext() {
+        while (index < items.length) {
+          const current = index++;
+          results[current] = await worker(items[current], current);
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runNext));
+      return results;
     }
 
     function readFollowedIds() {
@@ -618,12 +745,13 @@
       const reviews = totalReviewsOf(seller);
       const productCount = productCountOf(seller);
       const following = followedSellerIds.has(sellerId);
+      const fallbackLogo = avatarUrl(name);
 
       return `
         <article class="seller-card" data-seller-id="${escapeHtml(sellerId)}">
           ${isVerified(seller) ? '<span class="verified-badge" title="Verified"><i class="fas fa-check"></i></span>' : ''}
           <img class="seller-logo" src="${escapeHtml(logoOf(seller))}" alt="${escapeHtml(name)} logo" loading="lazy"
-            onerror="this.src='${avatarUrl(name)}'">
+            data-fallback-logo="${escapeHtml(fallbackLogo)}" onerror="this.onerror=null;this.src=this.dataset.fallbackLogo">
           <h2 class="seller-name">${escapeHtml(name)}</h2>
           <span class="category-badge">${escapeHtml(category)}</span>
           <div class="seller-meta">
@@ -687,8 +815,10 @@
         const res = await fetch(`${API}/categories`);
         const data = await res.json();
         const categories = Array.isArray(data?.data) ? data.data : [];
+        categoryLookup = new Map(categories.map(category => [String(category.id), category.name]).filter(item => item[0] && item[1]));
         categoryFilter.innerHTML = '<option value="all">All Categories</option>' +
           categories.map(category => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join('');
+        if (allSellers.length) applyFilters();
       } catch (error) {
         console.warn('Could not load categories', error);
       }
@@ -701,6 +831,9 @@
         const data = await res.json();
         const sellers = data?.data?.sellers || [];
         allSellers = sellers.filter(seller => sellerIdOf(seller));
+        applyFilters();
+
+        allSellers = await mapWithConcurrency(allSellers, 6, enrichSeller);
         applyFilters();
       } catch (error) {
         console.error('Could not load sellers', error);
@@ -835,7 +968,8 @@
           window.initializeBadgeUpdates(buyerId);
         }
       }
-      await Promise.all([loadCategories(), loadSellers()]);
+      await loadCategories();
+      await loadSellers();
       verifyFollowedShops();
     });
   </script>
