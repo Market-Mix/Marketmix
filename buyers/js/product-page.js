@@ -12,6 +12,17 @@ function getUrlParams() {
   return new URLSearchParams(window.location.search);
 }
 
+function esc(value) {
+  if (value == null) return '';
+  return String(value).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
 // Reads store from ?store= OR ?seller= OR ?storeId= query params
 function getStoreIdFromParams() {
   const p = getUrlParams();
