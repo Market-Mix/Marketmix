@@ -7,7 +7,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   // =====================================================
   // INITIALIZE NOTIFICATION MANAGER
   // =====================================================
-  const buyerId = getBuyerId();
+  if (typeof window.getBuyerId !== 'function') {
+    window.getBuyerId = function() {
+      try {
+        const u = JSON.parse(localStorage.getItem('user') || '{}');
+        return u && (u.id || u.userId || u.buyerId) ? (u.id || u.userId || u.buyerId) : (localStorage.getItem('buyerId') || localStorage.getItem('buyer_id') || null);
+      } catch (e) {
+        return localStorage.getItem('buyerId') || localStorage.getItem('buyer_id') || null;
+      }
+    };
+  }
+  const buyerId = window.getBuyerId();
   if (buyerId && typeof NotificationManager !== 'undefined') {
     await NotificationManager.init(buyerId);
 
@@ -309,7 +319,8 @@ function makeFloatingList(btn, items) {
     try {
       const [cats, prodRes] = await Promise.all([getCategories(), fetch(`${API}/products?limit=50`)]);
       const d = await prodRes.json();
-      let products = d.data?.data || [];
+      console.log('Products API response:', d); // CHECK THIS IN BROWSER CONSOLE
+      let products = d.data?.data || d.data || [];
       if (!Array.isArray(products)) products = [];
       const bsGrid = document.querySelector('.best-selling-grid');
       const naGrid = document.querySelector('.new-arrivals-grid');
