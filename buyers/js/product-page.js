@@ -574,12 +574,9 @@ async function addToCart(product) {
         quantity,
         store_id: storeId || null,
         seller_id: product.seller_id || product.seller?.id || null,
-<<<<<<< HEAD
-=======
-        ...(color    && { color }),
-        ...(size     && { size }),
-        ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
->>>>>>> dab8c206ceead605fc95a1543f34fa587a260ef2
+      ...(color    && { color }),
+      ...(size     && { size }),
+      ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));
   }
