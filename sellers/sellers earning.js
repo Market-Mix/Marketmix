@@ -159,13 +159,8 @@ window.toggleProfileDropdown = toggleProfileDropdown;
 
 async function fetchEarningsData() {
     try {
-        const response = await fetch(`${API_BASE}/earnings?t=${Date.now()}`, {
-            headers: authHeaders(),
-            cache: 'no-store'
-        });
-        
-        const data = await response.json();
-        
+        const data = await apiFetch('/earnings');
+
         if (data.status === 'success') {
             renderEarnings(data.data);
         } else {

@@ -169,8 +169,9 @@ async function loadDashboardData() {
     // Fetch returns/refunds count from the seller endpoint
     (async () => {
       try {
-        const result = await StoreManager.apiFetch("/refunds/seller");
-        return result || { data: { count: 0, refunds: [] } };
+        const result = await StoreManager.apiFetch("/seller/refund-cases");
+        const refunds = Array.isArray(result?.data) ? result.data : [];
+        return { data: { count: refunds.length, refunds } };
       } catch (e) {
         console.warn('Could not fetch refunds count:', e.message);
         return { data: { count: 0, refunds: [] } };
