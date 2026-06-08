@@ -309,7 +309,8 @@ function makeFloatingList(btn, items) {
     try {
       const [cats, prodRes] = await Promise.all([getCategories(), fetch(`${API}/products?limit=50`)]);
       const d = await prodRes.json();
-      const products = d.data || [];
+      let products = d.data || d || [];
+      if (!Array.isArray(products)) products = [];
       const bsGrid = document.querySelector('.best-selling-grid');
       const naGrid = document.querySelector('.new-arrivals-grid');
       const recGrid = document.querySelector('.recommended-grid');
