@@ -607,21 +607,6 @@ body {
   background: #EA580C;
 }
 
-/* Spec hint shown on product cards that require selecting options */
-.product-card { position: relative; }
-.product-card .spec-hint {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: rgba(255,255,255,0.95);
-  color: #f97316;
-  padding: 6px 10px;
-  border-radius: 18px;
-  font-size: 12px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-  pointer-events: none;
-}
-
 /* Star Rating Styling */
 .rating {
   color: #F97316;
