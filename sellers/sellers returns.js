@@ -2,6 +2,7 @@ let returnsData = [];
 let currentCaseInfo = null; // Store latest case info from polling
 let caseInfoCache = {}; // cache for latest case info per refund ID (in-memory only)
 let pollingIntervals = {}; // track polling intervals per case (in-memory only)
+let unreadCounts = {}; // track unread refund_chat notifications per refund ID
 
 const SUPABASE_URL = 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
@@ -119,6 +120,51 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
+// ── Unread Notification Helpers ────────────────────────────
+function getUnreadCount(refundId) {
+  return unreadCounts[refundId] || 0;
+}
+
+function setUnreadCount(refundId, count) {
+  if (count > 0) {
+    unreadCounts[refundId] = count;
+  } else {
+    delete unreadCounts[refundId];
+  }
+}
+
+function getTotalUnreadCount() {
+  let total = 0;
+  returnsData.forEach(item => {
+    total += getUnreadCount(item.id);
+  });
+  return total;
+}
+
+function updateNotificationBadges() {
+  const total = getTotalUnreadCount();
+  // Update notification badge if global function exists
+  window.updateReturnsNotification?.(total);
+}
+
+function getBadgeHtml(refundId) {
+  const count = getUnreadCount(refundId);
+  if (count > 0) {
+    const displayCount = count > 99 ? '99+' : count;
+    return `<span class="notification-badge" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; border: 2px solid white;">${displayCount}</span>`;
+  }
+  return '';
+}
+
+function getChatButtonWithBadge(refundId, buttonHtml) {
+  const badge = getBadgeHtml(refundId);
+  if (badge) {
+    return `<div style="position: relative; display: inline-block; width: 100%;">${buttonHtml}${badge}</div>`;
+  }
+  return buttonHtml;
+}
+}
+
 function formatDate(dateString) {
   if (!dateString) return 'N/A';
   const date = new Date(dateString);
@@ -231,6 +277,26 @@ async function pollRefundCaseStatus(refundId) {
 
     if (caseInfo) {
       caseInfoCache[refundId] = caseInfo;
+      
+      // Fetch unread notification count for this refund case
+      try {
+        const notifCountRes = await fetch(`${API_BASE}/refund-chat/${refundId}/unread-notification-count`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (notifCountRes.ok) {
+          const notifCountData = await notifCountRes.json();
+          const unreadNotifCount = notifCountData.data?.count || 0;
+          if (unreadNotifCount > 0) {
+            setUnreadCount(refundId, unreadNotifCount);
+          } else {
+            setUnreadCount(refundId, 0);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch notification count:', err.message);
+      }
+      
+      updateNotificationBadges();
 
       // If chat is currently open for this case, update UI
       if (currentChatId === refundId) {
@@ -359,11 +425,12 @@ function renderTable(data = returnsData) {
       const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       chatDate = formatDate(item.evidence_submitted_at);
       if (timeLeft > 0) {
-        chatBtnHtml = `
+        const btnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
             <i class="fas fa-comments"></i> Chat (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)
           </button>
         `;
+        chatBtnHtml = getChatButtonWithBadge(item.id, btnHtml);
       } else {
         chatBtnHtml = `
           <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
@@ -380,11 +447,12 @@ function renderTable(data = returnsData) {
       const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       chatDate = formatDate(item.purchase_date);
       if (timeLeft > 0) {
-        chatBtnHtml = `
+        const btnHtml = `
           <button class="btn-chat" onclick="openChat('${item.id}')">
             <i class="fas fa-comments"></i> Report issue (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)
           </button>
         `;
+        chatBtnHtml = getChatButtonWithBadge(item.id, btnHtml);
       } else {
         chatBtnHtml = `
           <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
@@ -709,6 +777,22 @@ function openChat(returnId) {
   chatPanel.classList.add('active');
   chatOverlay.classList.add('active');
   document.body.style.overflow = 'hidden';
+
+  // Mark refund chat notifications as read
+  const token = getToken();
+  fetch(`${API_BASE}/refund-chat/${returnId}/mark-notifications-read`, {
+    method: 'PUT',
+    headers: { 
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  }).then(() => {
+    setUnreadCount(returnId, 0);
+    updateNotificationBadges();
+    console.log(`✅ Notifications marked as read for refund ${returnId}`);
+  }).catch(err => {
+    console.warn('Failed to mark notifications as read:', err.message);
+  });
 
   // Start polling for real-time updates (10-second interval)
   startPolling(returnId);

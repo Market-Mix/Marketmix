@@ -2294,6 +2294,23 @@
       if (caseInfo) {
         caseInfoCache[refundId] = caseInfo;
         unreadCounts[refundId] = caseInfo.unreadCount || 0;
+        
+        // Fetch unread notification count for this refund case
+        try {
+          const notifCountRes = await fetch(`${API_BASE_URL}/refund-chat/${refundId}/unread-notification-count`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (notifCountRes.ok) {
+            const notifCountData = await notifCountRes.json();
+            const unreadNotifCount = notifCountData.data?.count || 0;
+            if (unreadNotifCount > 0) {
+              unreadCounts[refundId] = unreadNotifCount;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch notification count:', err.message);
+        }
+        
         updateNotificationBadges();
 
         // If chat is currently open for this case, update UI
@@ -3084,10 +3101,25 @@
     }
   }
 
-  function openChatPanel(report) {
+  async function openChatPanel(report) {
     try {
       currentChatData = report;
       const caseId = report.supabase_case_id || report.id;
+
+      // Mark refund_chat notifications as read for this case
+      const token = getAuthToken();
+      if (token && !String(caseId).startsWith('order-')) {
+        fetch(`${API_BASE_URL}/refund-chat/${caseId}/mark-notifications-read`, {
+          method: 'PUT',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }).then(() => {
+          setUnreadCount(caseId, 0);
+          console.log(`✅ Notifications marked as read for refund ${caseId}`);
+        }).catch(err => console.warn('Failed to mark notifications as read:', err.message));
+      }
 
       document.getElementById('chatStoreName').textContent = `Chat with ${report.store_name}`;
       document.getElementById('chatOrderId').textContent = `Order ID: ${report.order_id}`;
