@@ -495,6 +495,12 @@ function renderProduct(product) {
   setEl('product-description', product.description || 'No description available.');
 
   if (typeof createImageGallery    === 'function') createImageGallery(product);
+  if (product.product_video_url && typeof createProductVideo === 'function') {
+    createProductVideo(product);
+  }
+  if (product.variants?.length && typeof createVariants === 'function') {
+    createVariants(product);
+  }
   if (typeof createFlashSale       === 'function') createFlashSale(product);
   if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
 
@@ -568,6 +574,9 @@ async function addToCart(product) {
         quantity,
         store_id: storeId || null,
         seller_id: product.seller_id || product.seller?.id || null,
+        ...(color    && { color }),
+        ...(size     && { size }),
+        ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));
   }
@@ -614,10 +623,15 @@ async function proceedToCheckout(product) {
       await fetch(`${API_BASE}/cart/add`, {
         method: 'POST',
         headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
-        body: JSON.stringify(storeScopedBody({
-          product_id: product.id,
-          quantity,
-        }, storeId)),
+        body: JSON.stringify({
+          ...storeScopedBody({
+            product_id: product.id,
+            quantity,
+          }, storeId),
+          ...(color    && { color }),
+          ...(size     && { size }),
+          ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
+        }),
       });
     } catch (e) { console.warn('Cart sync error (checkout):', e); }
     window.location.href = './checkout.html';
