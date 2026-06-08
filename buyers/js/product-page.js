@@ -164,37 +164,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Parse product (critical path)
   let product = null;
   if (productResult.status === 'fulfilled') {
-    try {
-      const j = await productResult.value.json();
-      const data = j.data;
-      if (Array.isArray(data)) {
-        product = data.find(p => String(p.id) === String(productId)) || data[0] || null;
-      } else {
-        product = data || null;
-      }
-    } catch (_) {}
+    try { const j = await productResult.value.json(); product = j.data; } catch (_) {}
   }
   if (!product) product = getMockProduct(productId);
-
-  // Normalize product metadata for the UI
-  if (!product.dynamic_fields || typeof product.dynamic_fields !== 'object') {
-    product.dynamic_fields = {};
-  }
-  if (product.weight_kg && !product.dynamic_fields.weight) {
-    product.dynamic_fields.weight = `${product.weight_kg} kg`;
-  }
-  if (product.size && !product.dynamic_fields.size) {
-    product.dynamic_fields.size = product.size;
-  }
-  if (product.views == null) {
-    product.views = product.view_count ?? product.total_views ?? product.totalViews ?? 0;
-  }
-  if (product.review_count == null) {
-    product.review_count = Array.isArray(product.reviews) ? product.reviews.length : 0;
-  }
-  if (product.rating == null) {
-    product.rating = 0;
-  }
 
   // Resolve and persist store id on the product object
   const productStoreId = getProductStoreId(product);
@@ -202,20 +174,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Render product immediately
   renderProduct(product);
-  window._currentProduct = product;
-
-  if (product.vendor_location) {
-    const locEl = document.getElementById('stock-status');
-    if (locEl) locEl.innerHTML += ` &bull; ${product.vendor_location}`;
-  }
-  const descEl = document.getElementById('product-description');
-  if (product.return_accepted === false && descEl) {
-    descEl.insertAdjacentHTML('afterend', '<div style="margin-top:8px;color:#dc2626;font-size:13px;font-weight:600">No returns accepted</div>');
-  }
-  if (product.delivery_available === false && descEl) {
-    descEl.insertAdjacentHTML('afterend', '<div style="margin-top:8px;color:#f97316;font-size:13px;font-weight:600">No delivery — pickup only</div>');
-  }
-
   if (productStoreId && !urlStoreId) {
     syncStoreParam(productStoreId);
     Object.assign(headers, scopedHeaders({ 'Content-Type': 'application/json' }, productStoreId));
@@ -482,74 +440,8 @@ function renderBelowFold(product) {
   if (typeof createRelatedProducts === 'function') createRelatedProducts(product);
 }
 
-function renderMediaGallery(product) {
-  const gallery = document.getElementById('image-gallery');
-  if (!gallery) return;
-
-  const images = Array.isArray(product.images) ? product.images
-    : (product.images ? [product.images] : []);
-  if (product.main_image_url && !images.includes(product.main_image_url)) {
-    images.unshift(product.main_image_url);
-  }
-
-  const thumbsHtml = images.map((img, i) => `
-      <button type="button" class="mm-gallery-thumb" data-src="${img}" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;cursor:pointer">
-        <img src="${img}" alt="Thumbnail ${i+1}" style="width:80px;height:80px;object-fit:cover;display:block">
-      </button>`).join('');
-
-  gallery.innerHTML = `
-    <div id="gallery-main" class="mm-gallery-main" style="border-radius:16px;overflow:hidden;background:#f8fafc;margin-bottom:14px;min-height:320px;display:flex;align-items:center;justify-content:center">
-      <div id="gallery-main-content"></div>
-    </div>
-    <div class="mm-gallery-thumbs" style="display:flex;flex-wrap:wrap;gap:10px">${thumbsHtml}</div>
-  `;
-
-  const firstSrc = images[0] || '';
-  setMainMedia('image', firstSrc);
-
-  gallery.querySelectorAll('.mm-gallery-thumb').forEach(btn => {
-    btn.addEventListener('click', () => setMainMedia('image', btn.dataset.src, btn));
-  });
-}
-
-function setMainMedia(type, src, btn) {
-  const container = document.getElementById('gallery-main-content');
-  if (!container) return;
-  if (type === 'video') {
-    container.innerHTML = `
-      <video controls style="width:100%;height:100%;max-height:560px;object-fit:contain;background:#000" poster="${src}">
-        <source src="${src}" type="video/mp4">
-        <source src="${src}" type="video/webm">
-        Your browser does not support video.
-      </video>`;
-  } else {
-    container.innerHTML = `
-      <img id="gallery-main-img" src="${src}" alt="Product media" style="width:100%;height:auto;object-fit:contain;cursor:pointer">`;
-    const mainImg = document.getElementById('gallery-main-img');
-    if (mainImg) {
-      mainImg.addEventListener('click', () => {
-        const lbImg = document.getElementById('mm-lightbox-img');
-        if (lbImg) lbImg.src = src;
-        const lb = document.getElementById('mm-lightbox');
-        if (lb) lb.style.display = 'flex';
-      });
-    }
-  }
-
-  if (btn) {
-    document.querySelectorAll('.mm-gallery-thumb').forEach(b => {
-      b.style.borderColor = '#e2e8f0';
-      b.style.background = '#fff';
-      b.style.color = '#000';
-    });
-    btn.style.borderColor = '#f97316';
-    btn.style.background = '#fff7ed';
-  }
-}
-
 // ── Render product (critical path) ───────────────────────────
 function renderProduct(product) {
-  window._currentProduct = product;
   document.title = `${product.name} - MarketMix`;
 
   const rules = (typeof getCategoryRules === 'function')
@@ -599,18 +491,20 @@ function renderProduct(product) {
     }
   }
 
-  const viewCount = product.views ?? product.view_count ?? product.total_views ?? product.totalViews ?? 0;
-  setEl('view-count', Number(viewCount) || 0);
-  setEl('product-description', product.description || product.short_description || 'No description available.');
+  if (product.views) setEl('view-count', product.views);
+  setEl('product-description', product.description || 'No description available.');
 
-  renderMediaGallery(product);
+  if (typeof createImageGallery    === 'function') createImageGallery(product);
   if (product.product_video_url && typeof createProductVideo === 'function') {
     createProductVideo(product);
   }
-  if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
+  if (product.variants?.length && typeof createVariants === 'function') {
+    createVariants(product);
+  }
   if (typeof createFlashSale       === 'function') createFlashSale(product);
+  if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
 
-  if (typeof createReviews === 'function') createReviews(product);
+  if (product.reviews?.length && typeof createReviews === 'function') createReviews(product);
 
   refreshWishlistButton(product.id);
 }
@@ -645,30 +539,21 @@ async function addToCart(product) {
 
   const qtyEl   = document.getElementById('product-quantity');
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
-  const opts     = window._selectedOptions || {};
-  const variant  = opts.variant || window.productOptions?.variant?.() || null;
-  const color    = opts.color || window.productOptions?.color?.() || variant?.color || null;
-  const size     = opts.size || window.productOptions?.size?.() || variant?.size || null;
+  const color    = window.productOptions?.color?.() || null;
+  const size     = window.productOptions?.size?.()  || null;
   const storeId  = getProductStoreId(product);
 
   // 1. Update local cart immediately (no round-trip needed)
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
   const existing = cart.find(i =>
-    i.id === product.id && i.color === color && i.size === size && i.variant?.sku === variant?.sku
+    i.id === product.id && i.color === color && i.size === size
   );
-  if (existing) {
-    existing.quantity += quantity;
-  } else {
+  if (existing) { existing.quantity += quantity; }
+  else {
     cart.push({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.main_image_url,
-      quantity,
-      color,
-      size,
-      variant: variant ? { ...variant } : null,
-      sku: variant?.sku || null,
+      id: product.id, name: product.name,
+      price: product.price, image: product.main_image_url,
+      quantity, color, size,
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
@@ -676,8 +561,7 @@ async function addToCart(product) {
   }
   localStorage.setItem('cart', JSON.stringify(cart));
   updateCartCount();
-  const variantInfo = variant?.name ? ` (${variant.name})` : '';
-  showToast(`${product.name}${variantInfo} added to cart!`, 'success');
+  showToast(`${product.name} added to cart!`, 'success');
 
   // 2. Sync to backend (fire-and-forget — don't block the UI)
   const token = localStorage.getItem('token');
@@ -692,7 +576,7 @@ async function addToCart(product) {
         seller_id: product.seller_id || product.seller?.id || null,
         ...(color    && { color }),
         ...(size     && { size }),
-        ...(variant?.sku && { sku: variant.sku }),
+        ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));
   }
@@ -709,29 +593,21 @@ async function proceedToCheckout(product) {
 
   const qtyEl   = document.getElementById('product-quantity');
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
-  const opts     = window._selectedOptions || {};
-  const variant  = opts.variant || window.productOptions?.variant?.() || null;
-  const color    = opts.color || window.productOptions?.color?.() || variant?.color || null;
-  const size     = opts.size || window.productOptions?.size?.() || variant?.size || null;
+  const color    = window.productOptions?.color?.() || null;
+  const size     = window.productOptions?.size?.()  || null;
   const storeId  = getProductStoreId(product);
 
   // Update local cart
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
   const existing = cart.find(i =>
-    i.id === product.id && i.color === color && i.size === size && i.variant?.sku === variant?.sku
+    i.id === product.id && i.color === color && i.size === size
   );
   if (existing) { existing.quantity += quantity; }
   else {
     cart.push({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.main_image_url,
-      quantity,
-      color,
-      size,
-      variant: variant ? { ...variant } : null,
-      sku: variant?.sku || null,
+      id: product.id, name: product.name,
+      price: product.price, image: product.main_image_url,
+      quantity, color, size,
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
@@ -754,7 +630,7 @@ async function proceedToCheckout(product) {
           }, storeId),
           ...(color    && { color }),
           ...(size     && { size }),
-          ...(variant?.sku && { sku: variant.sku }),
+          ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
         }),
       });
     } catch (e) { console.warn('Cart sync error (checkout):', e); }
@@ -931,23 +807,11 @@ async function handleWishlist(product) {
 }
 
 // ── Track view (fire-and-forget) ──────────────────────────────
-async function trackProductView(productId, storeId = getStoreIdFromParams()) {
-  if (!productId) return;
-  try {
-    const res = await fetch(`${API_BASE}/products/${productId}/view`, {
-      method: 'POST',
-      headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId)
-    });
-    if (!res.ok) return;
-    const j = await res.json();
-    const newViews = j.data?.views ?? null;
-    if (newViews != null) {
-      setEl('view-count', Number(newViews) || 0);
-      console.log(`✅ View tracked: ${newViews} views`);
-    }
-  } catch (err) {
-    console.warn('View tracking error:', err.message);
-  }
+function trackProductView(productId, storeId = getStoreIdFromParams()) {
+  fetch(`${API_BASE}/products/${productId}/view`, {
+    method:  'POST',
+    headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
+  }).catch(() => {});
 }
 
 // ── Cart count ────────────────────────────────────────────────

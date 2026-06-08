@@ -24,13 +24,6 @@
     <div class="product-layout">
       <!-- Image Gallery (Left) -->
       <div class="product-gallery">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <img id="shop-avatar" src="" style="width:32px;height:32px;border-radius:50%;object-fit:cover" alt="Shop">
-          <div>
-            <a id="shop-link" href="#" style="font-weight:600;color:#f97316;text-decoration:none">Shop Name</a>
-            <div id="shop-rating" style="font-size:12px;color:#64748b"></div>
-          </div>
-        </div>
         <div id="image-gallery"></div>
         <div id="product-video-section" style="margin-top:12px"></div>
       </div>
@@ -42,7 +35,17 @@
           <h1 id="product-title">Product Title</h1>
           <p id="product-category" style="color:#64748b;margin:4px 0 12px;font-size:14px"></p>
           
-          <!-- Price & Rating -->
+          <!-- Shop Name -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e2e8f0">
+            <img id="shop-avatar" src="" style="width:32px;height:32px;border-radius:50%;object-fit:cover" alt="Shop">
+            <div>
+              <a id="shop-link" href="#" style="font-weight:600;color:#f97316;text-decoration:none">Shop Name</a>
+              <div id="shop-rating" style="font-size:12px;color:#64748b"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Price & Rating -->
         <div class="price-rating">
           <div>
             <span id="product-price" class="product-price">₦0.00</span>
@@ -170,17 +173,17 @@
   <!-- Scripts -->
 
   <script src="wishlist-util.js"></script>
-<script src="js/categoryRules.js"></script>
-<script src="js/components/ImageGallery.js"></script>
-<script src="js/components/CategoryOptions.js"></script>
-<script src="js/components/FlashSale.js"></script>
-<script src="js/components/Reviews.js"></script>
-<script src="js/components/ShopMore.js"></script>
-<script src="js/components/RelatedProducts.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="notification-manager.js"></script>
-<script src="js/product-page.js"></script>
-<script src="js/components/ProductVideo.js"></script>
+  <script src="js/categoryRules.js"></script>
+  <script src="js/components/ImageGallery.js"></script>
+  <script src="js/components/CategoryOptions.js"></script>
+  <script src="js/components/FlashSale.js"></script>
+  <script src="js/components/Reviews.js"></script>
+  <script src="js/components/ShopMore.js"></script>
+  <script src="js/components/RelatedProducts.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="notification-manager.js"></script>
+  <script src="js/product-page.js"></script>
+  <script src="js/components/ProductVideo.js"></script>
   <script>
 function getToken() {
   return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
