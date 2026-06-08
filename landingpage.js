@@ -136,11 +136,24 @@ let productsCache = null;
 
 async function fetchProducts(limit=16) {
   if (productsCache && productsCache.length >= limit) return productsCache.slice(0, limit);
-  const r = await fetch(`${API}/products?limit=${limit}`);
-  if (!r.ok) throw new Error('fetch failed');
-  const d = await r.json();
-  productsCache = d.data || [];
-  return productsCache;
+  try {
+    const r = await fetch(`${API}/products?limit=${limit}`);
+    if (!r.ok) throw new Error('fetch failed');
+    const d = await r.json();
+    productsCache = d.data || [];
+    return productsCache;
+  } catch (err) {
+    console.warn('fetchProducts failed, falling back to local mock data:', err);
+    // Safe lightweight fallback so the UI still shows product cards during backend issues.
+    const mock = [
+      { id: 'm1', name: 'Sample Headphones', price: 4500, main_image_url: 'https://images.unsplash.com/photo-1518444027065-62d3b1a1b5b0?w=800', category: 'Electronics', stock_quantity: 5 },
+      { id: 'm2', name: 'Stylish Sneakers', price: 7600, main_image_url: 'https://images.unsplash.com/photo-1528701800489-476f4a6e10d0?w=800', category: 'Fashion', stock_quantity: 12 },
+      { id: 'm3', name: 'Wooden Chair', price: 12000, main_image_url: 'https://images.unsplash.com/photo-1540574163026-643ea20ade25?w=800', category: 'Home & Garden', stock_quantity: 8 },
+      { id: 'm4', name: 'Fitness Band', price: 3200, main_image_url: 'https://images.unsplash.com/photo-1519744792095-2f2205e87b6f?w=800', category: 'Sports & Outdoors', stock_quantity: 20 }
+    ];
+    productsCache = mock;
+    return productsCache.slice(0, limit);
+  }
 }
 
 // Enrich up to `ids` products with real avg_rating & review_count from the single-product endpoint.

@@ -57,7 +57,24 @@ async function loadCategories() {
     }).join('');
   } catch (err) {
     console.error('Error loading categories:', err);
-    grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">Error loading categories.</div>';
+    // Fallback: show a few mock categories so the UI remains usable when backend is unreachable
+    const fallback = [
+      { id: 'c1', name: 'Electronics', product_count: 12 },
+      { id: 'c2', name: 'Fashion', product_count: 8 },
+      { id: 'c3', name: 'Home & Garden', product_count: 6 },
+      { id: 'c4', name: 'Sports & Outdoors', product_count: 4 }
+    ];
+    grid.innerHTML = fallback.map((c) => `
+      <div class="cat-card" data-id="${escapeHtml(c.id)}" data-name="${escapeHtml(c.name)}" onclick="openCategory(this)">
+        <div class="cat-img-wrap">
+          <img src="https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300" alt="${escapeHtml(c.name)}" loading="lazy">
+        </div>
+        <div class="cat-info">
+          <div class="cat-name">${escapeHtml(c.name)}</div>
+          <div class="cat-count">${c.product_count} products</div>
+        </div>
+        <div class="cat-arrow"><i class="fas fa-chevron-right"></i></div>
+      </div>`).join('');
   }
 }
 
