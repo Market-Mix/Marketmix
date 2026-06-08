@@ -163,7 +163,6 @@ function getChatButtonWithBadge(refundId, buttonHtml) {
   }
   return buttonHtml;
 }
-}
 
 function formatDate(dateString) {
   if (!dateString) return 'N/A';
