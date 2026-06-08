@@ -17,8 +17,8 @@ async function handleLogout() {
       headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
     });
   } catch (_) {}
-  ['token','user','seller_token','seller_user','userRole',
-   'mm_active_store','mm_stores_cache'].forEach(k => localStorage.removeItem(k));
+  ['token','user','seller_token','seller_user','userRole'].forEach(k => localStorage.removeItem(k));
+  // Keep mm_active_store and mm_stores_cache so it restores on next login
   window.location.href = "login.html";
 }
 
