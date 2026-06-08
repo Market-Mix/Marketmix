@@ -140,7 +140,8 @@ async function fetchProducts(limit=16) {
     const r = await fetch(`${API}/products?limit=${limit}`);
     if (!r.ok) throw new Error('fetch failed');
     const d = await r.json();
-    productsCache = d.data || [];
+    productsCache = d.data?.data || d.data || [];
+    if (!Array.isArray(productsCache)) productsCache = [];
     return productsCache;
   } catch (err) {
     console.warn('fetchProducts failed, falling back to local mock data:', err);

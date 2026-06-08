@@ -164,7 +164,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Parse product (critical path)
   let product = null;
   if (productResult.status === 'fulfilled') {
-    try { const j = await productResult.value.json(); product = j.data; } catch (_) {}
+    try {
+      const j = await productResult.value.json();
+      const data = j.data;
+      if (Array.isArray(data)) {
+        product = data.find(p => String(p.id) === String(productId)) || data[0] || null;
+      } else {
+        product = data || null;
+      }
+    } catch (_) {}
   }
   if (!product) product = getMockProduct(productId);
 
