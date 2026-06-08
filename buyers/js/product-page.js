@@ -603,9 +603,9 @@ async function addToCart(product) {
         quantity,
         store_id: storeId || null,
         seller_id: product.seller_id || product.seller?.id || null,
-      ...(color    && { color }),
-      ...(size     && { size }),
-      ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
+        ...(color    && { color }),
+        ...(size     && { size }),
+        ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));
   }
