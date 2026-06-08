@@ -492,31 +492,23 @@ function renderMediaGallery(product) {
     images.unshift(product.main_image_url);
   }
 
-  const hasVideo = !!product.product_video_url;
-
   const thumbsHtml = images.map((img, i) => `
-      <button type="button" class="mm-gallery-thumb" data-type="image" data-src="${img}" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;cursor:pointer">
+      <button type="button" class="mm-gallery-thumb" data-src="${img}" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;cursor:pointer">
         <img src="${img}" alt="Thumbnail ${i+1}" style="width:80px;height:80px;object-fit:cover;display:block">
       </button>`).join('');
-
-  const videoThumb = hasVideo ? `
-      <button type="button" class="mm-gallery-thumb" data-type="video" data-src="${product.product_video_url}" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#000;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;width:80px;height:80px">
-        ▶ Video
-      </button>` : '';
 
   gallery.innerHTML = `
     <div id="gallery-main" class="mm-gallery-main" style="border-radius:16px;overflow:hidden;background:#f8fafc;margin-bottom:14px;min-height:320px;display:flex;align-items:center;justify-content:center">
       <div id="gallery-main-content"></div>
     </div>
-    <div class="mm-gallery-thumbs" style="display:flex;flex-wrap:wrap;gap:10px">${thumbsHtml}${videoThumb}</div>
+    <div class="mm-gallery-thumbs" style="display:flex;flex-wrap:wrap;gap:10px">${thumbsHtml}</div>
   `;
 
-  const setFirst = hasVideo ? 'video' : 'image';
-  const firstSrc = hasVideo ? product.product_video_url : (images[0] || '');
-  setMainMedia(setFirst, firstSrc);
+  const firstSrc = images[0] || '';
+  setMainMedia('image', firstSrc);
 
   gallery.querySelectorAll('.mm-gallery-thumb').forEach(btn => {
-    btn.addEventListener('click', () => setMainMedia(btn.dataset.type, btn.dataset.src, btn));
+    btn.addEventListener('click', () => setMainMedia('image', btn.dataset.src, btn));
   });
 }
 
@@ -612,6 +604,9 @@ function renderProduct(product) {
   setEl('product-description', product.description || product.short_description || 'No description available.');
 
   renderMediaGallery(product);
+  if (product.product_video_url && typeof createProductVideo === 'function') {
+    createProductVideo(product);
+  }
   if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
   if (typeof createFlashSale       === 'function') createFlashSale(product);
 
