@@ -56,9 +56,8 @@ body {
 }
 
 .product-gallery {
-  position: sticky;
-  top: 24px;
-  height: fit-content;
+  position: static;
+  height: auto;
 }
 
 .product-details {

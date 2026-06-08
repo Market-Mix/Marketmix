@@ -164,37 +164,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Parse product (critical path)
   let product = null;
   if (productResult.status === 'fulfilled') {
-    try {
-      const j = await productResult.value.json();
-      const data = j.data;
-      if (Array.isArray(data)) {
-        product = data.find(p => String(p.id) === String(productId)) || data[0] || null;
-      } else {
-        product = data || null;
-      }
-    } catch (_) {}
+    try { const j = await productResult.value.json(); product = j.data; } catch (_) {}
   }
   if (!product) product = getMockProduct(productId);
-
-  // Normalize product metadata for the UI
-  if (!product.dynamic_fields || typeof product.dynamic_fields !== 'object') {
-    product.dynamic_fields = {};
-  }
-  if (product.weight_kg && !product.dynamic_fields.weight) {
-    product.dynamic_fields.weight = `${product.weight_kg} kg`;
-  }
-  if (product.size && !product.dynamic_fields.size) {
-    product.dynamic_fields.size = product.size;
-  }
-  if (product.views == null) {
-    product.views = product.view_count ?? product.total_views ?? product.totalViews ?? 0;
-  }
-  if (product.review_count == null) {
-    product.review_count = Array.isArray(product.reviews) ? product.reviews.length : 0;
-  }
-  if (product.rating == null) {
-    product.rating = 0;
-  }
 
   // Resolve and persist store id on the product object
   const productStoreId = getProductStoreId(product);
@@ -519,9 +491,8 @@ function renderProduct(product) {
     }
   }
 
-  const viewCount = product.views ?? product.view_count ?? product.total_views ?? product.totalViews ?? 0;
-  setEl('view-count', Number(viewCount) || 0);
-  setEl('product-description', product.description || product.short_description || 'No description available.');
+  if (product.views) setEl('view-count', product.views);
+  setEl('product-description', product.description || 'No description available.');
 
   if (typeof createImageGallery    === 'function') createImageGallery(product);
   if (product.product_video_url && typeof createProductVideo === 'function') {
@@ -533,7 +504,7 @@ function renderProduct(product) {
   if (typeof createFlashSale       === 'function') createFlashSale(product);
   if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
 
-  if (typeof createReviews === 'function') createReviews(product);
+  if (product.reviews?.length && typeof createReviews === 'function') createReviews(product);
 
   refreshWishlistButton(product.id);
 }
@@ -603,9 +574,9 @@ async function addToCart(product) {
         quantity,
         store_id: storeId || null,
         seller_id: product.seller_id || product.seller?.id || null,
-      ...(color    && { color }),
-      ...(size     && { size }),
-      ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
+        ...(color    && { color }),
+        ...(size     && { size }),
+        ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));
   }
@@ -836,23 +807,11 @@ async function handleWishlist(product) {
 }
 
 // ── Track view (fire-and-forget) ──────────────────────────────
-async function trackProductView(productId, storeId = getStoreIdFromParams()) {
-  if (!productId) return;
-  try {
-    const res = await fetch(`${API_BASE}/products/${productId}/view`, {
-      method: 'POST',
-      headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId)
-    });
-    if (!res.ok) return;
-    const j = await res.json();
-    const newViews = j.data?.views ?? null;
-    if (newViews != null) {
-      setEl('view-count', Number(newViews) || 0);
-      console.log(`✅ View tracked: ${newViews} views`);
-    }
-  } catch (err) {
-    console.warn('View tracking error:', err.message);
-  }
+function trackProductView(productId, storeId = getStoreIdFromParams()) {
+  fetch(`${API_BASE}/products/${productId}/view`, {
+    method:  'POST',
+    headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
+  }).catch(() => {});
 }
 
 // ── Cart count ────────────────────────────────────────────────
