@@ -400,19 +400,14 @@
   .table-row > div {
     width: 100%;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .table-row > div:not(.col-workflow) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
     padding: 0;
-    border: none;
   }
 
   .table-row > div > * {
-    width: auto;
+    width: 100%;
     min-width: 0;
   }
 
@@ -426,9 +421,7 @@
   .table-row .col-chat::before { content: "Chat: "; font-weight: 600; color: #667eea; }
 
   .col-action,
-  .col-chat,
-  .col-workflow {
-    width: 100%;
+  .col-chat {
     justify-content: flex-start;
   }
 
@@ -502,11 +495,7 @@
   }
 
   .table-row > div {
-    justify-content: space-between;
-  }
-
-  .table-row > div > * {
-    width: auto;
+    gap: 0.3rem;
   }
 }
 
