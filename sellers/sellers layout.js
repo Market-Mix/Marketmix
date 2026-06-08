@@ -325,12 +325,12 @@ function renderProfileVerifiedBadge(profile, accountCompleted = false) {
       badge = document.createElement('span');
       badge.id = 'profileVerifiedBadge';
       badge.style.position = 'absolute';
-      badge.style.right = '-3px';
-      badge.style.bottom = '-3px';
-      badge.style.width = '22px';
-      badge.style.height = '22px';
+      badge.style.right = '-8px';
+      badge.style.bottom = '-8px';
+      badge.style.width = '24px';
+      badge.style.height = '24px';
       badge.style.borderRadius = '999px';
-      badge.style.fontSize = '12px';
+      badge.style.fontSize = '14px';
       badge.style.fontWeight = '700';
       badge.style.color = '#fff';
       badge.style.display = 'none';
@@ -338,7 +338,8 @@ function renderProfileVerifiedBadge(profile, accountCompleted = false) {
       badge.style.justifyContent = 'center';
       badge.style.textAlign = 'center';
       badge.style.lineHeight = '1';
-      badge.style.zIndex = '50';
+      badge.style.zIndex = '9999';
+      badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       container.style.position = 'relative';
       container.appendChild(badge);
     }
