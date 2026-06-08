@@ -836,11 +836,23 @@ async function handleWishlist(product) {
 }
 
 // ── Track view (fire-and-forget) ──────────────────────────────
-function trackProductView(productId, storeId = getStoreIdFromParams()) {
-  fetch(`${API_BASE}/products/${productId}/view`, {
-    method:  'POST',
-    headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
-  }).catch(() => {});
+async function trackProductView(productId, storeId = getStoreIdFromParams()) {
+  if (!productId) return;
+  try {
+    const res = await fetch(`${API_BASE}/products/${productId}/view`, {
+      method: 'POST',
+      headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId)
+    });
+    if (!res.ok) return;
+    const j = await res.json();
+    const newViews = j.data?.views ?? null;
+    if (newViews != null) {
+      setEl('view-count', Number(newViews) || 0);
+      console.log(`✅ View tracked: ${newViews} views`);
+    }
+  } catch (err) {
+    console.warn('View tracking error:', err.message);
+  }
 }
 
 // ── Cart count ────────────────────────────────────────────────
