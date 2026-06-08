@@ -233,6 +233,31 @@ function fetchWithTimeout(url, options = {}, ms = 6000) {
   return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(id));
 }
 
+// ── Track product view ───────────────────────────────────────
+async function trackProductView(productId, storeId) {
+  if (!productId) return;
+  try {
+    const res = await fetch(`${API_BASE}/products/${productId}/view`, {
+      method: 'POST',
+      headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId)
+    });
+    if (!res.ok) return;
+    const j = await res.json();
+    const newViews = j.data?.views ?? null;
+    if (newViews != null) {
+      setEl('view-count', Number(newViews) || 0);
+    } else {
+      // fallback: increment current UI count
+      const cur = Number(document.getElementById('view-count')?.textContent) || 0;
+      setEl('view-count', cur + 1);
+    }
+  } catch (err) {
+    // Non-critical — fail silently
+    const cur = Number(document.getElementById('view-count')?.textContent) || 0;
+    setEl('view-count', cur + 1);
+  }
+}
+
 // ── Try resolving seller/shop name from Supabase `product_listings` table ──
 // Try resolving seller/store info from backend endpoints (same source as product data)
 function isPlaceholderSellerName(name) {

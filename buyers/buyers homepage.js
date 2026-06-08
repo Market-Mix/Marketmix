@@ -139,6 +139,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     const productId = card.dataset.productId || null;
     const orig = btn.textContent;
 
+    // If this product requires selecting specifications, send user to product page
+    const needsSpec = card.dataset.needsSpec === '1' || card.dataset.needsSpec === 'true';
+    if (needsSpec) {
+      window.location.href = `product.html?id=${productId}`;
+      return;
+    }
+
     await addToCart({name, price, image, productId});
     btn.textContent = 'Added';
     btn.classList.add('added');
@@ -162,11 +169,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     const price = typeof p.price==='number' ? p.price.toFixed(2) : p.price;
     const cat = normCat(p.category||p.category_name||'');
     const inStock = isInStock(p);
-    return `<div class="${cls}" data-product-id="${p.id}" data-category="${cat}">
+    // Determine if this product has selectable specifications (colors, sizes, variants, or dynamic fields)
+    const hasColors = p.color && String(p.color).trim().length > 0;
+    const hasSizes = p.size && String(p.size).trim().length > 0;
+    const hasVariants = Array.isArray(p.variants) && p.variants.length > 0;
+    const hasDyn = p.dynamic_fields && Object.keys(p.dynamic_fields || {}).length > 0;
+    const needsSpec = hasColors || hasSizes || hasVariants || hasDyn;
+    const specAttr = needsSpec ? 'data-needs-spec="1"' : '';
+    const specBadge = needsSpec ? `<div class="spec-hint">Click to choose specification</div>` : '';
+    const cartBtnText = needsSpec ? 'Select specification' : (inStock ? 'Add to Cart' : 'Out of stock');
+    const cartBtnDisabled = inStock ? '' : 'disabled';
+    return `<div class="${cls}" data-product-id="${p.id}" data-category="${cat}" ${specAttr}>
       <img src="${img}" alt="${escapeHtml(p.name)}" loading="lazy">
+      ${specBadge}
       <div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div>
       <div class="meta"><div class="price">₦${price}</div></div></div>
-      <button class="add-to-cart" ${inStock ? '' : 'disabled'}>${inStock ? 'Add to Cart' : 'Out of stock'}</button></div>`;
+      <button class="add-to-cart" ${cartBtnDisabled}>${cartBtnText}</button></div>`;
   }
 
   async function getCategories() {
