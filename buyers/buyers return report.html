@@ -312,6 +312,16 @@
       color: #856404;
     }
 
+    .resolution-status.resolved {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .resolution-status.escalated {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
     .resolution-status.pending i {
       color: #ffc107;
       animation: pulse 2s infinite;
@@ -1878,13 +1888,13 @@
 
       if (!response.ok) {
         console.error('❌ Backend API error fetching refund messages:', response.status, result);
-        return [];
+        return { messages: [], caseInfo: null };
       }
 
-      return result.data?.messages || [];
+      return { messages: result.data?.messages || [], caseInfo: result.data?.caseInfo || null };
     } catch (err) {
       console.error('Failed to fetch refund messages from backend:', err);
-      return [];
+      return { messages: [], caseInfo: null };
     }
   }
   
@@ -2949,7 +2959,11 @@
     stopChatPolling();
     window._buyerChatPoll = setInterval(async () => {
       if (!currentChatData) return;
-      const msgs = await fetchRefundMessages(currentChatData.supabase_case_id || currentChatData.id);
+      const caseId = currentChatData.supabase_case_id || currentChatData.id;
+      const res = await fetchRefundMessages(caseId);
+      const msgs = res.messages || [];
+      const caseInfo = res.caseInfo || null;
+      if (caseInfo) applyChatLockState(caseInfo);
       if (msgs.length) renderLiveMessages(msgs);
     }, 5000);
   }
@@ -2969,7 +2983,12 @@
       return;
     }
 
-    const msgs = await fetchRefundMessages(caseId);
+    const res = await fetchRefundMessages(caseId);
+    const msgs = res.messages || [];
+    const caseInfo = res.caseInfo || null;
+
+    if (caseInfo) applyChatLockState(caseInfo);
+
     if (msgs.length) {
       renderLiveMessages(msgs);
     } else {
@@ -2997,6 +3016,30 @@
       `;
     }).join('');
     container.scrollTop = container.scrollHeight;
+  }
+
+  function applyChatLockState(caseInfo) {
+    const status = String(caseInfo.resolution_status || '').toLowerCase();
+    const readOnly = ['resolved', 'escalated'].includes(status);
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendChatBtn');
+    const fileInput = document.getElementById('chatFileInput');
+    const infoText = document.querySelector('.chat-info-text');
+
+    if (chatInput) chatInput.disabled = readOnly;
+    if (sendBtn) sendBtn.disabled = readOnly;
+    if (fileInput) fileInput.disabled = readOnly;
+
+    if (readOnly) {
+      if (infoText) infoText.textContent = 'Chat is read-only for resolved or escalated cases.';
+      const statusEl = document.getElementById('chatResolutionStatus');
+      if (statusEl) {
+        statusEl.className = 'resolution-status ' + status;
+        statusEl.textContent = status === 'resolved' ? 'Case Resolved' : 'Escalated to MarketMix';
+      }
+    } else {
+      if (infoText) infoText.textContent = 'All conversations are monitored by MarketMix';
+    }
   }
 
   function renderLocalMessages(report) {

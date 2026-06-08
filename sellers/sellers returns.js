@@ -588,10 +588,29 @@ async function loadAndRenderChat(caseId) {
     });
     const data = await res.json();
     const messages = data.data?.messages || [];
+    const caseInfo = data.data?.caseInfo || null;
+    if (caseInfo) applyChatLockState(caseInfo);
     renderChatMessages(messages);
   } catch (err) {
     console.error('Load chat failed:', err);
   }
+}
+
+function applyChatLockState(caseInfo) {
+  const status = String(caseInfo.resolution_status || '').toLowerCase();
+  const readOnly = ['resolved', 'escalated'].includes(status);
+  if (chatInput) chatInput.disabled = readOnly;
+  if (sendChatBtn) sendChatBtn.disabled = readOnly;
+  if (chatFileInput) chatFileInput.disabled = readOnly;
+
+  const statusEl = document.getElementById('chatResolutionStatus');
+  if (statusEl) {
+    statusEl.className = 'resolution-status ' + status;
+    statusEl.textContent = readOnly ? (status === 'resolved' ? 'Case Resolved' : 'Escalated to MarketMix') : 'Pending Resolution';
+  }
+
+  const infoEl = document.querySelector('.chat-info-text');
+  if (infoEl) infoEl.textContent = readOnly ? 'Chat is read-only for resolved or escalated cases.' : 'All conversations are monitored by MarketMix';
 }
 
 function renderChatMessages(messages) {
