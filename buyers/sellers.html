@@ -380,6 +380,68 @@
         padding: 12px 10px;
       }
     }
+
+    /* Additional mobile tweaks for better responsiveness */
+    @media (max-width: 480px) {
+      .sellers-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .seller-logo {
+        width: 60px;
+        height: 60px;
+      }
+
+      .seller-name {
+        font-size: 14px;
+        min-height: 36px;
+      }
+
+      .seller-meta {
+        font-size: 12px;
+        gap: 6px 8px;
+      }
+
+      .seller-actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .visit-btn,
+      .follow-toggle {
+        width: 100%;
+        padding: 9px 10px;
+        font-size: 13px;
+        box-sizing: border-box;
+      }
+
+      .seller-controls {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-bottom: 6px;
+      }
+
+      .seller-controls select,
+      .seller-controls .seller-search,
+      .seller-controls .sort-btn {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+
+      .seller-search {
+        order: 3;
+      }
+
+      .count-badge {
+        font-size: 13px;
+        padding: 7px 10px;
+      }
+
+      .state-card {
+        padding: 20px 12px;
+      }
+    }
   </style>
 </head>
 <body>
