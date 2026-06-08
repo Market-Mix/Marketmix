@@ -87,21 +87,16 @@ const StoreManager = (() => {
     let active = getActiveStore();
     if (active) return active;
 
-    // Try to auto-select if there's exactly one store
     const stores = await loadStores();
-    if (stores.length === 1) {
+    
+    // Auto-select first store regardless of count
+    if (stores.length >= 1) {
       setActiveStore(stores[0]);
       return stores[0];
     }
 
-    if (stores.length === 0) {
-      // No store yet — send to setup
-      window.location.href = 'setup-store.html';
-      return null;
-    }
-
-    // Multiple stores, none selected — send to picker
-    window.location.href = 'view-store.html';
+    // No stores at all → setup
+    window.location.href = 'setup-store.html';
     return null;
   }
 
