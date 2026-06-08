@@ -176,6 +176,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   if (!product) product = getMockProduct(productId);
 
+  // Normalize product metadata for the UI
+  if (!product.dynamic_fields || typeof product.dynamic_fields !== 'object') {
+    product.dynamic_fields = {};
+  }
+  if (product.weight_kg && !product.dynamic_fields.weight) {
+    product.dynamic_fields.weight = `${product.weight_kg} kg`;
+  }
+  if (product.size && !product.dynamic_fields.size) {
+    product.dynamic_fields.size = product.size;
+  }
+  if (product.views == null) {
+    product.views = product.view_count ?? product.total_views ?? product.totalViews ?? 0;
+  }
+  if (product.review_count == null) {
+    product.review_count = Array.isArray(product.reviews) ? product.reviews.length : 0;
+  }
+  if (product.rating == null) {
+    product.rating = 0;
+  }
+
   // Resolve and persist store id on the product object
   const productStoreId = getProductStoreId(product);
   if (productStoreId && !product.store_id) product.store_id = productStoreId;
@@ -499,8 +519,9 @@ function renderProduct(product) {
     }
   }
 
-  if (product.views) setEl('view-count', product.views);
-  setEl('product-description', product.description || 'No description available.');
+  const viewCount = product.views ?? product.view_count ?? product.total_views ?? product.totalViews ?? 0;
+  setEl('view-count', Number(viewCount) || 0);
+  setEl('product-description', product.description || product.short_description || 'No description available.');
 
   if (typeof createImageGallery    === 'function') createImageGallery(product);
   if (product.product_video_url && typeof createProductVideo === 'function') {
@@ -512,7 +533,7 @@ function renderProduct(product) {
   if (typeof createFlashSale       === 'function') createFlashSale(product);
   if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
 
-  if (product.reviews?.length && typeof createReviews === 'function') createReviews(product);
+  if (typeof createReviews === 'function') createReviews(product);
 
   refreshWishlistButton(product.id);
 }
