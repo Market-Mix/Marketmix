@@ -435,7 +435,7 @@
   .col-action button,
   .col-chat button,
   .col-workflow button {
-    width: 100% !important;
+    width: auto !important;
     max-width: 100%;
     box-sizing: border-box;
   }
@@ -444,12 +444,14 @@
     grid-column: 1 / -1;
     padding-top: 0.5rem;
     display: flex !important;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 0.5rem;
+    align-items: stretch;
   }
 
   .col-workflow > div {
-    width: 100%;
+    width: auto;
   }
 
   .modal-dialog {
