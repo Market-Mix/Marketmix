@@ -202,6 +202,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Render product immediately
   renderProduct(product);
+  window._currentProduct = product;
+
+  if (product.vendor_location) {
+    const locEl = document.getElementById('stock-status');
+    if (locEl) locEl.innerHTML += ` &bull; ${product.vendor_location}`;
+  }
+  const descEl = document.getElementById('product-description');
+  if (product.return_accepted === false && descEl) {
+    descEl.insertAdjacentHTML('afterend', '<div style="margin-top:8px;color:#dc2626;font-size:13px;font-weight:600">No returns accepted</div>');
+  }
+  if (product.delivery_available === false && descEl) {
+    descEl.insertAdjacentHTML('afterend', '<div style="margin-top:8px;color:#f97316;font-size:13px;font-weight:600">No delivery — pickup only</div>');
+  }
+
   if (productStoreId && !urlStoreId) {
     syncStoreParam(productStoreId);
     Object.assign(headers, scopedHeaders({ 'Content-Type': 'application/json' }, productStoreId));
@@ -468,8 +482,232 @@ function renderBelowFold(product) {
   if (typeof createRelatedProducts === 'function') createRelatedProducts(product);
 }
 
+function renderProductDetails(product) {
+  const container = document.getElementById('category-options');
+  if (!container) return;
+
+  function escapeHtml(text) {
+    if (text == null) return '';
+    return String(text).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+  }
+
+  let html = '';
+
+  const dynFields = typeof product.dynamic_fields === 'string'
+    ? JSON.parse(product.dynamic_fields || '{}')
+    : (product.dynamic_fields || {});
+
+  const catMeta = typeof product.category_meta === 'string'
+    ? JSON.parse(product.category_meta || '{}')
+    : (product.category_meta || {});
+
+  const allFields = { ...catMeta, ...dynFields };
+
+  if (Object.keys(allFields).length) {
+    html += `<div class="mm-detail-section" style="margin-bottom:16px;">`;
+    html += `<div class="mm-detail-title" style="font-weight:700;color:#334155;margin-bottom:10px">Product Details</div>`;
+    html += `<div class="mm-detail-grid" style="display:grid;gap:10px">`;
+
+    for (const [key, value] of Object.entries(allFields)) {
+      if (value == null || value === '') continue;
+      const label = key.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase());
+      const displayVal = Array.isArray(value) ? value.join(', ') : value;
+      html += `
+        <div class="mm-detail-row" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff">
+          <div style="font-size:12px;color:#64748b;margin-bottom:6px">${escapeHtml(label)}</div>
+          <div style="font-size:14px;color:#1e293b;font-weight:500">${escapeHtml(displayVal)}</div>
+        </div>`;
+    }
+
+    html += '</div></div>';
+  }
+
+  const color = allFields.color || allFields.cat_color || product.color;
+  if (color) {
+    const colors = Array.isArray(color) ? color : String(color).split(',').map(c => c.trim()).filter(Boolean);
+    if (colors.length > 1) {
+      html += `<div class="mm-detail-section" style="margin-bottom:16px;">
+        <div class="mm-detail-title" style="font-weight:700;color:#334155;margin-bottom:10px">Color</div>
+        <div class="mm-detail-chips" style="display:flex;flex-wrap:wrap;gap:8px">`;
+      colors.forEach((c, i) => {
+        html += `<button type="button" data-val="${escapeHtml(c)}" onclick="selectOption('color', ${i}, this)" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;cursor:pointer">${escapeHtml(c)}</button>`;
+      });
+      html += '</div></div>';
+    }
+  }
+
+  const size = allFields.size || allFields.cat_size || product.size;
+  if (size) {
+    const sizes = Array.isArray(size) ? size : String(size).split(',').map(s => s.trim()).filter(Boolean);
+    if (sizes.length > 1) {
+      html += `<div class="mm-detail-section" style="margin-bottom:16px;">
+        <div class="mm-detail-title" style="font-weight:700;color:#334155;margin-bottom:10px">Size</div>
+        <div class="mm-detail-chips" style="display:flex;flex-wrap:wrap;gap:8px">`;
+      sizes.forEach((s, i) => {
+        html += `<button type="button" data-val="${escapeHtml(s)}" onclick="selectOption('size', ${i}, this)" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;cursor:pointer">${escapeHtml(s)}</button>`;
+      });
+      html += '</div></div>';
+    }
+  }
+
+  container.insertAdjacentHTML('beforeend', html);
+}
+
+function renderVariants(product) {
+  const variants = typeof product.variants === 'string'
+    ? JSON.parse(product.variants || '[]')
+    : (product.variants || []);
+  if (!variants.length) return;
+
+  const container = document.getElementById('category-options');
+  if (!container) return;
+
+  let html = `<div id="variantSelector" class="mm-variant-section" style="margin-bottom:16px;">
+    <div class="mm-detail-title" style="font-weight:700;color:#334155;margin-bottom:10px">Variants</div>
+    <div style="display:grid;gap:10px">`;
+
+  variants.forEach((v, i) => {
+    if (!v.name) return;
+    html += `<button type="button" data-idx="${i}" onclick="selectVariant(${i}, this)" style="text-align:left;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;color:#1e293b;cursor:pointer">
+      <div style="font-weight:700;margin-bottom:6px">${escapeHtml(v.name)}</div>
+      ${v.price ? `<div style="font-size:13px;color:#f97316;font-weight:600">₦${parseFloat(v.price).toLocaleString()}</div>` : ''}
+      ${v.stock != null ? `<div style="font-size:12px;color:#64748b;margin-top:6px">${escapeHtml(String(v.stock))} in stock</div>` : ''}
+    </button>`;
+  });
+
+  html += '</div></div>';
+  container.insertAdjacentHTML('beforeend', html);
+  const firstBtn = document.querySelector('#variantSelector [data-idx="0"]');
+  if (firstBtn) selectVariant(0, firstBtn);
+}
+
+function selectOption(type, idx, btn) {
+  const parent = btn.parentElement;
+  if (!parent) return;
+  parent.querySelectorAll('button').forEach(b => {
+    b.style.borderColor = '#e2e8f0';
+    b.style.background = '#fff';
+  });
+  btn.style.borderColor = '#f97316';
+  btn.style.background = '#fff7ed';
+  window._selectedOptions = window._selectedOptions || {};
+  window._selectedOptions[type] = btn.dataset.val;
+}
+
+function selectVariant(idx, el) {
+  const product = window._currentProduct;
+  const variants = typeof product?.variants === 'string'
+    ? JSON.parse(product.variants || '[]')
+    : (product?.variants || []);
+  const v = variants[idx];
+  if (!v) return;
+
+  window._selectedOptions = window._selectedOptions || {};
+  window._selectedOptions.variant = v;
+
+  if (v.price) {
+    const priceEl = document.getElementById('product-price');
+    if (priceEl) priceEl.textContent = `₦${parseFloat(v.price).toLocaleString('en-NG', {minimumFractionDigits:2})}`;
+  }
+
+  const stockEl = document.getElementById('stock-status');
+  if (stockEl && v.stock != null) {
+    const qty = Number(v.stock);
+    stockEl.innerHTML = qty > 0
+      ? `<span style="color:#22c55e">✓ In Stock (${qty} available)</span>`
+      : `<span style="color:#ef4444">✗ Out of Stock</span>`;
+    if (qty <= 0) {
+      disableBtn('product-add-to-cart', 'Out of stock');
+      disableBtn('product-checkout', 'Out of stock');
+    }
+  }
+
+  if (el) {
+    document.querySelectorAll('#variantSelector button').forEach(l => {
+      l.style.borderColor = '#e2e8f0';
+      l.style.background = '#fff';
+    });
+    el.style.borderColor = '#f97316';
+    el.style.background = '#fff7ed';
+  }
+}
+
+function renderMediaGallery(product) {
+  const gallery = document.getElementById('image-gallery');
+  if (!gallery) return;
+
+  const images = Array.isArray(product.images) ? product.images
+    : (product.images ? [product.images] : []);
+  if (product.main_image_url && !images.includes(product.main_image_url)) {
+    images.unshift(product.main_image_url);
+  }
+
+  const hasVideo = !!product.product_video_url;
+
+  const thumbsHtml = images.map((img, i) => `
+      <button type="button" class="mm-gallery-thumb" data-type="image" data-src="${img}" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;cursor:pointer">
+        <img src="${img}" alt="Thumbnail ${i+1}" style="width:80px;height:80px;object-fit:cover;display:block">
+      </button>`).join('');
+
+  const videoThumb = hasVideo ? `
+      <button type="button" class="mm-gallery-thumb" data-type="video" data-src="${product.product_video_url}" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#000;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;width:80px;height:80px">
+        ▶ Video
+      </button>` : '';
+
+  gallery.innerHTML = `
+    <div id="gallery-main" class="mm-gallery-main" style="border-radius:16px;overflow:hidden;background:#f8fafc;margin-bottom:14px;min-height:320px;display:flex;align-items:center;justify-content:center">
+      <div id="gallery-main-content"></div>
+    </div>
+    <div class="mm-gallery-thumbs" style="display:flex;flex-wrap:wrap;gap:10px">${thumbsHtml}${videoThumb}</div>
+  `;
+
+  const setFirst = hasVideo ? 'video' : 'image';
+  const firstSrc = hasVideo ? product.product_video_url : (images[0] || '');
+  setMainMedia(setFirst, firstSrc);
+
+  gallery.querySelectorAll('.mm-gallery-thumb').forEach(btn => {
+    btn.addEventListener('click', () => setMainMedia(btn.dataset.type, btn.dataset.src, btn));
+  });
+}
+
+function setMainMedia(type, src, btn) {
+  const container = document.getElementById('gallery-main-content');
+  if (!container) return;
+  if (type === 'video') {
+    container.innerHTML = `
+      <video controls style="width:100%;height:100%;max-height:560px;object-fit:contain;background:#000" poster="${src}">
+        <source src="${src}" type="video/mp4">
+        <source src="${src}" type="video/webm">
+        Your browser does not support video.
+      </video>`;
+  } else {
+    container.innerHTML = `
+      <img id="gallery-main-img" src="${src}" alt="Product media" style="width:100%;height:auto;object-fit:contain;cursor:pointer">`;
+    const mainImg = document.getElementById('gallery-main-img');
+    if (mainImg) {
+      mainImg.addEventListener('click', () => {
+        const lbImg = document.getElementById('mm-lightbox-img');
+        if (lbImg) lbImg.src = src;
+        const lb = document.getElementById('mm-lightbox');
+        if (lb) lb.style.display = 'flex';
+      });
+    }
+  }
+
+  if (btn) {
+    document.querySelectorAll('.mm-gallery-thumb').forEach(b => {
+      b.style.borderColor = '#e2e8f0';
+      b.style.background = '#fff';
+      b.style.color = '#000';
+    });
+    btn.style.borderColor = '#f97316';
+    btn.style.background = '#fff7ed';
+  }
+}
+
 // ── Render product (critical path) ───────────────────────────
 function renderProduct(product) {
+  window._currentProduct = product;
   document.title = `${product.name} - MarketMix`;
 
   const rules = (typeof getCategoryRules === 'function')
@@ -523,15 +761,11 @@ function renderProduct(product) {
   setEl('view-count', Number(viewCount) || 0);
   setEl('product-description', product.description || product.short_description || 'No description available.');
 
-  if (typeof createImageGallery    === 'function') createImageGallery(product);
-  if (product.product_video_url && typeof createProductVideo === 'function') {
-    createProductVideo(product);
-  }
-  if (product.variants?.length && typeof createVariants === 'function') {
-    createVariants(product);
-  }
-  if (typeof createFlashSale       === 'function') createFlashSale(product);
+  renderMediaGallery(product);
   if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
+  renderProductDetails(product);
+  renderVariants(product);
+  if (typeof createFlashSale       === 'function') createFlashSale(product);
 
   if (typeof createReviews === 'function') createReviews(product);
 
@@ -568,21 +802,30 @@ async function addToCart(product) {
 
   const qtyEl   = document.getElementById('product-quantity');
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
-  const color    = window.productOptions?.color?.() || null;
-  const size     = window.productOptions?.size?.()  || null;
+  const opts     = window._selectedOptions || {};
+  const variant  = opts.variant || window.productOptions?.variant?.() || null;
+  const color    = opts.color || window.productOptions?.color?.() || variant?.color || null;
+  const size     = opts.size || window.productOptions?.size?.() || variant?.size || null;
   const storeId  = getProductStoreId(product);
 
   // 1. Update local cart immediately (no round-trip needed)
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
   const existing = cart.find(i =>
-    i.id === product.id && i.color === color && i.size === size
+    i.id === product.id && i.color === color && i.size === size && i.variant?.sku === variant?.sku
   );
-  if (existing) { existing.quantity += quantity; }
-  else {
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
     cart.push({
-      id: product.id, name: product.name,
-      price: product.price, image: product.main_image_url,
-      quantity, color, size,
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.main_image_url,
+      quantity,
+      color,
+      size,
+      variant: variant ? { ...variant } : null,
+      sku: variant?.sku || null,
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
@@ -590,7 +833,8 @@ async function addToCart(product) {
   }
   localStorage.setItem('cart', JSON.stringify(cart));
   updateCartCount();
-  showToast(`${product.name} added to cart!`, 'success');
+  const variantInfo = variant?.name ? ` (${variant.name})` : '';
+  showToast(`${product.name}${variantInfo} added to cart!`, 'success');
 
   // 2. Sync to backend (fire-and-forget — don't block the UI)
   const token = localStorage.getItem('token');
@@ -605,7 +849,7 @@ async function addToCart(product) {
         seller_id: product.seller_id || product.seller?.id || null,
         ...(color    && { color }),
         ...(size     && { size }),
-        ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
+        ...(variant?.sku && { sku: variant.sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));
   }
@@ -622,21 +866,29 @@ async function proceedToCheckout(product) {
 
   const qtyEl   = document.getElementById('product-quantity');
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
-  const color    = window.productOptions?.color?.() || null;
-  const size     = window.productOptions?.size?.()  || null;
+  const opts     = window._selectedOptions || {};
+  const variant  = opts.variant || window.productOptions?.variant?.() || null;
+  const color    = opts.color || window.productOptions?.color?.() || variant?.color || null;
+  const size     = opts.size || window.productOptions?.size?.() || variant?.size || null;
   const storeId  = getProductStoreId(product);
 
   // Update local cart
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
   const existing = cart.find(i =>
-    i.id === product.id && i.color === color && i.size === size
+    i.id === product.id && i.color === color && i.size === size && i.variant?.sku === variant?.sku
   );
   if (existing) { existing.quantity += quantity; }
   else {
     cart.push({
-      id: product.id, name: product.name,
-      price: product.price, image: product.main_image_url,
-      quantity, color, size,
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.main_image_url,
+      quantity,
+      color,
+      size,
+      variant: variant ? { ...variant } : null,
+      sku: variant?.sku || null,
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
@@ -659,7 +911,7 @@ async function proceedToCheckout(product) {
           }, storeId),
           ...(color    && { color }),
           ...(size     && { size }),
-          ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
+          ...(variant?.sku && { sku: variant.sku }),
         }),
       });
     } catch (e) { console.warn('Cart sync error (checkout):', e); }
