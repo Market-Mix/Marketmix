@@ -3136,7 +3136,7 @@
       if (!String(caseId).startsWith('order-')) {
         try {
           const token = getAuthToken();
-          await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
+          const msgResponse = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -3144,6 +3144,31 @@
             },
             body: JSON.stringify({ message_text: textToSend })
           });
+          
+          if (msgResponse.ok) {
+            console.log('📨 Buyer message sent successfully for refund:', caseId);
+            
+            // Mark chat as started after first message
+            try {
+              const chatStartedResponse = await fetch(`${API_BASE_URL}/refunds/chat-started`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': token ? `Bearer ${token}` : ''
+                },
+                body: JSON.stringify({ refund_id: caseId })
+              });
+              
+              const chatStartedResult = await chatStartedResponse.json();
+              console.log(`✅ Chat-started marked for refund ${caseId}:`, {
+                success: chatStartedResponse.ok,
+                response: chatStartedResult
+              });
+            } catch (err) {
+              console.error(`⚠️ Failed to mark chat started for refund ${caseId}:`, err);
+            }
+          }
+          
           await loadChatMessages(currentChatData);
         } catch (err) {
           console.error('Send failed:', err);

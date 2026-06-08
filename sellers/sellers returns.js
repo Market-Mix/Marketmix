@@ -678,7 +678,7 @@ async function sendChatMessage() {
 
   const token = getToken();
   try {
-    await fetch(`${API_BASE}/refund-chat/${currentChatId}`, {
+    const msgResponse = await fetch(`${API_BASE}/refund-chat/${currentChatId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -686,6 +686,31 @@ async function sendChatMessage() {
       },
       body: JSON.stringify({ message_text: text || null })
     });
+    
+    if (msgResponse.ok) {
+      console.log('📨 Seller message sent successfully for refund:', currentChatId);
+      
+      // Mark chat as started after first message
+      try {
+        const chatStartedResponse = await fetch(`${API_BASE}/refunds/chat-started`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ refund_id: currentChatId })
+        });
+        
+        const chatStartedResult = await chatStartedResponse.json();
+        console.log(`✅ Chat-started marked for refund ${currentChatId}:`, {
+          success: chatStartedResponse.ok,
+          response: chatStartedResult
+        });
+      } catch (err) {
+        console.error(`⚠️ Failed to mark chat started for refund ${currentChatId}:`, err);
+      }
+    }
+    
     chatInput.value = '';
     removeAttachment();
     await loadAndRenderChat(currentChatId); // reload messages
