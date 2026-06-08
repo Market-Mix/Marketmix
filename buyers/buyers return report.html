@@ -2227,24 +2227,24 @@
   
   let currentReports = [];
   let currentChatData = null;
+  let currentCaseInfo = null; // Store latest case info from polling
   let evidenceRequired = false;
   let buyerAttachedFile = null;
   let buyerMediaCache = {}; // session-only preview cache for attachments
   let buyerAccountDetails = null; // stored account details for refunds
-  let unreadCounts = {}; // track unread messages per report
+  let unreadCounts = {}; // track unread messages per report (in-memory only)
+  let caseInfoCache = {}; // cache for latest case info per refund ID (in-memory only)
+  let pollingIntervals = {}; // track polling intervals per case (in-memory only)
 
   function getUnreadCount(reportId) {
-    const key = `mm_report_unread_${reportId}`;
-    const count = localStorage.getItem(key);
-    return count ? parseInt(count) : 0;
+    return unreadCounts[reportId] || 0;
   }
 
   function setUnreadCount(reportId, count) {
-    const key = `mm_report_unread_${reportId}`;
     if (count > 0) {
-      localStorage.setItem(key, count.toString());
+      unreadCounts[reportId] = count;
     } else {
-      localStorage.removeItem(key);
+      delete unreadCounts[reportId];
     }
     updateNotificationBadges();
   }
@@ -2268,6 +2268,165 @@
     window.updateReturnsNotification?.(total);
     // Update account nav badge on homepage
     window.updateAccountNotification?.(total);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // REAL-TIME POLLING FOR REFUND CASE STATUS
+  // ═══════════════════════════════════════════════════════════════════════════════════
+
+  async function pollRefundCaseStatus(refundId) {
+    if (!refundId || String(refundId).startsWith('order-')) return; // Don't poll pre-evidence reports
+
+    const token = getAuthToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/refunds/${refundId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to poll refund ${refundId}:`, response.status);
+        return null;
+      }
+
+      const result = await response.json();
+      const caseInfo = result.refundCase || null;
+
+      if (caseInfo) {
+        caseInfoCache[refundId] = caseInfo;
+        unreadCounts[refundId] = caseInfo.unreadCount || 0;
+        updateNotificationBadges();
+
+        // If chat is currently open for this case, update UI
+        if (currentChatData?.id === refundId || currentChatData?.supabase_case_id === refundId) {
+          currentCaseInfo = caseInfo;
+          applyChatLockState(caseInfo);
+          updateChatStatusDisplay(caseInfo);
+        }
+
+        // Update table row status and buttons
+        updateReportRowUI(refundId, caseInfo);
+      }
+
+      return caseInfo;
+    } catch (err) {
+      console.error(`⚠️ Polling error for refund ${refundId}:`, err.message);
+      return null;
+    }
+  }
+
+  function startPolling(refundId) {
+    if (!refundId) return;
+
+    // Clear existing interval if any
+    stopPolling(refundId);
+
+    // Start new polling interval every 10 seconds
+    pollingIntervals[refundId] = setInterval(() => {
+      pollRefundCaseStatus(refundId);
+    }, 10000);
+
+    // Poll immediately on start
+    pollRefundCaseStatus(refundId);
+
+    console.log(`🔄 Polling started for refund ${refundId}`);
+  }
+
+  function stopPolling(refundId) {
+    if (pollingIntervals[refundId]) {
+      clearInterval(pollingIntervals[refundId]);
+      delete pollingIntervals[refundId];
+      console.log(`⏹️ Polling stopped for refund ${refundId}`);
+    }
+  }
+
+  function stopAllPolling() {
+    Object.keys(pollingIntervals).forEach(refundId => {
+      if (pollingIntervals[refundId]) {
+        clearInterval(pollingIntervals[refundId]);
+      }
+    });
+    pollingIntervals = {};
+  }
+
+  function updateChatStatusDisplay(caseInfo) {
+    const statusEl = document.getElementById('chatResolutionStatus');
+    if (!statusEl || !caseInfo) return;
+
+    const status = String(caseInfo.resolution_status || '').toLowerCase();
+    statusEl.className = 'resolution-status ' + status;
+
+    const statusText = {
+      pending: '⏳ Pending Resolution',
+      waiting_buyer_confirmation: '⏸️ Awaiting Your Decision',
+      resolved: '✓ Case Resolved',
+      escalated: '⛔ Escalated To MarketMix'
+    }[status] || 'Unknown Status';
+
+    statusEl.textContent = statusText;
+
+    // Update unread count display if available
+    if (caseInfo.unreadCount && caseInfo.unreadCount > 0) {
+      const chatBtn = document.getElementById('sendChatBtn');
+      if (chatBtn) {
+        chatBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Send (${caseInfo.unreadCount} new)`;
+      }
+    }
+  }
+
+  function updateReportRowUI(refundId, caseInfo) {
+    if (!caseInfo) return;
+
+    // Find table row for this report
+    const rows = document.querySelectorAll('[data-report-id]');
+    let targetRow = null;
+
+    rows.forEach(row => {
+      if (row.getAttribute('data-report-id') === refundId) {
+        targetRow = row;
+      }
+    });
+
+    if (!targetRow) return;
+
+    // Update status badge
+    const statusBadge = targetRow.querySelector('.status-badge');
+    if (statusBadge) {
+      statusBadge.className = 'status-badge ' + caseInfo.resolution_status;
+      statusBadge.textContent = caseInfo.resolution_status.replace(/_/g, ' ');
+    }
+
+    // Update unread count badge on chat button
+    const chatBtn = targetRow.querySelector('.btn-chat');
+    if (chatBtn && caseInfo.unreadCount && caseInfo.unreadCount > 0) {
+      chatBtn.innerHTML = `<i class="fas fa-comments"></i> Chat (${caseInfo.unreadCount})`;
+    } else if (chatBtn) {
+      chatBtn.innerHTML = '<i class="fas fa-comments"></i> Chat';
+    }
+
+    // Update button visibility based on resolution status
+    const viewBtn = targetRow.querySelector('[onclick*="showDetailsModal"]');
+    const chatBtnArea = targetRow.querySelector('.btn-chat');
+    const actionBtn = targetRow.querySelector('.btn-action');
+
+    if (viewBtn && ['resolved', 'escalated'].includes(caseInfo.resolution_status)) {
+      viewBtn.style.display = 'none';
+    }
+
+    if (actionBtn) {
+      if (caseInfo.resolution_status === 'waiting_buyer_confirmation') {
+        actionBtn.innerHTML = '<i class="fas fa-check"></i> Satisfied';
+        actionBtn.onclick = () => showConfirmBuyerSatisfied(refundId);
+        actionBtn.style.display = 'inline-block';
+      } else if (caseInfo.resolution_status === 'resolved' || caseInfo.resolution_status === 'escalated') {
+        actionBtn.style.display = 'none';
+      } else if (caseInfo.resolution_status === 'pending' && caseInfo.chat_started) {
+        actionBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Escalate';
+        actionBtn.onclick = () => showConfirmEscalateBuyer(refundId);
+        actionBtn.style.display = 'inline-block';
+      } else {
+        actionBtn.style.display = 'none';
+      }
+    }
   }
 
   function getInlineHandlerId(id) {
@@ -2528,13 +2687,15 @@
     container.innerHTML = sortedReports.map(report => {
       const complaintStarted = !!report.evidence_submitted_at;
       const isRejected = report.status === 'rejected';
+      const resolution = String(report.resolution_status || 'pending').toLowerCase();
       let statusHtml = '';
       let viewBtnHtml = `
-          <button class="btn-action" style="background: #ccc; cursor: not-allowed;" disabled>
-            <i class="fas fa-eye"></i> View
-          </button>
-        `;
+        <button class="btn-action" style="background: #ccc; cursor: not-allowed;" disabled>
+          <i class="fas fa-eye"></i> View
+        </button>
+      `;
       let chatBtnHtml = '';
+      let actionBtnHtml = '';
 
       if (complaintStarted) {
         statusHtml = `
@@ -2559,13 +2720,6 @@
           const evidenceTime = new Date(report.evidence_submitted_at).getTime();
           expiryTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
           timeLeft = expiryTime - now;
-          console.log('DEBUG: Calculating countdown from evidence time:', {
-            evidenceTime,
-            expiryTime,
-            now,
-            timeLeft,
-            daysLeft: Math.floor(timeLeft / (1000 * 60 * 60 * 24))
-          });
         } else {
           // Otherwise, countdown from 5 days after purchase
           const purchaseTime = new Date(report.purchase_date).getTime();
@@ -2582,7 +2736,7 @@
             `Report issue (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)`;
           const unreadCount = getUnreadCount(report.id);
           chatBtnHtml = `
-            <button class="btn-chat" id="chatBtnReport${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
+            <button class="btn-chat" data-report-id="${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
               <i class="fas fa-comments"></i> ${label}
               ${unreadCount > 0 && complaintStarted ? `<span class="notification-badge">${unreadCount}</span>` : ''}
             </button>
@@ -2602,8 +2756,29 @@
         }
       }
 
+      // Render action buttons based on resolution_status
+      if (resolution === 'waiting_buyer_confirmation') {
+        actionBtnHtml = `
+          <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmBuyerSatisfied('${report.id}')">
+            <i class="fas fa-check"></i> Satisfied
+          </button>
+        `;
+      } else if (resolution === 'resolved') {
+        actionBtnHtml = `
+          <span style="display: inline-block; padding: 0.5rem 0.75rem; background: #d4edda; color: #155724; border-radius: 5px; font-weight: 600; font-size: 0.75rem;">
+            <i class="fas fa-check-circle"></i> Case Resolved
+          </span>
+        `;
+      } else if (resolution === 'escalated') {
+        actionBtnHtml = `
+          <span style="display: inline-block; padding: 0.5rem 0.75rem; background: #f8d7da; color: #721c24; border-radius: 5px; font-weight: 600; font-size: 0.75rem;">
+            <i class="fas fa-exclamation-triangle"></i> Escalated
+          </span>
+        `;
+      }
+
       return `
-      <div class="table-row">
+      <div class="table-row" data-report-id="${report.id}">
         <div class="col-store">${report.store_name}</div>
         <div class="col-product">${report.product_name}</div>
         <div class="col-order">${report.order_id}</div>
@@ -2614,16 +2789,11 @@
         <div class="col-date">${complaintStarted ? formatDate(report.evidence_submitted_at) : ''}</div>
         <div class="col-action">
           ${viewBtnHtml}
+          ${actionBtnHtml}
         </div>
         <div class="col-chat">
           ${chatBtnHtml}
         </div>
-        ${report.resolution_status === 'waiting_buyer_confirmation' ? `
-        <div style="grid-column: span 8; padding: 0.9rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmBuyerSatisfied('${report.id}')">Satisfied</button>
-          <button class="btn-action" style="background: #f97316; color: white;" onclick="showConfirmEscalateBuyer('${report.id}')">Escalate</button>
-        </div>
-        ` : ''}
       </div>
       `;
     }).join('');
@@ -2916,40 +3086,48 @@
 
   function openChatPanel(report) {
     try {
-      document.getElementById('chatStoreName').textContent = `Chat with ${report.store_name}`;
-    document.getElementById('chatOrderId').textContent = `Order ID: ${report.order_id}`;
-    
-    const statusElement = document.getElementById('chatResolutionStatus');
-    statusElement.className = `resolution-status ${report.status}`;
-    statusElement.innerHTML = `<i class="fas fa-circle"></i> ${report.status.replace(/_/g, ' ').toUpperCase()}`;
+      currentChatData = report;
+      const caseId = report.supabase_case_id || report.id;
 
-    // Update 2-day countdown banner after evidence submission
-    const countdownBanner = document.getElementById('chatCountdownBanner');
-    if (report.evidence_submitted_at) {
-      const evidenceTime = new Date(report.evidence_submitted_at).getTime();
-      const decisionTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
-      const timeLeft = decisionTime - Date.now();
+      document.getElementById('chatStoreName').textContent = `Chat with ${report.store_name}`;
+      document.getElementById('chatOrderId').textContent = `Order ID: ${report.order_id}`;
       
-      if (timeLeft > 0) {
-        const dLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-        const hLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-        countdownBanner.textContent = `The store has ${dLeft}d ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
-        countdownBanner.classList.add('active');
+      const statusElement = document.getElementById('chatResolutionStatus');
+      statusElement.className = `resolution-status ${report.status}`;
+      statusElement.innerHTML = `<i class="fas fa-circle"></i> ${report.status.replace(/_/g, ' ').toUpperCase()}`;
+
+      // Update 2-day countdown banner after evidence submission
+      const countdownBanner = document.getElementById('chatCountdownBanner');
+      if (report.evidence_submitted_at) {
+        const evidenceTime = new Date(report.evidence_submitted_at).getTime();
+        const decisionTime = evidenceTime + (2 * 24 * 60 * 60 * 1000);
+        const timeLeft = decisionTime - Date.now();
+        
+        if (timeLeft > 0) {
+          const dLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+          const hLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const mLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+          countdownBanner.textContent = `The store has ${dLeft}d ${hLeft}h ${mLeft}m to resolve the issue before MarketMix takes a decision.`;
+          countdownBanner.classList.add('active');
+        } else {
+          countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
+          countdownBanner.classList.add('active');
+        }
       } else {
-        countdownBanner.textContent = `Time limit exceeded. MarketMix is reviewing this case.`;
+        countdownBanner.textContent = 'Submit your evidence to begin chat. After you send it, the store will have 2 days to resolve the issue.';
         countdownBanner.classList.add('active');
       }
-    } else {
-      countdownBanner.textContent = 'Submit your evidence to begin chat. After you send it, the store will have 2 days to resolve the issue.';
-      countdownBanner.classList.add('active');
-    }
 
-    loadChatMessages(report);
-    startChatPolling(report);
+      loadChatMessages(report);
+      startChatPolling(report);
 
-    document.getElementById('chatPanel').classList.add('active');
-    document.getElementById('chatOverlay').classList.add('active');
+      // Start real-time case status polling
+      if (!String(caseId).startsWith('order-')) {
+        startPolling(caseId);
+      }
+
+      document.getElementById('chatPanel').classList.add('active');
+      document.getElementById('chatOverlay').classList.add('active');
     } catch (err) {
       console.error('Error in openChatPanel:', err);
     }
@@ -3140,6 +3318,12 @@
 
   function closeChat() {
     stopChatPolling();
+    if (currentChatData) {
+      const caseId = currentChatData.supabase_case_id || currentChatData.id;
+      stopPolling(caseId);
+    }
+    currentChatData = null;
+    currentCaseInfo = null;
     document.getElementById('chatPanel').classList.remove('active');
     document.getElementById('chatOverlay').classList.remove('active');
     document.getElementById('chatInput').value = '';

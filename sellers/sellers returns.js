@@ -1,4 +1,7 @@
 let returnsData = [];
+let currentCaseInfo = null; // Store latest case info from polling
+let caseInfoCache = {}; // cache for latest case info per refund ID (in-memory only)
+let pollingIntervals = {}; // track polling intervals per case (in-memory only)
 
 const SUPABASE_URL = 'https://zfyoxmwwuwgvaevwlgzn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmeW94bXd3dXdndmFldhdsZ3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkyNzc2MzksImV4cCI6MTk5NTA1MzYzOX0.a1_-jLQu5NXhKYr5pQvCJvCB0BEfxCqw8DvL5P5qEHs';
@@ -205,6 +208,131 @@ if (offcanvasClose) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// REAL-TIME POLLING FOR REFUND CASE STATUS
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+async function pollRefundCaseStatus(refundId) {
+  if (!refundId) return;
+
+  const token = getToken();
+  try {
+    const response = await fetch(`${API_BASE}/refunds/${refundId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Failed to poll refund ${refundId}:`, response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    const caseInfo = result.refundCase || null;
+
+    if (caseInfo) {
+      caseInfoCache[refundId] = caseInfo;
+
+      // If chat is currently open for this case, update UI
+      if (currentChatId === refundId) {
+        currentCaseInfo = caseInfo;
+        applyChatLockState(caseInfo);
+        updateChatStatusDisplay(caseInfo);
+      }
+
+      // Update table row UI
+      updateReturnRowUI(refundId, caseInfo);
+    }
+
+    return caseInfo;
+  } catch (err) {
+    console.error(`⚠️ Polling error for refund ${refundId}:`, err.message);
+    return null;
+  }
+}
+
+function startPolling(refundId) {
+  if (!refundId) return;
+
+  // Clear existing interval if any
+  stopPolling(refundId);
+
+  // Start new polling interval every 10 seconds
+  pollingIntervals[refundId] = setInterval(() => {
+    pollRefundCaseStatus(refundId);
+  }, 10000);
+
+  // Poll immediately on start
+  pollRefundCaseStatus(refundId);
+
+  console.log(`🔄 Polling started for refund ${refundId}`);
+}
+
+function stopPolling(refundId) {
+  if (pollingIntervals[refundId]) {
+    clearInterval(pollingIntervals[refundId]);
+    delete pollingIntervals[refundId];
+    console.log(`⏹️ Polling stopped for refund ${refundId}`);
+  }
+}
+
+function updateChatStatusDisplay(caseInfo) {
+  const statusEl = document.getElementById('chatResolutionStatus');
+  if (!statusEl || !caseInfo) return;
+
+  const status = String(caseInfo.resolution_status || '').toLowerCase();
+  statusEl.className = 'resolution-status ' + status;
+
+  const statusText = {
+    pending: '⏳ Pending Resolution',
+    waiting_buyer_confirmation: '⏸️ Awaiting Buyer Decision',
+    resolved: '✓ Case Resolved',
+    escalated: '⛔ Escalated To MarketMix'
+  }[status] || 'Unknown Status';
+
+  statusEl.textContent = statusText;
+}
+
+function updateReturnRowUI(refundId, caseInfo) {
+  if (!caseInfo) return;
+
+  // Find table row for this return
+  const rows = document.querySelectorAll('.table-row');
+  let targetRow = null;
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td, div');
+    if (cells.length > 0) {
+      // Check if this is the right row by looking at order ID or other identifier
+      const rowText = row.textContent;
+      if (rowText.includes(caseInfo.order_id)) {
+        targetRow = row;
+      }
+    }
+  });
+
+  if (!targetRow) return;
+
+  // Update status badge
+  const statusCell = targetRow.querySelector('[style*="Pending"]')?.parentElement;
+  if (statusCell) {
+    statusCell.textContent = caseInfo.resolution_status.replace(/_/g, ' ').toUpperCase();
+  }
+
+  // Update button visibility based on resolution status
+  const buttons = targetRow.querySelectorAll('button');
+  buttons.forEach(btn => {
+    if (btn.textContent.includes('Issue Resolved')) {
+      if (['resolved', 'escalated', 'waiting_buyer_confirmation'].includes(caseInfo.resolution_status)) {
+        btn.style.display = 'none';
+      }
+    } else if (btn.textContent.includes('Escalate')) {
+      if (['resolved', 'escalated'].includes(caseInfo.resolution_status)) {
+        btn.style.display = 'none';
+      }
+    }
+  });
+}
+
 // Render Table
 function renderTable(data = returnsData) {
   returnsTableBody.innerHTML = '';
@@ -272,12 +400,35 @@ function renderTable(data = returnsData) {
       `;
     }
 
-    // Show workflow buttons if chat started AND resolution status is pending
+    // Show workflow buttons based on resolution_status
+    // pending + chat_started → Show "Issue Resolved" and "Escalate" buttons
+    // waiting_buyer_confirmation → Show read-only message
+    // resolved → Show "✓ Case Resolved" badge
+    // escalated → Show "Escalated To MarketMix" badge
     if (item.chat_started && item.resolution_status === 'pending') {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmMarkResolved('${item.id}')">Issue Resolved</button>
           <button class="btn-action" style="background: #f97316; color: white;" onclick="showConfirmEscalateSeller('${item.id}')">Escalate</button>
+        </div>
+      `;
+    } else if (item.resolution_status === 'waiting_buyer_confirmation') {
+      // Seller has marked resolved, waiting for buyer to confirm
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="padding: 0.5rem 1rem; background: #e3e6eb; border-radius: 4px; color: #333; font-size: 0.9rem;">⏸️ Awaiting buyer confirmation...</span>
+        </div>
+      `;
+    } else if (item.resolution_status === 'resolved') {
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="padding: 0.5rem 1rem; background: #d4edda; border-radius: 4px; color: #155724; font-size: 0.9rem; font-weight: 600;">✓ Case Resolved</span>
+        </div>
+      `;
+    } else if (item.resolution_status === 'escalated') {
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="padding: 0.5rem 1rem; background: #f8d7da; border-radius: 4px; color: #721c24; font-size: 0.9rem; font-weight: 600;">⛔ Escalated To MarketMix</span>
         </div>
       `;
     }
@@ -559,6 +710,9 @@ function openChat(returnId) {
   chatOverlay.classList.add('active');
   document.body.style.overflow = 'hidden';
 
+  // Start polling for real-time updates (10-second interval)
+  startPolling(returnId);
+  
   loadAndRenderChat(returnId);
   updateChatCountdown(returnItem);
 
@@ -572,7 +726,13 @@ function closeChat() {
   chatPanel.classList.remove('active');
   chatOverlay.classList.remove('active');
   document.body.style.overflow = 'auto';
+  
+  // Stop polling when chat closes
+  if (currentChatId) {
+    stopPolling(currentChatId);
+  }
   currentChatId = null;
+  currentCaseInfo = null;
 
   if (window._chatPollInterval) {
     clearInterval(window._chatPollInterval);
