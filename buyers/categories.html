@@ -6,6 +6,65 @@
   <title>Categories — MarketMix</title>
   <link rel="stylesheet" href="buyers homepage.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* Mobile responsiveness tweaks for categories page */
+    @media (max-width: 820px) {
+      .category-page {
+        padding: 20px 12px;
+      }
+
+      .categories-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        align-items: start;
+      }
+
+      .category-header h2 {
+        font-size: 20px;
+        margin-bottom: 6px;
+      }
+
+      .page-intro {
+        font-size: 14px;
+        margin-top: 4px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .categories-container {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .category-header h2 {
+        font-size: 18px;
+      }
+
+      .page-intro {
+        font-size: 13px;
+      }
+
+      /* Show the mobile search bar and hide the desktop search on small screens */
+      .navbar .search-container {
+        display: none;
+      }
+
+      .navbar-mobile-search {
+        display: block !important;
+      }
+
+      /* Make the footer columns stack */
+      .footer .footer-container {
+        display: block;
+        padding: 12px;
+      }
+
+      .footer .footer-column {
+        margin-bottom: 16px;
+      }
+    }
+  </style>
 </head>
 <body>
 
