@@ -503,6 +503,16 @@ prevBtns.forEach((btn) => {
         localStorage.setItem('seller_user', JSON.stringify(registerData.data?.user || {}));
         // Keep legacy keys for backward compat
         localStorage.setItem('token', token);
+        // Save signup details for setup-store prefill
+        localStorage.setItem('signupDetails', JSON.stringify({
+          fullName: fullname,
+          email,
+          phone,
+          storeName,
+           businessType,
+           productCategory,
+           address
+           }));
         localStorage.setItem('user', JSON.stringify(registerData.data?.user || {}));
 
         // ── Step 2: Save seller store profile ──────────────────────────────

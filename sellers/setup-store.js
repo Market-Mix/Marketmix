@@ -137,6 +137,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /* ─── Load existing store #1 if it exists ───────────────────────────────── */
   async function loadProfile() {
+    // Prefill from signup details
+  const signupDetails = JSON.parse(localStorage.getItem('signupDetails') || '{}');
+  if (signupDetails.email) {
+    storeName.value    = signupDetails.storeName    || '';
+    emailInput.value   = signupDetails.email        || '';
+    phoneInput.value   = signupDetails.phone        || '';
+    addressInput.value = signupDetails.address      || '';
+
+    // Update previews
+    previewName.textContent    = signupDetails.storeName || 'Your Store Name';
+    previewEmail.textContent   = signupDetails.email     || '—';
+    previewPhone.textContent   = signupDetails.phone     || '—';
+    previewAddress.textContent = signupDetails.address   || '—';
+
+    // Match category from signup to dropdown
+    if (signupDetails.productCategory && storeCategory) {
+      // Try matching by name (case-insensitive)
+      const opts = Array.from(storeCategory.options);
+      const match = opts.find(o => 
+        o.text.toLowerCase().includes(signupDetails.productCategory.toLowerCase())
+      );
+      if (match) {
+        storeCategory.value = match.value;
+        selectedCategoryId  = match.value;
+        updatePreviewCategories();
+      }
+    }
+  }
     try {
       // First try the stores endpoint (new)
       const storesRes = await fetch(`${API_BASE}/seller/stores`, {
@@ -569,6 +597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       })();
 
       showToast('Store setup completed! 🎉 Redirecting to KYC verification...', 'success');
+      localStorage.removeItem('signupDetails'); // clean up
       setTimeout(() => { window.location.href = 'kyc-verification.html'; }, 2000);
 
     } catch (err) {
