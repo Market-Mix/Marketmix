@@ -454,6 +454,22 @@
     width: auto;
   }
 
+  /* Improve workflow button layout on mobile cards */
+  .table-row .col-workflow button {
+    white-space: normal;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .table-row .col-workflow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .table-row .col-workflow > div {
+    width: 100%;
+  }
+
   .modal-dialog {
     width: 95%;
     max-height: 90vh;
