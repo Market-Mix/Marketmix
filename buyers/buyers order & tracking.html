@@ -249,7 +249,7 @@ const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
 const statusClass = {
   pending: 'status-processing', confirmed: 'status-processing',
-  processing: 'status-processing', shipped: 'status-shipped',
+  processing: 'status-processing', awaiting_payment: 'status-processing', shipped: 'status-shipped',
   delivered: 'status-delivered', cancelled: 'status-cancelled'
 };
 
@@ -297,6 +297,10 @@ async function loadOrders() {
             ${['shipped','processing','pending','confirmed'].includes(order.status) ? 
               `<button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>` : ''}
             <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
+            ${order.status === 'awaiting_payment' && order.payment_status === 'unpaid' ? 
+              `<button class="btn btn-track" style="background:#8b5cf6" onclick="retryPayment('${order.id}', this)">
+                💳 Continue Payment
+              </button>` : ''}
             ${order.status === 'delivered' && order.delivery_confirmed_at ? 
               `<button class="btn" style="background:#94a3b8;color:#fff;cursor:not-allowed" disabled>Delivery Confirmed ✓</button>` : 
               order.status === 'delivered' ? 
@@ -377,6 +381,24 @@ async function confirmDelivery(orderId, btn) {
   } catch (err) {
     alert(err.message);
     btn.disabled = false; btn.textContent = 'Confirm Delivery';
+  }
+}
+
+async function retryPayment(orderId, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  try {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/retry-payment`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    window.location.href = data.data.paymentUrl;
+  } catch (err) {
+    alert(err.message || 'Could not retry payment');
+    btn.disabled = false;
+    btn.textContent = '💳 Continue Payment';
   }
 }
 
