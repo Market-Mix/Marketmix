@@ -305,11 +305,12 @@ function renderProfileImage(profile) {
 
 function renderProfileVerifiedBadge(profile, accountCompleted = false) {
   const profileData = profile?.profile || profile || {};
-  const kycStatus = profileData?.kycDocumentUrls?.kyc_status || profileData?.kyc_status || null;
-  const kycSubmitted = !!profileData?.kycDocumentUrls?.kyc_submitted_at || !!profileData?.kyc_submitted_at;
-  const kycApproved = String(kycStatus).toLowerCase() === 'approved';
-  const isVerified = kycSubmitted && kycApproved;
-  const isRejected = ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
+  const rawStatus = profileData?.kyc_status ?? profileData?.kycStatus;
+  const kycStatus = String(rawStatus || 'not_submitted').toLowerCase();
+  const hasSubmittedKYC = ['pending', 'approved', 'rejected'].includes(kycStatus);
+  const kycApproved = kycStatus === 'approved';
+  const isVerified = hasSubmittedKYC && kycApproved;
+  const isRejected = ['rejected', 'failed'].includes(kycStatus);
 
   const targets = Array.from(new Set([
     ...Array.from(document.querySelectorAll('.profile-container')),
@@ -474,8 +475,9 @@ function renderProgressTracker(profile, store, user) {
   if (!bar || !barContainer || !text || !badge || !trackerEl) return;
 
   const p            = profile?.profile || profile || {};
-  const rawKycStatus  = p?.kyc_status ?? p?.kycDocumentUrls?.kyc_status;
+  const rawKycStatus  = p?.kyc_status ?? p?.kycStatus;
   const kycStatus     = String(rawKycStatus || 'not_submitted').toLowerCase();
+  const hasSubmittedKYC = ['pending', 'approved', 'rejected'].includes(kycStatus);
   const isVerifiedFlag = kycStatus === 'approved';
   const isRejectedFlag = ['rejected', 'failed'].includes(kycStatus);
   const isKycPendingFlag = kycStatus === 'pending';
@@ -525,18 +527,21 @@ function renderProgressTracker(profile, store, user) {
       stage = 'kyc_not_submitted';
       color = '#ef4444';
       html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
-    } else if (isKycPendingFlag) {
+    } else if (hasSubmittedKYC) {
       stage = 'upload_product';
-      color = '#f59e0b';
-      html = `KYC Under Review`;
-    } else if (isVerifiedFlag) {
-      stage = 'upload_product';
-      color = '#16a34a';
-      html = `KYC Verified`;
-    } else if (isRejectedFlag) {
-      stage = 'upload_product';
-      color = '#dc2626';
-      html = `KYC Rejected`;
+      if (isKycPendingFlag) {
+        color = '#f59e0b';
+        html = `KYC Under Review`;
+      } else if (isVerifiedFlag) {
+        color = '#16a34a';
+        html = `KYC Verified`;
+      } else if (isRejectedFlag) {
+        color = '#dc2626';
+        html = `KYC Rejected`;
+      } else {
+        color = '#f97316';
+        html = `Upload your first product`;
+      }
     } else {
       stage = 'upload_product';
       color = '#f97316';
@@ -590,6 +595,13 @@ function renderProgressTracker(profile, store, user) {
     }
   }
 
+  console.log({
+    kyc_status: kycStatus,
+    is_verified: p?.is_verified,
+    hasSubmittedKYC,
+    currentStep: stage,
+    progressPercent: progress,
+  });
   console.info('Seller completion status:', accountCompleted ? 'complete' : 'incomplete',
     'Progress percentage:', progress,
     'Completed stages:', completedStages,
@@ -627,8 +639,7 @@ function updateKYCNotificationBanner(profile) {
   if (!banner || !closeBtn || !notificationText) return;
 
   const profileData = profile?.profile || profile || {};
-  const kycUrls = profileData?.kycDocumentUrls || profileData?.kyc_document_urls || {};
-  const rawStatus = kycUrls.kyc_status ?? profileData?.kyc_status;
+  const rawStatus = profileData?.kyc_status ?? profileData?.kycStatus;
   const kycStatus = String(rawStatus || 'not_submitted').toLowerCase();
   const normalizedStatus = kycStatus === 'under_review' ? 'pending' : kycStatus;
   const dismissedStatus = localStorage.getItem('mm_kyc_banner_dismissed_status');
