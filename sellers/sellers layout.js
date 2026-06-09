@@ -306,9 +306,9 @@ function renderProfileImage(profile) {
 function renderProfileVerifiedBadge(profile, accountCompleted = false) {
   const profileData = profile?.profile || profile || {};
   const kycStatus = profileData?.kycDocumentUrls?.kyc_status || profileData?.kyc_status || null;
-  const isVerified = profileData?.isVerified === true || String(kycStatus).toLowerCase() === 'approved';
-  const isRejected = (profileData?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase()))
-    || ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
+  const kycSubmitted = !!profileData?.kycDocumentUrls?.kyc_submitted_at || !!profileData?.kyc_submitted_at;
+  const isVerified = kycSubmitted && String(kycStatus).toLowerCase() === 'approved';
+  const isRejected = ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
 
   const targets = Array.from(new Set([
     ...Array.from(document.querySelectorAll('.profile-container')),
@@ -513,7 +513,7 @@ function renderProgressTracker(profile, store, user) {
     progress = 30;
     color = '#f97316';
     html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
-  } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted) || isVerified) && productCount < 1) {
+  } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted) || (kycSubmitted && kycStatus === 'approved')) && productCount < 1) {
     stage = 'upload_product';
     progress = 45;
     color = '#f59e0b';
@@ -538,12 +538,12 @@ function renderProgressTracker(profile, store, user) {
   if (isRejected) {
     badgeText = 'KYC Failed';
     badgeClass = 'red';
-  } else if (isVerified) {
+  } else if (kycSubmitted && kycStatus === 'approved') {
     badgeText = 'Verified ✓';
     badgeClass = 'green';
   }
 
-  if (isVerified && storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
+  if (kycSubmitted && kycStatus === 'approved' && storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
     stage = 'complete';
     progress = 100;
     color = '#3b82f6';
