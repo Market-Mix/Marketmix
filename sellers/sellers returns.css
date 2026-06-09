@@ -358,6 +358,98 @@
   }
 }
 
+/* ── Mobile fix: workflow + chat buttons ── */
+@media (max-width: 768px) {
+  .returns-table {
+    overflow-x: unset;
+  }
+
+  .table-header {
+    display: none;
+  }
+
+  .table-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+
+  .table-row > div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    min-width: 0;
+  }
+
+  .table-row > div::before {
+    font-weight: 700;
+    color: #667eea;
+    min-width: 80px;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+  }
+
+  .col-buyer::before   { content: "Buyer:"; }
+  .col-product::before { content: "Product:"; }
+  .col-order::before   { content: "Order:"; }
+  .col-amount::before  { content: "Amount:"; }
+  .col-status::before  { content: "Status:"; }
+  .col-date::before    { content: "Date:"; }
+  .col-action::before  { content: ""; }
+  .col-chat::before    { content: ""; }
+
+  .col-action,
+  .col-chat {
+    justify-content: flex-start;
+  }
+
+  .col-action button,
+  .col-chat button,
+  .btn-action,
+  .btn-chat {
+    width: 100%;
+    justify-content: center;
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Workflow row (Issue Resolved / Escalate) */
+  .col-workflow {
+    grid-column: unset !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding-top: 0.25rem;
+    border-top: 1px solid #eee;
+    margin-top: 0.25rem;
+  }
+
+  .col-workflow > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .col-workflow button,
+  .col-workflow span {
+    width: 100% !important;
+    text-align: center;
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 600px) {
   .returns-container {
     margin: 1rem auto;
