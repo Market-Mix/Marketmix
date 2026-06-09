@@ -688,29 +688,12 @@
     }
     setButtonLoading(els.placeOrderBtn, true);
     try {
-      // First try to confirm checkout (creates order if needed)
-      let confirmData = null;
-      try {
-        confirmData = await retryWithBackoff(() =>
-          api(`/checkout/session/${state.sessionId}/confirm`, {
-            method: 'POST',
-            body: JSON.stringify({ payment_method: state.selectedPayment })
-          })
-        );
-      } catch (confirmErr) {
-        // 409 = order exists but unpaid — proceed to initiate payment
-        if (confirmErr.status !== 409) throw confirmErr;
-      }
-
-      // Initiate payment (handles both new and retry)
-      const data = await retryWithBackoff(() =>
-        api('/payments/initiate', {
-          method: 'POST',
-          body: JSON.stringify({ sessionId: state.sessionId, method: state.selectedPayment })
-        })
-      );
+      const data = await api('/payments/initiate', {
+        method: 'POST',
+      body: JSON.stringify({ sessionId: state.sessionId, method: state.selectedPayment })
+      });
       const paymentUrl = data.paymentUrl || data.authorizationUrl || data.authorization_url || data.data?.paymentUrl || data.data?.authorization_url;
-      if (!paymentUrl) throw new Error('Could not start payment.');
+      if (!paymentUrl) throw new Error('Could not start Paystack payment.');
       sessionStorage.setItem(SESSION_KEY, state.sessionId);
       window.location.href = paymentUrl;
     } catch (error) {
@@ -718,36 +701,6 @@
     } finally {
       setButtonLoading(els.placeOrderBtn, false);
     }
-  }
-
-  async function retryWithBackoff(asyncFn, maxRetries = 3, baseDelayMs = 500) {
-    let lastError;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await asyncFn();
-      } catch (error) {
-        lastError = error;
-        const isTransient = isTransientError(error);
-        const shouldRetry = attempt < maxRetries && isTransient;
-        
-        if (shouldRetry) {
-          const delayMs = baseDelayMs * Math.pow(2, attempt);
-          console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delayMs}ms due to: ${error.message}`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        } else if (isTransient) {
-          console.log(`Max retries reached for transient error: ${error.message}`);
-          throw error;
-        } else {
-          throw error;
-        }
-      }
-    }
-    throw lastError;
-  }
-
-  function isTransientError(error) {
-    if (!error.status) return true; // Network error
-    return error.status === 408 || error.status === 429 || error.status >= 500;
   }
 
   async function handlePaymentReturn() {
