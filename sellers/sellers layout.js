@@ -474,22 +474,20 @@ function renderProgressTracker(profile, store, user) {
   if (!bar || !barContainer || !text || !badge || !trackerEl) return;
 
   const p            = profile?.profile || profile || {};
-  const kycStatus    = p?.kycDocumentUrls?.kyc_status || p?.kyc_status || null;
-  const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at || !!p?.kyc_submitted_at;
-  const isVerifiedFlag = p?.is_verified === true || p?.isVerified === true;
-  const isRejectedFlag = p?.is_verified === false || p?.isVerified === false;
-  const isKycReviewFlag = p?.is_verified == null && kycSubmitted;
-  const isKycPendingFlag = !kycSubmitted && p?.is_verified == null;
+  const rawKycStatus  = p?.kyc_status ?? p?.kycDocumentUrls?.kyc_status;
+  const kycStatus     = String(rawKycStatus || 'not_submitted').toLowerCase();
+  const isVerifiedFlag = kycStatus === 'approved';
+  const isRejectedFlag = ['rejected', 'failed'].includes(kycStatus);
+  const isKycPendingFlag = kycStatus === 'pending';
+  const isNotSubmitted = kycStatus === 'not_submitted';
   const sellerId = p?.id || p?.sellerId || p?.userId || profile?.id || 'unknown';
   console.log('Seller KYC debug:', {
     sellerId,
-    is_verified: p?.is_verified,
     kycStatus,
-    kycSubmitted,
     isVerifiedFlag,
     isRejectedFlag,
-    isKycReviewFlag,
     isKycPendingFlag,
+    isNotSubmitted,
   });
   const userAddress  = user?.address || user?.business_address || p?.address || p?.business_address || null;
   const hasShoppingDetails = !!(
@@ -522,31 +520,27 @@ function renderProgressTracker(profile, store, user) {
     color = '#ef4444';
     html = `<a href="sellers setting.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
   } else if (productCount < 1) {
-    if (isRejectedFlag) {
-      stage = 'kyc_rejected';
-      progress = 30;
-      color = '#dc2626';
-      html = `Your KYC was rejected. Please resubmit your documents.`;
-    } else if (isKycReviewFlag) {
-      stage = 'kyc_review';
-      progress = 30;
+    progress = 30;
+    if (isNotSubmitted) {
+      stage = 'kyc_not_submitted';
+      color = '#ef4444';
+      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
+    } else if (isKycPendingFlag) {
+      stage = 'upload_product';
       color = '#f59e0b';
-      html = `Your KYC is under review. We'll notify you once approved.`;
-    } else if (!kycSubmitted) {
-      stage = 'kyc_pending';
-      progress = 30;
-      color = '#f97316';
-      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
+      html = `KYC Under Review`;
     } else if (isVerifiedFlag) {
-      stage = 'kyc_verified';
-      progress = 30;
+      stage = 'upload_product';
       color = '#16a34a';
-      html = `KYC Verified — <a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
+      html = `KYC Verified`;
+    } else if (isRejectedFlag) {
+      stage = 'upload_product';
+      color = '#dc2626';
+      html = `KYC Rejected`;
     } else {
-      stage = 'kyc_pending';
-      progress = 30;
+      stage = 'upload_product';
       color = '#f97316';
-      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
+      html = `KYC Under Review`;
     }
   } else if (productCount >= 1 && !hasShoppingDetails) {
     stage = 'shopping_details';
