@@ -527,25 +527,18 @@ function renderProgressTracker(profile, store, user) {
       stage = 'kyc_not_submitted';
       color = '#ef4444';
       html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
-    } else if (hasSubmittedKYC) {
-      stage = 'upload_product';
-      if (isKycPendingFlag) {
-        color = '#f59e0b';
-        html = `KYC Under Review`;
-      } else if (isVerifiedFlag) {
-        color = '#16a34a';
-        html = `KYC Verified`;
-      } else if (isRejectedFlag) {
-        color = '#dc2626';
-        html = `KYC Rejected`;
-      } else {
-        color = '#f97316';
-        html = `Upload your first product`;
-      }
     } else {
       stage = 'upload_product';
-      color = '#f97316';
-      html = `KYC Under Review`;
+      if (isVerifiedFlag) {
+        color = '#16a34a';
+      } else if (isRejectedFlag) {
+        color = '#dc2626';
+      } else if (isKycPendingFlag) {
+        color = '#f59e0b';
+      } else {
+        color = '#f97316';
+      }
+      html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
     }
   } else if (productCount >= 1 && !hasShoppingDetails) {
     stage = 'shopping_details';
