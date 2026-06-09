@@ -304,6 +304,9 @@ function renderProfileImage(profile) {
 }
 
 function renderProfileVerifiedBadge(profile, accountCompleted = false) {
+  // Profile verification tick removed per UX requirement.
+  return;
+
   const profileData = profile?.profile || profile || {};
   const rawStatus = profileData?.kyc_status ?? profileData?.kycStatus;
   const kycStatus = String(rawStatus || 'not_submitted').toLowerCase();
