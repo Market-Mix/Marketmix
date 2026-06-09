@@ -747,6 +747,35 @@ let currentChatId = null;
 let currentChatData = null;
 let attachedFile = null;
 
+const CLOUDINARY_UPLOAD_URL = window.CLOUDINARY_UPLOAD_URL || 'https://api.cloudinary.com/v1_1/dioy51alg/auto/upload';
+const CLOUDINARY_UNSIGNED_UPLOAD_PRESET = window.CLOUDINARY_UNSIGNED_UPLOAD_PRESET || 'marketmix_refunds';
+const CLOUDINARY_UPLOAD_FOLDER = window.CLOUDINARY_UPLOAD_FOLDER || 'marketmix/refund_evidence';
+
+async function uploadChatAttachment(file, refundId) {
+  if (!file) return null;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UNSIGNED_UPLOAD_PRESET);
+    formData.append('folder', `${CLOUDINARY_UPLOAD_FOLDER}/${refundId}`);
+    formData.append('public_id', `refund_chat_${refundId}_${Date.now()}`);
+
+    const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+      method: 'POST',
+      body: formData
+    });
+    const result = await response.json();
+    if (!response.ok || !result.secure_url) {
+      console.error('Cloudinary upload failed for refund chat attachment:', result);
+      return null;
+    }
+    return { url: result.secure_url, resource_type: result.resource_type };
+  } catch (err) {
+    console.error('Failed to upload chat attachment:', err);
+    return null;
+  }
+}
+
 // DOM Elements for Chat
 const chatPanel = document.getElementById('chatPanel');
 const chatOverlay = document.getElementById('chatOverlay');
@@ -861,12 +890,28 @@ function renderChatMessages(messages) {
     const isSeller = msg.sender_type === 'seller';
     const time = new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     const messageText = msg.message || msg.message_text || '';
+    const mediaUrl = msg.media_url || msg.file_url || '';
+    const mediaType = msg.media_type || msg.file_type || '';
+    let mediaHtml = '';
+
+    if (mediaUrl) {
+      const isImg = mediaType === 'image' || /\.(jpg|jpeg|png|webp|gif)$/i.test(mediaUrl);
+      const isVid = mediaType === 'video' || /\.(mp4|webm|mov)$/i.test(mediaUrl);
+      if (isImg) {
+        mediaHtml = `<div class="message-media"><a href="${mediaUrl}" target="_blank" rel="noopener noreferrer"><img src="${mediaUrl}" class="message-image" alt="attachment"></a></div>`;
+      } else if (isVid) {
+        mediaHtml = `<div class="message-media"><video controls class="message-video"><source src="${mediaUrl}"></video></div>`;
+      } else {
+        mediaHtml = `<a href="${mediaUrl}" class="message-file" target="_blank" rel="noopener noreferrer">📎 Attachment</a>`;
+      }
+    }
+
     return `
       <div class="chat-message ${isSeller ? 'seller' : 'buyer'}">
         <div class="message-content">
           <span class="message-sender">${isSeller ? 'You' : 'Buyer'}</span>
           ${messageText ? `<p class="message-text">${escapeHtml(messageText)}</p>` : ''}
-          ${msg.file_url ? `<a href="${msg.file_url}" class="message-file" target="_blank">📎 Attachment</a>` : ''}
+          ${mediaHtml}
           <span class="message-time">${time}</span>
         </div>
       </div>
@@ -935,18 +980,35 @@ function markMessagesAsRead(returnId) {
 // Send Chat Message
 async function sendChatMessage() {
   const text = chatInput.value.trim();
-  if (!text && !attachedFile) return;
+  const file = chatFileInput.files?.[0] || null;
+  if (!text && !file) return;
   if (!currentChatId) return;
 
   const token = getToken();
   try {
+    const payload = { message_text: text || null };
+    if (file) {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      if (isImage || isVideo) {
+        const uploadResult = await uploadChatAttachment(file, currentChatId);
+        if (!uploadResult) {
+          console.error('Attachment upload failed for refund chat.');
+          return;
+        }
+        payload.message_text = null;
+        payload.media_url = uploadResult.url;
+        payload.media_type = isImage ? 'image' : 'video';
+      }
+    }
+
     const msgResponse = await fetch(`${API_BASE}/refund-chat/${currentChatId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ message_text: text || null })
+      body: JSON.stringify(payload)
     });
     
     if (msgResponse.ok) {

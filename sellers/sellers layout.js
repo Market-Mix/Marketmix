@@ -300,33 +300,37 @@ function renderProfileImage(profile) {
     });
   }
 
-  renderProfileVerifiedBadge(profile);
+  renderProfileVerifiedBadge(profile, false);
 }
 
-function renderProfileVerifiedBadge(profile) {
-  const status = profile?.profile?.isVerified ?? profile?.isVerified;
-  const kycStatus = profile?.profile?.kycDocumentUrls?.kyc_status || profile?.kyc_status || null;
-  const isRejected = status === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
-  const isVerified = status === true && String(kycStatus).toLowerCase() === 'approved';
+function renderProfileVerifiedBadge(profile, accountCompleted = false) {
+  const profileData = profile?.profile || profile || {};
+  const kycStatus = profileData?.kycDocumentUrls?.kyc_status || profileData?.kyc_status || null;
+  const isVerified = profileData?.isVerified === true || String(kycStatus).toLowerCase() === 'approved';
+  const isRejected = (profileData?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase()))
+    || ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
 
-  const containers = [
-    document.querySelector('.profile-container'),
-    document.querySelector('.mobile-profile-container')
-  ].filter(Boolean);
+  const targets = Array.from(new Set([
+    ...Array.from(document.querySelectorAll('.profile-container')),
+    ...Array.from(document.querySelectorAll('.mobile-profile-container')),
+    ...Array.from(document.querySelectorAll('.seller-identity-card')),
+    ...Array.from(document.querySelectorAll('.dashboard-identity-card')),
+    ...Array.from(document.querySelectorAll('.identity-card')),
+  ])).filter(Boolean);
 
-  containers.forEach((container) => {
+  targets.forEach((container) => {
     if (!container) return;
     let badge = container.querySelector('#profileVerifiedBadge');
     if (!badge) {
       badge = document.createElement('span');
       badge.id = 'profileVerifiedBadge';
       badge.style.position = 'absolute';
-      badge.style.right = '-3px';
-      badge.style.bottom = '-3px';
-      badge.style.width = '22px';
-      badge.style.height = '22px';
+      badge.style.top = '-4px';
+      badge.style.right = '-4px';
+      badge.style.width = '24px';
+      badge.style.height = '24px';
       badge.style.borderRadius = '999px';
-      badge.style.fontSize = '12px';
+      badge.style.fontSize = '14px';
       badge.style.fontWeight = '700';
       badge.style.color = '#fff';
       badge.style.display = 'none';
@@ -334,20 +338,26 @@ function renderProfileVerifiedBadge(profile) {
       badge.style.justifyContent = 'center';
       badge.style.textAlign = 'center';
       badge.style.lineHeight = '1';
-      badge.style.zIndex = '50';
+      badge.style.zIndex = '9999';
+      badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       container.style.position = 'relative';
       container.appendChild(badge);
     }
 
-    if (isVerified) {
+    if (accountCompleted) {
       badge.textContent = '✓';
-      badge.style.background = '#16a34a';
-      badge.title = 'Verified seller';
+      badge.style.background = '#2563eb';
+      badge.title = 'Seller account setup complete';
       badge.style.display = 'flex';
     } else if (isRejected) {
       badge.textContent = '!';
       badge.style.background = '#dc2626';
       badge.title = 'KYC failed';
+      badge.style.display = 'flex';
+    } else if (isVerified) {
+      badge.textContent = '✓';
+      badge.style.background = '#16a34a';
+      badge.title = 'Verified seller';
       badge.style.display = 'flex';
     } else {
       badge.style.display = 'none';
@@ -456,16 +466,18 @@ function renderOverviewCards(stats, earnings, store, refundsCount = 0) {
 // ─── Progress Tracker ─────────────────────────────────────────────────────────
 function renderProgressTracker(profile, store, user) {
   const bar       = document.getElementById("progressBar");
+  const barContainer = document.querySelector('.progress-bar-container');
   const text      = document.getElementById("progress-text");
   const badge     = document.getElementById("progressBadge");
   const trackerEl = document.querySelector('.progress-tracker');
-  if (!bar || !text || !badge || !trackerEl) return;
+  if (!bar || !barContainer || !text || !badge || !trackerEl) return;
 
-  const p            = profile?.profile || profile;
+  const p            = profile?.profile || profile || {};
   const kycStatus    = p?.kycDocumentUrls?.kyc_status || p?.kyc_status || null;
   const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at || !!p?.kyc_submitted_at;
-  const isVerified   = p?.isVerified === true && String(kycStatus).toLowerCase() === 'approved';
-  const isRejected   = p?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
+  const isVerified   = p?.isVerified === true || String(kycStatus).toLowerCase() === 'approved';
+  const isRejected   = (p?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase()))
+    || ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
   const userAddress  = user?.address || user?.business_address || p?.address || p?.business_address || null;
   const hasShoppingDetails = !!(
     userAddress ||
@@ -479,38 +491,45 @@ function renderProgressTracker(profile, store, user) {
   const productCount   = store?.productCount || store?.product_count || 0;
   const totalSales     = store?.total_sales || 0;
 
+  let stage = 'unknown';
   let progress = 0;
   let color = '#2563eb';
   let html = '';
   let badgeText = '';
   let badgeClass = '';
-  let hideTracker = false;
 
   if (!storeSetupDone) {
+    stage = 'store_setup';
     progress = 15;
     color = '#ef4444';
     html = `<a href="sellers setting.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
   } else if (isRejected) {
+    stage = 'kyc_rejected';
     progress = 30;
     color = '#dc2626';
     html = `Your KYC verification was not approved. Please resubmit or contact support.`;
   } else if (!kycSubmitted && !isVerified) {
+    stage = 'kyc_pending';
     progress = 30;
     color = '#f97316';
     html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
   } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted) || isVerified) && productCount < 1) {
+    stage = 'upload_product';
     progress = 45;
     color = '#f59e0b';
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
   } else if (productCount >= 1 && !hasShoppingDetails) {
+    stage = 'shopping_details';
     progress = 60;
     color = '#eab308';
     html = `<a href="sellers-account.html#address" style="color:#1e293b;text-decoration:underline">Setup your shopping details</a>`;
   } else if (productCount >= 1 && hasShoppingDetails && totalSales < 1) {
+    stage = 'first_sales';
     progress = 75;
     color = '#86efac';
     html = `Make your first sales`;
   } else if (totalSales >= 1 && !(productCount >= 1 && hasShoppingDetails && isVerified)) {
+    stage = 'withdraw_earning';
     progress = 90;
     color = '#22c55e';
     html = `<a href="sellers earning.html" style="color:#1e293b;text-decoration:underline">Withdraw your first earning</a>`;
@@ -525,17 +544,29 @@ function renderProgressTracker(profile, store, user) {
   }
 
   if (isVerified && storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
+    stage = 'complete';
     progress = 100;
     color = '#3b82f6';
     html = `Everything complete!`;
     badgeText = 'Fully Verified ✓';
     badgeClass = 'blue';
-    hideTracker = true;
   }
 
-  bar.style.width = progress + "%";
-  bar.style.backgroundColor = color;
-  text.innerHTML = html;
+  const accountCompleted = progress === 100;
+
+  console.info('Seller completion status:', accountCompleted ? 'complete' : 'incomplete',
+    'Progress percentage:', progress,
+    'Blue badge status:', accountCompleted ? 'shown' : 'hidden');
+
+  if (accountCompleted) {
+    text.innerHTML = `<strong>Congratulations!</strong><br>Your seller account setup is complete.`;
+    barContainer.style.display = 'none';
+  } else {
+    text.innerHTML = html;
+    barContainer.style.display = 'block';
+    bar.style.width = progress + "%";
+    bar.style.backgroundColor = color;
+  }
 
   if (badgeText) {
     badge.textContent = badgeText;
@@ -545,7 +576,7 @@ function renderProgressTracker(profile, store, user) {
     badge.hidden = true;
   }
 
-  trackerEl.style.display = hideTracker ? 'none' : 'block';
+  renderProfileVerifiedBadge(profile, accountCompleted);
 }
 
 // ─── KYC Notification Banner ──────────────────────────────────────────────────
@@ -554,14 +585,18 @@ function updateKYCNotificationBanner(profile) {
   const closeBtn = document.getElementById("kycNotificationClose");
   if (!banner || !closeBtn) return;
 
-  const kycUrls   = profile?.profile?.kycDocumentUrls || {};
-  const kycStatus = kycUrls.kyc_status || null;
+  const profileData = profile?.profile || profile || {};
+  const kycUrls   = profileData?.kycDocumentUrls || profileData?.kyc_document_urls || {};
+  const kycStatus = kycUrls.kyc_status || profileData?.kyc_status || null;
+  const isVerified = profileData?.isVerified === true || String(kycStatus).toLowerCase() === 'approved';
+  const isRejected = (profileData?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase()))
+    || ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
 
-  if (profile?.profile?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase())) {
+  if (isRejected) {
     banner.style.display = "block";
     document.getElementById("kycNotificationText").textContent =
       "Your KYC verification was not approved. Please resubmit your documents or contact support.";
-  } else if (kycStatus === 'under_review' || (kycStatus === 'pending' && kycUrls.kyc_submitted_at)) {
+  } else if (!isVerified && (kycStatus === 'under_review' || (kycStatus === 'pending' && kycUrls.kyc_submitted_at))) {
     banner.style.display = "block";
     document.getElementById("kycNotificationText").textContent =
       "Your KYC verification is under review. We'll notify you once approved.";

@@ -435,6 +435,7 @@
     .message-media video {
       width: 100%;
       height: auto;
+      max-height: 260px;
       display: block;
     }
 
@@ -3214,12 +3215,28 @@
       const label = side === 'buyer' ? 'You' : side === 'seller' ? 'Seller' : 'MarketMix';
       const time = new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       const messageText = msg.message || msg.message_text || '';
+      const mediaUrl = msg.media_url || msg.file_url || '';
+      const mediaType = msg.media_type || msg.file_type || '';
+      let mediaHtml = '';
+
+      if (mediaUrl) {
+        const isImg = mediaType === 'image' || /\.(jpg|jpeg|png|webp|gif)$/i.test(mediaUrl);
+        const isVid = mediaType === 'video' || /\.(mp4|webm|mov)$/i.test(mediaUrl);
+        if (isImg) {
+          mediaHtml = `<div class="message-media"><a href="${mediaUrl}" target="_blank" rel="noopener noreferrer"><img src="${mediaUrl}" alt="attachment"></a></div>`;
+        } else if (isVid) {
+          mediaHtml = `<div class="message-media"><video controls><source src="${mediaUrl}"></video></div>`;
+        } else {
+          mediaHtml = `<a href="${mediaUrl}" class="message-file" target="_blank" rel="noopener noreferrer">📎 Attachment</a>`;
+        }
+      }
+
       return `
         <div class="chat-message ${side}">
           <div class="message-content">
             <span class="message-sender">${label}</span>
             ${messageText ? `<p class="message-text">${messageText}</p>` : ''}
-            ${msg.file_url ? `<a href="${msg.file_url}" class="message-file" target="_blank">📎 Attachment</a>` : ''}
+            ${mediaHtml}
             <div class="message-time">${time}</div>
           </div>
         </div>
@@ -3258,11 +3275,23 @@
     const msgs = JSON.parse(localStorage.getItem(storageKey) || '[]');
     container.innerHTML = msgs.length ? msgs.map(msg => {
       const time = new Date(msg.time || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const media = msg.media || null;
+      let mediaHtml = '';
+      const cachedMedia = buyerMediaCache[msg.id] || '';
+      if (media && cachedMedia) {
+        if (media.type === 'image') {
+          mediaHtml = `<div class="message-media"><a href="${cachedMedia}" target="_blank" rel="noopener noreferrer"><img src="${cachedMedia}" alt="attachment"></a></div>`;
+        } else if (media.type === 'video') {
+          mediaHtml = `<div class="message-media"><video controls><source src="${cachedMedia}"></video></div>`;
+        }
+      }
+
       return `
         <div class="chat-message ${msg.type}">
           <div class="message-content">
             <span class="message-sender">${msg.type === 'buyer' ? 'You' : msg.type === 'seller' ? 'Seller' : 'MarketMix'}</span>
             <div class="message-text">${msg.text || ''}</div>
+            ${mediaHtml}
             <div class="message-time">${time}</div>
           </div>
         </div>
@@ -3385,7 +3414,6 @@
     };
 
     const finalizeMessage = async () => {
-      const textToSend = text || '[Media shared]';
       input.value = '';
       buyerAttachedFile = null;
       fileInput.value = '';
@@ -3394,6 +3422,24 @@
       const caseId = currentChatData.supabase_case_id || currentChatData.id;
       if (!String(caseId).startsWith('order-')) {
         try {
+          let payload = { message_text: text || null };
+          if (file) {
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+            if (isImage || isVideo) {
+              const uploadResult = await uploadEvidenceFile(file, caseId);
+              if (!uploadResult) {
+                showNotification('File upload failed. Please try again.', 'error');
+                return;
+              }
+              payload = {
+                message_text: null,
+                media_url: uploadResult.url,
+                media_type: isImage ? 'image' : 'video'
+              };
+            }
+          }
+
           const token = getAuthToken();
           const msgResponse = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
             method: 'POST',
@@ -3401,7 +3447,7 @@
               'Content-Type': 'application/json',
               'Authorization': token ? `Bearer ${token}` : ''
             },
-            body: JSON.stringify({ message_text: textToSend })
+            body: JSON.stringify(payload)
           });
           
           if (msgResponse.ok) {
