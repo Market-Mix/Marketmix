@@ -581,8 +581,10 @@ function renderProgressTracker(profile, store, user) {
   if (brandLogo) {
     if (accountCompleted) {
       brandLogo.style.color = '#3b82f6';
-    } else if (isVerifiedFlag) {
+    } else if (kycStatus === 'approved') {
       brandLogo.style.color = '#16a34a';
+    } else if (kycStatus === 'rejected' || kycStatus === 'failed') {
+      brandLogo.style.color = '#dc2626';
     } else {
       brandLogo.style.color = '';
     }
@@ -621,30 +623,43 @@ function renderProgressTracker(profile, store, user) {
 function updateKYCNotificationBanner(profile) {
   const banner   = document.getElementById("kycNotificationBanner");
   const closeBtn = document.getElementById("kycNotificationClose");
-  if (!banner || !closeBtn) return;
+  const notificationText = document.getElementById("kycNotificationText");
+  if (!banner || !closeBtn || !notificationText) return;
 
   const profileData = profile?.profile || profile || {};
-  const kycUrls   = profileData?.kycDocumentUrls || profileData?.kyc_document_urls || {};
-  const kycStatus = kycUrls.kyc_status || profileData?.kyc_status || null;
-  const kycSubmitted = !!kycUrls.kyc_submitted_at || !!profileData?.kyc_submitted_at;
-  const kycApproved = String(kycStatus).toLowerCase() === 'approved';
-  const isVerified = kycSubmitted && kycApproved;
-  const isRejected = ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
+  const kycUrls = profileData?.kycDocumentUrls || profileData?.kyc_document_urls || {};
+  const rawStatus = kycUrls.kyc_status ?? profileData?.kyc_status;
+  const kycStatus = String(rawStatus || 'not_submitted').toLowerCase();
+  const normalizedStatus = kycStatus === 'under_review' ? 'pending' : kycStatus;
+  const dismissedStatus = localStorage.getItem('mm_kyc_banner_dismissed_status');
+  const shouldShowBanner = normalizedStatus !== dismissedStatus;
 
-  if (isRejected) {
+  let message = '';
+  if (normalizedStatus === 'not_submitted') {
+    message = 'Complete your KYC verification.';
+  } else if (normalizedStatus === 'pending') {
+    message = 'Your KYC is under review.';
+  } else if (normalizedStatus === 'approved') {
+    message = 'KYC verified successfully.';
+  } else if (normalizedStatus === 'rejected' || normalizedStatus === 'failed') {
+    message = 'Your KYC was rejected. Please resubmit.';
+  }
+
+  if (message && shouldShowBanner) {
     banner.style.display = "block";
-    document.getElementById("kycNotificationText").textContent =
-      "Your KYC verification was not approved. Please resubmit your documents or contact support.";
-  } else if (!isVerified && (kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted))) {
-    banner.style.display = "block";
-    document.getElementById("kycNotificationText").textContent =
-      "Your KYC verification is under review. We'll notify you once approved.";
+    notificationText.textContent = message;
+    banner.dataset.kycStatus = normalizedStatus;
   } else {
     banner.style.display = "none";
+    banner.dataset.kycStatus = normalizedStatus;
   }
 
   if (!closeBtn.dataset.listenerAttached) {
-    closeBtn.addEventListener("click", () => { banner.style.display = "none"; });
+    closeBtn.addEventListener("click", () => {
+      const dismissed = banner.dataset.kycStatus || normalizedStatus;
+      localStorage.setItem('mm_kyc_banner_dismissed_status', dismissed);
+      banner.style.display = "none";
+    });
     closeBtn.dataset.listenerAttached = "true";
   }
 }
