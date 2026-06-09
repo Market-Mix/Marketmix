@@ -195,7 +195,7 @@ async function loadDashboardData() {
   // Merge stats into store object for progress tracker
   if (stats) {
     store.productCount = stats.product_count || stats.productCount || 0;
-    store.total_sales = stats.total_sales || stats.totalSales || 0;
+    store.total_sales = stats.total_sales || stats.totalSales || stats.totalOrders || 0;
   }
 
   renderWelcome(store);
