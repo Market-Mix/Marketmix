@@ -307,7 +307,8 @@ function renderProfileVerifiedBadge(profile, accountCompleted = false) {
   const profileData = profile?.profile || profile || {};
   const kycStatus = profileData?.kycDocumentUrls?.kyc_status || profileData?.kyc_status || null;
   const kycSubmitted = !!profileData?.kycDocumentUrls?.kyc_submitted_at || !!profileData?.kyc_submitted_at;
-  const isVerified = kycSubmitted && String(kycStatus).toLowerCase() === 'approved';
+  const kycApproved = String(kycStatus).toLowerCase() === 'approved';
+  const isVerified = kycSubmitted && kycApproved;
   const isRejected = ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
 
   const targets = Array.from(new Set([
@@ -475,9 +476,10 @@ function renderProgressTracker(profile, store, user) {
   const p            = profile?.profile || profile || {};
   const kycStatus    = p?.kycDocumentUrls?.kyc_status || p?.kyc_status || null;
   const kycSubmitted = !!p?.kycDocumentUrls?.kyc_submitted_at || !!p?.kyc_submitted_at;
-  const isVerified   = p?.isVerified === true || String(kycStatus).toLowerCase() === 'approved';
-  const isRejected   = (p?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase()))
-    || ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
+  const kycApproved  = String(kycStatus).toLowerCase() === 'approved';
+  const isVerified   = kycSubmitted && kycApproved;
+  const isUnderReview = kycSubmitted && ['pending', 'under_review'].includes(String(kycStatus).toLowerCase());
+  const isRejected   = ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
   const userAddress  = user?.address || user?.business_address || p?.address || p?.business_address || null;
   const hasShoppingDetails = !!(
     userAddress ||
@@ -508,14 +510,24 @@ function renderProgressTracker(profile, store, user) {
     progress = 30;
     color = '#dc2626';
     html = `Your KYC verification was not approved. Please resubmit or contact support.`;
-  } else if (!kycSubmitted && !isVerified) {
+  } else if (!kycSubmitted) {
     stage = 'kyc_pending';
     progress = 30;
     color = '#f97316';
     html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
-  } else if ((kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted) || (kycSubmitted && kycStatus === 'approved')) && productCount < 1) {
-    stage = 'upload_product';
+  } else if (isUnderReview) {
+    stage = 'kyc_review';
     progress = 45;
+    color = '#f59e0b';
+    html = `Your KYC is under review. We'll notify you once it's approved.`;
+  } else if (!isVerified) {
+    stage = 'kyc_pending';
+    progress = 45;
+    color = '#f97316';
+    html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
+  } else if (isVerified && productCount < 1) {
+    stage = 'upload_product';
+    progress = 60;
     color = '#f59e0b';
     html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
   } else if (productCount >= 1 && !hasShoppingDetails) {
@@ -538,7 +550,7 @@ function renderProgressTracker(profile, store, user) {
   if (isRejected) {
     badgeText = 'KYC Failed';
     badgeClass = 'red';
-  } else if (kycSubmitted && kycStatus === 'approved') {
+  } else if (isVerified) {
     badgeText = 'Verified ✓';
     badgeClass = 'green';
   }
@@ -588,15 +600,16 @@ function updateKYCNotificationBanner(profile) {
   const profileData = profile?.profile || profile || {};
   const kycUrls   = profileData?.kycDocumentUrls || profileData?.kyc_document_urls || {};
   const kycStatus = kycUrls.kyc_status || profileData?.kyc_status || null;
-  const isVerified = profileData?.isVerified === true || String(kycStatus).toLowerCase() === 'approved';
-  const isRejected = (profileData?.isVerified === false && ['rejected', 'failed'].includes(String(kycStatus).toLowerCase()))
-    || ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
+  const kycSubmitted = !!kycUrls.kyc_submitted_at || !!profileData?.kyc_submitted_at;
+  const kycApproved = String(kycStatus).toLowerCase() === 'approved';
+  const isVerified = kycSubmitted && kycApproved;
+  const isRejected = ['rejected', 'failed'].includes(String(kycStatus).toLowerCase());
 
   if (isRejected) {
     banner.style.display = "block";
     document.getElementById("kycNotificationText").textContent =
       "Your KYC verification was not approved. Please resubmit your documents or contact support.";
-  } else if (!isVerified && (kycStatus === 'under_review' || (kycStatus === 'pending' && kycUrls.kyc_submitted_at))) {
+  } else if (!isVerified && (kycStatus === 'under_review' || (kycStatus === 'pending' && kycSubmitted))) {
     banner.style.display = "block";
     document.getElementById("kycNotificationText").textContent =
       "Your KYC verification is under review. We'll notify you once approved.";
