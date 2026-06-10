@@ -566,7 +566,7 @@ async function addToCart(product) {
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
   // Use specifications as part of uniqueness key so different spec combos are separate items
   const specKey = JSON.stringify(selectedSpecs || {});
-  const existing = cart.find(i => i.id === product.id && JSON.stringify(i.specifications || {}) === specKey);
+  const existing = cart.find(i => i.id === product.id && JSON.stringify(i.selected_specifications || i.specifications || {}) === specKey);
   if (existing) { existing.quantity += quantity; }
   else {
     cart.push({
@@ -574,6 +574,7 @@ async function addToCart(product) {
       price: product.price, image: product.main_image_url,
       quantity, color, size,
       specifications: selectedSpecs,
+      selected_specifications: selectedSpecs,
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
@@ -616,12 +617,14 @@ async function proceedToCheckout(product) {
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
   const color    = window.productOptions?.color?.() || null;
   const size     = window.productOptions?.size?.()  || null;
+  const selectedSpecs = window.productOptions?.selectedSpecifications?.() || {};
   const storeId  = getProductStoreId(product);
 
   // Update local cart
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+  const specKey = JSON.stringify(selectedSpecs || {});
   const existing = cart.find(i =>
-    i.id === product.id && i.color === color && i.size === size
+    i.id === product.id && JSON.stringify(i.selected_specifications || i.specifications || {}) === specKey
   );
   if (existing) { existing.quantity += quantity; }
   else {
@@ -629,6 +632,8 @@ async function proceedToCheckout(product) {
       id: product.id, name: product.name,
       price: product.price, image: product.main_image_url,
       quantity, color, size,
+      specifications: selectedSpecs,
+      selected_specifications: selectedSpecs,
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
