@@ -459,7 +459,7 @@ let categoryOptionsLoaded = false;
 let newStoreLogoUrl = '';
 
 function getToken() {
-  return localStorage.getItem('token') || '';
+  return localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
 }
 
 function toast(msg, type = '') {
