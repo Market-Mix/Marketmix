@@ -695,12 +695,44 @@ function initBannerControls(store) {
         const data = await res.json();
         if (res.ok) {
           selectedBannerUrl = data.data?.url || selectedBannerUrl;
-          toast('Banner uploaded!', 'success');
+          const saveRes = await fetch(`${API}/seller/stores/${store.id}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              storeName: val('storeName') || store.business_name || window.StoreManager.getActiveStore()?.business_name,
+              storeDescription: val('storeDesc') || null,
+              businessAddress: val('storeAddress') || null,
+              businessEmail: val('storeEmail') || null,
+              businessPhone: val('storePhone') || null,
+              category_id: val('storeCategory') || null,
+              category: document.getElementById('storeCategory')?.selectedOptions?.[0]?.text || null,
+              website: val('storeWebsite') || null,
+              instagram: val('socialInstagram') || null,
+              facebook: val('socialFacebook') || null,
+              tiktok: val('socialTiktok') || null,
+              twitter: val('socialTwitter') || null,
+              telegram: val('socialTelegram') || null,
+              storeLogoUrl: window.StoreManager.getActiveStore()?.store_logo_url || store.store_logo_url || null,
+              storeBannerUrl: selectedBannerUrl,
+              storeTheme: { name: selectedTheme },
+            })
+          });
+          const saveData = await saveRes.json();
+          if (!saveRes.ok) throw new Error(saveData.message || 'Banner save failed');
+
+          updateActiveStoreCache({
+            ...window.StoreManager.getActiveStore(),
+            store_banner_url: selectedBannerUrl,
+            storeBannerUrl: selectedBannerUrl,
+            store_theme: { name: selectedTheme },
+            storeTheme: { name: selectedTheme },
+          });
+          toast('Banner uploaded and saved!', 'success');
         } else {
           throw new Error(data.message || 'Banner upload failed');
         }
       } catch (e) {
-        toast('Banner upload failed', 'error');
+        toast(e.message || 'Banner upload failed', 'error');
       }
     });
   }
