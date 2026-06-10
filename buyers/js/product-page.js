@@ -584,7 +584,7 @@ async function addToCart(product) {
   const selectedSpecs = window.productOptions?.selectedSpecifications?.() || {};
   const storeId  = getProductStoreId(product);
 
-  console.log('Selected specifications', selectedSpecs);
+  console.log('Selected specifications before add to cart', selectedSpecs);
 
   const cartPayload = {
     product_id: product.id,
@@ -595,7 +595,7 @@ async function addToCart(product) {
     size,
     selected_specifications: selectedSpecs,
   };
-  console.log('Cart payload', cartPayload);
+  console.log('Final cart payload', cartPayload);
 
   // Determine required specification groups based on rendered option sections
   const requiredGroups = [];
@@ -619,13 +619,16 @@ async function addToCart(product) {
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
   // Use specifications as part of uniqueness key so different spec combos are separate items
   const specKey = JSON.stringify(selectedSpecs || {});
-  const existing = cart.find(i => i.id === product.id && JSON.stringify(i.selected_specifications || i.specifications || {}) === specKey);
+  const existing = cart.find(i => {
+    const pid = i.product_id || i.productId || i.id;
+    return String(pid) === String(product.id) && JSON.stringify(i.selected_specifications || i.specifications || {}) === specKey;
+  });
   if (existing) {
     existing.quantity += quantity;
     console.log('Cart item updated', existing);
   } else {
     const cartItem = {
-      id: product.id, name: product.name,
+      id: product.id, product_id: product.id, productId: product.id, name: product.name,
       price: product.price, image: product.main_image_url,
       quantity, color, size,
       specifications: selectedSpecs,

@@ -423,9 +423,18 @@
 
     function formatSelectedSpecifications(specs) {
       if (!specs || typeof specs !== 'object') return '';
-      const entries = Object.entries(specs).filter(([key, value]) => value !== null && value !== undefined && value !== '');
-      if (!entries.length) return '';
-      return `<div class="item-specs">${entries.map(([key, value]) => `<p><strong>${escapeHtml(key.charAt(0).toUpperCase() + key.slice(1))}:</strong> ${escapeHtml(String(value))}</p>`).join('')}</div>`;
+      const out = [];
+      // Prefer explicit Color/Size ordering
+      if (specs.color) out.push(['color', specs.color]);
+      if (specs.size)  out.push(['size', specs.size]);
+      // Add remaining keys
+      Object.entries(specs).forEach(([k,v]) => {
+        if (v === null || v === undefined || v === '') return;
+        if (k === 'color' || k === 'size') return;
+        out.push([k,v]);
+      });
+      if (!out.length) return '';
+      return `<div class="item-specs">${out.map(([key, value]) => `<p><strong>${escapeHtml(key.charAt(0).toUpperCase() + key.slice(1))}:</strong> ${escapeHtml(String(value))}</p>`).join('')}</div>`;
     }
 
     // 🔥 SHOW EMPTY CART POPUP
