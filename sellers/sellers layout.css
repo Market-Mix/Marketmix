@@ -1037,6 +1037,11 @@ table {
   color: #166534;
   border-color: #34d399;
 }
+.progress-badge.yellow {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #facc15;
+}
 .progress-badge.red {
   background: #fee2e2;
   color: #b91c1c;

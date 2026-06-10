@@ -78,6 +78,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // Refresh dashboard when user returns focus to the window
+  // This ensures progress tracker updates immediately after product upload
+  window.addEventListener('focus', async () => {
+    await loadDashboardData();
+  });
+
   // Update navbar notification badge right away and poll every 30s
   try {
     updateNavbarNotificationBadge();
@@ -571,21 +577,40 @@ function renderProgressTracker(profile, store, user) {
   if (storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
     stage = 'complete';
     progress = 100;
-    color = '#3b82f6';
-    html = `Everything complete!`;
-    badgeText = 'Fully Verified ✓';
-    badgeClass = 'blue';
+    if (isVerifiedFlag) {
+      color = '#3b82f6';
+      html = `Everything complete!`;
+      badgeText = 'Fully Verified ✓';
+      badgeClass = 'blue';
+    } else if (isKycPendingFlag) {
+      color = '#f59e0b';
+      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Your KYC is under review</a>`;
+      badgeText = 'KYC Under Review';
+      badgeClass = 'yellow';
+    } else if (isRejectedFlag) {
+      color = '#dc2626';
+      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">KYC rejected — resubmit</a>`;
+      badgeText = 'KYC Rejected';
+      badgeClass = 'red';
+    } else {
+      color = '#f97316';
+      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Review your KYC status</a>`;
+      badgeText = 'KYC Pending';
+      badgeClass = 'yellow';
+    }
   }
 
   const accountCompleted = progress === 100;
   const brandLogo = document.querySelector('.brand-logo');
   if (brandLogo) {
-    if (accountCompleted) {
+    if (accountCompleted && isVerifiedFlag) {
       brandLogo.style.color = '#3b82f6';
     } else if (kycStatus === 'approved') {
       brandLogo.style.color = '#16a34a';
     } else if (kycStatus === 'rejected' || kycStatus === 'failed') {
       brandLogo.style.color = '#dc2626';
+    } else if (kycStatus === 'pending') {
+      brandLogo.style.color = '#f59e0b';
     } else {
       brandLogo.style.color = '';
     }
