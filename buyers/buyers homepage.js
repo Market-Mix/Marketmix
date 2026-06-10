@@ -172,7 +172,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     const name = (card.querySelector('.product-name,h3,h4')?.textContent || '').trim();
     const price = parseFloat((card.querySelector('.price')?.textContent || '').replace(/[^\d.]/g,'')) || 0;
     const image = card.querySelector('img')?.src || '';
-    const productId = card.dataset.productId || null;
     const orig = btn.textContent;
 
     await addToCart({name, price, image, productId});
