@@ -168,12 +168,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   if (!product) product = getMockProduct(productId);
 
+  const urlSelectedSpecs = getSelectedSpecsFromUrl();
+  const savedSelectedSpecs = getCartItemSpecsFromStorage(productId);
+  const initialSelections = Object.keys(urlSelectedSpecs).length ? urlSelectedSpecs : savedSelectedSpecs;
+  if (Object.keys(initialSelections).length) {
+    console.log('Cart item loaded', initialSelections);
+  }
+
   // Resolve and persist store id on the product object
   const productStoreId = getProductStoreId(product);
   if (productStoreId && !product.store_id) product.store_id = productStoreId;
 
   // Render product immediately
-  renderProduct(product);
+  renderProduct(product, initialSelections);
   if (productStoreId && !urlStoreId) {
     syncStoreParam(productStoreId);
     Object.assign(headers, scopedHeaders({ 'Content-Type': 'application/json' }, productStoreId));
@@ -441,7 +448,7 @@ function renderBelowFold(product) {
 }
 
 // ── Render product (critical path) ───────────────────────────
-function renderProduct(product) {
+function renderProduct(product, initialSelections = {}) {
   document.title = `${product.name} - MarketMix`;
 
   const rules = (typeof getCategoryRules === 'function')
@@ -502,11 +509,44 @@ function renderProduct(product) {
     createVariants(product);
   }
   if (typeof createFlashSale       === 'function') createFlashSale(product);
-  if (typeof createCategoryOptions === 'function') createCategoryOptions(product);
+  if (typeof createCategoryOptions === 'function') createCategoryOptions(product, initialSelections);
 
   if (product.reviews?.length && typeof createReviews === 'function') createReviews(product);
 
   refreshWishlistButton(product.id);
+}
+
+function getSelectedSpecsFromUrl() {
+  const params = getUrlParams();
+  const raw = params.get('selected_specs') || params.get('selected_specifications') || '';
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(raw));
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+}
+
+function getCartItemSpecsFromStorage(productId) {
+  try {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    if (!Array.isArray(cart)) return {};
+    const item = cart.find(i => {
+      const pid = i.productId || i.product_id;
+      if (pid) return String(pid) === String(productId);
+      return String(i.id) === String(productId);
+    });
+    if (!item) return {};
+    return item.selected_specifications || item.specifications || {};
+  } catch (_) {
+    return {};
+  }
 }
 
 // ── Event listeners ───────────────────────────────────────────
@@ -544,6 +584,19 @@ async function addToCart(product) {
   const selectedSpecs = window.productOptions?.selectedSpecifications?.() || {};
   const storeId  = getProductStoreId(product);
 
+  console.log('Selected specifications', selectedSpecs);
+
+  const cartPayload = {
+    product_id: product.id,
+    quantity,
+    store_id: storeId || null,
+    seller_id: product.seller_id || product.seller?.id || null,
+    color,
+    size,
+    selected_specifications: selectedSpecs,
+  };
+  console.log('Cart payload', cartPayload);
+
   // Determine required specification groups based on rendered option sections
   const requiredGroups = [];
   if (document.getElementById('size-chips')) requiredGroups.push('size');
@@ -567,9 +620,11 @@ async function addToCart(product) {
   // Use specifications as part of uniqueness key so different spec combos are separate items
   const specKey = JSON.stringify(selectedSpecs || {});
   const existing = cart.find(i => i.id === product.id && JSON.stringify(i.selected_specifications || i.specifications || {}) === specKey);
-  if (existing) { existing.quantity += quantity; }
-  else {
-    cart.push({
+  if (existing) {
+    existing.quantity += quantity;
+    console.log('Cart item updated', existing);
+  } else {
+    const cartItem = {
       id: product.id, name: product.name,
       price: product.price, image: product.main_image_url,
       quantity, color, size,
@@ -578,7 +633,9 @@ async function addToCart(product) {
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
-    });
+    };
+    cart.push(cartItem);
+    console.log('Cart item saved', cartItem);
   }
   localStorage.setItem('cart', JSON.stringify(cart));
   updateCartCount();
@@ -591,13 +648,7 @@ async function addToCart(product) {
       method: 'POST',
       headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
       body: JSON.stringify({
-        product_id: product.id,
-        quantity,
-        store_id: storeId || null,
-        seller_id: product.seller_id || product.seller?.id || null,
-        ...(color    && { color }),
-        ...(size     && { size }),
-        ...(selectedSpecs && Object.keys(selectedSpecs).length && { specifications: selectedSpecs }),
+        ...cartPayload,
         ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));
@@ -626,9 +677,12 @@ async function proceedToCheckout(product) {
   const existing = cart.find(i =>
     i.id === product.id && JSON.stringify(i.selected_specifications || i.specifications || {}) === specKey
   );
-  if (existing) { existing.quantity += quantity; }
+  if (existing) {
+    existing.quantity += quantity;
+    console.log('Cart item updated', existing);
+  }
   else {
-    cart.push({
+    const cartItem = {
       id: product.id, name: product.name,
       price: product.price, image: product.main_image_url,
       quantity, color, size,
@@ -637,7 +691,9 @@ async function proceedToCheckout(product) {
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
-    });
+    };
+    cart.push(cartItem);
+    console.log('Cart item saved', cartItem);
   }
   localStorage.setItem('cart', JSON.stringify(cart));
   updateCartCount();

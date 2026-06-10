@@ -1,4 +1,4 @@
-function createCategoryOptions(product) {
+function createCategoryOptions(product, initialSelections = {}) {
   const container = document.getElementById('category-options');
   if (!container) return;
 
@@ -248,6 +248,64 @@ function createCategoryOptions(product) {
     });
   }
 
+  function findChip(containerId, attr, value) {
+    if (value == null) return null;
+    const buttons = Array.from(document.querySelectorAll(`#${containerId} .opt-chip`));
+    return buttons.find(btn => {
+      if (btn.dataset[attr] === String(value)) return true;
+      if (attr === 'variant') {
+        const idx = Number(btn.dataset.variant);
+        const variant = variants[idx];
+        return variant && (String(variant.sku) === String(value) || String(variant.name) === String(value));
+      }
+      return false;
+    });
+  }
+
+  function selectOption(containerId, attr, value) {
+    const btn = findChip(containerId, attr, value);
+    if (!btn) return false;
+    document.querySelectorAll(`#${containerId} .opt-chip`).forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    if (attr === 'color') {
+      selectedColor = value;
+      selectedSpecifications.color = value || null;
+      const l = document.getElementById('color-label'); if (l) l.textContent = value;
+      return true;
+    }
+    if (attr === 'size') {
+      selectedSize = value;
+      selectedSpecifications.size = value || null;
+      return true;
+    }
+    if (attr === 'variant') {
+      const idx = Number(btn.dataset.variant);
+      selectedVariant = variants[idx];
+      selectedSpecifications.variant = selectedVariant ? (selectedVariant.sku || selectedVariant.name || String(value)) : null;
+      if (selectedVariant?.price) {
+        const priceEl = document.getElementById('product-price');
+        if (priceEl) priceEl.textContent = `₦${parseFloat(selectedVariant.price).toLocaleString('en-NG', {minimumFractionDigits:2})}`;
+      }
+      if (selectedVariant?.stock != null) {
+        const stockEl = document.getElementById('stock-status');
+        const qty = Number(selectedVariant.stock);
+        if (stockEl) stockEl.innerHTML = qty > 0
+          ? `<span style="color:#22c55e">✓ In Stock (${qty} available)</span>`
+          : `<span style="color:#ef4444">✗ Out of Stock</span>`;
+        if (qty <= 0) {
+          disableBtn('product-add-to-cart', 'Out of stock');
+          disableBtn('product-checkout', 'Out of stock');
+        }
+      }
+      return true;
+    }
+    if (attr === 'gender' || attr === 'storage') {
+      selectedSpecifications[attr] = value || null;
+      return true;
+    }
+    return false;
+  }
+
   wireChips('color-chips', 'color', (v) => {
     selectedColor = v;
     selectedSpecifications.color = v || null;
@@ -288,6 +346,14 @@ function createCategoryOptions(product) {
   }
   if (document.getElementById('storage-chips')) {
     wireChips('storage-chips', 'storage', (v) => { selectedSpecifications.storage = v || null; });
+  }
+
+  if (initialSelections && typeof initialSelections === 'object') {
+    if (showColors && initialSelections.color) selectOption('color-chips', 'color', initialSelections.color);
+    if (showSizes && initialSelections.size) selectOption('size-chips', 'size', initialSelections.size);
+    if (showVariants && initialSelections.variant) selectOption('variant-chips', 'variant', initialSelections.variant);
+    if (initialSelections.gender) selectOption('gender-chips', 'gender', initialSelections.gender);
+    if (initialSelections.storage) selectOption('storage-chips', 'storage', initialSelections.storage);
   }
 
   function checkCanAdd() {

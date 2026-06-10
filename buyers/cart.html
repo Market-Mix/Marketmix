@@ -471,14 +471,17 @@
 
         const [minusBtn, quantitySpan, plusBtn, deleteBtn] = div.querySelectorAll('.item-actions *');
 
+        console.log('Cart item loaded', item);
         // Add click event to cart item to navigate to product page
         div.addEventListener('click', (e) => {
           // Don't navigate if clicking on action buttons
           if (e.target.closest('.item-actions')) return;
           
-          // Navigate to product page using productId
-          if (item.productId) {
-            window.location.href = `product.html?id=${item.productId}`;
+          // Navigate to product page using productId and preserve selected options
+          const productId = item.productId || item.product_id;
+          if (productId) {
+            const specs = encodeURIComponent(JSON.stringify(item.selected_specifications || item.specifications || {}));
+            window.location.href = `product.html?id=${encodeURIComponent(productId)}&selected_specs=${specs}`;
           }
         });
 
