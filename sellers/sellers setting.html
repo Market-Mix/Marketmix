@@ -102,6 +102,24 @@
     }
     .upload-progress.show { display: flex; }
 
+    .banner-preview-wrap {
+      position: relative; width: 100%; height: 180px;
+      border-radius: 10px; overflow: hidden;
+      background: linear-gradient(135deg, #1c0a04, #ea580c);
+      margin-bottom: 10px;
+    }
+    .banner-preview-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .theme-swatch {
+      width: 40px; height: 40px; border-radius: 8px;
+      border: 2px solid transparent; cursor: pointer;
+      transition: border-color .2s, transform .2s;
+    }
+    .theme-swatch:hover { transform: scale(1.03); }
+    .theme-swatch.active { border-color: #333; }
+
     /* Form */
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .form-group { margin-bottom: 14px; }
@@ -229,6 +247,8 @@
 const API = 'https://marketmix-backend.onrender.com/api';
 let updatingActiveStoreCache = false;
 let availableCategories = [];
+let selectedBannerUrl = '';
+let selectedTheme = 'default';
 
 function getToken() { return localStorage.getItem('seller_token') || localStorage.getItem('token') || ''; }
 
@@ -299,6 +319,38 @@ function renderForm(store) {
           </div>
         </div>
         <input type="file" id="logoInput" accept="image/jpeg,image/png,image/webp" onchange="handleLogoUpload(event, '${store.id}')">
+      </div>
+    </div>
+
+    <!-- Store banner -->
+    <div class="card">
+      <div class="card-head">
+        <h2><i class="fas fa-image" style="margin-right:7px;color:var(--accent)"></i>Store Banner</h2>
+        <p>Upload a banner for your storefront and choose a matching theme.</p>
+      </div>
+      <div class="form-group">
+        <label>Store Banner Image</label>
+        <div class="banner-preview-wrap">
+          <img id="bannerPreview" src="" alt="Banner preview" style="display:none">
+          <div id="bannerOverlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <label for="bannerInput" style="background:rgba(255,255,255,0.15);color:#fff;padding:10px 20px;border-radius:8px;cursor:pointer;backdrop-filter:blur(4px)">
+              <i class="fas fa-image"></i> Upload Banner
+            </label>
+          </div>
+        </div>
+        <input type="file" id="bannerInput" accept="image/*" style="display:none">
+        <p style="font-size:12px;color:#64748b">Recommended: 1200×300px. JPG, PNG or WebP.</p>
+      </div>
+      <div class="form-group">
+        <label>Banner Theme</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap" id="themeSwatches">
+          <button type="button" class="theme-swatch active" data-theme="default" style="background:linear-gradient(135deg,#1c0a04,#ea580c);" title="Default Orange"></button>
+          <button type="button" class="theme-swatch" data-theme="blue" style="background:linear-gradient(135deg,#0f172a,#2563eb);" title="Blue"></button>
+          <button type="button" class="theme-swatch" data-theme="green" style="background:linear-gradient(135deg,#052e16,#16a34a);" title="Green"></button>
+          <button type="button" class="theme-swatch" data-theme="purple" style="background:linear-gradient(135deg,#1e1b4b,#7c3aed);" title="Purple"></button>
+          <button type="button" class="theme-swatch" data-theme="dark" style="background:linear-gradient(135deg,#000,#374151);" title="Dark"></button>
+          <button type="button" class="theme-swatch" data-theme="gold" style="background:linear-gradient(135deg,#451a03,#d97706);" title="Gold"></button>
+        </div>
       </div>
     </div>
 
@@ -459,9 +511,11 @@ async function loadSettings() {
     // Keep StoreManager cache fresh
     updateActiveStoreCache(s);
     renderForm(s);
+    initBannerControls(s);
   } catch (e) {
     // Fallback to cached store data
     renderForm(store);
+    initBannerControls(store);
     toast(e.message || 'Using cached store data', '');
   }
 }
@@ -547,6 +601,8 @@ async function saveStore(storeId) {
       twitter:          val('socialTwitter')     || null,
       telegram:         val('socialTelegram')    || null,
       storeLogoUrl:     window.StoreManager.getActiveStore()?.store_logo_url || null,
+      storeBannerUrl:   selectedBannerUrl || undefined,
+      storeTheme:       { name: selectedTheme },
     };
 
     const res  = await fetch(`${API}/seller/stores/${storeId}`, {
@@ -590,6 +646,64 @@ async function saveStore(storeId) {
     toast(e.message || 'Failed to save', 'error');
   }
   setBtnLoading('saveStoreBtn', false);
+}
+
+function initBannerControls(store) {
+  selectedBannerUrl = store.store_banner_url || store.storeBannerUrl || '';
+  selectedTheme = (store.store_theme?.name || store.storeTheme?.name || 'default');
+
+  const bannerPreview = document.getElementById('bannerPreview');
+  const bannerOverlay = document.getElementById('bannerOverlay');
+  if (selectedBannerUrl && bannerPreview) {
+    bannerPreview.src = selectedBannerUrl;
+    bannerPreview.style.display = 'block';
+    if (bannerOverlay) bannerOverlay.style.display = 'none';
+  }
+
+  document.querySelectorAll('.theme-swatch').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === selectedTheme);
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.theme-swatch').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      selectedTheme = this.dataset.theme;
+    });
+  });
+
+  const bannerInput = document.getElementById('bannerInput');
+  if (bannerInput) {
+    bannerInput.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        if (bannerPreview) {
+          bannerPreview.src = ev.target.result;
+          bannerPreview.style.display = 'block';
+        }
+        if (bannerOverlay) bannerOverlay.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch(`${API}/seller/banner/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${getToken()}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          selectedBannerUrl = data.data?.url || selectedBannerUrl;
+          toast('Banner uploaded!', 'success');
+        } else {
+          throw new Error(data.message || 'Banner upload failed');
+        }
+      } catch (e) {
+        toast('Banner upload failed', 'error');
+      }
+    });
+  }
 }
 
 // Re-load when active store changes

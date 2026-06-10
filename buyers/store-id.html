@@ -840,10 +840,12 @@
 function getToken() {
   return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
 }
-
-    const token = localStorage.getItem('token');
-    if (!token) window.location.replace("login for buyers.html");
-  </script>
+const token = getToken();
+// Only redirect if NOT in an iframe
+if (!token && window.self === window.top) {
+  window.location.replace("login for buyers.html");
+}
+    </script>
 </head>
 <body>
 

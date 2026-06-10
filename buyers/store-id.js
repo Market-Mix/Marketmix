@@ -170,6 +170,32 @@ function renderStoreInfo(store) {
   const nameEl = document.getElementById('storeName');
   if (nameEl) nameEl.textContent = name;
 
+  const bannerUrl = store.store_banner_url || store.storeBannerUrl || '';
+  const themeData = store.store_theme || store.storeTheme || {};
+  const themeName = typeof themeData === 'string' ? themeData : themeData.name || 'default';
+  const heroEl = document.getElementById('storeHeader');
+  if (heroEl) {
+    const themeGradients = {
+      default: 'linear-gradient(135deg, #1c0a04 0%, #431407 40%, #7c2d12 70%, #ea580c 100%)',
+      blue:    'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%)',
+      green:   'linear-gradient(135deg, #052e16 0%, #14532d 50%, #16a34a 100%)',
+      purple:  'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #7c3aed 100%)',
+      dark:    'linear-gradient(135deg, #000 0%, #111827 50%, #374151 100%)',
+      gold:    'linear-gradient(135deg, #451a03 0%, #92400e 50%, #d97706 100%)',
+    };
+
+    if (bannerUrl) {
+      heroEl.style.backgroundImage = `url(${bannerUrl})`;
+      heroEl.style.backgroundSize = 'cover';
+      heroEl.style.backgroundPosition = 'center';
+      heroEl.style.backgroundRepeat = 'no-repeat';
+    } else if (themeName && themeGradients[themeName]) {
+      heroEl.style.backgroundImage = themeGradients[themeName];
+      heroEl.style.backgroundSize = '';
+      heroEl.style.backgroundPosition = '';
+    }
+  }
+
   const rating  = parseFloat(store.rating) || 0;
   const reviews = parseInt(store.totalReviews || store.total_reviews) || 0;
 
