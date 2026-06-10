@@ -48,6 +48,16 @@ function createCategoryOptions(product) {
   const skipKeys = new Set(['name','price','description','stock','images','video','discount_price','sku']);
   Object.keys(allSpecs).forEach(k => { if(skipKeys.has(k)) delete allSpecs[k]; });
 
+  // Allow specs to provide colors/sizes/gender/storage too
+  if (!colors.length && allSpecs.color) {
+    const parsed = parseOpts(allSpecs.color);
+    if (parsed.length) colors.push(...parsed);
+  }
+  if (!sizes.length && allSpecs.size) {
+    const parsed = parseOpts(allSpecs.size);
+    if (parsed.length) sizes.push(...parsed);
+  }
+
   const showColors   = colors.length > 0;
   const showSizes    = sizes.length > 0;
   const showVariants = variants.length > 0;
@@ -56,6 +66,8 @@ function createCategoryOptions(product) {
   let selectedColor   = null;
   let selectedSize    = null;
   let selectedVariant = null;
+  // Store all selected specifications here
+  const selectedSpecifications = {};
 
   let html = '';
 
@@ -89,6 +101,8 @@ function createCategoryOptions(product) {
 
     Object.entries(allSpecs).forEach(([k, v]) => {
       if (!v && v !== 0) return;
+      // Skip keys that will be rendered as selectable option groups
+      if (['size','color','gender','storage'].includes(String(k).toLowerCase())) return;
       let displayVal = Array.isArray(v) ? v.join(', ') : String(v);
       if (typeof v === 'boolean') displayVal = v ? 'Yes' : 'No';
       const label = specLabels[k] || k.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -141,6 +155,36 @@ function createCategoryOptions(product) {
       <div class="opt-chips" id="size-chips">`;
     sizes.forEach(s => {
       html += `<button type="button" class="opt-chip" data-size="${escapeHtml(s)}">${escapeHtml(s)}</button>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── Gender (from specs) ──
+  const genderOpts = (() => {
+    const raw = allSpecs.gender || allSpecs.Gender || allSpecs.gender_type || null;
+    return parseOpts(raw);
+  })();
+  if (genderOpts.length) {
+    html += `<div class="opt-section">
+      <div class="opt-label">Gender</div>
+      <div class="opt-chips" id="gender-chips">`;
+    genderOpts.forEach(g => {
+      html += `<button type="button" class="opt-chip" data-gender="${escapeHtml(g)}">${escapeHtml(g)}</button>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── Storage (from specs) ──
+  const storageOpts = (() => {
+    const raw = allSpecs.storage || allSpecs.Storage || null;
+    return parseOpts(raw);
+  })();
+  if (storageOpts.length) {
+    html += `<div class="opt-section">
+      <div class="opt-label">Storage</div>
+      <div class="opt-chips" id="storage-chips">`;
+    storageOpts.forEach(s => {
+      html += `<button type="button" class="opt-chip" data-storage="${escapeHtml(s)}">${escapeHtml(s)}</button>`;
     });
     html += `</div></div>`;
   }
@@ -206,12 +250,19 @@ function createCategoryOptions(product) {
 
   wireChips('color-chips', 'color', (v) => {
     selectedColor = v;
+    selectedSpecifications.color = v || null;
     const l = document.getElementById('color-label');
     if (l) l.textContent = v;
   });
-  wireChips('size-chips', 'size', (v) => { selectedSize = v; });
+
+  wireChips('size-chips', 'size', (v) => {
+    selectedSize = v;
+    selectedSpecifications.size = v || null;
+  });
+
   wireChips('variant-chips', 'variant', (i) => {
     selectedVariant = variants[parseInt(i, 10)];
+    selectedSpecifications.variant = selectedVariant ? (selectedVariant.sku || selectedVariant.name || String(i)) : null;
     // Update price display for this variant
     if (selectedVariant?.price) {
       const priceEl = document.getElementById('product-price');
@@ -230,6 +281,14 @@ function createCategoryOptions(product) {
       }
     }
   });
+
+  // Wire gender/storage chips if present
+  if (document.getElementById('gender-chips')) {
+    wireChips('gender-chips', 'gender', (v) => { selectedSpecifications.gender = v || null; });
+  }
+  if (document.getElementById('storage-chips')) {
+    wireChips('storage-chips', 'storage', (v) => { selectedSpecifications.storage = v || null; });
+  }
 
   function checkCanAdd() {
     const needColor   = showColors   && !selectedColor   && !showVariants;
@@ -254,5 +313,7 @@ function createCategoryOptions(product) {
     color:   () => selectedColor,
     size:    () => selectedSize,
     variant: () => selectedVariant,
+    // Full selected specifications object
+    selectedSpecifications: () => ({ ...selectedSpecifications })
   };
 }

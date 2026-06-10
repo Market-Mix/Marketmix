@@ -65,10 +65,26 @@ function attachCartListeners() {
       const card = btn.closest('.product-card');
       if (!card) { btn.disabled = false; return; }
       const name = (card.querySelector('.product-name')?.textContent||'').trim();
-      const price = parseFloat((card.querySelector('.price')?.textContent||'').replace(/[^\d.]/g,''))||0;
+      const price = parseFloat((card.querySelector('.price')?.textContent||'').replace(/[^-\d.]/g,''))||0;
       const image = card.querySelector('img')?.src||'';
       const productId = card.dataset.productId||null;
       const orig = btn.textContent;
+      // Pre-check for selectable specifications
+      if (productId) {
+        try {
+          const resp = await fetch(`${API}/products/${encodeURIComponent(productId)}`);
+          if (resp.ok) {
+            const pd = await resp.json(); const prod = pd.data || pd;
+            function parseOpts(s) { if (!s) return []; if (Array.isArray(s)) return s; if (typeof s === 'string') { try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(_) {} return s.split(',').map(x=>x.trim()).filter(Boolean); } return []; }
+            const hasSpecs = (Array.isArray(prod.variants) && prod.variants.length) || parseOpts(prod.size).length || parseOpts(prod.color).length || parseOpts(prod.storage).length || parseOpts(prod.gender).length;
+            if (hasSpecs) {
+              showToast('Please choose your product specifications.');
+              setTimeout(() => { window.location.href = `product.html?id=${encodeURIComponent(productId)}`; }, 500);
+              btn.disabled = false; return;
+            }
+          }
+        } catch (err) {}
+      }
       await addToCart({name, price, image, productId});
       btn.textContent = 'Added'; btn.classList.add('added');
       setTimeout(() => { btn.textContent = orig; btn.classList.remove('added'); btn.disabled = false; }, 2000);

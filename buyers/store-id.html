@@ -1213,7 +1213,7 @@ function getToken() {
           </div>
           <div class="card-actions">
             <button class="btn-view-sm" onclick="viewProduct('${p.id}')">View</button>
-            <button class="btn-cart-sm" onclick="addToCart('${p.id}', ${productNameArg})"
+            <button class="btn-cart-sm" onclick="preAddToCart('${p.id}', ${productNameArg})"
               ${!inStock ? 'disabled' : ''}>
               <i class="fa-solid fa-cart-plus"></i> Add to cart
             </button>

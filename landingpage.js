@@ -512,10 +512,66 @@ function initClickDelegation() {
     const cartBtn = e.target.closest('.mm-prod-cart-btn');
     if (cartBtn) {
       e.stopPropagation(); e.preventDefault();
-      addToCartHandler(cartBtn.dataset.id, cartBtn.dataset.name, cartBtn.dataset.price, cartBtn.dataset.img);
-      const orig = cartBtn.textContent;
-      cartBtn.textContent = '✓ Added'; cartBtn.style.background = '#10b981';
-      setTimeout(() => { cartBtn.textContent = orig; cartBtn.style.background = ''; }, 1500);
+      (async () => {
+        const id = cartBtn.dataset.id;
+        const API = 'https://marketmix-backend.onrender.com/api';
+        async function parseOpts(s) {
+          if (!s) return [];
+          if (Array.isArray(s)) return s;
+          if (typeof s === 'string') {
+            try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(_) {}
+            return s.split(',').map(x=>x.trim()).filter(Boolean);
+          }
+          return [];
+        }
+        async function productHasSelectableSpecs(product) {
+          if (!product) return false;
+          if (Array.isArray(product.variants) && product.variants.length) return true;
+          if ((await parseOpts(product.size)).length) return true;
+          if ((await parseOpts(product.color)).length) return true;
+          if ((await parseOpts(product.storage)).length) return true;
+          if ((await parseOpts(product.gender)).length) return true;
+          const metaKeys = ['category_meta','dynamic_fields','specifications','attributes','options'];
+          for (const k of metaKeys) {
+            const v = product[k];
+            if (!v) continue;
+            if (Array.isArray(v) && v.length) return true;
+            if (typeof v === 'string') {
+              try { const j = JSON.parse(v); if (Array.isArray(j) && j.length) return true; if (typeof j === 'object') {
+                for (const val of Object.values(j)) {
+                  if (Array.isArray(val) && val.length) return true;
+                  if (typeof val === 'string' && val.includes(',')) return true;
+                }
+              } } catch(_) { if (v.includes(',')) return true; }
+            } else if (typeof v === 'object' && Object.keys(v).length) {
+              for (const val of Object.values(v)) {
+                if (Array.isArray(val) && val.length) return true;
+                if (typeof val === 'string' && val.includes(',')) return true;
+              }
+            }
+          }
+          return false;
+        }
+
+        try {
+          const resp = await fetch(`${API}/products/${encodeURIComponent(id)}`);
+          if (resp.ok) {
+            const pd = await resp.json();
+            const prod = pd.data || pd;
+            if (await productHasSelectableSpecs(prod)) {
+              // redirect to product page for specification selection
+              const t = document.createElement('div'); t.className='toast'; t.textContent = 'Please choose your product specifications.'; document.body.appendChild(t); setTimeout(()=>t.classList.add('show'),50);
+              setTimeout(() => { window.location.href = `./buyers/product.html?id=${encodeURIComponent(id)}`; }, 600);
+              return;
+            }
+          }
+        } catch (err) {}
+
+        addToCartHandler(cartBtn.dataset.id, cartBtn.dataset.name, cartBtn.dataset.price, cartBtn.dataset.img);
+        const orig = cartBtn.textContent;
+        cartBtn.textContent = '✓ Added'; cartBtn.style.background = '#10b981';
+        setTimeout(() => { cartBtn.textContent = orig; cartBtn.style.background = ''; }, 1500);
+      })();
       return;
     }
     // Wishlist button

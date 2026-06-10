@@ -193,16 +193,33 @@ document.addEventListener('DOMContentLoaded', function(){
       if (addBtn && !product.isCategory) {
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          if(window.showToast) {
-            window.showToast(`${product.name} added to cart`);
-          } else {
-            const t = document.createElement('div'); 
-            t.className='toast'; 
-            t.textContent = `${product.name} added to cart`;
-            document.body.appendChild(t);
-            setTimeout(()=> t.classList.add('show'), 100);
-            setTimeout(()=> { t.classList.remove('show'); setTimeout(()=> t.remove(),300); }, 2000);
-          }
+          (async () => {
+            const API_BASE = 'https://marketmix-backend.onrender.com/api';
+            try {
+              const resp = await fetch(`${API_BASE}/products/${encodeURIComponent(product.id)}`);
+              if (resp.ok) {
+                const pd = await resp.json(); const prod = pd.data || pd;
+                function parseOpts(s) { if (!s) return []; if (Array.isArray(s)) return s; if (typeof s === 'string') { try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(_) {} return s.split(',').map(x=>x.trim()).filter(Boolean); } return []; }
+                const hasSpecs = (Array.isArray(prod.variants) && prod.variants.length) || parseOpts(prod.size).length || parseOpts(prod.color).length || parseOpts(prod.storage).length || parseOpts(prod.gender).length;
+                if (hasSpecs) {
+                  if(window.showToast) window.showToast('Please choose your product specifications.');
+                  else { const t = document.createElement('div'); t.className='toast'; t.textContent = 'Please choose your product specifications.'; document.body.appendChild(t); setTimeout(()=>t.classList.add('show'),100); }
+                  setTimeout(()=> window.location.href = `buyers/product.html?id=${encodeURIComponent(product.id)}`, 500);
+                  return;
+                }
+              }
+            } catch (err) {}
+            if(window.showToast) {
+              window.showToast(`${product.name} added to cart`);
+            } else {
+              const t = document.createElement('div'); 
+              t.className='toast'; 
+              t.textContent = `${product.name} added to cart`;
+              document.body.appendChild(t);
+              setTimeout(()=> t.classList.add('show'), 100);
+              setTimeout(()=> { t.classList.remove('show'); setTimeout(()=> t.remove(),300); }, 2000);
+            }
+          })();
         });
       }
     });

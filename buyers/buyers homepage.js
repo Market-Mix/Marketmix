@@ -141,6 +141,32 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (btn.disabled) return;
     const card = btn.closest('.product-card,.flash-card,.recommended-item');
     if (!card) return;
+    const productId = card.dataset.productId || null;
+    // Pre-check for selectable specifications
+    if (productId) {
+      try {
+        const API_BASE = 'https://marketmix-backend.onrender.com/api';
+        const resp = await fetch(`${API_BASE}/products/${encodeURIComponent(productId)}`);
+        if (resp.ok) {
+          const pd = await resp.json(); const prod = pd.data || pd;
+          function parseOpts(s) {
+            if (!s) return [];
+            if (Array.isArray(s)) return s;
+            if (typeof s === 'string') {
+              try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(_) {}
+              return s.split(',').map(x=>x.trim()).filter(Boolean);
+            }
+            return [];
+          }
+          const hasSpecs = (Array.isArray(prod.variants) && prod.variants.length) || parseOpts(prod.size).length || parseOpts(prod.color).length || parseOpts(prod.storage).length || parseOpts(prod.gender).length;
+          if (hasSpecs) {
+            showToast('Please choose your product specifications.');
+            setTimeout(() => window.location.href = `product.html?id=${encodeURIComponent(productId)}`, 500);
+            return;
+          }
+        }
+      } catch (err) {}
+    }
 
     btn.disabled = true;
     const name = (card.querySelector('.product-name,h3,h4')?.textContent || '').trim();

@@ -541,19 +541,39 @@ async function addToCart(product) {
   const quantity = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
   const color    = window.productOptions?.color?.() || null;
   const size     = window.productOptions?.size?.()  || null;
+  const selectedSpecs = window.productOptions?.selectedSpecifications?.() || {};
   const storeId  = getProductStoreId(product);
+
+  // Determine required specification groups based on rendered option sections
+  const requiredGroups = [];
+  if (document.getElementById('size-chips')) requiredGroups.push('size');
+  if (document.getElementById('color-chips')) requiredGroups.push('color');
+  if (document.getElementById('gender-chips')) requiredGroups.push('gender');
+  if (document.getElementById('storage-chips')) requiredGroups.push('storage');
+  if (document.getElementById('variant-chips')) requiredGroups.push('variant');
+
+  // Validate that all required groups have a selection
+  const missing = requiredGroups.filter(g => {
+    const v = selectedSpecs[g] || null;
+    return v === null || v === undefined || v === '';
+  });
+  if (missing.length > 0) {
+    showToast('Please select all product specifications before adding to cart.', 'warning');
+    return;
+  }
 
   // 1. Update local cart immediately (no round-trip needed)
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-  const existing = cart.find(i =>
-    i.id === product.id && i.color === color && i.size === size
-  );
+  // Use specifications as part of uniqueness key so different spec combos are separate items
+  const specKey = JSON.stringify(selectedSpecs || {});
+  const existing = cart.find(i => i.id === product.id && JSON.stringify(i.specifications || {}) === specKey);
   if (existing) { existing.quantity += quantity; }
   else {
     cart.push({
       id: product.id, name: product.name,
       price: product.price, image: product.main_image_url,
       quantity, color, size,
+      specifications: selectedSpecs,
       sellerId: product.seller?.id || product.seller_id || null,
       storeId,
       store_id: storeId || null,
@@ -576,6 +596,7 @@ async function addToCart(product) {
         seller_id: product.seller_id || product.seller?.id || null,
         ...(color    && { color }),
         ...(size     && { size }),
+        ...(selectedSpecs && Object.keys(selectedSpecs).length && { specifications: selectedSpecs }),
         ...(window.productOptions?.variant?.()?.sku && { sku: window.productOptions.variant().sku }),
       }),
     }).catch(e => console.warn('Cart sync error:', e));

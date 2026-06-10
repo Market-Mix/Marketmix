@@ -303,7 +303,7 @@ function buildProductCard(p) {
       </div>
       <div class="product-actions">
         <button class="btn-view" onclick="viewProduct('${p.id}')">View</button>
-        <button class="btn-cart" onclick="addToCart('${p.id}', '${escapeHtml(p.name)}')"
+        <button class="btn-cart" onclick="preAddToCart('${p.id}', '${escapeHtml(p.name)}')"
           ${!inStock ? 'disabled' : ''}>
           <i class="fa-solid fa-cart-plus"></i> Add to Cart
         </button>
@@ -412,6 +412,24 @@ async function addToCart(productId, productName) {
   } catch (err) {
     showToast(err.message || 'Could not add to cart');
   }
+}
+
+// Pre-check wrapper: if product has selectable specs, redirect to product page
+async function preAddToCart(productId, productName) {
+  try {
+    const resp = await fetch(`${API}/products/${encodeURIComponent(productId)}`);
+    if (resp.ok) {
+      const pd = await resp.json(); const prod = pd.data || pd;
+      function parseOpts(s) { if (!s) return []; if (Array.isArray(s)) return s; if (typeof s === 'string') { try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(_) {} return s.split(',').map(x=>x.trim()).filter(Boolean); } return []; }
+      const hasSpecs = (Array.isArray(prod.variants) && prod.variants.length) || parseOpts(prod.size).length || parseOpts(prod.color).length || parseOpts(prod.storage).length || parseOpts(prod.gender).length;
+      if (hasSpecs) {
+        showToast('Please choose your product specifications.');
+        setTimeout(() => viewProduct(productId), 500);
+        return;
+      }
+    }
+  } catch (e) {}
+  await addToCart(productId, productName);
 }
 
 // ─── View Product — keeps store context in URL ────────────────────────────────

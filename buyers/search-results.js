@@ -213,22 +213,38 @@ document.addEventListener('DOMContentLoaded', function(){
       if (addBtn && !product.isCategory) {
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          // Add to cart (similar to buyers homepage)
-          let cart = JSON.parse(localStorage.getItem('cart')) || [];
-          const existing = cart.find(item => item.name === product.name);
-          if (existing) {
-            existing.quantity = (existing.quantity || 1) + 1;
-          } else {
-            cart.push({
-              name: product.name,
-              price: product.price,
-              image: product.main_image_url || product.image,
-              quantity: 1,
-              productId: product.id
-            });
-          }
-          localStorage.setItem('cart', JSON.stringify(cart));
-          showToast(`${product.name} added to cart`);
+          (async () => {
+            try {
+              const API_BASE = 'https://marketmix-backend.onrender.com/api';
+              const resp = await fetch(`${API_BASE}/products/${encodeURIComponent(product.id)}`);
+              if (resp.ok) {
+                const pd = await resp.json(); const prod = pd.data || pd;
+                function parseOpts(s) { if (!s) return []; if (Array.isArray(s)) return s; if (typeof s === 'string') { try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(_) {} return s.split(',').map(x=>x.trim()).filter(Boolean); } return []; }
+                const hasSpecs = (Array.isArray(prod.variants) && prod.variants.length) || parseOpts(prod.size).length || parseOpts(prod.color).length || parseOpts(prod.storage).length || parseOpts(prod.gender).length;
+                if (hasSpecs) {
+                  showToast('Please choose your product specifications.');
+                  setTimeout(() => window.location.href = `product.html?id=${encodeURIComponent(product.id)}`, 500);
+                  return;
+                }
+              }
+            } catch (err) {}
+            // Add to cart (similar to buyers homepage)
+            let cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const existing = cart.find(item => item.name === product.name);
+            if (existing) {
+              existing.quantity = (existing.quantity || 1) + 1;
+            } else {
+              cart.push({
+                name: product.name,
+                price: product.price,
+                image: product.main_image_url || product.image,
+                quantity: 1,
+                productId: product.id
+              });
+            }
+            localStorage.setItem('cart', JSON.stringify(cart));
+            showToast(`${product.name} added to cart`);
+          })();
         });
       }
     });
