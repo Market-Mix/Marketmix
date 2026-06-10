@@ -481,7 +481,7 @@
 <script>
 const API = 'https://marketmix-backend.onrender.com/api';
 
-function getToken() { return localStorage.getItem('token') || ''; }
+function getToken() { return localStorage.getItem('seller_token') || localStorage.getItem('token') || ''; }
 
 function toast(msg, type = '') {
   const el = document.getElementById('toast');

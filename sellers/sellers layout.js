@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Fetch unread notifications count and update all navbar badges on seller pages
 async function updateNavbarNotificationBadge() {
-  const token = localStorage.getItem('token') || '';
+  const token = localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
   if (!token) return;
   const apiBase = StoreManager?.API_BASE || 'https://marketmix-backend.onrender.com/api';
   try {

@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /* ─── Config ────────────────────────────────────────────────────────────── */
   const API_BASE = 'https://marketmix-backend.onrender.com/api';
-  const token    = localStorage.getItem('token');
+  const token    = localStorage.getItem('seller_token') || localStorage.getItem('token');
 
   // Redirect to login if not authenticated
   if (!token) {

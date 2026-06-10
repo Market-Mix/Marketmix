@@ -12,7 +12,7 @@
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('seller_token') || localStorage.getItem('token');
   if (!token) { window.location.href = 'sellers login.html'; return; }
 
   // Pre-fill email from stored user

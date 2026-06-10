@@ -230,7 +230,7 @@ const API = 'https://marketmix-backend.onrender.com/api';
 let updatingActiveStoreCache = false;
 let availableCategories = [];
 
-function getToken() { return localStorage.getItem('token') || ''; }
+function getToken() { return localStorage.getItem('seller_token') || localStorage.getItem('token') || ''; }
 
 async function loadCategoryOptions() {
   try {
