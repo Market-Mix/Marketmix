@@ -95,6 +95,79 @@ window.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
   }
 
+  function parseSelectableOptions(value) {
+    if (value == null) return [];
+    if (Array.isArray(value)) return value.flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+        if (parsed && typeof parsed === 'object') return Object.values(parsed).flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+      } catch (_) {}
+      return value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (typeof value === 'object') return Object.values(value).flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+    return [];
+  }
+
+  function getSelectableSpecifications(product) {
+    if (!product) return [];
+    const specs = [];
+    const add = (key, label) => {
+      const values = parseSelectableOptions(product[key]);
+      if (values.length > 1) specs.push({ key: label || key, values });
+    };
+    add('variants', 'variants');
+    add('size', 'size');
+    add('color', 'color');
+    add('storage', 'storage');
+    add('material', 'material');
+    add('style', 'style');
+    add('gender', 'gender');
+    const metaKeys = ['specifications', 'category_meta', 'dynamic_fields', 'attributes', 'options'];
+    for (const key of metaKeys) {
+      const value = product[key];
+      if (value == null) continue;
+      if (Array.isArray(value) && value.length > 1) {
+        specs.push({ key, values: value });
+        continue;
+      }
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed) && parsed.length > 1) {
+            specs.push({ key, values: parsed });
+            continue;
+          }
+          if (parsed && typeof parsed === 'object') {
+            for (const [sub, val] of Object.entries(parsed)) {
+              const values = parseSelectableOptions(val);
+              if (values.length > 1) specs.push({ key: `${key}.${sub}`, values });
+            }
+            continue;
+          }
+        } catch (_) {
+          const values = value.split(',').map(s => s.trim()).filter(Boolean);
+          if (values.length > 1) specs.push({ key, values });
+        }
+        continue;
+      }
+      if (typeof value === 'object') {
+        for (const [sub, val] of Object.entries(value)) {
+          const values = parseSelectableOptions(val);
+          if (values.length > 1) specs.push({ key: `${key}.${sub}`, values });
+        }
+      }
+    }
+    const seen = new Set();
+    return specs.filter(spec => {
+      const id = `${spec.key}:${spec.values.join('|')}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
   async function addToBackendCart(product) {
     const token = localStorage.getItem('token');
     if (!token) { showToast('Please login to add items'); setTimeout(() => window.location.href='login for buyers.html', 1500); return false; }
@@ -142,26 +215,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     const card = btn.closest('.product-card,.flash-card,.recommended-item');
     if (!card) return;
     const productId = card.dataset.productId || null;
-    // Pre-check for selectable specifications
     if (productId) {
       try {
         const API_BASE = 'https://marketmix-backend.onrender.com/api';
         const resp = await fetch(`${API_BASE}/products/${encodeURIComponent(productId)}`);
         if (resp.ok) {
           const pd = await resp.json(); const prod = pd.data || pd;
-          function parseOpts(s) {
-            if (!s) return [];
-            if (Array.isArray(s)) return s;
-            if (typeof s === 'string') {
-              try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(_) {}
-              return s.split(',').map(x=>x.trim()).filter(Boolean);
-            }
-            return [];
-          }
-          const hasSpecs = (Array.isArray(prod.variants) && prod.variants.length) || parseOpts(prod.size).length || parseOpts(prod.color).length || parseOpts(prod.storage).length || parseOpts(prod.gender).length;
-          if (hasSpecs) {
+          const specs = getSelectableSpecifications(prod);
+          if (specs.length) {
+            console.log('Product requires specifications:', prod.id || productId, specs);
             showToast('Please choose your product specifications.');
-            setTimeout(() => window.location.href = `product.html?id=${encodeURIComponent(productId)}`, 500);
+            setTimeout(() => window.location.href = `product.html?id=${encodeURIComponent(prod.id || productId)}`, 500);
             return;
           }
         }

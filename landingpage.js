@@ -531,6 +531,8 @@ function initClickDelegation() {
           if ((await parseOpts(product.color)).length) return true;
           if ((await parseOpts(product.storage)).length) return true;
           if ((await parseOpts(product.gender)).length) return true;
+          if ((await parseOpts(product.material)).length) return true;
+          if ((await parseOpts(product.style)).length) return true;
           const metaKeys = ['category_meta','dynamic_fields','specifications','attributes','options'];
           for (const k of metaKeys) {
             const v = product[k];
@@ -559,8 +561,9 @@ function initClickDelegation() {
             const pd = await resp.json();
             const prod = pd.data || pd;
             if (await productHasSelectableSpecs(prod)) {
+              console.log('Product requires specifications:', prod.id || id, prod);
               // redirect to product page for specification selection
-              const t = document.createElement('div'); t.className='toast'; t.textContent = 'Please choose your product specifications.'; document.body.appendChild(t); setTimeout(()=>t.classList.add('show'),50);
+              showToast('Please choose your product specifications.');
               setTimeout(() => { window.location.href = `./buyers/product.html?id=${encodeURIComponent(id)}`; }, 600);
               return;
             }

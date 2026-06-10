@@ -162,6 +162,79 @@ document.addEventListener('DOMContentLoaded', function(){
     return div;
   }
 
+  function parseSelectableOptions(value) {
+    if (value == null) return [];
+    if (Array.isArray(value)) return value.flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+        if (parsed && typeof parsed === 'object') return Object.values(parsed).flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+      } catch (_) {}
+      return value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (typeof value === 'object') return Object.values(value).flatMap(v => parseSelectableOptions(v)).filter(Boolean);
+    return [];
+  }
+
+  function getSelectableSpecifications(product) {
+    if (!product) return [];
+    const specs = [];
+    const add = (key, label) => {
+      const values = parseSelectableOptions(product[key]);
+      if (values.length > 1) specs.push({ key: label || key, values });
+    };
+    add('variants', 'variants');
+    add('size', 'size');
+    add('color', 'color');
+    add('storage', 'storage');
+    add('material', 'material');
+    add('style', 'style');
+    add('gender', 'gender');
+    const metaKeys = ['specifications', 'category_meta', 'dynamic_fields', 'attributes', 'options'];
+    for (const key of metaKeys) {
+      const value = product[key];
+      if (value == null) continue;
+      if (Array.isArray(value) && value.length > 1) {
+        specs.push({ key, values: value });
+        continue;
+      }
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed) && parsed.length > 1) {
+            specs.push({ key, values: parsed });
+            continue;
+          }
+          if (parsed && typeof parsed === 'object') {
+            for (const [sub, val] of Object.entries(parsed)) {
+              const values = parseSelectableOptions(val);
+              if (values.length > 1) specs.push({ key: `${key}.${sub}`, values });
+            }
+            continue;
+          }
+        } catch (_) {
+          const values = value.split(',').map(s => s.trim()).filter(Boolean);
+          if (values.length > 1) specs.push({ key, values });
+        }
+        continue;
+      }
+      if (typeof value === 'object') {
+        for (const [sub, val] of Object.entries(value)) {
+          const values = parseSelectableOptions(val);
+          if (values.length > 1) specs.push({ key: `${key}.${sub}`, values });
+        }
+      }
+    }
+    const seen = new Set();
+    return specs.filter(spec => {
+      const id = `${spec.key}:${spec.values.join('|')}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
   function render(){
     resultsGrid.innerHTML = '';
     if(filtered.length === 0){
