@@ -350,7 +350,7 @@
     let currentFilter = 'all';
 
     function checkAuth() {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const token = localStorage.getItem('seller_token') || sessionStorage.getItem('seller_token');
       if (!token) {
         window.location.replace('sellers login.html');
         return null;
