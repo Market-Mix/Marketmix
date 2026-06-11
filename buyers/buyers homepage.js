@@ -406,7 +406,7 @@ function makeFloatingList(btn, items) {
 
   async function loadAllProducts() {
     try {
-      const [cats, prodRes] = await Promise.all([getCategories(), fetch(`${API}/products?limit=50`)]);
+      const [cats, prodRes] = await Promise.all([getCategories(), fetch(`${API}/products?limit=500`)]);
       const d = await prodRes.json();
       console.log('Products API response:', d); // CHECK THIS IN BROWSER CONSOLE
       let products = d.data?.data || d.data || [];
@@ -419,9 +419,9 @@ function makeFloatingList(btn, items) {
       if (naGrid) naGrid.innerHTML = loadingHtml;
       if (recGrid) recGrid.innerHTML = loadingHtml;
       const inStockProducts = products.filter(isInStock);
-      const bestSellers = inStockProducts.slice(0,12);
-      const newArrivals = inStockProducts.slice(0,12);
-      const recommended = inStockProducts.slice(0,6);
+      const bestSellers = inStockProducts;
+      const newArrivals = inStockProducts;
+      const recommended = inStockProducts.slice(0, 12);
       if (bsGrid) {
         bsGrid.innerHTML = bestSellers.length
           ? bestSellers.map(p=>renderCard(p)).join('')
