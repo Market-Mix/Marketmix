@@ -371,7 +371,8 @@ function renderProducts() {
     row.className = 'product-row';
     row.innerHTML = `
       <div>
-        <img src="${imgSrc}" alt="${escapeHtml(product.name)}"
+        <img src="${imgSrc}" alt="${escapeHtml(product.name)}" loading="lazy"
+             decoding="async" width="60" height="60"
              onerror="this.src='https://via.placeholder.com/60x60?text=No+Img'"
              style="width:60px;height:60px;object-fit:cover;border-radius:6px;">
       </div>
@@ -458,7 +459,10 @@ async function addProduct() {
     formData.append('return_accepted', document.getElementById('newReturnAccepted')?.checked ? 'true' : 'false');
 
     const imageFiles = Array.from(document.getElementById('newProductImages').files).slice(0, 5);
-    imageFiles.forEach(f => formData.append('images', f));
+    const compressedFiles = await Promise.all(
+      imageFiles.map(f => compressImage(f, 800, 0.75))
+    );
+    compressedFiles.forEach(f => formData.append('images', f));
 
     const videoFile = document.getElementById('newProductVideo')?.files[0];
     if (videoFile) formData.append('images', videoFile);
@@ -580,7 +584,7 @@ async function openEditModal(id) {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'position:relative;display:inline-block';
       wrap.innerHTML = `
-        <img src="${src}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0">
+        <img src="${src}" loading="lazy" decoding="async" width="60" height="60" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0">
         <button type="button" onclick="removeExistingImage('${editingProductId}',${i})" 
           style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px">×</button>
       `;
@@ -637,7 +641,10 @@ async function handleEditSubmit(e) {
 
     const imageInput = document.getElementById('editProductImages');
     const imageFiles = imageInput ? Array.from(imageInput.files).slice(0, 5) : [];
-    imageFiles.forEach(f => formData.append('images', f));
+    const compressedFiles = await Promise.all(
+      imageFiles.map(f => compressImage(f, 800, 0.75))
+    );
+    compressedFiles.forEach(f => formData.append('images', f));
 
     const res = await fetch(`${API_BASE}/seller/products/${editingProductId}`, {
       method: 'PUT',
