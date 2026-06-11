@@ -1,6 +1,6 @@
 window.addEventListener('DOMContentLoaded', async () => {
   const API = 'https://marketmix-backend.onrender.com/api';
-  const NOTIF_POLL_INTERVAL = 5 * 60 * 1000;
+  const NOTIF_POLL_INTERVAL = 3 * 60 * 1000;
   const _cache = new Map();
   let cart = JSON.parse(localStorage.getItem('cart')) || [];
   let cachedCategories = null;

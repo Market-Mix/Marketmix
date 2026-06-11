@@ -2,7 +2,7 @@
 // CENTRALIZED NOTIFICATION MANAGER
 // ============================================
 // Manages all notifications using Backend API
-// Auto-syncs every 5 minutes
+// Auto-syncs every 3 minutes
 // Updates all badge elements across pages
 
 // Make API_BASE_URL globally accessible to all pages
@@ -129,7 +129,7 @@ const NotificationManager = {
     },
     totalUnread: 0,
     lastFetch: 0,
-    fetchInterval: 5 * 60 * 1000 // 5 minutes
+    fetchInterval: 3 * 60 * 1000 // 3 minutes
   },
 
   // Initialize for buyer
@@ -144,7 +144,7 @@ const NotificationManager = {
     // Sync immediately
     await this.syncUnreadCounts(buyerId);
 
-    // Set up periodic sync every 30 seconds
+    // Set up periodic sync
     setInterval(() => {
       this.syncUnreadCounts(buyerId);
     }, this.cache.fetchInterval);
