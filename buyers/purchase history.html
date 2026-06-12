@@ -999,10 +999,14 @@ async function renderOrders(orders) {
     row.dataset.productId = entry.product_id || '';
 
     const productName = entry.product_name || (entry.product_id ? (namesMap[entry.product_id] || '') : '');
-    const specLines = [];
-    if (entry.color) specLines.push(`Color: ${escapeHtml(entry.color)}`);
-    if (entry.size) specLines.push(`Size: ${escapeHtml(entry.size)}`);
-    const specMarkup = specLines.length ? `<div style="color:#64748b;font-size:0.9rem;margin-top:4px">${specLines.join(' · ')}</div>` : '';
+    // Fallback to product_snapshot if color/size not present
+    let ps = entry.product_snapshot || entry.productSnapshot || {};
+    if (typeof ps === 'string') {
+      try { ps = JSON.parse(ps); } catch (e) { ps = {}; }
+    }
+    const colorVal = entry.color || ps.color || null;
+    const sizeVal = entry.size || ps.size || null;
+    const specMarkup = (colorVal || sizeVal) ? `<div style="color:#64748b;font-size:0.9rem;margin-top:4px">${colorVal ? `Color: ${escapeHtml(colorVal)}` : ''}${colorVal && sizeVal ? ' · ' : ''}${sizeVal ? `Size: ${escapeHtml(sizeVal)}` : ''}</div>` : '';
 
     row.innerHTML = `
       <td data-label="Order ID">#${entry.orderId}</td>

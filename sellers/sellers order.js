@@ -227,10 +227,14 @@ function renderOrders(reset) {
     // One row per order (may contain multiple items; show first product + count)
     const firstItem  = order.items[0] || {};
     const extraCount = order.items.length > 1 ? ` (+${order.items.length - 1} more)` : '';
-    const specLines = [];
-    if (firstItem.color) specLines.push(`Color: ${firstItem.color}`);
-    if (firstItem.size) specLines.push(`Size: ${firstItem.size}`);
-    const specHtml = specLines.length ? `<div class="product-specs" style="font-size:0.9rem;color:#4a5568;margin-top:4px">${specLines.join(' · ')}</div>` : '';
+    // Fallback to productSnapshot/product_snapshot for specs
+    let ps = firstItem.product_snapshot || firstItem.productSnapshot || {};
+    if (typeof ps === 'string') {
+      try { ps = JSON.parse(ps); } catch(e) { ps = {}; }
+    }
+    const fColor = firstItem.color || ps.color || null;
+    const fSize = firstItem.size || ps.size || null;
+    const specHtml = (fColor || fSize) ? `<div class="product-specs" style="font-size:0.9rem;color:#4a5568;margin-top:4px">${fColor ? `Color: ${fColor}` : ''}${fColor && fSize ? ' · ' : ''}${fSize ? `Size: ${fSize}` : ''}</div>` : '';
     const productLabel = (firstItem.productName || '—') + extraCount + specHtml;
     const totalQty   = order.items.reduce((s, i) => s + i.quantity, 0);
 

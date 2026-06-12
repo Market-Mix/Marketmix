@@ -284,10 +284,14 @@ async function loadOrders() {
       const extraCount = items.length > 1 ? `+${items.length - 1} more` : '';
       const date = new Date(order.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
       const imgSrc = firstItem.image || firstItem.main_image_url || 'https://via.placeholder.com/80';
-      const specLines = [];
-      if (firstItem.color) specLines.push(`Color: ${firstItem.color}`);
-      if (firstItem.size) specLines.push(`Size: ${firstItem.size}`);
-      const specMarkup = specLines.length ? `<div class="order-specs" style="margin-top:6px;color:#64748b;font-size:0.92rem">${specLines.map(line => `<p style="margin:2px 0">${line}</p>`).join('')}</div>` : '';
+      // Fallback to product_snapshot for specs
+      let ps = firstItem.product_snapshot || firstItem.productSnapshot || {};
+      if (typeof ps === 'string') {
+        try { ps = JSON.parse(ps); } catch(e) { ps = {}; }
+      }
+      const firstColor = firstItem.color || ps.color || null;
+      const firstSize = firstItem.size || ps.size || null;
+      const specMarkup = (firstColor || firstSize) ? `<div class="order-specs" style="margin-top:6px;color:#64748b;font-size:0.92rem">${firstColor ? `<p style="margin:2px 0">Color: ${firstColor}</p>` : ''}${firstSize ? `<p style="margin:2px 0">Size: ${firstSize}</p>` : ''}</div>` : '';
 
       return `
         <div class="order-card">

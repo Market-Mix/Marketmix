@@ -252,8 +252,8 @@ function render(o) {
     orderId: o.id,
     items: items.map(item => ({
       product_id: item.product_id || item.productId,
-      color: item.color,
-      size: item.size,
+      color: item.color || (item.product_snapshot && (typeof item.product_snapshot === 'string' ? (()=>{try{return JSON.parse(item.product_snapshot).color}catch(e){return null}})() : item.product_snapshot.color)),
+      size: item.size || (item.product_snapshot && (typeof item.product_snapshot === 'string' ? (()=>{try{return JSON.parse(item.product_snapshot).size}catch(e){return null}})() : item.product_snapshot.size)),
     }))
   });
   const currentStep = STATUS_STEPS.indexOf(o.status);
@@ -271,16 +271,25 @@ function render(o) {
     </div>
 
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-      ${items.map(item => `
+      ${items.map(item => {
+        // product_snapshot may be string or object
+        let ps = item.product_snapshot || item.productSnapshot || {};
+        if (typeof ps === 'string') {
+          try { ps = JSON.parse(ps); } catch(e) { ps = {}; }
+        }
+        const color = item.color || ps.color || null;
+        const size = item.size || ps.size || null;
+        return `
         <div class="product">
           <div class="product-details">
             <h4>${item.product_name || 'Product'}</h4>
-            ${item.color || item.size ? `<p style="margin:6px 0 0;color:#64748b;font-size:0.95rem">${item.color ? `Color: ${item.color}` : ''}${item.color && item.size ? ' · ' : ''}${item.size ? `Size: ${item.size}` : ''}</p>` : ''}
+            ${color || size ? `<p style="margin:6px 0 0;color:#64748b;font-size:0.95rem">${color ? `Color: ${color}` : ''}${color && size ? ' · ' : ''}${size ? `Size: ${size}` : ''}</p>` : ''}
             <p>Qty: ${item.quantity}</p>
             <p>Price: ₦${Number(item.price).toLocaleString()}</p>
             <p>Subtotal: ₦${Number(item.price * item.quantity).toLocaleString()}</p>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>
 
     <div class="progress">
