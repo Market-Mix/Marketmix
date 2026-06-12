@@ -958,7 +958,9 @@ async function renderOrders(orders) {
           product_id: pid,
           product_name: item.product_name || item.name || null,
           quantity: qty,
-          item_total: itemTotal
+          item_total: itemTotal,
+          color: item.color || null,
+          size: item.size || null,
         });
       });
     }
@@ -997,10 +999,14 @@ async function renderOrders(orders) {
     row.dataset.productId = entry.product_id || '';
 
     const productName = entry.product_name || (entry.product_id ? (namesMap[entry.product_id] || '') : '');
+    const specLines = [];
+    if (entry.color) specLines.push(`Color: ${escapeHtml(entry.color)}`);
+    if (entry.size) specLines.push(`Size: ${escapeHtml(entry.size)}`);
+    const specMarkup = specLines.length ? `<div style="color:#64748b;font-size:0.9rem;margin-top:4px">${specLines.join(' · ')}</div>` : '';
 
     row.innerHTML = `
       <td data-label="Order ID">#${entry.orderId}</td>
-      <td data-label="Name" class="product-cell">${escapeHtml(productName || '')}</td>
+      <td data-label="Name" class="product-cell">${escapeHtml(productName || '')}${specMarkup}</td>
       <td data-label="Date">${formatDate(entry.created_at)}</td>
       <td data-label="Total Amount">${formatCurrency(entry.item_total)}</td>
       <td data-label="Status" class="status ${entry.status}">${entry.status}</td>

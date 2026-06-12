@@ -264,6 +264,15 @@ async function loadOrders() {
     const orders = data.data?.orders || [];
     const container = document.getElementById('ordersContainer');
 
+    console.log('Loaded order item specifications', orders.map(order => ({
+      orderId: order.id,
+      items: (order.items || []).map(item => ({
+        product_id: item.product_id || item.productId,
+        color: item.color,
+        size: item.size,
+      }))
+    })));
+
     if (!orders.length) {
       container.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px">No orders yet. <a href="buyers homepage.html">Start shopping!</a></p>';
       return;
@@ -275,6 +284,10 @@ async function loadOrders() {
       const extraCount = items.length > 1 ? `+${items.length - 1} more` : '';
       const date = new Date(order.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
       const imgSrc = firstItem.image || firstItem.main_image_url || 'https://via.placeholder.com/80';
+      const specLines = [];
+      if (firstItem.color) specLines.push(`Color: ${firstItem.color}`);
+      if (firstItem.size) specLines.push(`Size: ${firstItem.size}`);
+      const specMarkup = specLines.length ? `<div class="order-specs" style="margin-top:6px;color:#64748b;font-size:0.92rem">${specLines.map(line => `<p style="margin:2px 0">${line}</p>`).join('')}</div>` : '';
 
       return `
         <div class="order-card">
@@ -288,6 +301,7 @@ async function loadOrders() {
               onerror="this.src='https://via.placeholder.com/80'">
             <div class="order-details">
               <h3>${firstItem.product_name || 'Product'} ${extraCount ? `<small style="color:#94a3b8">(${extraCount})</small>` : ''}</h3>
+              ${specMarkup}
               <p>Items: ${items.length} | Total: ₦${Number(order.total_amount).toLocaleString()}</p>
               <p>Placed: ${date}</p>
               ${order.shipping_address ? `<p style="font-size:0.85rem;color:#64748b">📍 ${order.shipping_address}</p>` : ''}

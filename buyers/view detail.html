@@ -248,6 +248,14 @@ async function loadOrder() {
 
 function render(o) {
   const items = o.items || [];
+  console.log('Loaded order item specifications', {
+    orderId: o.id,
+    items: items.map(item => ({
+      product_id: item.product_id || item.productId,
+      color: item.color,
+      size: item.size,
+    }))
+  });
   const currentStep = STATUS_STEPS.indexOf(o.status);
   const date = new Date(o.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
 
@@ -267,6 +275,7 @@ function render(o) {
         <div class="product">
           <div class="product-details">
             <h4>${item.product_name || 'Product'}</h4>
+            ${item.color || item.size ? `<p style="margin:6px 0 0;color:#64748b;font-size:0.95rem">${item.color ? `Color: ${item.color}` : ''}${item.color && item.size ? ' · ' : ''}${item.size ? `Size: ${item.size}` : ''}</p>` : ''}
             <p>Qty: ${item.quantity}</p>
             <p>Price: ₦${Number(item.price).toLocaleString()}</p>
             <p>Subtotal: ₦${Number(item.price * item.quantity).toLocaleString()}</p>
