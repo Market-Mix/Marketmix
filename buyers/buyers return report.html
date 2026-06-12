@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Specification Utilities -->
+  <script src="../shared/specification-utils.js"></script>
   <style>
     * {
       margin: 0;
@@ -1938,12 +1940,46 @@
     // If status is 'pending' (complaint started), use created_at as evidence submission time for countdown
     const evidenceSubmittedTime = caseData.evidence_submitted_at || (caseData.status !== 'purchased' ? caseData.created_at : null);
     
+    // Extract color/size from order item data or product_snapshot
+    let color = caseData.color || null;
+    let size = caseData.size || null;
+    
+    let ps = caseData.product_snapshot;
+    if (ps && typeof ps === 'string') {
+      try {
+        ps = JSON.parse(ps);
+        if (!color) color = ps.color || null;
+        if (!size) size = ps.size || null;
+      } catch (e) {
+        ps = {};
+      }
+    }
+    
+    // Also check orderData for specs
+    if (orderData && orderData.items && orderData.items.length > 0) {
+      const item = orderData.items[0];
+      if (!color) color = item.color || null;
+      if (!size) size = item.size || null;
+      if (!ps || !ps.color) {
+        let itemPs = item.product_snapshot;
+        if (typeof itemPs === 'string') {
+          try {
+            itemPs = JSON.parse(itemPs);
+            if (!color) color = itemPs.color || null;
+            if (!size) size = itemPs.size || null;
+          } catch (e) {}
+        }
+      }
+    }
+    
     console.log('DEBUG mapRefundCaseToReport:', {
       order_id: caseData.order_id,
       status: caseData.status,
       created_at: caseData.created_at,
       evidence_submitted_at: caseData.evidence_submitted_at,
       calculatedEvidenceTime: evidenceSubmittedTime,
+      color: color,
+      size: size,
       orderData
     });
     
@@ -1965,6 +2001,9 @@
       marketmix_reason: caseData.marketmix_reason,
       store_name: resolveStoreName(orderData) || resolveStoreName(caseData) || 'Store',
       seller_id: caseData.seller_id || orderData.seller_id,
+      color: color,
+      size: size,
+      product_snapshot: ps,
       messages: [],
       chat_started: caseData.chat_started || false,
       resolution_status: caseData.resolution_status || 'pending',
@@ -2798,7 +2837,10 @@
       return `
       <div class="table-row" data-report-id="${report.id}">
         <div class="col-store">${report.store_name}</div>
-        <div class="col-product">${report.product_name}</div>
+        <div class="col-product">
+          <div style="font-weight:600">${escapeHtmlSpec(report.product_name)}</div>
+          ${(report.color || report.size) ? `<div style="font-size:0.85rem;color:#64748b;margin-top:3px">${report.color ? `Color: ${escapeHtmlSpec(report.color)}` : ''}${report.color && report.size ? ' · ' : ''}${report.size ? `Size: ${escapeHtmlSpec(report.size)}` : ''}</div>` : ''}
+        </div>
         <div class="col-order">${report.order_id}</div>
         <div class="col-amount">₦${formatCurrency(report.total_amount)}</div>
         <div class="col-status">
