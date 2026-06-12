@@ -265,6 +265,19 @@ function renderOrders(reset) {
       pendingOrderId   = btn.dataset.id;
       pendingNewStatus = btn.dataset.status;
       newStatusText.textContent = capitalize(pendingNewStatus);
+      
+      // Populate order items with specs in confirmation modal
+      const order = loadedOrders.find(o => o.orderId === pendingOrderId);
+      if (order && order.items) {
+        const itemsDiv = document.getElementById('confirmationOrderItems');
+        itemsDiv.innerHTML = order.items.map(item => {
+          const color = getItemColor(item);
+          const size = getItemSize(item);
+          const specs = (color || size) ? `<div style="color:#64748b;font-size:0.85em;margin-top:4px">` + (color ? `Color: ${escapeHtmlSpec(color)}` : '') + (color && size ? ' · ' : '') + (size ? `Size: ${escapeHtmlSpec(size)}` : '') + `</div>` : '';
+          return `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e5e7eb;"><div style="font-weight:600;color:#1e293b">${escapeHtmlSpec(item.product_name || 'Item')}</div><div style="font-size:0.9em;color:#475569">Qty: ${item.quantity}</div>${specs}</div>`;
+        }).join('');
+        document.getElementById('confirmationWarning').style.display = 'block';
+      }
       confirmModal.classList.add('show');
     });
   });

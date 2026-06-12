@@ -32,6 +32,21 @@ function getCurrentSellerId() {
 }
 
 function mapRefundCaseFromSupabase(caseData) {
+  // Extract color/size from order_item or product_snapshot
+  let color = caseData.color || null;
+  let size = caseData.size || null;
+  
+  let ps = caseData.product_snapshot;
+  if (ps && typeof ps === 'string') {
+    try {
+      ps = JSON.parse(ps);
+      if (!color) color = ps.color || null;
+      if (!size) size = ps.size || null;
+    } catch (e) {
+      ps = {};
+    }
+  }
+  
   return {
     id: caseData.id,
     buyerName: caseData.buyer_name || caseData.buyer_id || 'Buyer',
@@ -57,7 +72,10 @@ function mapRefundCaseFromSupabase(caseData) {
     escalated_to_marketmix: caseData.escalated_to_marketmix || false,
     seller_resolved_at: caseData.seller_resolved_at || null,
     escalated_at: caseData.escalated_at || null,
-    buyer_confirmed_at: caseData.buyer_confirmed_at || null
+    buyer_confirmed_at: caseData.buyer_confirmed_at || null,
+    color: color,
+    size: size,
+    product_snapshot: ps
   };
 }
 
@@ -502,7 +520,10 @@ function renderTable(data = returnsData) {
 
     row.innerHTML = `
       <div class="col-buyer">${item.buyerName}</div>
-      <div class="col-product">${item.productName}</div>
+      <div class="col-product">
+        <div style="font-weight:600">${escapeHtmlSpec(item.productName)}</div>
+        ${(item.color || item.size) ? `<div style="font-size:0.85rem;color:#64748b;margin-top:3px">${item.color ? `Color: ${escapeHtmlSpec(item.color)}` : ''}${item.color && item.size ? ' · ' : ''}${item.size ? `Size: ${escapeHtmlSpec(item.size)}` : ''}</div>` : ''}
+      </div>
       <div class="col-order">${item.orderId}</div>
       <div class="col-amount">\₦${item.amount.toFixed(2)}</div>
       <div class="col-status"><span class="status-badge ${statusClass}">${item.status}</span></div>
@@ -525,7 +546,11 @@ function openModal(returnId) {
 
   // Populate modal
   document.getElementById('modalBuyerName').textContent = returnItem.buyerName;
-  document.getElementById('modalProductName').textContent = returnItem.productName;
+  const modalProductNameEl = document.getElementById('modalProductName');
+  modalProductNameEl.innerHTML = `
+    <div>${escapeHtmlSpec(returnItem.productName)}</div>
+    ${(returnItem.color || returnItem.size) ? `<div style="font-size:0.85rem;color:#64748b;margin-top:4px">${returnItem.color ? `Color: ${escapeHtmlSpec(returnItem.color)}` : ''}${returnItem.color && returnItem.size ? ' · ' : ''}${returnItem.size ? `Size: ${escapeHtmlSpec(returnItem.size)}` : ''}</div>` : ''}
+  `;
   document.getElementById('modalOrderId').textContent = returnItem.orderId;
   document.getElementById('modalAmount').textContent = `$${returnItem.amount.toFixed(2)}`;
   document.getElementById('modalReason').textContent = returnItem.reason;

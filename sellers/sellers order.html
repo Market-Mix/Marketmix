@@ -142,9 +142,17 @@
 
   <div class="modal" id="confirmationModal">
     <div class="modal-content">
-      <p>Mark this order as <span id="newStatusText"></span>?</p>
-      <button id="confirmYes">Yes</button>
-      <button id="confirmNo">No</button>
+      <h3 style="margin: 0 0 15px 0;">Mark Order as <span id="newStatusText" style="color:#F97316"></span></h3>
+      <div id="confirmationOrderItems" style="background:#f9f9f9;padding:12px;border-radius:6px;margin-bottom:15px;max-height:250px;overflow-y:auto;border-left:3px solid #F97316;">
+        <!-- Order items with specs will be inserted here -->
+      </div>
+      <p id="confirmationWarning" style="background:#fff3cd;border-left:3px solid #ffc107;padding:10px;border-radius:4px;margin-bottom:15px;font-size:0.9em;color:#856404;display:none;">
+        <strong>⚠️ Verify Specifications:</strong> Please ensure you have the correct item variant (color, size) before proceeding.
+      </p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="confirmNo" style="background:#ccc;color:#333;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;">Cancel</button>
+        <button id="confirmYes" style="background:#F97316;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;">Confirm</button>
+      </div>
     </div>
   </div>
       
@@ -157,6 +165,7 @@
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <script src="storeManager.js"></script>
  <script src="../buyers/notification-manager.js"></script>
+ <script src="../shared/specification-utils.js"></script>
       <script src="sellers order.js"></script>
 </body>
 </html>
