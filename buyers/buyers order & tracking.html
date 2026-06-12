@@ -311,10 +311,12 @@ async function loadOrders() {
             ${['shipped','processing','pending','confirmed'].includes(order.status) ? 
               `<button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>` : ''}
             <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
-            ${order.status === 'awaiting_payment' && order.payment_status === 'unpaid' ? 
+            ${(order.status === 'awaiting_payment' || order.payment_status === 'unpaid') ?
               `<button class="btn btn-track" style="background:#8b5cf6" onclick="retryPayment('${order.id}', this)">
-                💳 Continue Payment
-              </button>` : ''}
+              💳 Resume Payment
+               </button>
+              <p style="font-size:0.8rem;color:#8b5cf6;margin:4px 0 0">Payment pending — click to complete your order</p>`
+            : ''}
             ${order.status === 'delivered' && order.delivery_confirmed_at ? 
               `<button class="btn" style="background:#94a3b8;color:#fff;cursor:not-allowed" disabled>Delivery Confirmed ✓</button>` : 
               order.status === 'delivered' ? 

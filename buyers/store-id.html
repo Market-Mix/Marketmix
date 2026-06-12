@@ -1033,8 +1033,36 @@ if (!token && window.self === window.top) {
       const address = storeField(store, 'businessAddress', 'business_address', '');
       const memberSince = store.memberSince || store.created_at;
       const reviews = parseInt(storeField(store, 'totalReviews', 'total_reviews', 0)) || 0;
+      const bannerUrl = storeField(store, 'storeBannerUrl', 'store_banner_url', '');
+      const themeData = store.storeTheme || store.store_theme || {};
+      const themeName = typeof themeData === 'string' ? themeData : themeData.name || 'default';
 
       document.title = `${name} | MarketMix`;
+
+      // Hero banner
+      const heroEl = document.getElementById('storeHeader');
+      if (heroEl) {
+        const themeGradients = {
+          default: 'linear-gradient(135deg, #1c0a04 0%, #431407 40%, #7c2d12 70%, #ea580c 100%)',
+          blue: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%)',
+          green: 'linear-gradient(135deg, #052e16 0%, #14532d 50%, #16a34a 100%)',
+          purple: 'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #7c3aed 100%)',
+          dark: 'linear-gradient(135deg, #000 0%, #111827 50%, #374151 100%)',
+          gold: 'linear-gradient(135deg, #451a03 0%, #92400e 50%, #d97706 100%)',
+        };
+
+        if (bannerUrl) {
+          heroEl.style.backgroundImage = `url("${String(bannerUrl).replace(/"/g, '\\"')}")`;
+          heroEl.style.backgroundSize = 'cover';
+          heroEl.style.backgroundPosition = 'center';
+          heroEl.style.backgroundRepeat = 'no-repeat';
+        } else {
+          heroEl.style.backgroundImage = themeGradients[themeName] || themeGradients.default;
+          heroEl.style.backgroundSize = '';
+          heroEl.style.backgroundPosition = '';
+          heroEl.style.backgroundRepeat = '';
+        }
+      }
 
       // Avatar
       const logoEl = document.getElementById('storeLogo');

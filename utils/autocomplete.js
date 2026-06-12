@@ -10,7 +10,7 @@ class MarketMixAutocomplete {
     this.cacheTimestamp = null;
     this.CACHE_DURATION = 5 * 60 * 1000; // Cache for 5 minutes
     this.debounceTimer = null;
-    this.debounceDelay = 300; // ms
+    this.debounceDelay = 500; // ms
   }
 
   /**
@@ -64,7 +64,7 @@ class MarketMixAutocomplete {
    * Search products by query (uses backend search endpoint)
    */
   async searchProducts(query) {
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       return [];
     }
 
@@ -93,7 +93,7 @@ class MarketMixAutocomplete {
    * Search categories by query (uses backend search endpoint)
    */
   async searchCategories(query) {
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       return [];
     }
 
@@ -125,7 +125,7 @@ class MarketMixAutocomplete {
    * @returns {Promise<Array>} Array of suggestions (products and categories)
    */
   async getSuggestions(query, limit = 8) {
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       return [];
     }
 
@@ -212,7 +212,7 @@ function setupAutocomplete(inputElement, containerElement, onSelect) {
   inputElement.addEventListener('input', async (e) => {
     const query = e.target.value;
 
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       containerElement.style.display = 'none';
       return;
     }
@@ -272,7 +272,7 @@ function setupAutocomplete(inputElement, containerElement, onSelect) {
   // Show dropdown on focus if input has value
   inputElement.addEventListener('focus', async () => {
     const query = inputElement.value.trim();
-    if (query) {
+    if (query.length >= 2) {
       const suggestions = await autocompleteEngine.getSuggestions(query, 10);
       if (suggestions.length > 0) {
         containerElement.innerHTML = suggestions.map((suggestion, index) => `

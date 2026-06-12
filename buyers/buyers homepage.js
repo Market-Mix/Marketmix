@@ -1,8 +1,19 @@
 window.addEventListener('DOMContentLoaded', async () => {
   const API = 'https://marketmix-backend.onrender.com/api';
+  const NOTIF_POLL_INTERVAL = 3 * 60 * 1000;
+  const _cache = new Map();
   let cart = JSON.parse(localStorage.getItem('cart')) || [];
   let cachedCategories = null;
   let flashCountdownInterval = null;
+
+  async function cachedFetch(url, ttlMs = 5 * 60 * 1000) {
+    const cached = _cache.get(url);
+    if (cached && Date.now() - cached.ts < ttlMs) return cached.data;
+    const res = await fetch(url);
+    const data = await res.json();
+    _cache.set(url, { data, ts: Date.now() });
+    return data;
+  }
 
   // =====================================================
   // INITIALIZE NOTIFICATION MANAGER
@@ -19,6 +30,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   const buyerId = window.getBuyerId();
   if (buyerId && typeof NotificationManager !== 'undefined') {
+    NotificationManager.cache.fetchInterval = NOTIF_POLL_INTERVAL;
     await NotificationManager.init(buyerId);
 
     window.addEventListener('pageshow', async () => {
@@ -262,7 +274,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const cat = normCat(p.category||p.category_name||'');
     const inStock = isInStock(p);
     return `<div class="${cls}" data-product-id="${p.id}" data-category="${cat}">
-      <img src="${img}" alt="${escapeHtml(p.name)}" loading="lazy">
+      <img src="${img}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" width="300" height="300">
       <div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div>
       <div class="meta"><div class="price">₦${price}</div></div></div>
       <button class="add-to-cart" ${inStock ? '' : 'disabled'}>${inStock ? 'Add to Cart' : 'Out of stock'}</button></div>`;
@@ -271,8 +283,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   async function getCategories() {
     if (cachedCategories) return cachedCategories;
     try {
-      const r = await fetch(`${API}/categories`);
-      const d = await r.json();
+      const d = await cachedFetch(`${API}/categories`, 30 * 60 * 1000);
       cachedCategories = d.data || [];
     } catch(e) { cachedCategories = []; }
     return cachedCategories;
@@ -358,7 +369,7 @@ function makeFloatingList(btn, items) {
           cards.forEach(card => { const show = normCat(card.dataset.category||'')=== cat; card.style.display=show?'':'none'; if(show)found++; });
           if (!found) {
             grid.innerHTML = `<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">Loading...</div>`;
-            fetch(`${API}/products?limit=200`).then(r=>r.json()).then(d=>{
+            cachedFetch(`${API}/products?limit=100`, 5 * 60 * 1000).then(d=>{
               const items=(d.data||[]).filter(p=>normCat(p.category||p.category_name||'')=== cat);
               grid.innerHTML = items.length ? items.map(p=>renderCard(p)).join('') : `<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No products found</div>`;
               attachCardClicks(grid); attachCartListeners();
@@ -374,8 +385,7 @@ function makeFloatingList(btn, items) {
     const container = document.getElementById('flashProducts');
     if (!container) return;
     try {
-      const r = await fetch(`${API}/products?limit=200`);
-      const d = await r.json();
+      const d = await cachedFetch(`${API}/products?limit=100`, 5 * 60 * 1000);
       const now = Date.now();
       const items = (d.data||[]).filter(p => {
         if (!p.flash_start||!p.flash_end) return false;
@@ -396,7 +406,7 @@ function makeFloatingList(btn, items) {
       }
       if (!items.length) { container.innerHTML='<p style="text-align:center;padding:20px;color:#666">No flash sales active</p>'; return; }
       container.innerHTML = items.map(p => `<div class="flash-card" data-product-id="${p.id}">
-        <img src="${p.main_image_url||'marketplace.png'}" alt="${escapeHtml(p.name)}" loading="lazy">
+        <img src="${p.main_image_url||'marketplace.png'}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" width="300" height="300">
         <h4>${escapeHtml(p.name)}</h4>
         <p class="price">₦${typeof p.price==='number'?p.price.toFixed(2):p.price}</p>
         <button class="add-to-cart">Add to Cart</button></div>`).join('');
@@ -406,8 +416,10 @@ function makeFloatingList(btn, items) {
 
   async function loadAllProducts() {
     try {
-      const [cats, prodRes] = await Promise.all([getCategories(), fetch(`${API}/products?limit=50`)]);
-      const d = await prodRes.json();
+      const [cats, d] = await Promise.all([
+        getCategories(),
+        cachedFetch(`${API}/products?limit=40&page=1`, 3 * 60 * 1000)
+      ]);
       console.log('Products API response:', d); // CHECK THIS IN BROWSER CONSOLE
       let products = d.data?.data || d.data || [];
       if (!Array.isArray(products)) products = [];
@@ -419,9 +431,9 @@ function makeFloatingList(btn, items) {
       if (naGrid) naGrid.innerHTML = loadingHtml;
       if (recGrid) recGrid.innerHTML = loadingHtml;
       const inStockProducts = products.filter(isInStock);
-      const bestSellers = inStockProducts.slice(0,12);
-      const newArrivals = inStockProducts.slice(0,12);
-      const recommended = inStockProducts.slice(0,6);
+      const bestSellers = inStockProducts;
+      const newArrivals = inStockProducts;
+      const recommended = inStockProducts.slice(0, 12);
       if (bsGrid) {
         bsGrid.innerHTML = bestSellers.length
           ? bestSellers.map(p=>renderCard(p)).join('')
@@ -437,7 +449,7 @@ function makeFloatingList(btn, items) {
       if (recGrid) {
         recGrid.innerHTML = recommended.length
           ? recommended.map(p=>`<div class="recommended-item" data-product-id="${p.id}">
-            <img src="${p.main_image_url||'marketplace.png'}" alt="${escapeHtml(p.name)}" loading="lazy">
+            <img src="${p.main_image_url||'marketplace.png'}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" width="300" height="300">
             <h4>${escapeHtml(p.name)}</h4><p class="price">₦${typeof p.price==='number'?p.price.toFixed(2):p.price}</p>
             <button class="add-to-cart">Add to Cart</button></div>`).join('')
           : '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No recommended products available</div>';
@@ -467,9 +479,9 @@ function makeFloatingList(btn, items) {
           ? `store-id.html?store=${encodeURIComponent(s.storeId || s.store_id)}`
           : `store-id.html?seller=${encodeURIComponent(s.sellerId || s.seller_id)}`;
         return `<a href="${storeHref}" class="brand-card">
-          <img src="${logo}" alt="${escapeHtml(s.businessName)}" class="brand-logo" onerror="this.src='${logo}'">
+          <img src="${logo}" alt="${escapeHtml(s.businessName)}" class="brand-logo" loading="lazy" decoding="async" width="100" height="100" onerror="this.src='${logo}'">
           <h3>${escapeHtml(s.businessName)}</h3><p class="muted">${escapeHtml(s.category||'Marketplace')}</p>
-          <img src="${feat}" class="featured-product" onerror="this.src='marketplace.png'"></a>`;
+          <img src="${feat}" class="featured-product" alt="" loading="lazy" decoding="async" width="300" height="300" onerror="this.src='marketplace.png'"></a>`;
       }).join('');
     } catch(e) {}
   }
@@ -508,6 +520,7 @@ function makeFloatingList(btn, items) {
         : `store-id.html?seller=${encodeURIComponent(s.seller_id || s.sellerId)}`;
       return `<a href="${storeHref}" title="${escapeHtml(s.business_name)}" class="following-shop-item">
         <img src="${escapeHtml(logo)}" alt="${escapeHtml(s.business_name)}"
+          loading="lazy" decoding="async" width="150" height="150"
           onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.business_name)}&background=F97316&color=fff&size=150'">
         <span class="shop-name">${escapeHtml(s.business_name)}</span>
         ${s.is_verified ? '<span class="verified-badge" title="Verified">✓</span>' : ''}
@@ -517,6 +530,13 @@ function makeFloatingList(btn, items) {
     console.error('loadFollowedShops', e);
   }
 }
+
+  let _lastFollowFetch = 0;
+  async function loadFollowedShopsThrottled() {
+    if (Date.now() - _lastFollowFetch < 2 * 60 * 1000) return;
+    _lastFollowFetch = Date.now();
+    await loadFollowedShops();
+  }
 
   const searchInput = document.getElementById('searchInput');
   const searchAC = document.getElementById('searchAutocomplete');
@@ -583,22 +603,22 @@ function makeFloatingList(btn, items) {
 
   window.addEventListener('pageshow', () => {
     syncCartFromStorage();
-    loadFollowedShops();
+    loadFollowedShopsThrottled();
   });
   window.addEventListener('focus', () => {
     syncCartFromStorage();
-    loadFollowedShops();
+    loadFollowedShopsThrottled();
   });
   window.addEventListener('popstate', syncCartFromStorage);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       syncCartFromStorage();
-      loadFollowedShops();
+      loadFollowedShopsThrottled();
     }
   });
   window.addEventListener('storage', e => {
     if (e.key === 'cart') syncCartFromStorage();
-    if (e.key === 'followedShopsChanged') loadFollowedShops();
+    if (e.key === 'followedShopsChanged') loadFollowedShopsThrottled();
   });
   window.addEventListener('beforeunload', ()=>{ clearInterval(flashCountdownInterval); clearInterval(flashRefreshInterval); });
 
