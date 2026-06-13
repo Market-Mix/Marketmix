@@ -169,3 +169,48 @@ function hasSpecs(item) {
   
   return !!(ps?.color || ps?.size);
 }
+
+/**
+ * Render specifications section for refund modals/views
+ * Used in both buyer and seller refund case details
+ * @param {Object} refund - Refund case object
+ * @returns {String} HTML markup with specifications section, or empty string if no specs
+ */
+function renderRefundSpecifications(refund) {
+  if (!refund) return '';
+
+  // Extract color/size from refund object
+  let color = refund.color || null;
+  let size = refund.size || null;
+
+  // Fallback to product_snapshot if available
+  if ((!color || !size) && (refund.product_snapshot || refund.productSnapshot)) {
+    let ps = refund.product_snapshot || refund.productSnapshot;
+    if (typeof ps === 'string') {
+      try {
+        ps = JSON.parse(ps);
+      } catch (e) {
+        ps = {};
+      }
+    }
+    if (!color) color = ps.color || null;
+    if (!size) size = ps.size || null;
+  }
+
+  // Don't render if no specs exist
+  if (!color && !size) return '';
+
+  // Build specification markup
+  const specs = [];
+  if (color) specs.push(`<div style="margin-bottom: 8px;"><strong>Color:</strong> ${escapeHtmlSpec(color)}</div>`);
+  if (size) specs.push(`<div style="margin-bottom: 8px;"><strong>Size:</strong> ${escapeHtmlSpec(size)}</div>`);
+
+  return `
+    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+      <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: #1e293b; font-weight: 600;">Specifications</h3>
+      <div style="color: #475569; font-size: 0.95rem;">
+        ${specs.join('')}
+      </div>
+    </div>
+  `;
+}

@@ -1404,6 +1404,9 @@
         <span class="detail-value" id="detailsDescription" style="white-space: pre-wrap; line-height: 1.6;">---</span>
       </div>
 
+      <!-- Specifications Section -->
+      <div id="detailsSpecifications"></div>
+
         <div class="detail-row">
         <span class="detail-label">Status:</span>
         <span class="detail-value" id="detailsStatus">---</span>
@@ -2837,10 +2840,7 @@
       return `
       <div class="table-row" data-report-id="${report.id}">
         <div class="col-store">${report.store_name}</div>
-        <div class="col-product">
-          <div style="font-weight:600">${escapeHtmlSpec(report.product_name)}</div>
-          ${(report.color || report.size) ? `<div style="font-size:0.85rem;color:#64748b;margin-top:3px">${report.color ? `Color: ${escapeHtmlSpec(report.color)}` : ''}${report.color && report.size ? ' · ' : ''}${report.size ? `Size: ${escapeHtmlSpec(report.size)}` : ''}</div>` : ''}
-        </div>
+        <div class="col-product">${escapeHtmlSpec(report.product_name)}</div>
         <div class="col-order">${report.order_id}</div>
         <div class="col-amount">₦${formatCurrency(report.total_amount)}</div>
         <div class="col-status">
@@ -3643,6 +3643,13 @@
     document.getElementById('detailsDecision').textContent = report.marketmix_reason || (['resolved','rejected','refunded'].includes(report.status) ? 'MarketMix decision recorded.' : 'Awaiting MarketMix review.');
     document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
     document.getElementById('detailsDescription').textContent = report.description;
+    
+    // Render specifications if available
+    const specsSection = document.getElementById('detailsSpecifications');
+    const specsHtml = renderRefundSpecifications(report);
+    if (specsSection) {
+      specsSection.innerHTML = specsHtml || '<p style="color: #999; font-size: 0.9em;">No specifications available.</p>';
+    }
 
     // Show account details if available
     const accountSection = document.getElementById('accountDetailsSection');

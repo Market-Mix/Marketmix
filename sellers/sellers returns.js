@@ -546,17 +546,24 @@ function openModal(returnId) {
 
   // Populate modal
   document.getElementById('modalBuyerName').textContent = returnItem.buyerName;
-  const modalProductNameEl = document.getElementById('modalProductName');
-  modalProductNameEl.innerHTML = `
-    <div>${escapeHtmlSpec(returnItem.productName)}</div>
-    ${(returnItem.color || returnItem.size) ? `<div style="font-size:0.85rem;color:#64748b;margin-top:4px">${returnItem.color ? `Color: ${escapeHtmlSpec(returnItem.color)}` : ''}${returnItem.color && returnItem.size ? ' · ' : ''}${returnItem.size ? `Size: ${escapeHtmlSpec(returnItem.size)}` : ''}</div>` : ''}
-  `;
+  document.getElementById('modalProductName').textContent = returnItem.productName;
   document.getElementById('modalOrderId').textContent = returnItem.orderId;
   document.getElementById('modalAmount').textContent = `$${returnItem.amount.toFixed(2)}`;
   document.getElementById('modalReason').textContent = returnItem.reason;
   document.getElementById('modalNotes').textContent = returnItem.notes || 'No additional notes';
   const modalProductImage = document.getElementById('modalProductImage');
   if (modalProductImage) modalProductImage.src = returnItem.productImage;
+  
+  // Render specifications section
+  const specsGroup = document.getElementById('modalSpecificationsGroup');
+  const specsDiv = document.getElementById('modalSpecifications');
+  const specsHtml = renderRefundSpecifications(returnItem);
+  if (specsHtml) {
+    specsGroup.style.display = 'block';
+    specsDiv.innerHTML = specsHtml;
+  } else {
+    specsGroup.style.display = 'none';
+  }
 
   // Debug: evidence URL
   console.log('Refund evidence URL:', returnItem.evidence_url || returnItem.evidenceUrl || returnItem.evidenceUrl);
