@@ -335,6 +335,53 @@
     color: #333;
   }
 
+  .product-link {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    width: 100%;
+    min-height: 100%;
+    background: none;
+    border: none;
+    color: #1d4ed8;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+  }
+
+  .product-link:hover {
+    text-decoration: underline;
+  }
+
+  .product-details-grid {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .product-details-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.95rem;
+  }
+
+  .product-details-row:last-child {
+    border-bottom: none;
+  }
+
+  .product-image-preview {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 10px;
+    object-fit: cover;
+    margin-bottom: 16px;
+  }
+
   .btn-secondary:hover {
     background: #d1d5db;
   }
@@ -603,6 +650,19 @@
   </div>
 </div>
 
+<!-- Product Details Modal -->
+<div id="productDetailsModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Product Details</h2>
+      <button class="close-modal" onclick="closeModal('productDetailsModal')">&times;</button>
+    </div>
+    <div class="modal-body" id="productDetailsBody"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('productDetailsModal')">Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
 function getToken() {
@@ -1010,13 +1070,18 @@ async function renderOrders(orders) {
 
     row.innerHTML = `
       <td data-label="Order ID">#${entry.orderId}</td>
-      <td data-label="Name" class="product-cell">${escapeHtml(productName || '')}${specMarkup}</td>
+      <td data-label="Name" class="product-cell"><button class="product-link" type="button">${escapeHtml(productName || 'Product')}${specMarkup}</button></td>
       <td data-label="Date">${formatDate(entry.created_at)}</td>
       <td data-label="Total Amount">${formatCurrency(entry.item_total)}</td>
       <td data-label="Status" class="status ${entry.status}">${entry.status}</td>
     `;
 
     tbody.appendChild(row);
+
+    const productButton = row.querySelector('.product-link');
+    if (productButton) {
+      productButton.addEventListener('click', () => openProductDetailsModal(entry.item, entry.order));
+    }
   });
 
   // Add review buttons for delivered orders (per-row)
@@ -1141,10 +1206,87 @@ function openModal(modalId) {
   }
 }
 
+function parseProductSnapshot(snapshot) {
+  if (!snapshot) return {};
+  if (typeof snapshot === 'string') {
+    try {
+      return JSON.parse(snapshot) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  return snapshot;
+}
+
+function getProductImageUrl(item) {
+  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
+  return ps.image || item.image || item.product_image || item.productImage || 'https://via.placeholder.com/560x420?text=No+Image';
+}
+
+function getProductName(item) {
+  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
+  return item.product_name || item.name || ps.name || ps.title || 'Product';
+}
+
+function getItemPricePaid(item) {
+  return item.price_at_purchase || item.unit_price || item.price || item.amount || 0;
+}
+
+function openProductDetailsModal(item, order) {
+  if (!item) return;
+  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
+  const imageUrl = getProductImageUrl(item);
+  const productName = getProductName(item);
+  const color = item.color || ps.color || null;
+  const size = item.size || ps.size || null;
+  const quantity = item.quantity || 0;
+  const pricePaid = getItemPricePaid(item);
+  const storeName = order?.store_name || order?.store?.name || order?.seller_name || order?.seller?.name || order?.sellerName || order?.storeName || 'Store';
+  const orderStatus = order?.status || 'Unknown';
+  const orderDate = order?.created_at ? formatDate(order.created_at) : 'Unknown';
+  const orderId = order?.id || order?.orderId || 'Unknown';
+
+  const details = [];
+  if (color) details.push(`<div class="product-details-row"><span>Color</span><span>${escapeHtml(color)}</span></div>`);
+  if (size) details.push(`<div class="product-details-row"><span>Size</span><span>${escapeHtml(size)}</span></div>`);
+
+  document.getElementById('productDetailsBody').innerHTML = `
+    <img class="product-image-preview" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(productName)}" onerror="this.src='https://via.placeholder.com/560x420?text=No+Image'" />
+    <div style="margin-bottom: 16px;">
+      <h3 style="margin: 0 0 10px; font-size: 1.3rem; color: #111;">${escapeHtml(productName)}</h3>
+      <div class="product-details-grid">
+        ${details.join('')}
+        <div class="product-details-row"><span>Quantity</span><span>${escapeHtml(quantity)}</span></div>
+        <div class="product-details-row"><span>Price Paid</span><span>₦${parseFloat(pricePaid || 0).toFixed(2)}</span></div>
+      </div>
+    </div>
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9;">
+      <div class="product-details-row"><span>Store Name</span><span>${escapeHtml(storeName)}</span></div>
+      <div class="product-details-row"><span>Order Status</span><span>${escapeHtml(orderStatus)}</span></div>
+      <div class="product-details-row"><span>Order Date</span><span>${escapeHtml(orderDate)}</span></div>
+      <div class="product-details-row"><span>Order ID</span><span>#${escapeHtml(orderId)}</span></div>
+    </div>
+  `;
+  openModal('productDetailsModal');
+}
+
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) {
     modal.classList.remove('active');
+  }
+}
+
+window.addEventListener('click', (event) => {
+  const modal = document.getElementById('productDetailsModal');
+  if (modal && event.target === modal) {
+    closeModal('productDetailsModal');
+  }
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeModal('productDetailsModal');
   }
 }
 

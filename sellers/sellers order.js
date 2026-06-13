@@ -235,8 +235,8 @@ function renderOrders(reset) {
     const fColor = firstItem.color || ps.color || null;
     const fSize = firstItem.size || ps.size || null;
     const specHtml = (fColor || fSize) ? `<div class="product-specs" style="font-size:0.9rem;color:#4a5568;margin-top:4px">${fColor ? `Color: ${fColor}` : ''}${fColor && fSize ? ' · ' : ''}${fSize ? `Size: ${fSize}` : ''}</div>` : '';
-    const productLabel = (firstItem.productName || '—') + extraCount + specHtml;
-    const totalQty   = order.items.reduce((s, i) => s + i.quantity, 0);
+    const productLabel = `<button class="product-link" type="button">${escapeHtml(firstItem.product_name || firstItem.productName || '—')}${extraCount}${specHtml}</button>`;
+    const totalQty   = order.items.reduce((s, i) => s + (i.quantity || 0), 0);
 
     const row = document.createElement('div');
     row.className = 'order-row';
@@ -257,6 +257,11 @@ function renderOrders(reset) {
     `;
 
     orderTable.appendChild(row);
+
+    const productButton = row.querySelector('.product-link');
+    if (productButton) {
+      productButton.addEventListener('click', () => openProductDetailsModal(firstItem, order));
+    }
   });
 
   // Attach event listeners to action buttons
@@ -421,6 +426,89 @@ async function updateOrderStatus(orderId, newStatus) {
   }
 }
 
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function parseProductSnapshot(snapshot) {
+  if (!snapshot) return {};
+  if (typeof snapshot === 'string') {
+    try {
+      return JSON.parse(snapshot) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  return snapshot;
+}
+
+function getProductImageUrl(item) {
+  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
+  return ps.image || item.image || item.product_image || item.productImage || 'https://via.placeholder.com/560x420?text=No+Image';
+}
+
+function getProductName(item) {
+  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
+  return item.product_name || item.productName || ps.name || ps.title || 'Product';
+}
+
+function getItemPricePaid(item) {
+  return item.price_at_purchase || item.unit_price || item.price || item.amount || 0;
+}
+
+function closeProductDetailsModal() {
+  const modal = document.getElementById('productDetailsModal');
+  if (modal) modal.classList.remove('show');
+}
+
+function openProductDetailsModal(item, order) {
+  if (!item) return;
+  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
+  const imageUrl = getProductImageUrl(item);
+  const productName = getProductName(item);
+  const color = item.color || ps.color || null;
+  const size = item.size || ps.size || null;
+  const quantity = item.quantity || 0;
+  const pricePaid = getItemPricePaid(item);
+  const storeName = order?.store_name || order?.store?.name || order?.seller_name || order?.seller?.name || order?.sellerName || order?.storeName || window.StoreManager?.getActiveStore?.()?.business_name || 'Store';
+  const orderStatus = order?.status || 'Unknown';
+  const orderDate = order?.createdAt ? formatDate(order.createdAt) : (order?.created_at ? formatDate(order.created_at) : 'Unknown');
+  const orderId = order?.orderId || order?.id || 'Unknown';
+
+  const details = [];
+  if (color) details.push(`<div class="product-details-row"><span>Color</span><span>${escapeHtml(color)}</span></div>`);
+  if (size) details.push(`<div class="product-details-row"><span>Size</span><span>${escapeHtml(size)}</span></div>`);
+
+  const body = document.getElementById('productDetailsBody');
+  if (!body) return;
+  body.innerHTML = `
+    <img class="product-image-preview" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(productName)}" onerror="this.src='https://via.placeholder.com/560x420?text=No+Image'" />
+    <div style="margin-bottom: 16px;">
+      <h4 style="margin:0 0 12px; font-size:1.25rem; color:#111;">${escapeHtml(productName)}</h4>
+      <div class="product-details-grid">
+        ${details.join('')}
+        <div class="product-details-row"><span>Quantity</span><span>${escapeHtml(quantity)}</span></div>
+        <div class="product-details-row"><span>Price Paid</span><span>₦${parseFloat(pricePaid || 0).toFixed(2)}</span></div>
+      </div>
+    </div>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #eceff4;">
+      <div class="product-details-row"><span>Store Name</span><span>${escapeHtml(storeName)}</span></div>
+      <div class="product-details-row"><span>Order Status</span><span>${escapeHtml(orderStatus)}</span></div>
+      <div class="product-details-row"><span>Order Date</span><span>${escapeHtml(orderDate)}</span></div>
+      <div class="product-details-row"><span>Order ID</span><span>#${escapeHtml(orderId)}</span></div>
+    </div>
+  `;
+
+  const modal = document.getElementById('productDetailsModal');
+  if (modal) modal.classList.add('show');
+}
+
 /* ── modal ───────────────────────────────────────────────── */
 
 function closeModal() {
@@ -441,6 +529,13 @@ confirmNo.addEventListener('click', closeModal);
 
 window.addEventListener('click', e => {
   if (e.target === confirmModal) closeModal();
+  if (e.target === document.getElementById('productDetailsModal')) closeProductDetailsModal();
+});
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeProductDetailsModal();
+  }
 });
 
 /* ── filters / search ────────────────────────────────────── */

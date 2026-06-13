@@ -155,8 +155,20 @@
       </div>
     </div>
   </div>
-      
-
+  
+  <div class="modal" id="productDetailsModal">
+    <div class="modal-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;">Product Details</h3>
+        <button class="close-modal" onclick="closeProductDetailsModal()">&times;</button>
+      </div>
+      <div id="productDetailsBody"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+        <button style="background:#e5e7eb;color:#333;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;" onclick="closeProductDetailsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+  
   <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
