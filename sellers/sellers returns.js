@@ -102,8 +102,19 @@ async function loadSellerRefundCases() {
 
     const json = await res.json();
     const data = json?.data || [];
+    
+    // DEBUG: Log raw API response for first item
+    if (data.length > 0) {
+      console.log('SELLER REFUND API RESPONSE (RAW)', data[0]);
+    }
 
     returnsData = (data || []).map(mapRefundCaseFromSupabase);
+    
+    // DEBUG: Log mapped data for first item
+    if (returnsData.length > 0) {
+      console.log('SELLER REFUND MAPPED DATA', returnsData[0]);
+    }
+    
     return returnsData;
   } catch (err) {
     console.error('Error loading seller refund cases:', err);
@@ -522,7 +533,6 @@ function renderTable(data = returnsData) {
       <div class="col-buyer">${item.buyerName}</div>
       <div class="col-product">
         <div style="font-weight:600">${escapeHtmlSpec(item.productName)}</div>
-        ${(item.color || item.size) ? `<div style="font-size:0.85rem;color:#64748b;margin-top:3px">${item.color ? `Color: ${escapeHtmlSpec(item.color)}` : ''}${item.color && item.size ? ' · ' : ''}${item.size ? `Size: ${escapeHtmlSpec(item.size)}` : ''}</div>` : ''}
       </div>
       <div class="col-order">${item.orderId}</div>
       <div class="col-amount">\₦${item.amount.toFixed(2)}</div>
@@ -543,6 +553,9 @@ function openModal(returnId) {
   if (!returnItem) return;
 
   currentReturnId = returnId;
+  
+  // DEBUG: Log the exact object passed to modal
+  console.log('SELLER VIEW MODAL DATA', returnItem);
 
   // Populate modal
   document.getElementById('modalBuyerName').textContent = returnItem.buyerName;
