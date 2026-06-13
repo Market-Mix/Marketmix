@@ -108,124 +108,6 @@ function getToken() {
       font-size: 14px;
     }
 
-    .product-link {
-      display: inline-flex;
-      align-items: flex-start;
-      gap: 0.25rem;
-      background: none;
-      border: none;
-      color: #1d4ed8;
-      cursor: pointer;
-      font: inherit;
-      padding: 0;
-      text-align: left;
-    }
-
-    .product-link:hover {
-      text-decoration: underline;
-    }
-
-    .product-details-grid {
-      display: grid;
-      gap: 12px;
-      margin-top: 16px;
-    }
-
-    .product-details-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 0.95rem;
-    }
-
-    .product-details-row:last-child {
-      border-bottom: none;
-    }
-
-    .product-image-preview {
-      width: 100%;
-      max-width: 100%;
-      border-radius: 10px;
-      object-fit: cover;
-      margin-bottom: 16px;
-    }
-
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0.5);
-      z-index: 2000;
-      padding: 20px;
-    }
-
-    .modal.active {
-      display: flex;
-    }
-
-    .modal-content {
-      width: min(560px, 100%);
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 24px 80px rgba(15,23,42,.15);
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .modal-header h2 {
-      margin: 0;
-      font-size: 1.4rem;
-      color: #111;
-    }
-
-    .close-modal {
-      background: none;
-      border: none;
-      font-size: 26px;
-      cursor: pointer;
-      color: #64748b;
-    }
-
-    .modal-body {
-      color: #334155;
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .btn-secondary {
-      background: #e5e7eb;
-      color: #111;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 18px;
-      cursor: pointer;
-    }
-
-    .btn-secondary:hover {
-      background: #d1d5db;
-    }
-
     .status {
       display: inline-block;
       background: #0EA5E9;
@@ -338,20 +220,6 @@ function getToken() {
     <h2>Order Details</h2>
     <p style="text-align:center;padding:40px;color:#64748b">Loading order...</p>
   </main>
-
-  <div id="productDetailsModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Product Details</h2>
-        <button class="close-modal" onclick="document.getElementById('productDetailsModal').classList.remove('active')">&times;</button>
-      </div>
-      <div class="modal-body" id="productDetailsBody"></div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="document.getElementById('productDetailsModal').classList.remove('active')">Close</button>
-      </div>
-    </div>
-  </div>
-
  <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
@@ -403,7 +271,7 @@ function render(o) {
     </div>
 
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-      ${items.map((item, index) => {
+      ${items.map(item => {
         // product_snapshot may be string or object
         let ps = item.product_snapshot || item.productSnapshot || {};
         if (typeof ps === 'string') {
@@ -414,8 +282,8 @@ function render(o) {
         return `
         <div class="product">
           <div class="product-details">
-            <h4><button class="product-link" type="button" data-item-index="${index}">${escapeHtml(item.product_name || 'Product')}</button></h4>
-            ${color || size ? `<p style="margin:6px 0 0;color:#64748b;font-size:0.95rem">${color ? `Color: ${escapeHtml(color)}` : ''}${color && size ? ' · ' : ''}${size ? `Size: ${escapeHtml(size)}` : ''}</p>` : ''}
+            <h4>${item.product_name || 'Product'}</h4>
+            ${color || size ? `<p style="margin:6px 0 0;color:#64748b;font-size:0.95rem">${color ? `Color: ${color}` : ''}${color && size ? ' · ' : ''}${size ? `Size: ${size}` : ''}</p>` : ''}
             <p>Qty: ${item.quantity}</p>
             <p>Price: ₦${Number(item.price).toLocaleString()}</p>
             <p>Subtotal: ₦${Number(item.price * item.quantity).toLocaleString()}</p>
@@ -447,18 +315,6 @@ function render(o) {
       <button class="support-btn" onclick="alert('Support: support@marketmix.com')"><i class="fas fa-headset"></i> Contact Support</button>
     </div>
   `;
-  window.currentOrderItems = items;
-  window.currentOrderData = o;
-
-  document.querySelectorAll('.product-link').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.itemIndex);
-      const item = window.currentOrderItems?.[idx];
-      if (item) {
-        openProductDetailsModal(item, window.currentOrderData);
-      }
-    });
-  });
 }
 
 function statusColor(s) {
@@ -480,95 +336,6 @@ async function confirmDelivery(id) {
   if (!res.ok) { alert(d.message); return; }
   alert('Delivery confirmed!'); loadOrder();
 }
-
-function parseProductSnapshot(snapshot) {
-  if (!snapshot) return {};
-  if (typeof snapshot === 'string') {
-    try {
-      return JSON.parse(snapshot) || {};
-    } catch (e) {
-      return {};
-    }
-  }
-  return snapshot;
-}
-
-function escapeHtml(unsafe) {
-  if (unsafe === null || unsafe === undefined) return '';
-  return String(unsafe)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function getProductImageUrl(item) {
-  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
-  return ps.image || item.image || item.product_image || item.productImage || 'https://via.placeholder.com/560x420?text=No+Image';
-}
-
-function getProductName(item) {
-  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
-  return item.product_name || item.productName || ps.name || ps.title || 'Product';
-}
-
-function getItemPricePaid(item) {
-  return item.price_at_purchase || item.unit_price || item.price || item.amount || 0;
-}
-
-function openProductDetailsModal(item, order) {
-  if (!item) return;
-  const ps = parseProductSnapshot(item.product_snapshot || item.productSnapshot);
-  const imageUrl = getProductImageUrl(item);
-  const productName = getProductName(item);
-  const color = item.color || ps.color || null;
-  const size = item.size || ps.size || null;
-  const quantity = item.quantity || 0;
-  const pricePaid = getItemPricePaid(item);
-  const storeName = order?.store_name || order?.store?.name || order?.seller_name || order?.seller?.name || order?.sellerName || order?.storeName || 'Store';
-  const orderStatus = order?.status || 'Unknown';
-  const orderDate = order?.created_at ? formatDate(order.created_at) : 'Unknown';
-  const orderId = order?.id || order?.orderId || 'Unknown';
-
-  const details = [];
-  if (color) details.push(`<div class="product-details-row"><span>Color</span><span>${escapeHtml(color)}</span></div>`);
-  if (size) details.push(`<div class="product-details-row"><span>Size</span><span>${escapeHtml(size)}</span></div>`);
-
-  document.getElementById('productDetailsBody').innerHTML = `
-    <img class="product-image-preview" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(productName)}" onerror="this.src='https://via.placeholder.com/560x420?text=No+Image'" />
-    <div style="margin-bottom: 16px;">
-      <h3 style="margin: 0 0 10px; font-size: 1.3rem; color: #111;">${escapeHtml(productName)}</h3>
-      <div class="product-details-grid">
-        ${details.join('')}
-        <div class="product-details-row"><span>Quantity</span><span>${escapeHtml(quantity)}</span></div>
-        <div class="product-details-row"><span>Price Paid</span><span>₦${parseFloat(pricePaid || 0).toFixed(2)}</span></div>
-      </div>
-    </div>
-    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-      <div class="product-details-row"><span>Store Name</span><span>${escapeHtml(storeName)}</span></div>
-      <div class="product-details-row"><span>Order Status</span><span>${escapeHtml(orderStatus)}</span></div>
-      <div class="product-details-row"><span>Order Date</span><span>${escapeHtml(orderDate)}</span></div>
-      <div class="product-details-row"><span>Order ID</span><span>#${escapeHtml(orderId)}</span></div>
-    </div>
-  `;
-
-  document.getElementById('productDetailsModal').classList.add('active');
-}
-
-window.addEventListener('click', (event) => {
-  const modal = document.getElementById('productDetailsModal');
-  if (modal && event.target === modal) {
-    modal.classList.remove('active');
-  }
-});
-
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    const modal = document.getElementById('productDetailsModal');
-    if (modal) modal.classList.remove('active');
-  }
-});
 
 loadOrder();
   </script>
