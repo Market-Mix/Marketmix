@@ -169,10 +169,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!product) product = getMockProduct(productId);
 
   const urlSelectedSpecs = getSelectedSpecsFromUrl();
-  const savedSelectedSpecs = getCartItemSpecsFromStorage(productId);
-  const initialSelections = Object.keys(urlSelectedSpecs).length ? urlSelectedSpecs : savedSelectedSpecs;
+  // Only use specifications from URL parameters (explicit context from cart or deep linking)
+  // Do NOT automatically load from localStorage for normal navigation
+  const initialSelections = urlSelectedSpecs;
   if (Object.keys(initialSelections).length) {
-    console.log('Cart item loaded', initialSelections);
+    console.log('Specifications restored from URL parameters', initialSelections);
   }
 
   // Resolve and persist store id on the product object
