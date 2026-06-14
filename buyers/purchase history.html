@@ -383,6 +383,20 @@
     background: #d1d5db;
   }
 
+  .product-details-close {
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    padding: 0;
+    font-size: 1.4rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .product-list-inline { 
     display:flex;
     flex-direction:column;
@@ -656,7 +670,7 @@
     <div class="product-details-body">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
         <h3 id="pdName">Product Name</h3>
-        <button class="product-details-close" id="pdClose">&times;</button>
+        <button class="btn-secondary product-details-close" id="pdClose">&times;</button>
       </div>
       <div class="product-details-grid">
         <div class="pd-row"><strong>Order ID</strong><div id="pdOrderId">—</div></div>
@@ -1226,21 +1240,12 @@ function enhancePurchaseRows() {
       // Ignore clicks originating from interactive controls or excluded cells
       if (e.target.closest('button, a, input, select, textarea')) return;
       if (e.target.closest('[data-label="Order ID"]')) return;
-      if (e.target.closest('.status')) return;
-      // Primary behaviour: trigger the most relevant action button if present
-      const confirmBtn = row.querySelector('.confirm-delivery-btn');
-      if (confirmBtn) { confirmBtn.click(); return; }
-      const reportBtn = row.querySelector('.report-btn');
-      if (reportBtn) { reportBtn.click(); return; }
+      if (e.target.closest('[data-label="Status"]')) return;
+      if (e.target.closest('[data-label="Action"]')) return;
 
-      // Fallback: open appropriate modal based on status
       const orderId = row.dataset.orderId;
-      const statusText = (row.querySelector('[data-label="Status"]')?.innerText || '').toLowerCase();
-      if (statusText.includes('shipped') || statusText.includes('processing')) {
-        openDeliveryConfirmModal(orderId);
-      } else if (statusText.includes('delivered') || statusText.includes('completed')) {
-        openReportModal(orderId);
-      }
+      const productId = row.dataset.productId || '';
+      openProductDetailsModal(orderId, productId);
     });
   });
 }
