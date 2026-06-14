@@ -175,6 +175,40 @@
     object-fit: cover;
     margin-right: 8px;
   }
+
+  /* Product Details Modal styles (compact, modern card) */
+  .product-details-modal {
+    display: none;
+    position: fixed;
+    z-index: 2500;
+    left: 0; top: 0; right: 0; bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.45);
+    padding: 20px;
+  }
+  .product-details-modal.active { display:flex; }
+  .product-details-card {
+    width: 100%;
+    max-width: 620px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(2,6,23,0.12);
+    overflow: hidden;
+    display: flex;
+    gap: 0;
+    transition: transform 160ms ease;
+  }
+  .product-details-media { flex: 0 0 220px; background:#f9fafb; display:flex;align-items:center;justify-content:center;padding:18px; }
+  .product-details-media img { width: 100%; height: auto; max-height:260px; object-fit:cover; border-radius:8px; }
+  .product-details-body { padding: 18px; flex:1 1 auto; }
+  .product-details-body h3 { margin: 0 0 8px; font-size:1.05rem; color:#0f172a; }
+  .product-details-grid { display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:10px;color:#475569;font-size:0.95rem }
+  .product-details-grid .pd-row { flex:1 1 50%; min-width:140px }
+  .product-details-footer { display:flex;justify-content:space-between;align-items:center;margin-top:14px }
+  .product-details-footer .price { font-weight:700;color:#0b5c9f;font-size:1.05rem }
+  .product-details-close { background:none;border:0;font-size:20px;color:#64748b;cursor:pointer }
+  @media (max-width:600px){ .product-details-card{flex-direction:column} .product-details-media{flex:0 0 auto;padding:12px} .product-details-media img{max-height:300px} }
   .product-cell {
     display: flex;
     align-items: center;
@@ -613,6 +647,37 @@
   </div>
 </div>
 
+<!-- Product Details Modal -->
+<div id="productDetailsModal" class="product-details-modal" aria-hidden="true">
+  <div class="product-details-card" role="dialog" aria-modal="true">
+    <div class="product-details-media">
+      <img id="pdImage" src="https://via.placeholder.com/300x300?text=Product" alt="Product image">
+    </div>
+    <div class="product-details-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <h3 id="pdName">Product Name</h3>
+        <button class="product-details-close" id="pdClose">&times;</button>
+      </div>
+      <div class="product-details-grid">
+        <div class="pd-row"><strong>Order ID</strong><div id="pdOrderId">—</div></div>
+        <div class="pd-row"><strong>Order Date</strong><div id="pdDate">—</div></div>
+        <div class="pd-row"><strong>Store</strong><div id="pdStore">—</div></div>
+        <div class="pd-row"><strong>Status</strong><div id="pdStatus">—</div></div>
+        <div class="pd-row"><strong>Color</strong><div id="pdColor">—</div></div>
+        <div class="pd-row"><strong>Size</strong><div id="pdSize">—</div></div>
+        <div class="pd-row"><strong>Quantity</strong><div id="pdQty">—</div></div>
+        <div class="pd-row"><strong>Price Paid</strong><div id="pdPrice">—</div></div>
+      </div>
+      <div class="product-details-footer">
+        <div style="color:#64748b;font-size:0.9rem">Total Order: <strong id="pdOrderTotal">—</strong></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="closeProductDetailsModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 function getToken() {
@@ -936,6 +1001,8 @@ async function fetchProductNamesMap(productIds) {
 
 // Render orders in table (one row per product)
 async function renderOrders(orders) {
+  // keep last orders for modal lookup
+  window._lastRenderedOrders = orders || [];
   const tbody = document.getElementById('orderTableBody');
   const emptyState = document.getElementById('emptyState');
 
@@ -953,7 +1020,8 @@ async function renderOrders(orders) {
         product_id: null,
         product_name: null,
         quantity: 0,
-        item_total: parseFloat(order.total_amount || 0)
+        item_total: parseFloat(order.total_amount || 0),
+        order_total: parseFloat(order.total_amount || 0)
       });
     } else {
       items.forEach(item => {
@@ -969,6 +1037,7 @@ async function renderOrders(orders) {
           product_name: item.product_name || item.name || null,
           quantity: qty,
           item_total: itemTotal,
+          order_total: parseFloat(order.total_amount || 0),
           color: item.color || null,
           size: item.size || null,
         });
@@ -1007,6 +1076,8 @@ async function renderOrders(orders) {
     const row = document.createElement('tr');
     row.dataset.orderId = entry.orderId || '';
     row.dataset.productId = entry.product_id || '';
+    // Preserve order total for modal display
+    row.dataset.orderTotal = entry.order_total || '';
 
     const productName = entry.product_name || (entry.product_id ? (namesMap[entry.product_id] || '') : '');
     // Fallback to product_snapshot if color/size not present
@@ -1018,9 +1089,11 @@ async function renderOrders(orders) {
     const sizeVal = entry.size || ps.size || null;
     const specMarkup = (colorVal || sizeVal) ? `<div style="color:#64748b;font-size:0.9rem;margin-top:4px">${colorVal ? `Color: ${escapeHtml(colorVal)}` : ''}${colorVal && sizeVal ? ' · ' : ''}${sizeVal ? `Size: ${escapeHtml(sizeVal)}` : ''}</div>` : '';
 
+    // Make product name a dedicated clickable element (opens product details)
+    const productLink = `<a href="#" class="view-product" data-order-id="${escapeHtml(entry.orderId)}" data-product-id="${escapeHtml(entry.product_id || '')}">${escapeHtml(productName || '')}</a>`;
     row.innerHTML = `
       <td data-label="Order ID">#${entry.orderId}</td>
-      <td data-label="Name" class="product-cell">${escapeHtml(productName || '')}${specMarkup}</td>
+      <td data-label="Name" class="product-cell">${productLink}${specMarkup}</td>
       <td data-label="Date">${formatDate(entry.created_at)}</td>
       <td data-label="Total Amount">${formatCurrency(entry.item_total)}</td>
       <td data-label="Status" class="status ${entry.status}">${entry.status}</td>
@@ -1270,6 +1343,98 @@ function openReportModal(orderId) {
   
   openModal('reportModal');
 }
+
+// Product Details Modal functions
+function openProductDetailsModal(orderId, productId) {
+  const modal = document.getElementById('productDetailsModal');
+  if (!modal) return;
+  const orders = window._lastRenderedOrders || [];
+  const order = orders.find(o => String(o.id) === String(orderId) || String(o.orderId) === String(orderId));
+  // fallback to dataset lookup on rows if order not found
+  const row = document.querySelector(`#orderTableBody tr[data-order-id="${orderId}"]`);
+
+  let item = null;
+  if (order && Array.isArray(order.items)) {
+    item = order.items.find(it => String(it.product_id || it.productId || it.product || '') === String(productId)) || order.items[0];
+  }
+  // If not found, try to build from table row dataset
+  if (!item && row) {
+    item = {
+      product_name: row.querySelector('.product-cell')?.innerText || '',
+      quantity: row.dataset.quantity || 1
+    };
+  }
+
+  // Populate fields
+  const pdName = document.getElementById('pdName');
+  const pdImage = document.getElementById('pdImage');
+  const pdOrderId = document.getElementById('pdOrderId');
+  const pdDate = document.getElementById('pdDate');
+  const pdStore = document.getElementById('pdStore');
+  const pdStatus = document.getElementById('pdStatus');
+  const pdColor = document.getElementById('pdColor');
+  const pdSize = document.getElementById('pdSize');
+  const pdQty = document.getElementById('pdQty');
+  const pdPrice = document.getElementById('pdPrice');
+  const pdOrderTotal = document.getElementById('pdOrderTotal');
+
+  // defaults
+  pdName.textContent = item?.product_name || item?.name || 'Product';
+  pdOrderId.textContent = `#${orderId}`;
+  pdDate.textContent = row ? formatDate(row.querySelector('[data-label="Date"]')?.innerText || '') : (order ? formatDate(order.created_at) : '—');
+  pdStatus.textContent = order?.status || (row ? row.querySelector('[data-label="Status"]')?.innerText : '—');
+
+  // store name fallbacks
+  const storeName = order?.store_name || order?.shop_name || order?.seller?.business_name || order?.seller?.name || order?.store?.business_name || '';
+  pdStore.textContent = storeName || '—';
+
+  // specs: color/size from item or product_snapshot
+  let ps = item?.product_snapshot || item?.productSnapshot || {};
+  if (typeof ps === 'string') {
+    try { ps = JSON.parse(ps); } catch (e) { ps = {}; }
+  }
+  const color = item?.color || ps?.color || '';
+  const size = item?.size || ps?.size || '';
+  pdColor.textContent = color || '—';
+  pdSize.textContent = size || '—';
+
+  const qty = item?.quantity || item?.qty || 1;
+  pdQty.textContent = qty;
+
+  // price paid: prefer item.total_price, fall back to price * qty, else order total
+  const itemPrice = item?.total_price || (item?.price ? (Number(item.price) * Number(qty)) : null);
+  pdPrice.textContent = itemPrice ? formatCurrency(itemPrice) : (order?.total_amount ? formatCurrency(order.total_amount) : '—');
+
+  pdOrderTotal.textContent = order?.total_amount ? formatCurrency(order.total_amount) : (row?.dataset.orderTotal ? formatCurrency(row.dataset.orderTotal) : '—');
+
+  // image fallback from snapshot
+  let imageUrl = (ps && (ps.image || ps.images && ps.images[0])) || item?.image || item?.image_url || '';
+  if (!imageUrl) imageUrl = 'https://via.placeholder.com/300x300?text=Product';
+  pdImage.src = imageUrl;
+
+  modal.classList.add('active');
+}
+
+function closeProductDetailsModal() {
+  const modal = document.getElementById('productDetailsModal');
+  if (modal) modal.classList.remove('active');
+}
+
+// Delegate clicks on product links to open modal, don't interfere with row clicks
+document.getElementById('orderTableBody').addEventListener('click', function (e) {
+  const a = e.target.closest('a.view-product');
+  if (!a) return;
+  e.preventDefault();
+  const orderId = a.dataset.orderId;
+  const productId = a.dataset.productId;
+  openProductDetailsModal(orderId, productId);
+});
+
+// Close product modal when clicking outside card or pressing close
+document.getElementById('pdClose')?.addEventListener('click', closeProductDetailsModal);
+document.getElementById('productDetailsModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'productDetailsModal') closeProductDetailsModal();
+});
 
 async function submitReport() {
   const modal = document.getElementById('reportModal');
