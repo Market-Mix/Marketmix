@@ -281,7 +281,7 @@ function renderOrders(reset) {
       newStatusText.textContent = capitalize(pendingNewStatus);
       
       // Populate order items with specs in confirmation modal
-      const order = loadedOrders.find(o => o.orderId === pendingOrderId);
+      const order = loadedOrders.find(o => String(o.orderId) === String(pendingOrderId));
       if (order && order.items) {
         const itemsDiv = document.getElementById('confirmationOrderItems');
         itemsDiv.innerHTML = order.items.map(item => {
@@ -298,7 +298,7 @@ function renderOrders(reset) {
 }
 
 function openSellerProductDetailsModal(orderId) {
-  const order = loadedOrders.find(o => o.orderId === orderId);
+  const order = loadedOrders.find(o => String(o.orderId) === String(orderId));
   if (!order) return;
 
   const item = order.items?.[0] || {};
