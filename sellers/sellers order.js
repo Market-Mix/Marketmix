@@ -42,6 +42,12 @@ function formatDate(iso) {
   });
 }
 
+function formatCurrency(amount) {
+  const value = Number(amount || 0);
+  if (Number.isNaN(value)) return '₦0.00';
+  return `₦${value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
