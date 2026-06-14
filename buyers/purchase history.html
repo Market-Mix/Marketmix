@@ -144,6 +144,16 @@
     border-radius: 8px;
     overflow: hidden;
   }
+  /* Make rows visually discoverable and fully clickable (except interactive controls) */
+  .history-table tbody tr.clickable-row {
+    transition: background-color 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+  }
+  .history-table tbody tr.clickable-row:hover {
+    cursor: pointer;
+    background-color: #fff9f2;
+    box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+    transform: translateY(-1px);
+  }
   .history-table th,
   .history-table td {
     padding: 14px 16px;
@@ -1130,6 +1140,35 @@ function enhancePurchaseRows() {
     wrapper.appendChild(actionsContainer);
     nameCell.innerHTML = '';
     nameCell.appendChild(wrapper);
+  });
+
+  // Make entire row clickable (but ignore clicks on interactive elements)
+  rows.forEach(row => {
+    row.classList.add('clickable-row');
+    // Avoid duplicate listeners
+    if (row._clickableAttached) return;
+    row._clickableAttached = true;
+
+    row.addEventListener('click', function (e) {
+      // Ignore clicks originating from interactive controls or excluded cells
+      if (e.target.closest('button, a, input, select, textarea')) return;
+      if (e.target.closest('[data-label="Order ID"]')) return;
+      if (e.target.closest('.status')) return;
+      // Primary behaviour: trigger the most relevant action button if present
+      const confirmBtn = row.querySelector('.confirm-delivery-btn');
+      if (confirmBtn) { confirmBtn.click(); return; }
+      const reportBtn = row.querySelector('.report-btn');
+      if (reportBtn) { reportBtn.click(); return; }
+
+      // Fallback: open appropriate modal based on status
+      const orderId = row.dataset.orderId;
+      const statusText = (row.querySelector('[data-label="Status"]')?.innerText || '').toLowerCase();
+      if (statusText.includes('shipped') || statusText.includes('processing')) {
+        openDeliveryConfirmModal(orderId);
+      } else if (statusText.includes('delivered') || statusText.includes('completed')) {
+        openReportModal(orderId);
+      }
+    });
   });
 }
 

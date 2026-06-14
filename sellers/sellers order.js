@@ -257,6 +257,24 @@ function renderOrders(reset) {
     `;
 
     orderTable.appendChild(row);
+    // Make entire row clickable (but ignore clicks on interactive elements and excluded cells)
+    row.classList.add('clickable-row');
+    if (!row._clickableAttached) {
+      row._clickableAttached = true;
+      row.addEventListener('click', function (e) {
+        // Ignore clicks from inputs, links, selects, or explicit buttons
+        if (e.target.closest('button, a, input, select, textarea')) return;
+        // Ignore clicks on Order ID, Status, or Action cells
+        if (e.target.closest('[data-label="Order ID"]') || e.target.closest('[data-label="Action"]')) return;
+        if (e.target.closest('.status')) return;
+
+        // If there's a primary action button, trigger it (this opens the existing modal)
+        const markBtn = row.querySelector('.mark-btn:not([disabled])');
+        if (markBtn) {
+          markBtn.click();
+        }
+      });
+    }
   });
 
   // Attach event listeners to action buttons
