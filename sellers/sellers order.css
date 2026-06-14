@@ -457,6 +457,86 @@ h1 {
   background-color: #2c5282;
 }
 
+#sellerProductDetailsModal .seller-product-details {
+  width: min(100%, 94vw);
+  max-width: 680px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#sellerProductDetailsModal .seller-product-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+#sellerProductDetailsModal .seller-product-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+#sellerProductDetailsModal .seller-product-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+#sellerProductDetailsModal .seller-product-image {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#sellerProductDetailsModal .seller-product-image img {
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+#sellerProductDetailsModal .seller-product-info {
+  display: grid;
+  gap: 12px;
+}
+
+#sellerProductDetailsModal .seller-product-row {
+  display: flex;
+  justify-content: space-between;
+  background: #f9fafb;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+#sellerProductDetailsModal .seller-product-row strong {
+  color: #334155;
+}
+
+#sellerProductDetailsModal .close-btn {
+  border: none;
+  background: #e5e7eb;
+  color: #0f172a;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+@media screen and (max-width: 768px) {
+  #sellerProductDetailsModal .seller-product-body {
+    grid-template-columns: 1fr;
+  }
+}
+
 .toast {
   position: fixed;
   bottom: 20px;

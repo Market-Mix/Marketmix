@@ -268,11 +268,7 @@ function renderOrders(reset) {
         if (e.target.closest('[data-label="Order ID"]') || e.target.closest('[data-label="Action"]')) return;
         if (e.target.closest('.status')) return;
 
-        // If there's a primary action button, trigger it (this opens the existing modal)
-        const markBtn = row.querySelector('.mark-btn:not([disabled])');
-        if (markBtn) {
-          markBtn.click();
-        }
+        openSellerProductDetailsModal(order.orderId);
       });
     }
   });
@@ -299,6 +295,37 @@ function renderOrders(reset) {
       confirmModal.classList.add('show');
     });
   });
+}
+
+function openSellerProductDetailsModal(orderId) {
+  const order = loadedOrders.find(o => o.orderId === orderId);
+  if (!order) return;
+
+  const item = order.items?.[0] || {};
+  let ps = item.product_snapshot || item.productSnapshot || {};
+  if (typeof ps === 'string') {
+    try { ps = JSON.parse(ps); } catch (e) { ps = {}; }
+  }
+
+  document.getElementById('sellerPdName').textContent = item.productName || item.product_name || item.name || 'Product Details';
+  document.getElementById('sellerPdOrderId').textContent = `#${order.orderId.slice(0, 8).toUpperCase()}`;
+  document.getElementById('sellerPdDate').textContent = formatDate(order.createdAt);
+  document.getElementById('sellerPdBuyer').textContent = order.buyer?.name || '—';
+  document.getElementById('sellerPdStatus').textContent = capitalize(order.status || '—');
+  document.getElementById('sellerPdProduct').textContent = item.productName || item.product_name || item.name || '—';
+  document.getElementById('sellerPdQty').textContent = item.quantity || item.qty || 1;
+  document.getElementById('sellerPdColor').textContent = item.color || ps.color || '—';
+  document.getElementById('sellerPdSize').textContent = item.size || ps.size || '—';
+  document.getElementById('sellerPdTotal').textContent = formatCurrency(order.totalAmount || order.total_amount || order.total_price || 0);
+
+  const imageUrl = item.image || item.image_url || ps.image || (ps.images && ps.images[0]) || 'https://via.placeholder.com/300x300?text=Product';
+  document.getElementById('sellerPdImage').src = imageUrl;
+
+  document.getElementById('sellerProductDetailsModal').classList.add('show');
+}
+
+function closeSellerProductDetailsModal() {
+  document.getElementById('sellerProductDetailsModal').classList.remove('show');
 }
 
 function buildActionButton(order) {
@@ -456,6 +483,12 @@ confirmYes.addEventListener('click', async () => {
 });
 
 confirmNo.addEventListener('click', closeModal);
+
+document.getElementById('sellerPdClose')?.addEventListener('click', closeSellerProductDetailsModal);
+
+document.getElementById('sellerProductDetailsModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'sellerProductDetailsModal') closeSellerProductDetailsModal();
+});
 
 window.addEventListener('click', e => {
   if (e.target === confirmModal) closeModal();
