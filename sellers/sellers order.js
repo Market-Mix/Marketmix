@@ -53,6 +53,54 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function normalizeImageUrl(url) {
+  if (!url && url !== 0) return null;
+  const str = String(url).trim();
+  if (!str) return null;
+  const lower = str.toLowerCase();
+  if (lower === 'null' || lower === 'undefined') return null;
+  if (
+    lower.startsWith('http://') ||
+    lower.startsWith('https://') ||
+    lower.startsWith('data:') ||
+    lower.startsWith('blob:') ||
+    lower.startsWith('/')
+  ) {
+    return str;
+  }
+  if (str.includes('.') || str.includes('/')) {
+    return str;
+  }
+  return null;
+}
+
+function getOrderItemImage(item) {
+  let ps = item.product_snapshot || item.productSnapshot || {};
+  if (typeof ps === 'string') {
+    try { ps = JSON.parse(ps); } catch (e) { ps = {}; }
+  }
+
+  const candidates = [
+    ps.image,
+    ps.image_url,
+    ps.thumbnail,
+    ps?.images?.[0],
+    item.image,
+    item.image_url,
+    item.imageUrl,
+    item.product_image,
+    item.product_image_url,
+    item.productImage,
+    item.product?.image,
+    item.product?.image_url,
+    item.product?.imageUrl,
+    item.product?.thumbnail,
+    item.product?.images?.[0],
+  ];
+
+  return candidates.reduce((found, candidate) => found || normalizeImageUrl(candidate), null);
+}
+
 /* ── API Fetch ────────────────────────────────────────────── */
 async function apiFetch(path, opts = {}) {
   opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
@@ -324,7 +372,7 @@ function openSellerProductDetailsModal(orderId) {
   document.getElementById('sellerPdSize').textContent = item.size || ps.size || '—';
   document.getElementById('sellerPdTotal').textContent = formatCurrency(order.totalAmount || order.total_amount || order.total_price || 0);
 
-  const imageUrl = item.image || item.image_url || ps.image || (ps.images && ps.images[0]) || 'https://via.placeholder.com/300x300?text=Product';
+  const imageUrl = getOrderItemImage(item) || 'https://via.placeholder.com/300x300?text=Product';
   document.getElementById('sellerPdImage').src = imageUrl;
 
   document.getElementById('sellerProductDetailsModal').classList.add('show');
