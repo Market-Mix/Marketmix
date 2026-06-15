@@ -402,6 +402,8 @@
     function saveCart() {
       try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch(e){}
       updateCartCount();
+      // Notify other parts of the app to refresh badges/counts
+      try { window.dispatchEvent(new CustomEvent('cartUpdated')); } catch (e) { /* ignore */ }
     }
 
     function saveRecentDeleted() {
