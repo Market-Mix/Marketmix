@@ -2163,6 +2163,7 @@
     const reportsWithEvidence = currentReports.filter(r => r.evidence_submitted_at);
     console.log('DEBUG: Reports with evidence_submitted_at:', reportsWithEvidence);
     renderReports(currentReports);
+<<<<<<< HEAD
     dispatchRefundCasesUpdated(currentReports);
   }
 
@@ -2192,6 +2193,8 @@
     } catch (e) {
       console.warn('Could not dispatch refundCasesUpdated event:', e);
     }
+=======
+>>>>>>> parent of fef3880 (Fix Buyer Refund Chat unread message count.)
   }
   // =====================================================
   // TEMP DEV TESTING HOOKS - remove before production
@@ -2708,7 +2711,6 @@
     }
     
     renderReports(currentReports);
-    dispatchRefundCasesUpdated(currentReports);
     setupEventListeners();
   });
 

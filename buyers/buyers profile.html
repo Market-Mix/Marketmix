@@ -104,9 +104,6 @@ function getToken() {
     // CONFIGURATION
     // =====================================================
 
-    // Prevent NotificationManager from overriding the refund badge on the profile page.
-    window.skipNotificationRefundBadge = true;
-
     // Initialize notifications on page load
     window.addEventListener('DOMContentLoaded', async () => {
       const buyerId = getBuyerId();
@@ -123,7 +120,6 @@ function getToken() {
       await loadUserProfile();
       setupPhoneClickHandler();
       updateCartBadges();
-      await fetchAndUpdateActiveRefundCount();
     });
 
     function getCartCount() {
@@ -144,85 +140,11 @@ function getToken() {
       });
     }
 
-    function getStoredActiveRefundCount() {
-      const raw = localStorage.getItem('refundCasesActiveCount');
-      const count = parseInt(raw, 10);
-      return Number.isFinite(count) ? count : 0;
-    }
-
-    function updateActiveRefundBadgeDisplay(count) {
-      const badge = document.querySelector('[data-refund-badge]');
-      if (!badge) return;
-      const displayCount = Number.isFinite(count) ? count : 0;
-      badge.textContent = String(displayCount);
-      badge.style.display = displayCount > 0 ? 'inline-block' : 'none';
-    }
-
-    function setStoredActiveRefundCount(count) {
-      try {
-        localStorage.setItem('refundCasesActiveCount', String(count));
-        localStorage.setItem('refundCasesUpdatedAt', String(Date.now()));
-      } catch (e) {
-        console.warn('Could not persist refund case count', e);
-      }
-    }
-
-    function isActiveRefundCase(refundCase) {
-      const status = String(refundCase?.resolution_status || refundCase?.status || '').toLowerCase();
-      return status !== 'resolved' && status !== 'escalated' && status !== 'cancelled' && status !== 'rejected';
-    }
-
-    async function fetchActiveOpenRefundCaseCount() {
-      try {
-        const buyerId = getBuyerId();
-        if (!buyerId) return 0;
-
-        const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/refunds/buyer/${encodeURIComponent(buyerId)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-
-        if (!response.ok) {
-          return getStoredActiveRefundCount();
-        }
-
-        const data = await response.json().catch(() => null);
-        const refundCases = data?.refundCases || data?.data?.refundCases || [];
-        if (!Array.isArray(refundCases)) return 0;
-
-        return refundCases.filter(isActiveRefundCase).length;
-      } catch (error) {
-        console.error('Failed to fetch active refund case count:', error);
-        return getStoredActiveRefundCount();
-      }
-    }
-
-    async function fetchAndUpdateActiveRefundCount() {
-      const count = await fetchActiveOpenRefundCaseCount();
-      updateActiveRefundBadgeDisplay(count);
-      setStoredActiveRefundCount(count);
-    }
-
-    function handleRefundCasesUpdated(event) {
-      const eventCount = event?.detail?.count;
-      if (typeof eventCount === 'number' && !Number.isNaN(eventCount)) {
-        updateActiveRefundBadgeDisplay(eventCount);
-        setStoredActiveRefundCount(eventCount);
-      } else {
-        fetchAndUpdateActiveRefundCount();
-      }
-    }
-
     window.addEventListener('storage', function(e) {
       if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) {
         updateCartBadges();
       }
-      if (e.key === 'refundCasesUpdatedAt' || e.key === 'refundCasesActiveCount') {
-        updateActiveRefundBadgeDisplay(getStoredActiveRefundCount());
-      }
     });
-
-    window.addEventListener('refundCasesUpdated', handleRefundCasesUpdated);
     // Also listen for in-page cartUpdated events dispatched by other modules
     window.addEventListener('cartUpdated', function() {
       updateCartBadges();
