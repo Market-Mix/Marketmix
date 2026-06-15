@@ -643,6 +643,7 @@ async function addToCart(product) {
   }
   localStorage.setItem('cart', JSON.stringify(cart));
   updateCartCount();
+  window.dispatchEvent(new CustomEvent('cartUpdated'));
   showToast(`${product.name} added to cart!`, 'success');
 
   // 2. Sync to backend (fire-and-forget — don't block the UI)
@@ -701,6 +702,7 @@ async function proceedToCheckout(product) {
   }
   localStorage.setItem('cart', JSON.stringify(cart));
   updateCartCount();
+  window.dispatchEvent(new CustomEvent('cartUpdated'));
 
   const token = localStorage.getItem('token');
   if (token) {
@@ -908,6 +910,13 @@ function updateCartCount() {
     el.textContent = count;
   });
 }
+
+window.addEventListener('storage', function(e) {
+  if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) {
+    updateCartCount();
+  }
+});
+window.addEventListener('cartUpdated', updateCartCount);
 
 // ── DOM helpers ───────────────────────────────────────────────
 function setEl(id, text) {

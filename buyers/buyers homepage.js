@@ -90,6 +90,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   function saveCart() {
     localStorage.setItem('cart', JSON.stringify(cart));
     updateCartCount();
+    window.dispatchEvent(new CustomEvent('cartUpdated'));
   }
 
   function syncCartFromStorage() {
@@ -617,9 +618,10 @@ function makeFloatingList(btn, items) {
     }
   });
   window.addEventListener('storage', e => {
-    if (e.key === 'cart') syncCartFromStorage();
+    if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) syncCartFromStorage();
     if (e.key === 'followedShopsChanged') loadFollowedShopsThrottled();
   });
+  window.addEventListener('cartUpdated', syncCartFromStorage);
   window.addEventListener('beforeunload', ()=>{ clearInterval(flashCountdownInterval); clearInterval(flashRefreshInterval); });
 
   syncCartFromStorage();

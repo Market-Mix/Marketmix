@@ -28,7 +28,7 @@ function updateCartCount() {
   });
 }
 
-function saveCart() { localStorage.setItem('cart', JSON.stringify(cart)); updateCartCount(); }
+function saveCart() { localStorage.setItem('cart', JSON.stringify(cart)); updateCartCount(); window.dispatchEvent(new CustomEvent('cartUpdated')); }
 
 function syncCartFromStorage() {
   try {
@@ -200,7 +200,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateCartCount();
   window.addEventListener('pageshow', syncCartFromStorage);
   window.addEventListener('focus', syncCartFromStorage);
-  window.addEventListener('storage', e => e.key==='cart'&&syncCartFromStorage());
+  window.addEventListener('storage', e => {
+    if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) syncCartFromStorage();
+  });
+  window.addEventListener('cartUpdated', syncCartFromStorage);
 
   if (typeof setupAutocomplete === 'function') {
     const nav = s => window.location.href = s.type==='product' ? `product.html?id=${s.id}` : `buyers-category.html?id=${s.id}`;

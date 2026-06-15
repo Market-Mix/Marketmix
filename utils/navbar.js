@@ -60,9 +60,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
     }
+
+    function dispatchCartUpdated() {
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+    }
     
     // Update on page load
     updateCartCount();
+    window.addEventListener('cartUpdated', updateCartCount);
     
     // Listen for storage changes (from other tabs/windows)
     window.addEventListener('storage', function(e) {
@@ -77,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const btn = e.target.closest && e.target.closest('.add-to-cart');
       if (btn) {
         // Give other handlers a moment to update localStorage
-        setTimeout(updateCartCount, 60);
+        setTimeout(function() { updateCartCount(); dispatchCartUpdated(); }, 60);
       }
     });
 

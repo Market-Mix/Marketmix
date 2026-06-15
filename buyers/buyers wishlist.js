@@ -1,6 +1,34 @@
 // API Base URL - prefer global CONFIG when available to support development mode
 const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
 
+function getCartCount() {
+  try {
+    const raw = localStorage.getItem('cart') || localStorage.getItem('marketmix-cart') || '[]';
+    const items = JSON.parse(raw);
+    return Array.isArray(items) ? items.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function updateCartBadges() {
+  const count = getCartCount();
+  document.querySelectorAll('.cart-count, #mm-cart-count, [data-cart-badge]').forEach(el => {
+    el.textContent = count;
+    el.style.display = count > 0 ? 'inline-block' : 'none';
+  });
+}
+
+function dispatchCartUpdated() {
+  window.dispatchEvent(new CustomEvent('cartUpdated'));
+}
+
+window.addEventListener('storage', function(e) {
+  if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) updateCartBadges();
+});
+window.addEventListener('cartUpdated', updateCartBadges);
+updateCartBadges();
+
 // NOTE: stray slash removed (it caused an unterminated regex / syntax error)
 
 // Fetch wishlist from backend
@@ -99,6 +127,8 @@ async function moveToCart(productId, itemData) {
         });
       }
       localStorage.setItem('cart', JSON.stringify(cart));
+      updateCartBadges();
+      dispatchCartUpdated();
       // Dispatch storage event to notify other tabs
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'cart',
