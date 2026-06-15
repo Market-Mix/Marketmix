@@ -2163,6 +2163,32 @@
     const reportsWithEvidence = currentReports.filter(r => r.evidence_submitted_at);
     console.log('DEBUG: Reports with evidence_submitted_at:', reportsWithEvidence);
     renderReports(currentReports);
+    dispatchRefundCasesUpdated(currentReports);
+  }
+
+  function calculateActiveRefundCaseCount(reports) {
+    if (!Array.isArray(reports)) return 0;
+    const finalStatuses = new Set(['resolved', 'escalated', 'cancelled', 'rejected', 'denied', 'closed', 'completed']);
+    return reports.reduce((count, refund) => {
+      const status = String(refund?.resolution_status || refund?.status || '').toLowerCase().trim();
+      return finalStatuses.has(status) || status.length === 0 ? count : count + 1;
+    }, 0);
+  }
+
+  function dispatchRefundCasesUpdated(reports) {
+    const count = calculateActiveRefundCaseCount(reports);
+    try {
+      localStorage.setItem('refundCasesActiveCount', String(count));
+      localStorage.setItem('refundCasesUpdatedAt', String(Date.now()));
+    } catch (e) {
+      console.warn('Could not persist refund case count for cross-tab sync:', e);
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent('refundCasesUpdated', { detail: { count } }));
+    } catch (e) {
+      console.warn('Could not dispatch refundCasesUpdated event:', e);
+    }
   }
   // =====================================================
   // TEMP DEV TESTING HOOKS - remove before production
@@ -2679,6 +2705,7 @@
     }
     
     renderReports(currentReports);
+    dispatchRefundCasesUpdated(currentReports);
     setupEventListeners();
   });
 
