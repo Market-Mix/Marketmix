@@ -145,6 +145,10 @@ function getToken() {
         updateCartBadges();
       }
     });
+    // Also listen for in-page cartUpdated events dispatched by other modules
+    window.addEventListener('cartUpdated', function() {
+      updateCartBadges();
+    });
 
     async function loadUserProfile() {
       try {
