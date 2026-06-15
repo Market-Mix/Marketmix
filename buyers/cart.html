@@ -317,7 +317,7 @@
     <h1>Your Cart</h1>
     <p class="intro">Review your items, adjust quantities, or remove products before checkout.</p>
     <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">
-      <span data-cart-badge class="badge badge-danger" style="display: inline-block; background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; margin-right: 8px;">0</span>
+      <span id="cartCountDisplay" class="badge badge-danger" style="display: inline-block; background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; margin-right: 8px;">0</span>
       items in your cart
     </p>
 
@@ -383,11 +383,19 @@
 
     function getCartCount() {
       try {
-        const raw = localStorage.getItem(CART_KEY) || '[]';
-        const storedCart = JSON.parse(raw);
-        return Array.isArray(storedCart) ? storedCart.reduce((sum, item) => sum + (item.quantity || 0), 0) : 0;
+        const source = Array.isArray(cart) ? cart : JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+        return Array.isArray(source) ? source.reduce((sum, item) => sum + (item.quantity || 0), 0) : 0;
       } catch (e) {
         return 0;
+      }
+    }
+
+    function updateCartCountDisplay(count) {
+      const actualCount = typeof count === 'number' ? count : getCartCount();
+      const el = document.getElementById('cartCountDisplay');
+      if (el) {
+        el.textContent = actualCount;
+        el.style.display = actualCount > 0 ? 'inline-block' : 'none';
       }
     }
 
@@ -397,6 +405,7 @@
         el.textContent = count;
         el.style.display = count > 0 ? 'inline-block' : 'none';
       });
+      updateCartCountDisplay(count);
     }
 
     function getCartItemKey(item) {
