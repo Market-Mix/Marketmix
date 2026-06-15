@@ -399,6 +399,34 @@
       });
     }
 
+    function getCartItemKey(item) {
+      const id = item.productId || item.product_id || item.id || '';
+      const name = (item.name || '').trim().toLowerCase();
+      const specs = item.selected_specifications || item.specifications || {};
+      const specsKey = JSON.stringify(specs || {});
+      return `${id}::${name}::${specsKey}`;
+    }
+
+    function mergeCarts(localItems, backendItems) {
+      const map = new Map();
+      (localItems || []).forEach(item => {
+        map.set(getCartItemKey(item), Object.assign({}, item));
+      });
+      (backendItems || []).forEach(item => {
+        const key = getCartItemKey(item);
+        if (map.has(key)) {
+          const existing = map.get(key);
+          existing.price = item.price || existing.price;
+          existing.id = existing.id || item.id;
+          existing.image = existing.image || item.image;
+          existing.selected_specifications = existing.selected_specifications || item.selected_specifications || item.specifications || {};
+        } else {
+          map.set(key, Object.assign({}, item));
+        }
+      });
+      return Array.from(map.values());
+    }
+
     function saveCart() {
       try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch(e){}
       updateCartCount();
@@ -731,6 +759,14 @@
     function showMessage(msg){ const m=document.createElement('div'); m.textContent=msg; m.style.cssText='position:fixed;bottom:90px;right:20px;background:#10b981;color:#fff;padding:10px 14px;border-radius:8px;z-index:12000'; document.body.appendChild(m); setTimeout(()=>{ m.style.opacity='0'; setTimeout(()=>m.remove(),300); },1400); }
 
     // Load cart from backend for authenticated users
+    function loadCartFromStorage() {
+      try {
+        return JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      } catch (err) {
+        return [];
+      }
+    }
+
     async function loadBackendCart() {
       try {
         const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
@@ -747,7 +783,7 @@
         const payload = await resp.json().catch(()=>null);
         if (!payload || !payload.data || !Array.isArray(payload.data.items)) return false;
 
-        cart = payload.data.items.map(it => ({
+        const backendItems = payload.data.items.map(it => ({
           id: it.id,
           productId: it.productId || it.product_id,
           name: it.name || it.productName || '',
@@ -757,6 +793,13 @@
           selected_specifications: it.selected_specifications || it.selectedSpecifications || it.specifications || {},
           specifications: it.selected_specifications || it.selectedSpecifications || it.specifications || {}
         }));
+
+        const storedCart = loadCartFromStorage();
+        if (!Array.isArray(storedCart) || storedCart.length === 0) {
+          cart = backendItems;
+        } else {
+          cart = mergeCarts(storedCart, backendItems);
+        }
 
         saveAndRender();
         return true;
@@ -789,6 +832,16 @@
           renderCart();
           updateCartCount();
         }
+      });
+
+      window.addEventListener('cartUpdated', function() {
+        try {
+          cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+        } catch (err) {
+          cart = [];
+        }
+        renderCart();
+        updateCartCount();
       });
 
       // 🔥 PROCEED TO CHECKOUT WITH EMPTY CART CHECK
