@@ -2169,7 +2169,10 @@
   function calculateActiveRefundCaseCount(reports) {
     if (!Array.isArray(reports)) return 0;
     const finalStatuses = new Set(['resolved', 'escalated', 'cancelled', 'rejected', 'denied', 'closed', 'completed']);
+    // Only count actual refund cases (exclude synthetic open-order reports which have ids like 'order-<orderId>-item-<itemId>').
     return reports.reduce((count, refund) => {
+      const id = String(refund?.id || '');
+      if (id.startsWith('order-')) return count; // skip open-order item reports
       const status = String(refund?.resolution_status || refund?.status || '').toLowerCase().trim();
       return finalStatuses.has(status) || status.length === 0 ? count : count + 1;
     }, 0);
