@@ -311,6 +311,13 @@ async function loadOrders() {
               ${order.shipping_address ? `<p style="font-size:0.85rem;color:#64748b">📍 ${order.shipping_address}</p>` : ''}
             </div>
           </div>
+          ${(order.courier_name || order.tracking_id) ? `
+  <div style="margin-top:12px;padding:10px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;font-size:0.9rem">
+    <strong>📦 Tracking Info</strong><br>
+    ${order.courier_name ? `Courier: <strong>${order.courier_name}</strong><br>` : ''}
+    ${order.tracking_id ? `Tracking ID: <code>${order.tracking_id}</code><br>` : ''}
+    ${order.tracking_link ? `<a href="${order.tracking_link}" target="_blank" style="color:#0ea5e9">Track Shipment →</a>` : ''}
+  </div>` : ''}
           <div class="order-actions">
             ${['shipped','processing','pending','confirmed'].includes(order.status) ? 
               `<button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>` : ''}

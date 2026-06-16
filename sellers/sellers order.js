@@ -331,7 +331,9 @@ function renderOrders(reset) {
   document.querySelectorAll('.mark-btn:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => {
       pendingOrderId   = btn.dataset.id;
-      pendingNewStatus = btn.dataset.status;
+pendingNewStatus = btn.dataset.status;
+document.getElementById('trackingFields').style.display = 
+  pendingNewStatus === 'shipped' ? 'block' : 'none';
       newStatusText.textContent = capitalize(pendingNewStatus);
       
       // Populate order items with specs in confirmation modal
@@ -494,38 +496,43 @@ async function updateOrderStatus(orderId, newStatus) {
     const res = await fetch(`${API_BASE}/seller/orders/${orderId}/status`, {
       method: 'PUT',
       headers: authHeaders(),
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({
+        status: newStatus,
+        ...(newStatus === 'shipped' ? {
+          courierName: document.getElementById('trackingCourier').value || null,
+          trackingId:  document.getElementById('trackingIdInput').value || null,
+          trackingLink: document.getElementById('trackingLinkInput').value || null,
+        } : {})
+      }),
     });
 
     const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(data.message || `HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
 
     showToast(`Order updated to "${capitalize(newStatus)}" ✓`);
 
-    // Create notification after successful status update
     try {
       await createOrderNotification(orderId, newStatus);
     } catch (notifErr) {
       console.warn('Notification creation failed (non-blocking):', notifErr);
     }
 
-    // Refresh the list to reflect the new status
     await fetchOrders(true);
   } catch (err) {
     console.error('updateOrderStatus error:', err);
     showToast('Failed to update order: ' + err.message, true);
   }
 }
-
 /* ── modal ───────────────────────────────────────────────── */
 
 function closeModal() {
   confirmModal.classList.remove('show');
   pendingOrderId   = null;
   pendingNewStatus = null;
+  document.getElementById('trackingFields').style.display = 'none';
+  document.getElementById('trackingCourier').value = '';
+  document.getElementById('trackingIdInput').value = '';
+  document.getElementById('trackingLinkInput').value = '';
 }
 
 confirmYes.addEventListener('click', async () => {
