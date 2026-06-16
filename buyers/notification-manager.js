@@ -498,6 +498,10 @@ function updateWishlistBadge(buyerId) {
 
 // Update refund badge
 function updateRefundBadge(buyerId) {
+  if (window.skipNotificationRefundBadge) {
+    return;
+  }
+
   const count = NotificationManager.cache.unreadCounts.refund || 0;
   const badge = document.querySelector('[data-refund-badge]');
   

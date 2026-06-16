@@ -2184,10 +2184,23 @@
 
   function calculateActiveRefundCaseCount(reports) {
     if (!Array.isArray(reports)) return 0;
-    const finalStatuses = new Set(['resolved', 'escalated', 'cancelled', 'rejected', 'denied', 'closed', 'completed']);
+
+    const openStatuses = new Set([
+      'pending',
+      'under review',
+      'under_review',
+      'active',
+      'waiting_buyer_confirmation',
+      'in_progress',
+      'in_review'
+    ]);
+
     return reports.reduce((count, refund) => {
+      const id = String(refund?.id || '');
+      if (id.startsWith('order-')) return count;
+
       const status = String(refund?.resolution_status || refund?.status || '').toLowerCase().trim();
-      return finalStatuses.has(status) || status.length === 0 ? count : count + 1;
+      return openStatuses.has(status) ? count + 1 : count;
     }, 0);
   }
 
@@ -3008,6 +3021,7 @@
   async function loadReturnReportsAndRefresh() {
     currentReports = await loadReturnReportsForCurrentBuyer();
     renderReports(currentReports);
+    dispatchRefundCasesUpdated(currentReports);
   }
 
   function openChat(reportId) {

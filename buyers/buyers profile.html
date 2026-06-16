@@ -87,7 +87,7 @@ function getToken() {
       <a href="save payment.html" class="link-card"><i class="fa-solid fa-credit-card"></i> saved payment methods</a>
       <a href="purchase history.html" class="link-card"><i class="fa-solid fa-receipt"></i> Purchase History</a>
       <a href="reviews ratings.html" class="link-card"><i class="fa-solid fa-star"></i> Reviews & Ratings</a>
-      <a href="buyers return report.html" class="link-card"><i class="fa-solid fa-arrow-right-arrow-left"></i> Returns & Refunds <span data-refund-badge class="badge" style="display: none; margin-left: 5px; font-size: 10px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;">0</span></a>
+      <a href="buyers return report.html" class="link-card"><i class="fa-solid fa-arrow-right-arrow-left"></i> Returns & Refunds <span data-refund-badge class="badge" style="display: none; margin-left: 5px; font-size: 10px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px;"></span></a>
       <a href="account setting.html" class="link-card"><i class="fa-solid fa-gear"></i> Account Settings</a>
       <a href="help center.html" class="link-card"><i class="fa-solid fa-headset"></i> Help Center</a>
       <a href="logout.html" class="link-card"><i class="fa fa-sign-out" aria-hidden="true"></i> logout</a>
@@ -108,8 +108,9 @@ function getToken() {
     window.addEventListener('DOMContentLoaded', async () => {
       const buyerId = getBuyerId();
       if (buyerId && typeof NotificationManager !== 'undefined') {
-          // Let this page manage cart badge itself to avoid NotificationManager overwriting accurate counts
+          // Let this page manage cart and refund badge counts itself to avoid NotificationManager overwriting accurate values
           window.skipNotificationCartBadge = true;
+          window.skipNotificationRefundBadge = true;
           await NotificationManager.init(buyerId);
       }
     });
@@ -122,6 +123,7 @@ function getToken() {
       await loadUserProfile();
       setupPhoneClickHandler();
       updateCartBadges();
+      refreshRefundBadgeFromStorage();
     });
 
     function getCartCount() {
@@ -149,9 +151,40 @@ function getToken() {
       }
     }
 
+    function updateRefundBadgeCount(count) {
+      const badge = document.querySelector('[data-refund-badge]');
+      if (!badge) return;
+      const normalized = Number(count) || 0;
+      badge.textContent = normalized > 0 ? String(normalized) : '';
+      badge.style.display = normalized > 0 ? 'inline-block' : 'none';
+    }
+
+    function getStoredRefundCount() {
+      try {
+        return Number(localStorage.getItem('refundCasesActiveCount') || 0);
+      } catch (err) {
+        return 0;
+      }
+    }
+
+    function refreshRefundBadgeFromStorage() {
+      updateRefundBadgeCount(getStoredRefundCount());
+    }
+
     window.addEventListener('storage', function(e) {
       if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) {
         updateCartBadges();
+      }
+      if (e.key === 'refundCasesActiveCount' || e.key === 'refundCasesUpdatedAt') {
+        refreshRefundBadgeFromStorage();
+      }
+    });
+
+    window.addEventListener('refundCasesUpdated', function(e) {
+      if (e && e.detail && typeof e.detail.count !== 'undefined') {
+        updateRefundBadgeCount(e.detail.count);
+      } else {
+        refreshRefundBadgeFromStorage();
       }
     });
     // Also listen for in-page cartUpdated events dispatched by other modules
