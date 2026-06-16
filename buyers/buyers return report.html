@@ -2335,6 +2335,13 @@
   let caseInfoCache = {}; // cache for latest case info per refund ID (in-memory only)
   let pollingIntervals = {}; // track polling intervals per case (in-memory only)
 
+  function getReportCaseId(reportOrId) {
+    if (reportOrId && typeof reportOrId === 'object') {
+      return reportOrId.supabase_case_id || reportOrId.id || '';
+    }
+    return String(reportOrId || '');
+  }
+
   function getUnreadCount(reportId) {
     return unreadCounts[reportId] || 0;
   }
@@ -2357,7 +2364,7 @@
   function getTotalUnreadCount() {
     let total = 0;
     currentReports.forEach(report => {
-      total += getUnreadCount(report.id);
+      total += getUnreadCount(getReportCaseId(report));
     });
     return total;
   }
@@ -2393,7 +2400,7 @@
 
   async function refreshUnreadCountsForReports(reports) {
     if (!Array.isArray(reports)) return;
-    await Promise.allSettled(reports.map(report => refreshRefundUnreadCount(report.id)));
+    await Promise.allSettled(reports.map(report => refreshRefundUnreadCount(getReportCaseId(report))));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════════
@@ -2502,12 +2509,12 @@
   }
 
   function updateReportRowUI(refundId, caseInfo = {}) {
-    // Find table row for this report
-    const rows = document.querySelectorAll('[data-report-id]');
+    // Find table row for this report using either the row id or supabase case id
+    const rows = document.querySelectorAll('[data-report-id],[data-report-case-id]');
     let targetRow = null;
 
     rows.forEach(row => {
-      if (row.getAttribute('data-report-id') === refundId) {
+      if (row.getAttribute('data-report-id') === refundId || row.getAttribute('data-report-case-id') === refundId) {
         targetRow = row;
       }
     });
@@ -2808,8 +2815,8 @@
 
     // Sort reports: unread first, then by date
     const sortedReports = [...reports].sort((a, b) => {
-      const aUnread = getUnreadCount(a.id);
-      const bUnread = getUnreadCount(b.id);
+      const aUnread = getUnreadCount(getReportCaseId(a));
+      const bUnread = getUnreadCount(getReportCaseId(b));
       if (aUnread !== bUnread) return bUnread - aUnread; // Unread first
       return new Date(b.created_at || 0) - new Date(a.created_at || 0); // Then by date
     });
@@ -2818,6 +2825,8 @@
       const complaintStarted = !!report.evidence_submitted_at;
       const isRejected = report.status === 'rejected';
       const resolution = String(report.resolution_status || 'pending').toLowerCase();
+      const caseId = getReportCaseId(report);
+      const unreadCount = getUnreadCount(caseId);
       let statusHtml = '';
       let viewBtnHtml = `
         <button class="btn-action" style="background: #ccc; cursor: not-allowed;" disabled>
@@ -2864,7 +2873,7 @@
           const label = complaintStarted ?
             `Chat (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)` :
             `Report issue (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)`;
-          const unreadCount = getUnreadCount(report.id);
+          const unreadCount = getUnreadCount(caseId);
           chatBtnHtml = `
             <button class="btn-chat" data-report-id="${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
               <i class="fas fa-comments"></i> ${label}
@@ -2908,7 +2917,7 @@
       }
 
       return `
-      <div class="table-row" data-report-id="${report.id}">
+      <div class="table-row" data-report-id="${report.id}" data-report-case-id="${report.supabase_case_id || ''}">
         <div class="col-store">${report.store_name}</div>
         <div class="col-product">${escapeHtmlSpec(report.product_name)}</div>
         <div class="col-order">${report.order_id}</div>
