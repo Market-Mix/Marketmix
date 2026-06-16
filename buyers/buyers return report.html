@@ -2528,13 +2528,24 @@
       statusBadge.textContent = caseInfo.resolution_status.replace(/_/g, ' ');
     }
 
-    // Update unread count badge on chat button
+    // Update unread count badge on chat button (preserve countdown text)
     const chatBtn = targetRow.querySelector('.btn-chat');
     const unreadCount = getUnreadCount(refundId);
-    if (chatBtn && unreadCount > 0) {
-      chatBtn.innerHTML = `<i class="fas fa-comments"></i> Chat (${unreadCount})`;
-    } else if (chatBtn) {
-      chatBtn.innerHTML = '<i class="fas fa-comments"></i> Chat';
+    if (chatBtn) {
+      let existingBadge = chatBtn.querySelector('.notification-badge');
+      if (unreadCount > 0) {
+        if (!existingBadge) {
+          // Create badge if it doesn't exist
+          existingBadge = document.createElement('span');
+          existingBadge.className = 'notification-badge';
+          chatBtn.appendChild(existingBadge);
+        }
+        existingBadge.textContent = unreadCount;
+        existingBadge.style.display = '';  // Use CSS default (flex)
+      } else if (existingBadge) {
+        // Remove or hide badge if no unread count
+        existingBadge.remove();
+      }
     }
 
     // Update button visibility based on resolution status
@@ -2877,7 +2888,7 @@
           chatBtnHtml = `
             <button class="btn-chat" data-report-id="${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
               <i class="fas fa-comments"></i> ${label}
-              ${unreadCount > 0 && complaintStarted ? `<span class="notification-badge">${unreadCount}</span>` : ''}
+              <span class="notification-badge" style="display: ${unreadCount > 0 ? 'flex' : 'none'};">${unreadCount > 0 ? unreadCount : ''}</span>
             </button>
           `;
         } else if (isRejected) {
@@ -2917,7 +2928,7 @@
       }
 
       return `
-      <div class="table-row" data-report-id="${report.id}" data-report-case-id="${report.supabase_case_id || ''}">
+      <div class="table-row" data-report-id="${report.id}" data-report-case-id="${report.supabase_case_id || report.id}">
         <div class="col-store">${report.store_name}</div>
         <div class="col-product">${escapeHtmlSpec(report.product_name)}</div>
         <div class="col-order">${report.order_id}</div>
