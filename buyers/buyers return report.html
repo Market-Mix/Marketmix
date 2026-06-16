@@ -1884,6 +1884,9 @@
         return [];
       }
 
+      // Debug: log token and headers used for chat fetch
+      try { console.log('DEBUG fetchRefundMessages', { caseId, token: getAuthToken(), headers: getAuthHeaders() }); } catch (e) {}
+
       const response = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
         headers: getAuthHeaders()
       });
@@ -2361,6 +2364,8 @@
 
     const token = getAuthToken();
     try {
+      // Debug: log token used when polling refund status
+      try { console.log('DEBUG pollRefundCaseStatus', { refundId, token }); } catch(e) {}
       const response = await fetch(`${API_BASE_URL}/refunds/${refundId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2550,7 +2555,8 @@
   }
 
   function getAuthToken() {
-    return sessionStorage.getItem('token') || localStorage.getItem('token') || '';
+    // Expand token lookup to match other modules (buyer_token, seller_token)
+    return sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('buyer_token') || localStorage.getItem('seller_token') || '';
   }
 
   function getTokenPayload() {
@@ -3523,6 +3529,9 @@
           }
 
           const token = getAuthToken();
+          // Debug: log token and headers before sending message
+          try { console.log('DEBUG sendMessage POST', { caseId, token: getAuthToken(), headers: getAuthHeaders(), payload }); } catch(e) {}
+
           const msgResponse = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
             method: 'POST',
             headers: {
