@@ -2509,12 +2509,15 @@
   }
 
   function updateReportRowUI(refundId, caseInfo = {}) {
-    // Find table row for this report using either the row id or supabase case id
-    const rows = document.querySelectorAll('[data-report-id],[data-report-case-id]');
+    // Find table row for this report using the case ID or report ID
     let targetRow = null;
+    const rows = document.querySelectorAll('[data-report-id]');
 
     rows.forEach(row => {
-      if (row.getAttribute('data-report-id') === refundId || row.getAttribute('data-report-case-id') === refundId) {
+      const rowCaseId = row.getAttribute('data-case-id');
+      const rowReportId = row.getAttribute('data-report-id');
+      // Match by either data-case-id or data-report-id
+      if (rowCaseId === refundId || rowReportId === refundId) {
         targetRow = row;
       }
     });
@@ -2541,9 +2544,10 @@
           chatBtn.appendChild(existingBadge);
         }
         existingBadge.textContent = unreadCount;
-        existingBadge.style.display = '';  // Use CSS default (flex)
+        existingBadge.style.display = 'flex';  // Explicitly set to flex to override inline none
+        existingBadge.style.visibility = 'visible';
       } else if (existingBadge) {
-        // Remove or hide badge if no unread count
+        // Remove badge if no unread count
         existingBadge.remove();
       }
     }
@@ -2884,11 +2888,10 @@
           const label = complaintStarted ?
             `Chat (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)` :
             `Report issue (${daysLeft}d ${hoursLeft}h ${minutesLeft}m)`;
-          const unreadCount = getUnreadCount(caseId);
           chatBtnHtml = `
-            <button class="btn-chat" data-report-id="${report.id}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
+            <button class="btn-chat" data-report-id="${report.id}" data-case-id="${caseId}" onclick="openChat('${getInlineHandlerId(report.id)}')" style="position: relative;">
               <i class="fas fa-comments"></i> ${label}
-              <span class="notification-badge" style="display: ${unreadCount > 0 ? 'flex' : 'none'};">${unreadCount > 0 ? unreadCount : ''}</span>
+              <span class="notification-badge" style="display: none;"></span>
             </button>
           `;
         } else if (isRejected) {
@@ -2928,7 +2931,7 @@
       }
 
       return `
-      <div class="table-row" data-report-id="${report.id}" data-report-case-id="${report.supabase_case_id || report.id}">
+      <div class="table-row" data-report-id="${report.id}" data-case-id="${caseId}">
         <div class="col-store">${report.store_name}</div>
         <div class="col-product">${escapeHtmlSpec(report.product_name)}</div>
         <div class="col-order">${report.order_id}</div>
