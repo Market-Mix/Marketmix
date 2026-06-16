@@ -826,6 +826,25 @@
 
       const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
       const loaded = token ? await loadBackendCart().catch(()=>false) : false;
+      // If we returned from checkout, confirm the checkout session and clear local cart if order placed
+      try {
+        const sessionId = sessionStorage.getItem('marketmix_checkout_session_id') || sessionStorage.getItem('checkoutSessionId');
+        if (sessionId && token) {
+          try {
+            const resp = await fetch(`https://marketmix-backend.onrender.com/api/checkout/session/${encodeURIComponent(sessionId)}`, { headers: { 'Authorization': String(token).startsWith('Bearer ') ? token : `Bearer ${token}` } });
+            if (resp.ok) {
+              const data = await resp.json().catch(()=>null);
+              const orderId = data?.orderId || data?.data?.orderId || data?.session?.orderId || data?.order?.id || null;
+              if (orderId) {
+                // Order was created for this session, clear local cart to reflect successful checkout
+                try { cart = []; saveCart(); showMessage('Checkout complete — cart cleared.'); } catch(e) { console.warn('Clearing cart after checkout confirmation failed', e); }
+                // Remove session id markers
+                try { sessionStorage.removeItem('marketmix_checkout_session_id'); sessionStorage.removeItem('checkoutSessionId'); } catch(e) {}
+              }
+            }
+          } catch (e) { console.warn('Could not verify checkout session state', e); }
+        }
+      } catch (e) {}
       if (!loaded) {
         renderCart();
         updateCartCount();
