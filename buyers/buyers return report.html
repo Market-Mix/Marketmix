@@ -1884,11 +1884,8 @@
         return [];
       }
 
-      const token = getAuthToken();
       const response = await fetch(`${API_BASE_URL}/refund-chat/${caseId}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
+        headers: getAuthHeaders()
       });
       const result = await response.json().catch(() => null);
 
@@ -1936,7 +1933,21 @@
   // SUPABASE DATA MAPPING / REFRESH HELPERS
   // =====================================================
   function resolveStoreName(source = {}) {
-    return source.store_name || source.seller_name || source.shop_name || source.seller?.name || source.seller?.shop_name || source.name || 'Store';
+    // Look in common places where a store name may be present, including order item rows
+    if (!source) return 'Store';
+    if (source.store_name) return source.store_name;
+    if (source.seller_name) return source.seller_name;
+    if (source.shop_name) return source.shop_name;
+    if (source.name) return source.name;
+    if (source.seller && (source.seller.name || source.seller.shop_name)) return source.seller.name || source.seller.shop_name;
+    // Check first order item for embedded seller/store info
+    if (Array.isArray(source.items) && source.items.length > 0) {
+      const it = source.items[0];
+      if (it.seller_name) return it.seller_name;
+      if (it.shop_name) return it.shop_name;
+      if (it.seller && (it.seller.name || it.seller.shop_name)) return it.seller.name || it.seller.shop_name;
+    }
+    return 'Store';
   }
 
   function mapRefundCaseToReport(caseData, orderData = {}) {
@@ -2021,7 +2032,9 @@
 
   function getAuthHeaders() {
     const token = getAuthToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    if (!token) return {};
+    const authHeader = String(token).startsWith('Bearer ') ? token : `Bearer ${token}`;
+    return { Authorization: authHeader };
   }
 
   async function fetchBuyerOrdersForReturns() {
@@ -2937,7 +2950,7 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ refund_id: reportId })
       });
@@ -2965,7 +2978,7 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ refund_id: reportId, escalated_by: 'buyer' })
       });
@@ -3181,9 +3194,9 @@
       if (token && !String(caseId).startsWith('order-')) {
         fetch(`${API_BASE_URL}/refund-chat/${caseId}/mark-notifications-read`, {
           method: 'PUT',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           }
         }).then(() => {
           setUnreadCount(caseId, 0);
@@ -3514,7 +3527,7 @@
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': token ? `Bearer ${token}` : ''
+              ...getAuthHeaders()
             },
             body: JSON.stringify(payload)
           });
@@ -3528,7 +3541,7 @@
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': token ? `Bearer ${token}` : ''
+                  ...getAuthHeaders()
                 },
                 body: JSON.stringify({ refund_id: caseId })
               });
@@ -3620,8 +3633,9 @@
             }
           }, 1000);
         } else {
-          // Chat is not open - mark message as unread
-          incrementUnreadCount(currentChatData.id);
+          // Chat is not open - mark message as unread (guard for closed chat)
+          const cid = currentChatData && currentChatData.id ? currentChatData.id : null;
+          if (cid) incrementUnreadCount(cid);
           
           // Still deliver the message after 1 second
           setTimeout(() => {

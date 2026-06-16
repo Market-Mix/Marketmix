@@ -907,6 +907,9 @@
               sessionStorage.setItem('checkoutSessionId', session.id);
             }
 
+            // Clear local cart to avoid items remaining locally after starting checkout
+            try { cart = []; saveCart(); } catch(e) { console.warn('Clearing local cart failed', e); }
+
             window.location.href = 'checkout.html';
             return true;
           } catch(err){
@@ -919,17 +922,6 @@
             showMessage(err.message || 'Could not start checkout. Please try again.');
           }
         });
-      }
-    });
-  </script>
-  <script src="notification-manager.js"></script>
-  <script>
-    // Initialize notification system on page load
-    document.addEventListener('DOMContentLoaded', async function() {
-      const buyerId = getBuyerId();
-      if (buyerId) {
-        await NotificationManager.init(buyerId);
-        initializeBadgeUpdates(buyerId);
       }
     });
   </script>

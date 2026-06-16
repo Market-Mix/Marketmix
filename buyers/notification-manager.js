@@ -5,8 +5,14 @@
 // Auto-syncs every 3 minutes
 // Updates all badge elements across pages
 
-// Make API_BASE_URL globally accessible to all pages
-window.API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
+// Prevent double-loading in case the script is included multiple times
+if (window._marketmixNotificationManagerLoaded) {
+  console.warn('Notification Manager already loaded; skipping duplicate load.');
+} else {
+  window._marketmixNotificationManagerLoaded = true;
+
+  // Make API_BASE_URL globally accessible to all pages
+  window.API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
 
 // Get buyer ID from localStorage
 function getBuyerId() {
@@ -457,6 +463,11 @@ function updateNavbarNotificationBadge(buyerId) {
 
 // Update cart badge
 function updateCartBadge(buyerId) {
+  if (window.skipNotificationCartBadge) {
+    // Page prefers to manage cart badge itself (e.g., cart/profile pages)
+    // Avoid overriding the DOM when the page sets this flag.
+    return;
+  }
   const count = NotificationManager.cache.unreadCounts.cart || 0;
   const badge = document.querySelector('[data-cart-badge]');
   
@@ -550,3 +561,4 @@ window.NotificationManager = NotificationManager;
 window.initializeBadgeUpdates = initializeBadgeUpdates;
 
 console.log('✅ Notification Manager loaded successfully');
+}
