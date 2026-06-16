@@ -2179,6 +2179,7 @@
     const reportsWithEvidence = currentReports.filter(r => r.evidence_submitted_at);
     console.log('DEBUG: Reports with evidence_submitted_at:', reportsWithEvidence);
     renderReports(currentReports);
+    await refreshUnreadCountsForReports(currentReports);
     dispatchRefundCasesUpdated(currentReports);
   }
 
@@ -2345,6 +2346,7 @@
       delete unreadCounts[reportId];
     }
     updateNotificationBadges();
+    updateReportRowUI(reportId, caseInfoCache[reportId] || {});
   }
 
   function incrementUnreadCount(reportId) {
@@ -2366,6 +2368,32 @@
     window.updateReturnsNotification?.(total);
     // Update account nav badge on homepage
     window.updateAccountNotification?.(total);
+  }
+
+  async function refreshRefundUnreadCount(caseId) {
+    if (!caseId || String(caseId).startsWith('order-')) return 0;
+    const token = getAuthToken();
+    if (!token) return 0;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/refund-chat/${encodeURIComponent(caseId)}/unread-count`, {
+        headers: {
+          Authorization: String(token).startsWith('Bearer ') ? token : `Bearer ${token}`
+        }
+      });
+      const result = await response.json().catch(() => null);
+      const count = Number(result?.data?.count || 0);
+      setUnreadCount(caseId, count);
+      return count;
+    } catch (err) {
+      console.warn('Failed to refresh refund unread count:', err);
+      return getUnreadCount(caseId);
+    }
+  }
+
+  async function refreshUnreadCountsForReports(reports) {
+    if (!Array.isArray(reports)) return;
+    await Promise.allSettled(reports.map(report => refreshRefundUnreadCount(report.id)));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════════
@@ -2393,24 +2421,7 @@
 
       if (caseInfo) {
         caseInfoCache[refundId] = caseInfo;
-        unreadCounts[refundId] = caseInfo.unreadCount || 0;
-        
-        // Fetch unread notification count for this refund case
-        try {
-          const notifCountRes = await fetch(`${API_BASE_URL}/refund-chat/${refundId}/unread-notification-count`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (notifCountRes.ok) {
-            const notifCountData = await notifCountRes.json();
-            const unreadNotifCount = notifCountData.data?.count || 0;
-            if (unreadNotifCount > 0) {
-              unreadCounts[refundId] = unreadNotifCount;
-            }
-          }
-        } catch (err) {
-          console.warn('Failed to fetch notification count:', err.message);
-        }
-        
+        await refreshRefundUnreadCount(refundId);
         updateNotificationBadges();
 
         // If chat is currently open for this case, update UI
@@ -2490,9 +2501,7 @@
     }
   }
 
-  function updateReportRowUI(refundId, caseInfo) {
-    if (!caseInfo) return;
-
+  function updateReportRowUI(refundId, caseInfo = {}) {
     // Find table row for this report
     const rows = document.querySelectorAll('[data-report-id]');
     let targetRow = null;
@@ -2507,15 +2516,16 @@
 
     // Update status badge
     const statusBadge = targetRow.querySelector('.status-badge');
-    if (statusBadge) {
+    if (statusBadge && caseInfo.resolution_status) {
       statusBadge.className = 'status-badge ' + caseInfo.resolution_status;
       statusBadge.textContent = caseInfo.resolution_status.replace(/_/g, ' ');
     }
 
     // Update unread count badge on chat button
     const chatBtn = targetRow.querySelector('.btn-chat');
-    if (chatBtn && caseInfo.unreadCount && caseInfo.unreadCount > 0) {
-      chatBtn.innerHTML = `<i class="fas fa-comments"></i> Chat (${caseInfo.unreadCount})`;
+    const unreadCount = getUnreadCount(refundId);
+    if (chatBtn && unreadCount > 0) {
+      chatBtn.innerHTML = `<i class="fas fa-comments"></i> Chat (${unreadCount})`;
     } else if (chatBtn) {
       chatBtn.innerHTML = '<i class="fas fa-comments"></i> Chat';
     }
@@ -2737,6 +2747,7 @@
     }
     
     renderReports(currentReports);
+    await refreshUnreadCountsForReports(currentReports);
     dispatchRefundCasesUpdated(currentReports);
     setupEventListeners();
   });
@@ -3021,6 +3032,7 @@
   async function loadReturnReportsAndRefresh() {
     currentReports = await loadReturnReportsForCurrentBuyer();
     renderReports(currentReports);
+    await refreshUnreadCountsForReports(currentReports);
     dispatchRefundCasesUpdated(currentReports);
   }
 
@@ -3209,6 +3221,9 @@
       currentChatData = report;
       const caseId = report.supabase_case_id || report.id;
 
+      // Immediately clear unread badge for this case when buyer opens the chat
+      setUnreadCount(caseId, 0);
+
       // Mark refund_chat notifications as read for this case
       const token = getAuthToken();
       if (token && !String(caseId).startsWith('order-')) {
@@ -3219,7 +3234,6 @@
             ...getAuthHeaders()
           }
         }).then(() => {
-          setUnreadCount(caseId, 0);
           console.log(`✅ Notifications marked as read for refund ${caseId}`);
         }).catch(err => console.warn('Failed to mark notifications as read:', err.message));
       }
