@@ -355,6 +355,7 @@
     // Cart + Recent-Deleted script
 
     const CART_KEY = 'cart';
+    const API_BASE = 'https://marketmix-backend.onrender.com/api';
 
     function getToken() {
       return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
@@ -776,20 +777,65 @@
       }
     }
 
+    async function mergeLocalCartToBackend(localItems) {
+      try {
+        const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
+        if (!token || !Array.isArray(localItems) || localItems.length === 0) return false;
+
+        const mergeItems = localItems.map(item => ({
+          product_id: item.product_id || item.productId || item.id,
+          quantity: Number(item.quantity || item.qty || 0),
+          color: item.color || (item.selected_specifications && item.selected_specifications.color) || null,
+          size: item.size || (item.selected_specifications && item.selected_specifications.size) || null,
+          selected_specifications: item.selected_specifications || item.specifications || null
+        })).filter(item => item.product_id && item.quantity > 0);
+
+        if (!mergeItems.length) return false;
+
+        const resp = await fetch(`${API_BASE}/cart/merge`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': String(token).startsWith('Bearer ') ? token : `Bearer ${token}`
+          },
+          body: JSON.stringify({ items: mergeItems })
+        });
+
+        if (!resp.ok) {
+          const debug = await resp.json().catch(() => ({}));
+          console.warn('Cart merge failed', resp.status, debug);
+          return false;
+        }
+
+        const payload = await resp.json().catch(() => null);
+        return payload && payload.status === 'success';
+      } catch (err) {
+        console.warn('mergeLocalCartToBackend failed', err);
+        return false;
+      }
+    }
+
     async function loadBackendCart() {
       try {
         const token = (window.Auth && typeof Auth.getToken === 'function') ? Auth.getToken() : localStorage.getItem('token');
-        const API_BASE = 'https://marketmix-backend.onrender.com/api';
         if (!token) return false;
+
+        const storedCart = loadCartFromStorage();
+        const merged = await mergeLocalCartToBackend(storedCart);
 
         const resp = await fetch(`${API_BASE}/cart`, {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: {
+            'Authorization': String(token).startsWith('Bearer ') ? token : `Bearer ${token}`
+          }
         });
 
-        if (!resp.ok) return false;
+        if (!resp.ok) {
+          console.warn('Backend cart request failed', resp.status);
+          return false;
+        }
 
-        const payload = await resp.json().catch(()=>null);
+        const payload = await resp.json().catch(() => null);
         if (!payload || !payload.data || !Array.isArray(payload.data.items)) return false;
 
         const backendItems = payload.data.items.map(it => ({
@@ -803,9 +849,12 @@
           specifications: it.selected_specifications || it.selectedSpecifications || it.specifications || {}
         }));
 
-        const storedCart = loadCartFromStorage();
-        if (!Array.isArray(storedCart) || storedCart.length === 0) {
+        if (backendItems.length > 0) {
           cart = backendItems;
+          localStorage.setItem(CART_KEY, JSON.stringify(backendItems));
+        } else if (merged) {
+          cart = [];
+          localStorage.setItem(CART_KEY, JSON.stringify([]));
         } else {
           cart = mergeCarts(storedCart, backendItems);
         }
