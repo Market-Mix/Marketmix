@@ -778,6 +778,9 @@ async function saveShipping() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     toast('Delivery settings saved!', 'success');
+    // Dispatch event so seller dashboard progress updates immediately
+    try { window.dispatchEvent(new CustomEvent('seller-dashboard-updated')); } catch (e) { console.warn('Could not dispatch seller-dashboard-updated', e); }
+    try { window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated')); } catch (e) {}
   } catch (e) {
     toast(e.message || 'Failed to save', 'error');
   }

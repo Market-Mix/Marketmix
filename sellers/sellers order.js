@@ -148,6 +148,9 @@ const PAGE_SIZE = 10;
 let totalOrders = 0;
 let allLoaded = false;
 
+// Keep previous orders count to detect first-order arrival
+let prevTotalOrders = Number(localStorage.getItem('seller_prev_total_orders') || '0');
+
 // Accumulated rows across "load more" calls
 let loadedOrders = [];
 
@@ -217,6 +220,16 @@ async function fetchOrders(reset = false) {
     const { orders = [], pagination = {} } = data.data || {};
 
     totalOrders = pagination.total || 0;
+    // Detect first order arrival (previously zero, now >0) and notify dashboard
+    try {
+      if ((Number(prevTotalOrders) === 0) && Number(totalOrders) > 0) {
+        console.log('First order detected — dispatching dashboard update');
+        window.dispatchEvent(new CustomEvent('seller-dashboard-updated'));
+        window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
+      }
+      prevTotalOrders = Number(totalOrders || 0);
+      try { localStorage.setItem('seller_prev_total_orders', String(prevTotalOrders)); } catch (e) {}
+    } catch (e) { console.warn('Failed to dispatch first-order dashboard update', e); }
 
     if (reset) {
       loadedOrders = orders;

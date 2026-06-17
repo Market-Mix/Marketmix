@@ -32,6 +32,8 @@ document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
 document.addEventListener("DOMContentLoaded", async () => {
   // dashboardLoaded prevents clearing cards on subsequent refreshes
   window._dashboardLoaded = false;
+  // Central seller dashboard state (single source of truth for KYC and similar flags)
+  window.sellerDashboardState = window.sellerDashboardState || { kycStatus: null };
   initNavToggle();
   initMobilePanel();
   initProfileDropdownClose();
@@ -68,6 +70,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener('sellerNotificationsUpdated', async () => {
     console.log('Seller notification refresh triggered');
     await loadDashboardData();
+  });
+
+  // Also listen for explicit dashboard update events (dispatched after key actions)
+  window.addEventListener('seller-dashboard-updated', async () => {
+    try {
+      console.log('seller-dashboard-updated event received — reloading dashboard data');
+      await loadDashboardData();
+    } catch (e) { console.warn('Failed to reload dashboard on seller-dashboard-updated', e); }
   });
 
   // Auto-refresh every 30 seconds
@@ -632,20 +642,7 @@ function renderProgressTracker(profile, store, user) {
   }
 
   const accountCompleted = progress === 100;
-  const brandLogo = document.querySelector('.brand-logo');
-  if (brandLogo) {
-    if (accountCompleted && isVerifiedFlag) {
-      brandLogo.style.color = '#3b82f6';
-    } else if (kycStatus === 'approved') {
-      brandLogo.style.color = '#16a34a';
-    } else if (kycStatus === 'rejected' || kycStatus === 'failed') {
-      brandLogo.style.color = '#dc2626';
-    } else if (kycStatus === 'pending') {
-      brandLogo.style.color = '#f59e0b';
-    } else {
-      brandLogo.style.color = '';
-    }
-  }
+  const accountCompleted = progress === 100;
 
   console.log({
     kyc_status: kycStatus,
@@ -661,6 +658,48 @@ function renderProgressTracker(profile, store, user) {
     'is_verified:', p?.is_verified,
     'kycStatus:', kycStatus,
     'Blue badge status:', accountCompleted ? 'shown' : 'hidden');
+  // Debug: current milestone
+  console.log('Current milestone:', stage);
+
+  // Prevent flicker/backwards transitions: only render when forward or when
+  // database-backed metrics have actually decreased. Keep a snapshot to
+  // compare subsequent renders.
+  const STAGE_ORDER = ['store_setup','upload_product','shopping_details','first_sales','withdraw_earning','complete'];
+  const newIndex = STAGE_ORDER.indexOf(stage);
+  const prevStage = window._lastSellerProgressStage || null;
+  const prevIndex = prevStage ? STAGE_ORDER.indexOf(prevStage) : -1;
+  const prevSnapshot = window._sellerProgressSnapshot || {};
+
+  let allowRender = true;
+  if (prevStage && newIndex < prevIndex) {
+    // Only allow backward movement if numeric/store flags decreased (i.e. DB changed)
+    const prevProductCount = Number(prevSnapshot.productCount || 0);
+    const prevTotalSales = Number(prevSnapshot.totalSales || 0);
+    const prevStoreSetup = !!prevSnapshot.storeSetupDone;
+    const prevHasShoppingDetails = !!prevSnapshot.hasShoppingDetails;
+
+    const decreasedProduct = (productCount < prevProductCount);
+    const decreasedSales = (totalSales < prevTotalSales);
+    const lostStoreSetup = (!storeSetupDone && prevStoreSetup);
+    const lostHasShoppingDetails = (!hasShoppingDetails && prevHasShoppingDetails);
+
+    if (!(decreasedProduct || decreasedSales || lostStoreSetup || lostHasShoppingDetails)) {
+      allowRender = false;
+      console.log('Skipping backward progress render: previous stage', prevStage, 'new stage', stage);
+    }
+  }
+
+  if (!allowRender) return;
+
+  // Mark first successful render
+  if (!window._sellerProgressRenderedOnce) {
+    console.log('Progress rendered once');
+    window._sellerProgressRenderedOnce = true;
+  }
+
+  // Persist last seen stage and numeric snapshot for future comparisons
+  window._lastSellerProgressStage = stage;
+  window._sellerProgressSnapshot = { productCount, totalSales, storeSetupDone, hasShoppingDetails, kycStatus };
 
   if (accountCompleted) {
     text.innerHTML = `<strong>Congratulations!</strong><br>Your seller account setup is complete.`;
@@ -684,6 +723,21 @@ function renderProgressTracker(profile, store, user) {
 }
 
 // ─── KYC Notification Banner ──────────────────────────────────────────────────
+// Centralized KYC banner + logo updater — single place that controls banner text and logo color
+function applyKycBannerAndLogo(normalizedStatus) {
+  try {
+    const brandLogo = document.querySelector('.brand-logo');
+    // Logo rule: approved => yellow, all other states => default
+    if (brandLogo) {
+      if (normalizedStatus === 'approved') {
+        brandLogo.style.color = '#f59e0b';
+      } else {
+        brandLogo.style.color = '';
+      }
+    }
+  } catch (e) { console.warn('applyKycBannerAndLogo failed', e); }
+}
+
 function updateKYCNotificationBanner(profile) {
   const banner   = document.getElementById("kycNotificationBanner");
   const closeBtn = document.getElementById("kycNotificationClose");
@@ -716,6 +770,17 @@ function updateKYCNotificationBanner(profile) {
     banner.style.display = "none";
     banner.dataset.kycStatus = normalizedStatus;
   }
+
+  // Update centralized state and apply logo rules — only when changed
+  try {
+    const prev = window.sellerDashboardState?.kycStatus;
+    if (prev !== normalizedStatus) {
+      window.sellerDashboardState = window.sellerDashboardState || {};
+      window.sellerDashboardState.kycStatus = normalizedStatus;
+      applyKycBannerAndLogo(normalizedStatus);
+      console.log('KYC state updated:', normalizedStatus);
+    }
+  } catch (e) { console.warn('Could not update sellerDashboardState', e); }
 
   if (!closeBtn.dataset.listenerAttached) {
     closeBtn.addEventListener("click", () => {

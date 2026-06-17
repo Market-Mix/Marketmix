@@ -482,6 +482,12 @@ async function addProduct() {
     closeAddModal();
     showToast('Product added successfully!', 'success');
 
+    // Notify dashboard to refresh progress tracker immediately
+    try {
+      window.dispatchEvent(new CustomEvent('seller-dashboard-updated'));
+    } catch (e) { console.warn('Could not dispatch seller-dashboard-updated', e); }
+    try { window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated')); } catch (e) {}
+
     (async () => {
       try {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
