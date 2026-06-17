@@ -642,7 +642,6 @@ function renderProgressTracker(profile, store, user) {
   }
 
   const accountCompleted = progress === 100;
-  const accountCompleted = progress === 100;
 
   console.log({
     kyc_status: kycStatus,
