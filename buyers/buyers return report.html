@@ -2540,12 +2540,10 @@
 
     statusEl.textContent = statusText;
 
-    // Update unread count display if available
-    if (caseInfo.unreadCount && caseInfo.unreadCount > 0) {
-      const chatBtn = document.getElementById('sendChatBtn');
-      if (chatBtn) {
-        chatBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Send (${caseInfo.unreadCount} new)`;
-      }
+    const caseId = String(caseInfo.id || caseInfo.case_id || caseInfo.refund_case_id || '');
+    if (caseInfo.unreadCount != null && caseInfo.unreadCount >= 0 && caseId) {
+      setUnreadCount(caseId, Number(caseInfo.unreadCount));
+      refreshChatBadge(caseId);
     }
   }
 
