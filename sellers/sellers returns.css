@@ -583,6 +583,20 @@
   .btn-action {
     width: 100%;
   }
+
+  .btn-chat {
+    padding-right: 1.6rem;
+    position: relative;
+  }
+
+  .notification-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 0.6rem;
+    top: -5px;
+    right: -5px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -609,6 +623,17 @@
   .btn-send-chat {
     font-size: 0.8rem;
     padding: 0.6rem 0.8rem;
+  }
+
+  .btn-chat {
+    padding-right: 1.5rem;
+  }
+
+  .notification-badge {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 3px;
+    font-size: 0.55rem;
   }
 
   .filter-search {
