@@ -37,8 +37,11 @@ const StoreManager = (() => {
 
   function setActiveStore(store) {
     localStorage.setItem(ACTIVE_STORE_KEY, JSON.stringify(store));
-    // Dispatch event so any listener on the page can react
+    // Clear any stale seller notification/state for the previous store
+    window._sellerReturnsCount = null;
+    window._sellerNotificationCounts = null;
     window.dispatchEvent(new CustomEvent('storeChanged', { detail: store }));
+    window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
   }
 
   /* ── Stores cache ─────────────────────────────────────────────────────── */

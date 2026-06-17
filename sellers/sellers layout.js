@@ -55,10 +55,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Re-load when user switches stores on this page
   window.addEventListener('storeChanged', async () => {
+    // Clear any stale cached seller counts for previous stores
+    window._sellerReturnsCount = null;
+    window._sellerNotificationCounts = null;
     clearOverviewCards();
     clearActivityTicker();
     await loadDashboardData();
     await StoreManager.renderStoreSwitcher('storeSwitcher');
+  });
+
+  // Refresh when seller notification events are emitted
+  window.addEventListener('sellerNotificationsUpdated', async () => {
+    console.log('Seller notification refresh triggered');
+    await loadDashboardData();
   });
 
   // Auto-refresh every 30 seconds
@@ -148,6 +157,24 @@ function clearActivityTicker() {
   }
 }
 
+function getOpenRefundCount(refunds = []) {
+  const openStatuses = new Set([
+    'open',
+    'pending',
+    'active',
+    'waiting_buyer_confirmation',
+    'waiting_buyer_confirmation',
+    'in_progress',
+    'in_review',
+    'under_review',
+    'under review'
+  ]);
+  return (refunds || []).reduce((count, refund) => {
+    const status = String(refund?.resolution_status || refund?.status || '').toLowerCase().trim();
+    return openStatuses.has(status) ? count + 1 : count;
+  }, 0);
+}
+
 // ─── Central data loader ──────────────────────────────────────────────────────
 async function loadDashboardData() {
   let store = StoreManager.getActiveStore();
@@ -177,7 +204,8 @@ async function loadDashboardData() {
       try {
         const result = await StoreManager.apiFetch("/seller/refund-cases");
         const refunds = Array.isArray(result?.data) ? result.data : [];
-        return { data: { count: refunds.length, refunds } };
+        const openCount = getOpenRefundCount(refunds);
+        return { data: { count: openCount, refunds } };
       } catch (e) {
         console.warn('Could not fetch refunds count:', e.message);
         return { data: { count: 0, refunds: [] } };
@@ -197,6 +225,9 @@ async function loadDashboardData() {
   if (refundsRes.status === "fulfilled" && refundsRes.value?.data) {
     refundsCount = refundsRes.value.data.count || 0;
   }
+
+  console.log('Seller returns count:', refundsCount);
+  console.log('Seller current store:', store?.id || 'unknown');
 
   // Merge stats into store object for progress tracker
   if (stats) {

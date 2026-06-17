@@ -518,6 +518,7 @@ async function updateOrderStatus(orderId, newStatus) {
     }
 
     await fetchOrders(true);
+    window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
   } catch (err) {
     console.error('updateOrderStatus error:', err);
     showToast('Failed to update order: ' + err.message, true);

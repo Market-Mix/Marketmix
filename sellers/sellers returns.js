@@ -114,11 +114,48 @@ async function loadSellerRefundCases() {
     if (returnsData.length > 0) {
       console.log('SELLER REFUND MAPPED DATA', returnsData[0]);
     }
-    
+
+    dispatchSellerNotificationsUpdated();
     return returnsData;
   } catch (err) {
     console.error('Error loading seller refund cases:', err);
     return [];
+  }
+}
+
+function calculateSellerOpenRefundCount(refunds = []) {
+  const openStatuses = new Set([
+    'open',
+    'pending',
+    'active',
+    'waiting_buyer_confirmation',
+    'in_progress',
+    'in_review',
+    'under_review',
+    'under review'
+  ]);
+
+  return (refunds || []).reduce((count, refund) => {
+    const status = String(refund?.resolution_status || refund?.status || '').toLowerCase().trim();
+    return openStatuses.has(status) ? count + 1 : count;
+  }, 0);
+}
+
+function dispatchSellerNotificationsUpdated() {
+  const count = calculateSellerOpenRefundCount(returnsData);
+  console.log('Seller notification refresh triggered');
+  console.log('Seller returns count:', count);
+  try {
+    localStorage.setItem('sellerReturnsActiveCount', String(count));
+    localStorage.setItem('sellerNotificationsUpdatedAt', String(Date.now()));
+  } catch (e) {
+    console.warn('Could not persist seller notification count for cross-tab sync:', e);
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated', { detail: { count } }));
+  } catch (e) {
+    console.warn('Could not dispatch sellerNotificationsUpdated event:', e);
   }
 }
 
@@ -728,6 +765,7 @@ async function markRefundResolved(refundId) {
     console.log('✅ Refund marked as resolved');
     showNotification('Refund marked as resolved. Buyer will confirm.', 'success');
     await loadSellerRefundCases();
+    window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
     console.error('❌ Error marking refund resolved:', err);
@@ -757,6 +795,7 @@ async function escalateRefund(refundId, escalatedBy) {
     console.log('✅ Refund escalated to MarketMix');
     showNotification('Refund escalated to MarketMix support.', 'success');
     await loadSellerRefundCases();
+    window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
     console.error('❌ Error escalating refund:', err);
