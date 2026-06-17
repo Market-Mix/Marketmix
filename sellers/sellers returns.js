@@ -213,6 +213,42 @@ function updateNotificationBadges() {
   window.updateReturnsNotification?.(total);
 }
 
+function refreshChatBadge(refundId) {
+  const row = document.querySelector(`.table-row[data-refund-id="${refundId}"]`);
+  if (!row) return;
+  const chatCell = row.querySelector('.col-chat');
+  if (!chatCell) return;
+  const button = chatCell.querySelector('button.btn-chat');
+  if (!button) return;
+  chatCell.innerHTML = getChatButtonWithBadge(refundId, button.outerHTML);
+}
+
+function refreshAllChatBadges() {
+  returnsData.forEach(item => refreshChatBadge(item.id));
+}
+
+async function refreshRefundUnreadCounts() {
+  const token = getToken();
+  if (!token || !returnsData.length) return;
+
+  await Promise.all(returnsData.map(async item => {
+    try {
+      const res = await fetch(`${API_BASE}/refund-chat/${item.id}/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const count = Number(data?.data?.count || 0);
+      setUnreadCount(item.id, count);
+    } catch (err) {
+      console.warn(`Failed to refresh unread count for refund ${item.id}:`, err.message || err);
+    }
+  }));
+
+  updateNotificationBadges();
+  refreshAllChatBadges();
+}
+
 function getBadgeHtml(refundId) {
   const count = getUnreadCount(refundId);
   if (count > 0) {
@@ -345,23 +381,20 @@ async function pollRefundCaseStatus(refundId) {
       
       // Fetch unread notification count for this refund case
       try {
-        const notifCountRes = await fetch(`${API_BASE}/refund-chat/${refundId}/unread-notification-count`, {
+        const notifCountRes = await fetch(`${API_BASE}/refund-chat/${refundId}/unread-count`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (notifCountRes.ok) {
           const notifCountData = await notifCountRes.json();
-          const unreadNotifCount = notifCountData.data?.count || 0;
-          if (unreadNotifCount > 0) {
-            setUnreadCount(refundId, unreadNotifCount);
-          } else {
-            setUnreadCount(refundId, 0);
-          }
+          const unreadNotifCount = Number(notifCountData.data?.count || 0);
+          setUnreadCount(refundId, unreadNotifCount);
         }
       } catch (err) {
         console.warn('Failed to fetch notification count:', err.message);
       }
       
       updateNotificationBadges();
+      refreshChatBadge(refundId);
 
       // If chat is currently open for this case, update UI
       if (currentChatId === refundId) {
@@ -477,6 +510,7 @@ function renderTable(data = returnsData) {
     let chatBtnHtml = '';
     let workflowBtnHtml = '';
     let chatDate = item.date;
+    row.dataset.refundId = item.id;
 
     const pending = item.status.toLowerCase() === 'pending';
     const hasEvidence = !!item.evidence_submitted_at;
@@ -901,6 +935,7 @@ function openChat(returnId) {
   }).then(() => {
     setUnreadCount(returnId, 0);
     updateNotificationBadges();
+    refreshChatBadge(returnId);
     console.log(`✅ Notifications marked as read for refund ${returnId}`);
   }).catch(err => {
     console.warn('Failed to mark notifications as read:', err.message);
@@ -1245,6 +1280,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadProfile();
   await loadSellerRefundCases();
   renderTable();
+  await refreshRefundUnreadCounts();
+
+  window.addEventListener('storeChanged', async () => {
+    unreadCounts = {};
+    returnsData = [];
+    Object.values(pollingIntervals).forEach(clearInterval);
+    pollingIntervals = {};
+    await loadSellerRefundCases();
+    renderTable();
+    await refreshRefundUnreadCounts();
+  });
+
+  setInterval(refreshRefundUnreadCounts, 15000);
 });
 
 // Notification
