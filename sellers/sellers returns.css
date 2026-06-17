@@ -1081,7 +1081,7 @@
 
 /* Chat Button in Table */
 .btn-chat {
-  padding: 0.4rem 0.75rem;
+  padding: 0.4rem 0.75rem 0.4rem 0.75rem;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -1096,6 +1096,8 @@
   white-space: nowrap;
   flex-shrink: 0;
   overflow: visible;
+  position: relative;
+  padding-right: 1.4rem;
 }
 
 .btn-chat:hover {

@@ -164,6 +164,8 @@
     .btn-chat {
       background: #17a2b8;
       color: white;
+      position: relative;
+      padding-right: 1.4rem;
     }
 
     .btn-chat:hover {
@@ -851,23 +853,27 @@
     /* Notification Badge */
     .notification-badge {
       position: absolute;
-      top: -8px;
-      right: -8px;
+      top: -6px;
+      right: -6px;
       background: #e63946;
       color: white;
       border-radius: 50%;
-      width: 24px;
-      height: 24px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       font-weight: 700;
       border: 2px solid white;
+      pointer-events: none;
+      line-height: 1;
     }
 
     .btn-chat {
       position: relative;
+      padding-right: 1.4rem;
     }
 
     .toast-message {
@@ -2180,6 +2186,7 @@
     console.log('DEBUG: Reports with evidence_submitted_at:', reportsWithEvidence);
     renderReports(currentReports);
     await refreshUnreadCountsForReports(currentReports);
+    renderReports(currentReports);
     dispatchRefundCasesUpdated(currentReports);
   }
 
@@ -2381,7 +2388,7 @@
     const count = getUnreadCount(reportId);
     if (count > 0) {
       const displayCount = count > 99 ? '99+' : count;
-      return `<span class="notification-badge" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; border: 2px solid white;">${displayCount}</span>`;
+      return `<span class="notification-badge">${displayCount}</span>`;
     }
     return '';
   }
@@ -2389,21 +2396,15 @@
   function getChatButtonWithBadge(reportId, buttonHtml) {
     const badge = getBadgeHtml(reportId);
     if (badge) {
-      return `<div style="position: relative; display: inline-block; width: 100%;">${buttonHtml}${badge}</div>`;
+      return `<div style="position: relative; display: inline-flex; width: auto;">${buttonHtml}${badge}</div>`;
     }
     return buttonHtml;
   }
 
   function refreshChatBadge(reportId) {
-    const row = document.querySelector(`.table-row[data-report-id="${reportId}"]`);
+    const row = document.querySelector(`.table-row[data-report-id="${reportId}"]`) || document.querySelector(`.table-row[data-case-id="${reportId}"]`);
     if (!row) return;
-    const chatCell = row.querySelector('.col-chat');
-    if (!chatCell) return;
-    const buttonContainer = chatCell.querySelector('button.btn-chat')?.parentElement || chatCell.querySelector('button.btn-chat');
-    if (!buttonContainer) return;
-    const button = buttonContainer.querySelector ? buttonContainer.querySelector('button.btn-chat') : buttonContainer;
-    if (!button) return;
-    chatCell.innerHTML = getChatButtonWithBadge(reportId, button.outerHTML);
+    updateReportRowUI(reportId, caseInfoCache[reportId] || {});
   }
 
   async function refreshAllChatBadges() {
@@ -2809,6 +2810,7 @@
     
     renderReports(currentReports);
     await refreshUnreadCountsForReports(currentReports);
+    renderReports(currentReports);
     dispatchRefundCasesUpdated(currentReports);
     setupEventListeners();
 

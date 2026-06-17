@@ -253,7 +253,7 @@ function getBadgeHtml(refundId) {
   const count = getUnreadCount(refundId);
   if (count > 0) {
     const displayCount = count > 99 ? '99+' : count;
-    return `<span class="notification-badge" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; border: 2px solid white;">${displayCount}</span>`;
+    return `<span class="notification-badge" style="position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border-radius: 50%; min-width: 20px; height: 20px; padding: 0 6px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; border: 2px solid white; line-height: 1; pointer-events: none;">${displayCount}</span>`;
   }
   return '';
 }
@@ -261,7 +261,7 @@ function getBadgeHtml(refundId) {
 function getChatButtonWithBadge(refundId, buttonHtml) {
   const badge = getBadgeHtml(refundId);
   if (badge) {
-    return `<div style="position: relative; display: inline-block; width: 100%;">${buttonHtml}${badge}</div>`;
+    return `<div style="position: relative; display: inline-flex; width: auto;">${buttonHtml}${badge}</div>`;
   }
   return buttonHtml;
 }
