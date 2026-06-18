@@ -205,7 +205,8 @@ const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
                 }
                 
                 // Clear buyer auth/local session keys
-                ['token','user','buyer_token','buyer_user','userRole'].forEach(k => localStorage.removeItem(k));
+                ['token','user','buyer_token','buyer_user','userRole','userId','refundCasesActiveCount','refundCasesUpdatedAt'].forEach(k => localStorage.removeItem(k));
+                sessionStorage.removeItem('userId');
                 localStorage.removeItem('authData');
                 localStorage.removeItem('after_login_redirect');
                 

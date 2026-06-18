@@ -49,7 +49,8 @@ function isLoggedIn() {
 
 // Helper function to logout
 function logout() {
-  ['token','user','buyer_token','buyer_user','userRole'].forEach(k => localStorage.removeItem(k));
+  ['token','user','buyer_token','buyer_user','userRole','userId','refundCasesActiveCount','refundCasesUpdatedAt'].forEach(k => localStorage.removeItem(k));
+  sessionStorage.removeItem('userId');
   window.location.href = 'login.html';
 }
 

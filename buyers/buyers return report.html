@@ -1888,7 +1888,9 @@
     try {
       console.log('🔍 Fetching refund cases for buyer via backend API:', buyerId);
 
-      const response = await fetch(`${API_BASE_URL}/refunds/buyer/${encodeURIComponent(buyerId)}`);
+      const response = await fetch(`${API_BASE_URL}/refunds/buyer/${encodeURIComponent(buyerId)}`, {
+        headers: getAuthHeaders()
+      });
       const result = await response.json();
 
       if (!response.ok) {
@@ -1897,6 +1899,7 @@
       }
 
       console.log('✅ Successfully fetched refund cases from backend:', result.refundCases?.length || 0);
+      console.log('Refund owners:', (result.refundCases || []).map(r => r.buyer_id));
       return result.refundCases || [];
     } catch (err) {
       console.error('❌ Failed to fetch refund cases from backend:', err.message || err);
@@ -2202,6 +2205,10 @@
     return buildReturnReports(refundCases, buyerOrders);
   }
 
+  function getRefundStorageKey(key, buyerId) {
+    return `refundCases${key}_${buyerId || 'unknown'}`;
+  }
+
   async function refreshRefundTableFromSupabase() {
     console.log('DEBUG: Refreshing refund table from Supabase...');
     currentReports = await loadReturnReportsForCurrentBuyer();
@@ -2238,15 +2245,21 @@
 
   function dispatchRefundCasesUpdated(reports) {
     const count = calculateActiveRefundCaseCount(reports);
+    const buyerId = getCurrentBuyerId();
+    if (!buyerId) {
+      console.warn('Could not persist refund case count: buyerId missing');
+      return;
+    }
+
     try {
-      localStorage.setItem('refundCasesActiveCount', String(count));
-      localStorage.setItem('refundCasesUpdatedAt', String(Date.now()));
+      localStorage.setItem(getRefundStorageKey('ActiveCount', buyerId), String(count));
+      localStorage.setItem(getRefundStorageKey('UpdatedAt', buyerId), String(Date.now()));
     } catch (e) {
       console.warn('Could not persist refund case count for cross-tab sync:', e);
     }
 
     try {
-      window.dispatchEvent(new CustomEvent('refundCasesUpdated', { detail: { count } }));
+      window.dispatchEvent(new CustomEvent('refundCasesUpdated', { detail: { count, buyerId } }));
     } catch (e) {
       console.warn('Could not dispatch refundCasesUpdated event:', e);
     }
@@ -2682,7 +2695,7 @@
   }
 
   function getCurrentBuyerId() {
-    const storedUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const storedUserId = sessionStorage.getItem('userId');
     if (storedUserId) return storedUserId;
 
     const user = getStoredAuthUser();
@@ -2690,7 +2703,7 @@
     const buyerId = user?.id || user?._id || user?.userId || tokenPayload?.id || tokenPayload?.user_id || null;
 
     if (buyerId) {
-      localStorage.setItem('userId', buyerId);
+      sessionStorage.setItem('userId', buyerId);
       return buyerId;
     }
 

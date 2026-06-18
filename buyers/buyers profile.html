@@ -159,9 +159,27 @@ function getToken() {
       badge.style.display = normalized > 0 ? 'inline-block' : 'none';
     }
 
+    function getBuyerId() {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        if (storedUser?.id || storedUser?.userId || storedUser?.buyerId) {
+          return String(storedUser.id || storedUser.userId || storedUser.buyerId);
+        }
+      } catch (err) {
+        console.warn('Unable to parse buyer user from localStorage:', err);
+      }
+      return null;
+    }
+
+    function getRefundStorageKey(key, buyerId) {
+      return `refundCases${key}_${buyerId || 'unknown'}`;
+    }
+
     function getStoredRefundCount() {
       try {
-        return Number(localStorage.getItem('refundCasesActiveCount') || 0);
+        const buyerId = getBuyerId();
+        if (!buyerId) return 0;
+        return Number(localStorage.getItem(getRefundStorageKey('ActiveCount', buyerId)) || 0);
       } catch (err) {
         return 0;
       }
@@ -175,7 +193,9 @@ function getToken() {
       if (e.key === 'cart' || e.key === 'marketmix-cart' || e.key === null) {
         updateCartBadges();
       }
-      if (e.key === 'refundCasesActiveCount' || e.key === 'refundCasesUpdatedAt') {
+      const buyerId = getBuyerId();
+      if (!buyerId) return;
+      if (e.key === getRefundStorageKey('ActiveCount', buyerId) || e.key === getRefundStorageKey('UpdatedAt', buyerId)) {
         refreshRefundBadgeFromStorage();
       }
     });
