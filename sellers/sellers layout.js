@@ -268,7 +268,11 @@ async function loadDashboardData() {
   renderWelcome(store);
   renderProfileImage(profile);
   renderOverviewCards(stats, earnings, store, refundsCount);
-  renderProgressTracker(profile, store, user);
+  renderProgressTracker(profile, store, user, {
+    profileOk: profileRes.status === 'fulfilled',
+    userOk: userRes.status === 'fulfilled',
+    statsOk: statsRes.status === 'fulfilled',
+  });
   updateKYCNotificationBanner(profile);
   renderActivityLog(activities);
   renderStoreShareLink(store);
@@ -536,13 +540,19 @@ function renderOverviewCards(stats, earnings, store, refundsCount = 0) {
 }
 
 // ─── Progress Tracker ─────────────────────────────────────────────────────────
-function renderProgressTracker(profile, store, user) {
+function renderProgressTracker(profile, store, user, fetchStatus = {}) {
   const bar       = document.getElementById("progressBar");
   const barContainer = document.querySelector('.progress-bar-container');
   const text      = document.getElementById("progress-text");
   const badge     = document.getElementById("progressBadge");
   const trackerEl = document.querySelector('.progress-tracker');
   if (!bar || !barContainer || !text || !badge || !trackerEl) return;
+
+  const hasSnapshot = !!window._sellerProgressSnapshot;
+  if (hasSnapshot && (!fetchStatus.profileOk || !fetchStatus.userOk || !fetchStatus.statsOk)) {
+    console.warn('Skipping progress render because refresh returned incomplete dashboard data', fetchStatus);
+    return;
+  }
 
   const p            = profile?.profile || profile || {};
   const rawKycStatus  = p?.kyc_status ?? p?.kycStatus;
