@@ -388,11 +388,14 @@
   }
 
   // FIX: single clean attachAddress, no duplicates
-  async function attachAddress(addressId, addressPayload) {
-  console.log('attachAddress called - addressId:', addressId, 'payload:', addressPayload);
+async function attachAddress(addressId, addressPayload) {
   setInlineMessage(els.addressMessage, '', '');
   const previousAddressId = state.selectedAddressId;
   const confirmedId = addressId;
+
+  // Don't set state.selectedAddressId here optimistically — wait for the await below
+  try {
+    const data = await attachAddressToSession(addressId, addressPayload);
 
   if (addressId) {
     state.selectedAddressId = addressId;
