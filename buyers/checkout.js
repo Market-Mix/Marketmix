@@ -393,23 +393,13 @@ async function attachAddress(addressId, addressPayload) {
   const previousAddressId = state.selectedAddressId;
   const confirmedId = addressId;
 
-  // Don't set state.selectedAddressId here optimistically — wait for the await below
-  try {
-    const data = await attachAddressToSession(addressId, addressPayload);
-
-  if (addressId) {
-    state.selectedAddressId = addressId;
-    renderAddresses();
-  }
-
   try {
     const data = await attachAddressToSession(addressId, addressPayload);
     console.log('attachAddressToSession response:', data);
     absorbSessionPayload(data);
-    
-    // Reload session to get updated address_id on session object
+
     await loadSession(state.sessionId);
-    
+
     state.selectedAddressId = confirmedId;
     renderAddresses();
     renderSummary();
