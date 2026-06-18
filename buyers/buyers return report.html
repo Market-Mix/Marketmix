@@ -2710,6 +2710,28 @@
     return null;
   }
 
+  function getBuyerAccountStorageKey(buyerId) {
+    return `mm_buyer_account_details_${buyerId || 'unknown'}`;
+  }
+
+  function getStoredBuyerAccountDetails(buyerId) {
+    if (!buyerId) return null;
+    const stored = localStorage.getItem(getBuyerAccountStorageKey(buyerId));
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored);
+    } catch (err) {
+      console.warn('Unable to parse stored bank details for buyer', buyerId, err);
+      return null;
+    }
+  }
+
+  function saveBuyerAccountDetails(details, buyerId) {
+    if (!buyerId) return;
+    localStorage.setItem(getBuyerAccountStorageKey(buyerId), JSON.stringify(details));
+    buyerAccountDetails = details;
+  }
+
   function showNotification(message, type = 'success') {
     const container = document.getElementById('toastNotification');
     if (!container) return;
@@ -2766,11 +2788,20 @@
   // ACCOUNT DETAILS FUNCTIONS
   // =====================================================
   function checkAndShowAccountModal() {
-    const stored = localStorage.getItem('mm_buyer_account_details');
-    if (stored) {
-      buyerAccountDetails = JSON.parse(stored);
+    const buyerId = getCurrentBuyerId();
+    console.log('Current buyer:', buyerId);
+
+    const bankDetails = getStoredBuyerAccountDetails(buyerId);
+    console.log('Bank details found:', bankDetails);
+
+    const shouldShowBankForm = !bankDetails;
+    console.log('Show bank form:', shouldShowBankForm);
+
+    if (bankDetails) {
+      buyerAccountDetails = bankDetails;
       return;
     }
+
     showAccountModal();
   }
 
@@ -2783,6 +2814,7 @@
   }
 
   function saveAccountDetails() {
+    const buyerId = getCurrentBuyerId();
     const details = {
       method: 'bank',
       bankName: document.getElementById('bankName').value.trim(),
@@ -2796,8 +2828,12 @@
       return;
     }
 
-    buyerAccountDetails = details;
-    localStorage.setItem('mm_buyer_account_details', JSON.stringify(details));
+    if (!buyerId) {
+      showNotification('Unable to save bank details: buyer not identified.', 'error');
+      return;
+    }
+
+    saveBuyerAccountDetails(details, buyerId);
     hideAccountModal();
     showNotification('Bank account details saved successfully.', 'success');
   }
