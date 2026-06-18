@@ -10,6 +10,24 @@ function getToken() {
   return localStorage.getItem('seller_token') || localStorage.getItem('token') || '';
 }
 
+function normalizeKycStatus(rawStatus, previousStatus = 'not_submitted') {
+  const status = String(rawStatus || '').trim().toLowerCase();
+  if (!status) return previousStatus || 'not_submitted';
+  if (status === 'under_review' || status === 'pending' || status.includes('review') || status.includes('submitted')) {
+    return 'pending';
+  }
+  if (status === 'approved' || status.includes('approved') || status.includes('verified')) {
+    return 'approved';
+  }
+  if (status === 'rejected' || status === 'failed' || status.includes('reject')) {
+    return 'rejected';
+  }
+  if (status === 'not_submitted' || status.includes('not') || status.includes('unsubmitted')) {
+    return 'not_submitted';
+  }
+  return previousStatus || 'not_submitted';
+}
+
 async function handleLogout() {
   try {
     await fetch(`${StoreManager.API_BASE || 'https://marketmix-backend.onrender.com/api'}/auth/logout`, {
@@ -241,8 +259,10 @@ async function loadDashboardData() {
 
   // Merge stats into store object for progress tracker
   if (stats) {
-    store.productCount = stats.product_count || stats.productCount || 0;
-    store.total_sales = stats.total_sales || stats.totalSales || stats.totalOrders || 0;
+    const existingProductCount = Number(store.productCount || store.product_count || 0);
+    const existingTotalSales = Number(store.total_sales || store.totalSales || 0);
+    store.productCount = stats.product_count ?? stats.productCount ?? existingProductCount;
+    store.total_sales = stats.total_sales ?? stats.totalSales ?? stats.totalOrders ?? existingTotalSales;
   }
 
   renderWelcome(store);
@@ -526,7 +546,8 @@ function renderProgressTracker(profile, store, user) {
 
   const p            = profile?.profile || profile || {};
   const rawKycStatus  = p?.kyc_status ?? p?.kycStatus;
-  const kycStatus     = String(rawKycStatus || 'not_submitted').toLowerCase();
+  const prevKycStatus  = window._sellerProgressSnapshot?.kycStatus || window.sellerDashboardState?.kycStatus || 'not_submitted';
+  const kycStatus      = normalizeKycStatus(rawKycStatus, prevKycStatus);
   const hasSubmittedKYC = ['pending', 'approved', 'rejected'].includes(kycStatus);
   const isVerifiedFlag = kycStatus === 'approved';
   const isRejectedFlag = ['rejected', 'failed'].includes(kycStatus);
@@ -675,14 +696,12 @@ function renderProgressTracker(profile, store, user) {
     const prevProductCount = Number(prevSnapshot.productCount || 0);
     const prevTotalSales = Number(prevSnapshot.totalSales || 0);
     const prevStoreSetup = !!prevSnapshot.storeSetupDone;
-    const prevHasShoppingDetails = !!prevSnapshot.hasShoppingDetails;
 
     const decreasedProduct = (productCount < prevProductCount);
     const decreasedSales = (totalSales < prevTotalSales);
     const lostStoreSetup = (!storeSetupDone && prevStoreSetup);
-    const lostHasShoppingDetails = (!hasShoppingDetails && prevHasShoppingDetails);
 
-    if (!(decreasedProduct || decreasedSales || lostStoreSetup || lostHasShoppingDetails)) {
+    if (!(decreasedProduct || decreasedSales || lostStoreSetup)) {
       allowRender = false;
       console.log('Skipping backward progress render: previous stage', prevStage, 'new stage', stage);
     }
@@ -745,8 +764,8 @@ function updateKYCNotificationBanner(profile) {
 
   const profileData = profile?.profile || profile || {};
   const rawStatus = profileData?.kyc_status ?? profileData?.kycStatus;
-  const kycStatus = String(rawStatus || 'not_submitted').toLowerCase();
-  const normalizedStatus = kycStatus === 'under_review' ? 'pending' : kycStatus;
+  const prevStatus = window.sellerDashboardState?.kycStatus || 'not_submitted';
+  const normalizedStatus = normalizeKycStatus(rawStatus, prevStatus);
   const dismissedStatus = localStorage.getItem('mm_kyc_banner_dismissed_status');
   const shouldShowBanner = normalizedStatus !== dismissedStatus;
 
