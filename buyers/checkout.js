@@ -566,7 +566,7 @@ function renderDeliveryOptions() {
         <span class="radio-dot"></span>
         <div><strong>MarketMix Delivery</strong><p class="muted">${mmOpts.length} courier${mmOpts.length > 1 ? 's' : ''} available</p></div>
       </button>
-      <div id="mmCourierList" style="display:none;padding-left:20px">
+      <div id="mmCourierList" style="display:none;">
         ${mmOpts.map(opt => renderOptionCard(opt, 'mm_courier')).join('')}
       </div>`;
   }
@@ -585,8 +585,9 @@ function renderDeliveryOptions() {
 
 function renderOptionCard(option, groupClass) {
   const selected = state.selectedDelivery && String(state.selectedDelivery.id) === String(option.id);
+  const extraStyle = groupClass === 'mm_courier' ? ' style="width:100%;box-sizing:border-box;"' : '';
   return `
-    <button type="button" class="option-card ${groupClass} ${selected ? 'selected' : ''}" data-delivery-id="${escapeAttr(option.id)}">
+    <button type="button" class="option-card ${groupClass} ${selected ? 'selected' : ''}" data-delivery-id="${escapeAttr(option.id)}"${extraStyle}>
       <span class="radio-dot"></span>
       <div><strong>${escapeHtml(option.title)}</strong><p class="muted">${escapeHtml(deliveryEta(option))}</p></div>
       <strong class="option-price">${formatMoney(option.fee)}</strong>
@@ -604,9 +605,9 @@ function renderOptionCard(option, groupClass) {
 
       const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
         method: 'POST',
-        body: JSON.stringify({
-          method: option.provider,
-          provider_id: option.providerId || option.id
+       body: JSON.stringify({
+      method: option.provider === 'marketmix' ? 'shipbubble' : option.provider,
+      provider_id: option.providerId || option.id
         })
       });
 
