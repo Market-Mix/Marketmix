@@ -538,59 +538,61 @@ const rawOptions = d.all ||
     renderDeliveryOptions();
   }
 
-  function normalizeDeliveryOptions(options) {
+ function normalizeDeliveryOptions(options) {
   const list = Array.isArray(options) ? options : [];
-  if (!list.length) { /* fallback defaults unchanged */ }
-  
-  return list.map((option, index) => {
-    const id = option.providerId || option.id || option.method || `delivery-${index}`;
-    const provider = option.provider || option.providerId || '';
-    const name = option.providerLabel || option.title || option.name || labelFromMethod(id);
-    
-    return {
-      id,
-      method:      option.provider || option.method || id,
-      provider,
-      title:       name,
-      name,
-      icon:        'fa-truck',
-      description: option.estimatedDays || option.description || '',
-      fee:         readMoney(option.totalFee ?? option.fee ?? 0),
-      estimatedDays:     option.estimatedDays || option.estimated_days,
-      estimatedDelivery: option.estimatedDelivery || option.estimated_delivery,
-    };
+  return list.map((option, index) => ({
+    id: option.providerId || option.id || `delivery-${index}`,
+    provider: option.provider,
+    title: option.providerLabel || option.title || option.name,
+    fee: readMoney(option.totalFee ?? option.fee ?? 0),
+    estimatedDays: option.estimatedDays || option.estimated_days,
+    estimatedDelivery: option.estimatedDelivery || option.estimated_delivery,
+  }));
+}
+
+function renderDeliveryOptions() {
+  const sellerOpts = state.deliveryOptions.filter(o => o.provider === 'seller');
+  const mmOpts      = state.deliveryOptions.filter(o => o.provider === 'marketmix' || o.provider === 'shipbubble');
+
+  let html = '';
+
+  sellerOpts.forEach(opt => {
+    html += renderOptionCard(opt, 'seller_delivery');
   });
 
-    return [
-      { id: 'seller_delivery', method: 'seller_delivery', provider: 'seller', title: 'Seller Delivery', name: 'Seller Delivery', icon: 'fa-truck', fee: 0, estimatedDays: '2-5' },
-      { id: 'marketmix_delivery', method: 'marketmix_delivery', provider: 'marketmix', title: 'MarketMix Delivery', name: 'MarketMix Delivery', icon: 'fa-truck', fee: 0, estimatedDays: '1-3' }
-    ];
+  if (mmOpts.length) {
+    html += `
+      <button type="button" class="option-card" data-toggle-mm="1">
+        <span class="radio-dot"></span>
+        <div><strong>MarketMix Delivery</strong><p class="muted">${mmOpts.length} courier${mmOpts.length > 1 ? 's' : ''} available</p></div>
+      </button>
+      <div id="mmCourierList" style="display:none;padding-left:20px">
+        ${mmOpts.map(opt => renderOptionCard(opt, 'mm_courier')).join('')}
+      </div>`;
   }
 
-  function renderDeliveryOptions() {
-    if (!state.deliveryOptions.length) {
-      els.deliveryOptions.innerHTML = '<p class="muted">No delivery options are available for this address.</p>';
-      return;
-    }
+  els.deliveryOptions.innerHTML = html;
 
-    els.deliveryOptions.innerHTML = state.deliveryOptions.map((option) => {
-      const selected = state.selectedDelivery && String(state.selectedDelivery.id) === String(option.id);
-      return `
-        <button type="button" class="option-card ${selected ? 'selected' : ''}" data-delivery-id="${escapeAttr(option.id)}">
-          <span class="radio-dot"></span>
-          <div>
-            <strong>${escapeHtml(option.title || 'Delivery option')}</strong>
-            <p class="muted">${escapeHtml(deliveryEta(option))}</p>
-          </div>
-          <strong class="option-price">${formatMoney(option.fee)}</strong>
-        </button>
-      `;
-    }).join('');
+  document.querySelector('[data-toggle-mm]')?.addEventListener('click', () => {
+    const list = document.getElementById('mmCourierList');
+    list.style.display = list.style.display === 'none' ? 'block' : 'none';
+  });
 
-    els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach((card) => {
-      card.addEventListener('click', () => selectDelivery(card.dataset.deliveryId));
-    });
-  }
+  els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach(card => {
+    card.addEventListener('click', () => selectDelivery(card.dataset.deliveryId));
+  });
+}
+
+function renderOptionCard(option, groupClass) {
+  const selected = state.selectedDelivery && String(state.selectedDelivery.id) === String(option.id);
+  return `
+    <button type="button" class="option-card ${groupClass} ${selected ? 'selected' : ''}" data-delivery-id="${escapeAttr(option.id)}">
+      <span class="radio-dot"></span>
+      <div><strong>${escapeHtml(option.title)}</strong><p class="muted">${escapeHtml(deliveryEta(option))}</p></div>
+      <strong class="option-price">${formatMoney(option.fee)}</strong>
+    </button>`;
+}
+
 
   async function selectDelivery(optionId) {
     const option = state.deliveryOptions.find((item) => String(item.id) === String(optionId));
