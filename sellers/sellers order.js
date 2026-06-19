@@ -400,6 +400,10 @@ function closeSellerProductDetailsModal() {
 function buildActionButton(order) {
   const status = (order.status || '').toLowerCase();
 
+  if (order.deliveryMethod === 'shipbubble' && ['confirmed','processing','shipped'].includes(status)) {
+    return `<span class="status-courier" style="color:#0ea5e9;font-size:0.85em">📦 Courier handled</span>`;
+  }
+
   if (status === 'pending') {
     return `<button class="mark-btn" data-id="${order.orderId}" data-status="confirmed">Confirm</button>`;
   }

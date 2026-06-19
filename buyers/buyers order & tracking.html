@@ -298,6 +298,7 @@ async function loadOrders() {
           <div class="order-header">
             <h2>Order #${String(order.id).substring(0,8).toUpperCase()}</h2>
             <span class="order-status ${statusClass[order.status] || 'status-processing'}">${order.status}</span>
+            ${order.delivery_method === 'shipbubble' ? `<span style="font-size:0.8rem;color:#0ea5e9;margin-left:8px">🚚 Courier Delivery</span>` : ''}
           </div>
           <div class="order-items">
             <img src="${imgSrc}" alt="${firstItem.product_name || 'Product'}" 
