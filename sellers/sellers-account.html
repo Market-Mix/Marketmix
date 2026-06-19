@@ -357,19 +357,22 @@
           <h2>Delivery Address</h2>
           <p class="card-sub">Used for order deliveries and your account records.</p>
 
-          <div class="form-group">
-            <label>Street Address</label>
-            <input type="text" id="address" placeholder="123 Main Street" />
-          </div>
+          <!-- Inside #sec-address card, replace the single address input -->
+             <div class="form-group">
+        <label>Street Address <span style="color:var(--red)">*</span></label>
+       <input type="text" id="address" placeholder="e.g. 19 Wetheral Road, Cherubim Junction" />
+      <p class="hint">Include street name and a nearby landmark/area for accurate delivery quotes.</p>
+           </div>
           <div class="form-row">
-            <div class="form-group">
-              <label>City</label>
-              <input type="text" id="city" placeholder="Lagos" />
-            </div>
-            <div class="form-group">
-              <label>State</label>
-              <input type="text" id="state" placeholder="Lagos State" />
-            </div>
+         <div class="form-group">
+              <label>City <span style="color:var(--red)">*</span></label>
+         <input type="text" id="city" placeholder="Owerri" />
+       </div>
+           <div class="form-group">
+               <label>State <span style="color:var(--red)">*</span></label>
+           <input type="text" id="state" placeholder="Imo" />
+           </div>
+              </div>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -702,27 +705,29 @@ async function savePassword() {
 
 // ── Save address ─────────────────────────────────────────────────────────────
 async function saveAddress() {
+  const address = document.getElementById('address').value.trim();
+  const city    = document.getElementById('city').value.trim();
+  const state   = document.getElementById('state').value.trim();
+
+  if (!address || !city || !state) {
+    toast('Street address, city, and state are required for accurate delivery quotes', 'error');
+    return;
+  }
+
   setBtnLoading('saveAddressBtn', true, 'Save Address');
   try {
-    const res  = await fetch(`${API}/auth/update-address`, {
+    const res = await fetch(`${API}/auth/update-address`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        address:    document.getElementById('address').value.trim(),
-        city:       document.getElementById('city').value.trim(),
-        state:      document.getElementById('state').value.trim(),
+        address, city, state,
         postalCode: document.getElementById('postalCode').value.trim(),
-        country:    document.getElementById('country').value.trim()
+        country: document.getElementById('country').value.trim() || 'Nigeria'
       })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     toast('Address saved!', 'success');
-    try {
-      const store = (typeof StoreManager !== 'undefined' && StoreManager.getActiveStore) ? StoreManager.getActiveStore() : null;
-      const storeName = store?.business_name || 'your store';
-      await createInAppNotification('Address updated', `Delivery address updated for ${storeName}.`, '/sellers/sellers notification page.html');
-    } catch (e) { console.warn('Address notification failed', e); }
   } catch (e) {
     toast(e.message || 'Failed to save address', 'error');
   }
