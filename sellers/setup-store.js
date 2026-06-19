@@ -494,6 +494,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!phoneInput.value.trim())   { showFieldError('phone', 'Phone number is required.');      valid = false; }
     if (!addressInput.value.trim()) { showFieldError('address', 'Store address is required.');   valid = false; }
     if (!storeCategory?.value)      { showFieldError('storeCategory', 'Please select a category.'); valid = false; }
+    if (!addressInput.value.trim()) { showFieldError('address', 'Store address is required.'); valid = false; }
+    else if (addressInput.value.trim().split(',').length < 2) {
+    showFieldError('address', 'Please include street, city/state — e.g. "12 Market Rd, Owerri, Imo"');
+    valid = false;
+    }
 
     if (!otpVerified) {
       showFieldError('email', 'Please verify your email before saving.');
