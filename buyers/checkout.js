@@ -391,21 +391,22 @@
 async function attachAddress(addressId, addressPayload) {
   setInlineMessage(els.addressMessage, '', '');
   const previousAddressId = state.selectedAddressId;
-  const confirmedId = addressId;
+
+  // Optimistic — select immediately, rollback on failure
+  state.selectedAddressId = addressId;
+  renderAddresses();
+  setInlineMessage(els.addressMessage, 'Setting address...', 'success');
 
   try {
     const data = await attachAddressToSession(addressId, addressPayload);
-    console.log('attachAddressToSession response:', data);
     absorbSessionPayload(data);
-
     await loadSession(state.sessionId);
-
-    state.selectedAddressId = confirmedId;
+    state.selectedAddressId = addressId;
     renderAddresses();
     renderSummary();
     setInlineMessage(els.addressMessage, 'Delivery address selected.', 'success');
   } catch (error) {
-    console.error('attachAddress failed:', error.message, error.data);
+    // Rollback
     state.selectedAddressId = previousAddressId;
     renderAddresses();
     setInlineMessage(els.addressMessage, error.message || 'Could not attach address.', 'error');
@@ -525,7 +526,14 @@ async function attachAddress(addressId, addressPayload) {
     els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
     const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
     console.log('Delivery response:', JSON.stringify(data));
-    const rawOptions = data.options || data.deliveryOptions || data.data?.options || data.data?.all || data.data || [];
+   
+const d = data.data || data;
+const rawOptions = d.all || 
+  [
+    ...(d.sellerDelivery    || []),
+    ...(d.marketmixDelivery || []),
+    ...(d.shipbubbleDelivery|| []),
+  ];
     state.deliveryOptions = normalizeDeliveryOptions(rawOptions);
     renderDeliveryOptions();
   }
