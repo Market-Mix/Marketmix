@@ -526,20 +526,12 @@ async function attachAddress(addressId, addressPayload) {
   }
 
   async function loadDeliveryOptions() {
-    els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
-    const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
-    console.log('Delivery response:', JSON.stringify(data));
-   
-const d = data.data || data;
-const rawOptions = d.all || 
-  [
-    ...(d.sellerDelivery    || []),
-    ...(d.marketmixDelivery || []),
-    ...(d.shipbubbleDelivery|| []),
-  ];
-    state.deliveryOptions = normalizeDeliveryOptions(rawOptions);
-    renderDeliveryOptions();
-  }
+  els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+  const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
+  const d = data.data || data;
+  state.quotesBySeller = d.quotesBySeller || {};
+  renderDeliveryOptions();
+}
 
  function normalizeDeliveryOptions(options) {
   const list = Array.isArray(options) ? options : [];
@@ -553,16 +545,7 @@ const rawOptions = d.all ||
   }));
 }
 
-function renderDeliveryOptions() {
-  const sellerIds = Object.keys(state.quotesBySeller || {}).filter(id => id !== 'marketmix');
-  els.deliveryOptions.innerHTML = sellerIds.map(sellerId => {
-    const quotes = normalizeDeliveryOptions(state.quotesBySeller[sellerId]);
-    return `<div class="seller-delivery-group"><h4>Seller ${sellerId.slice(0,6)}</h4>
-      ${quotes.map(opt => renderOptionCard(opt, sellerId)).join('')}</div>`;
-  }).join('');
-  els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach(card =>
-    card.addEventListener('click', () => selectDelivery(card.dataset.sellerId, card.dataset.deliveryId)));
-}
+
 
 function renderOptionCard(option, groupClass) {
   const selected = state.selectedDelivery && String(state.selectedDelivery.id) === String(option.id);
