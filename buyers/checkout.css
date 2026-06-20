@@ -905,3 +905,42 @@ textarea {
     white-space: normal;
   }
 }
+
+/* buyers/checkout.css — replace .option-card rule */
+.address-card,
+.option-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+/* add — the option-list grid was likely auto-sizing columns; force single column */
+.option-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.seller-delivery-group { width: 100%; }
+.seller-delivery-group h4 { margin: 4px 0 10px; font-size: 14px; font-weight: 800; color: var(--ink); }
+
+/* buyers/checkout.css — add */
+.delivery-method-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.dm-tab {
+  flex: 1; padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; color: var(--brand-dark); font-weight: 800; cursor: pointer;
+}
+.dm-tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.delivery-select {
+  width: 100%; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 14px; background: #fff;
+}

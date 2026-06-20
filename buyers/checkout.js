@@ -527,10 +527,11 @@ async function attachAddress(addressId, addressPayload) {
 
   async function loadDeliveryOptions() {
   els.deliveryOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
-  const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
-  const d = data.data || data;
-  state.quotesBySeller = d.quotesBySeller || {};
-  renderDeliveryOptions();
+ const data = await api(`/checkout/session/${state.sessionId}/delivery/options`);
+const d = data.data || data;
+state.quotesBySeller = d.quotesBySeller || {};
+state.sellerNames = d.sellerNames || {};
+renderDeliveryOptions();
 }
 
  function normalizeDeliveryOptions(options) {
@@ -547,39 +548,91 @@ async function attachAddress(addressId, addressPayload) {
 
 
 
-function renderOptionCard(option, groupClass) {
-  const selected = state.selectedDelivery && String(state.selectedDelivery.id) === String(option.id);
-  const extraStyle = groupClass === 'mm_courier' ? ' style="width:100%;box-sizing:border-box;"' : '';
-  return `
-    <button type="button" class="option-card ${groupClass} ${selected ? 'selected' : ''}" data-delivery-id="${escapeAttr(option.id)}"${extraStyle}>
-      <span class="radio-dot"></span>
-      <div><strong>${escapeHtml(option.title)}</strong><p class="muted">${escapeHtml(deliveryEta(option))}</p></div>
-      <strong class="option-price">${formatMoney(option.fee)}</strong>
-    </button>`;
+// buyers/checkout.js — replace renderDeliveryOptions + renderOptionCard + selectDelivery
+
+function splitQuotesByType() {
+  const sellerIds = Object.keys(state.quotesBySeller || {}).filter(id => id !== 'marketmix');
+  const bySellerType = {}; // { sellerId: { seller: [...], courier: [...] } }
+  sellerIds.forEach(sid => {
+    const all = state.quotesBySeller[sid] || [];
+    bySellerType[sid] = {
+      seller: all.filter(q => q.provider === 'seller'),
+      courier: all.filter(q => q.provider === 'shipbubble' || q.provider === 'marketmix'),
+    };
+  });
+  return bySellerType;
 }
 
-
 function renderDeliveryOptions() {
-  const sellerIds = Object.keys(state.quotesBySeller || {}).filter(id => id !== 'marketmix');
-  els.deliveryOptions.innerHTML = sellerIds.map(sellerId => {
-    const quotes = normalizeDeliveryOptions(state.quotesBySeller[sellerId]);
-    return `<div class="seller-delivery-group"><h4>Seller ${sellerId.slice(0,6)}</h4>
-      ${quotes.map(opt => renderOptionCard(opt, sellerId)).join('')}</div>`;
-  }).join('');
-  els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach(card =>
-    card.addEventListener('click', () => selectDelivery(card.dataset.sellerId, card.dataset.deliveryId)));
+  const bySellerType = splitQuotesByType();
+  const sellerIds = Object.keys(bySellerType);
+
+  els.deliveryOptions.innerHTML = `
+    <div class="delivery-method-tabs">
+      <button type="button" class="dm-tab ${state.deliveryGroupTab !== 'courier' ? 'active' : ''}" data-dm-tab="seller">Seller Delivery</button>
+      <button type="button" class="dm-tab ${state.deliveryGroupTab === 'courier' ? 'active' : ''}" data-dm-tab="courier">MarketMix Delivery</button>
+    </div>
+    <div class="delivery-method-panel">
+      ${sellerIds.map(sid => renderSellerDropdown(sid, bySellerType[sid])).join('')}
+    </div>
+  `;
+
+  els.deliveryOptions.querySelectorAll('[data-dm-tab]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      state.deliveryGroupTab = btn.dataset.dmTab;
+      renderDeliveryOptions();
+    })
+  );
+
+  els.deliveryOptions.querySelectorAll('[data-dm-select]').forEach(sel =>
+    sel.addEventListener('change', () => selectDelivery(sel.dataset.sellerId, sel.value))
+  );
+}
+
+function renderSellerDropdown(sellerId, groups) {
+  const tab = state.deliveryGroupTab || 'seller';
+  const options = tab === 'courier' ? groups.courier : groups.seller;
+  const normalized = normalizeDeliveryOptions(options);
+  const sellerName = state.sellerNames?.[sellerId] || `Seller ${sellerId.slice(0,6)}`;
+  const selected = state.selectedDeliveryBySeller?.[sellerId];
+
+  if (!normalized.length) {
+    return `<div class="seller-delivery-group"><h4>${escapeHtml(sellerName)}</h4><p class="muted">No ${tab === 'courier' ? 'courier' : 'seller delivery'} options available.</p></div>`;
+  }
+
+  return `
+    <div class="seller-delivery-group">
+      <h4>${escapeHtml(sellerName)}</h4>
+      <select class="delivery-select" data-dm-select data-seller-id="${escapeAttr(sellerId)}">
+        <option value="">Select delivery option…</option>
+        ${normalized.map(opt => `
+          <option value="${escapeAttr(opt.id)}" ${selected && String(selected.id) === String(opt.id) ? 'selected' : ''}>
+            ${escapeHtml(opt.title)} — ${formatMoney(opt.fee)} (${escapeHtml(deliveryEta(opt))})
+          </option>
+        `).join('')}
+      </select>
+    </div>
+  `;
 }
 
 async function selectDelivery(sellerId, optionId) {
-  const option = normalizeDeliveryOptions(state.quotesBySeller[sellerId]).find(o => String(o.id) === String(optionId));
+  if (!optionId) return;
+  const tab = state.deliveryGroupTab || 'seller';
+  const pool = state.quotesBySeller[sellerId] || [];
+  const filtered = tab === 'courier'
+    ? pool.filter(q => q.provider === 'shipbubble' || q.provider === 'marketmix')
+    : pool.filter(q => q.provider === 'seller');
+  const option = normalizeDeliveryOptions(filtered).find(o => String(o.id) === String(optionId));
   if (!option) return;
+
   const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
     method: 'POST',
     body: JSON.stringify({ seller_id: sellerId, method: option.provider, provider_id: option.providerId || option.id })
   });
   absorbSessionPayload(data);
   (state.selectedDeliveryBySeller ||= {})[sellerId] = option;
-  renderDeliveryOptions(); renderSummary();
+  renderDeliveryOptions();
+  renderSummary();
 }
 
   async function loadPaymentMethods() {
