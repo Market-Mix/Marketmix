@@ -283,10 +283,13 @@
       }
     }
 
-    if (state.currentStep === 2 && !state.selectedDelivery) {
-      setInlineMessage(els.deliveryMessage, 'Choose a delivery method to continue.', 'error');
-      return;
-    }
+   if (state.currentStep === 2) {
+  const sellerIds = Object.keys(state.quotesBySeller || {}).filter(id => id !== 'marketmix');
+  if (sellerIds.some(id => !state.selectedDeliveryBySeller?.[id])) {
+    setInlineMessage(els.deliveryMessage, 'Choose a delivery method for every seller in your cart.', 'error');
+    return;
+  }
+}
 
     const nextStep = Math.min(3, state.currentStep + 1);
     setStep(nextStep);
@@ -551,36 +554,14 @@ const rawOptions = d.all ||
 }
 
 function renderDeliveryOptions() {
-  const sellerOpts = state.deliveryOptions.filter(o => o.provider === 'seller');
-  const mmOpts      = state.deliveryOptions.filter(o => o.provider === 'marketmix' || o.provider === 'shipbubble');
-
-  let html = '';
-
-  sellerOpts.forEach(opt => {
-    html += renderOptionCard(opt, 'seller_delivery');
-  });
-
-  if (mmOpts.length) {
-    html += `
-      <button type="button" class="option-card" data-toggle-mm="1">
-        <span class="radio-dot"></span>
-        <div><strong>MarketMix Delivery</strong><p class="muted">${mmOpts.length} courier${mmOpts.length > 1 ? 's' : ''} available</p></div>
-      </button>
-      <div id="mmCourierList" style="display:none;">
-        ${mmOpts.map(opt => renderOptionCard(opt, 'mm_courier')).join('')}
-      </div>`;
-  }
-
-  els.deliveryOptions.innerHTML = html;
-
-  document.querySelector('[data-toggle-mm]')?.addEventListener('click', () => {
-    const list = document.getElementById('mmCourierList');
-    list.style.display = list.style.display === 'none' ? 'block' : 'none';
-  });
-
-  els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach(card => {
-    card.addEventListener('click', () => selectDelivery(card.dataset.deliveryId));
-  });
+  const sellerIds = Object.keys(state.quotesBySeller || {}).filter(id => id !== 'marketmix');
+  els.deliveryOptions.innerHTML = sellerIds.map(sellerId => {
+    const quotes = normalizeDeliveryOptions(state.quotesBySeller[sellerId]);
+    return `<div class="seller-delivery-group"><h4>Seller ${sellerId.slice(0,6)}</h4>
+      ${quotes.map(opt => renderOptionCard(opt, sellerId)).join('')}</div>`;
+  }).join('');
+  els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach(card =>
+    card.addEventListener('click', () => selectDelivery(card.dataset.sellerId, card.dataset.deliveryId)));
 }
 
 function renderOptionCard(option, groupClass) {
@@ -595,39 +576,28 @@ function renderOptionCard(option, groupClass) {
 }
 
 
-  async function selectDelivery(optionId) {
-    const option = state.deliveryOptions.find((item) => String(item.id) === String(optionId));
-    if (!option) return;
+function renderDeliveryOptions() {
+  const sellerIds = Object.keys(state.quotesBySeller || {}).filter(id => id !== 'marketmix');
+  els.deliveryOptions.innerHTML = sellerIds.map(sellerId => {
+    const quotes = normalizeDeliveryOptions(state.quotesBySeller[sellerId]);
+    return `<div class="seller-delivery-group"><h4>Seller ${sellerId.slice(0,6)}</h4>
+      ${quotes.map(opt => renderOptionCard(opt, sellerId)).join('')}</div>`;
+  }).join('');
+  els.deliveryOptions.querySelectorAll('[data-delivery-id]').forEach(card =>
+    card.addEventListener('click', () => selectDelivery(card.dataset.sellerId, card.dataset.deliveryId)));
+}
 
-    try {
-      const savedCoupon = state.session?.couponCode || state.session?.coupon_code;
-      const savedDiscount = state.session?.couponDiscount || state.session?.coupon_discount;
-
-      const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
-        method: 'POST',
-       body: JSON.stringify({
-      method: option.provider === 'marketmix' ? 'shipbubble' : option.provider,
-      provider_id: option.providerId || option.id
-        })
-      });
-
-      absorbSessionPayload(data);
-
-      if (savedCoupon && state.session) {
-        state.session.couponCode = state.session.couponCode || savedCoupon;
-        state.session.coupon_code = state.session.coupon_code || savedCoupon;
-        state.session.couponDiscount = state.session.couponDiscount || savedDiscount;
-        state.session.coupon_discount = state.session.coupon_discount || savedDiscount;
-      }
-
-      state.selectedDelivery = option;
-      renderDeliveryOptions();
-      renderSummary();
-      setInlineMessage(els.deliveryMessage, 'Delivery method selected.', 'success');
-    } catch (error) {
-      setInlineMessage(els.deliveryMessage, error.message || 'Could not select delivery method.', 'error');
-    }
-  }
+async function selectDelivery(sellerId, optionId) {
+  const option = normalizeDeliveryOptions(state.quotesBySeller[sellerId]).find(o => String(o.id) === String(optionId));
+  if (!option) return;
+  const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
+    method: 'POST',
+    body: JSON.stringify({ seller_id: sellerId, method: option.provider, provider_id: option.providerId || option.id })
+  });
+  absorbSessionPayload(data);
+  (state.selectedDeliveryBySeller ||= {})[sellerId] = option;
+  renderDeliveryOptions(); renderSummary();
+}
 
   async function loadPaymentMethods() {
     els.paymentOptions.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
