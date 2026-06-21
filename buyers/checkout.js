@@ -615,6 +615,7 @@ function renderSellerDropdown(sellerId, groups) {
   `;
 }
 
+// buyers/checkout.js — selectDelivery(), confirm fee is in payload
 async function selectDelivery(sellerId, optionId) {
   if (!optionId) return;
   const tab = state.deliveryGroupTab || 'seller';
@@ -627,7 +628,7 @@ async function selectDelivery(sellerId, optionId) {
 
   const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
     method: 'POST',
-    body: JSON.stringify({ seller_id: sellerId, method: option.provider, provider_id: option.providerId || option.id })
+    body: JSON.stringify({ seller_id: sellerId, method: option.provider, provider_id: option.providerId || option.id, fee: option.fee })
   });
   absorbSessionPayload(data);
   (state.selectedDeliveryBySeller ||= {})[sellerId] = option;
