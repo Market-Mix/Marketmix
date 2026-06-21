@@ -627,7 +627,8 @@ async function selectDelivery(sellerId, optionId) {
 
   const data = await api(`/checkout/session/${state.sessionId}/delivery`, {
     method: 'POST',
-    body: JSON.stringify({ seller_id: sellerId, method: option.provider, provider_id: option.providerId || option.id })
+   // buyers/checkout.js — selectDelivery(), include fee in POST body
+   body: JSON.stringify({ seller_id: sellerId, method: option.provider, provider_id: option.providerId || option.id, fee: option.fee })
   });
   absorbSessionPayload(data);
   (state.selectedDeliveryBySeller ||= {})[sellerId] = option;

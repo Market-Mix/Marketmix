@@ -53,7 +53,7 @@ async function loadCategories() {
             <div class="cat-count">${c.product_count || 0} products</div>
           </div>
           <div class="cat-arrow"><i class="fas fa-chevron-right"></i></div>
-        </div>`;
+        </div>`; 
     }).join('');
   } catch (err) {
     console.error('Error loading categories:', err);
