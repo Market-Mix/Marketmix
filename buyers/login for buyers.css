@@ -1,3 +1,21 @@
+    :root {
+    --brand: #FF7A00;
+    --brand-dark: #c2410c;
+    --brand-light: #fff7ed;
+}
+    
+    body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+    min-height: 100vh;
+    padding: 20px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+    
+    
     /* ===== INPUT STYLES ===== */
         .input-group {
             position: relative;
@@ -22,11 +40,11 @@
             box-sizing: border-box;
         }
 
-        .input-group input:focus {
-            outline: none;
-            border-color: #4CAF50;
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-        }
+     .input-group input:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+}
 
         .input-group input.invalid {
             border-color: #f44336;
@@ -38,14 +56,9 @@
             background-color: #f5fff5;
         }
 
-        .forgot-password {
-            display: block;
-            text-align: right;
-            margin-top: 8px;
-            font-size: 13px;
-            color: #2B6CB0;
-            text-decoration: none;
-        }
+     .forgot-password {
+    color: var(--brand);
+}
 
         .forgot-password:hover {
             text-decoration: underline;
@@ -98,11 +111,10 @@
         }
 
         .alert-success {
-            background-color: #efe;
-            border: 1px solid #cfc;
-            color: #3c3;
-        }
-
+    background-color: var(--brand-light);
+    border: 1px solid #fed7aa;
+    color: var(--brand-dark);
+}
         .alert-icon {
             font-size: 18px;
             flex-shrink: 0;
@@ -159,24 +171,17 @@
 
         /* Button styles */
         .login-btn {
-            width: 100%;
-            padding: 14px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-        }
+    background-color: var(--brand);
+    padding: 12px 20px;
+    width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgb(224, 98, 30);
+}
 
-        .login-btn:hover:not(:disabled) {
-            background-color: #45a049;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-        }
+       .login-btn:hover:not(:disabled) {
+    background-color: var(--brand-dark);
+    box-shadow: 0 6px 16px rgba(248, 90, 5,);
+}
 
         .login-btn:disabled {
             opacity: 0.6;
@@ -185,31 +190,34 @@
         }
 
         /* Container styles */
-        .login-container {
-            max-width: 450px;
-            margin: 60px auto;
-            padding: 40px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
+       .login-container {
+    max-width: 450px;
+    width: 100%;
+    /* margin: 20px auto; */
+    padding: 36px 32px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(234, 88, 12, 0.18);
+}
 
-        .logo-container {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+      .logo-container {
+    text-align: center;
+    margin-bottom: 24px;
+}
 
         .marketmix-logo {
-            max-width: 180px;
-            height: auto;
-        }
+    width: 180px;
+    height: auto;
+    display: inline-block;
+}
 
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 26px;
-        }
+       h2 {
+    text-align: center;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+    font-size: 24px;
+    font-weight: 700;
+}
 
         .or {
             text-align: center;
@@ -242,9 +250,10 @@
 
         /* Make Google button fill container width */
         #google-signin-container {
-            display: flex;
-            justify-content: center;
-        }
+    display: flex;
+    justify-content: center;
+    min-height: 44px;
+}
 
         #google-signin-container > div {
             width: 100% !important;
@@ -262,19 +271,36 @@
         }
 
         .signup-link a {
-            color: #2B6CB0;
-            text-decoration: none;
-            font-weight: 600;
-        }
+    color: var(--brand);
+}
 
         .signup-link a:hover {
             text-decoration: underline;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            margin: 0;
-        }
+      /* ===== MOBILE RESPONSIVENESS ===== */
+@media (max-width: 480px) {
+    body { padding: 0; align-items: flex-start; }
+
+    .login-container {
+        max-width: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 20px 20px 16px;
+        border-radius: 0;
+        min-height: 100vh;
+        box-shadow: none;
+    }
+
+    .marketmix-logo { width: 140px; }
+    .logo-container { margin-bottom: 12px; }
+    h2 { font-size: 21px; margin-bottom: 4px; }
+
+    .input-group { margin-bottom: 12px; }
+    .input-group input { font-size: 16px; padding: 12px 14px; }
+    .password-toggle { top: 38px; }
+
+    .login-btn { padding: 12px; font-size: 15px; }
+    .or { margin: 16px 0 12px; }
+    .signup-link { margin-top: 10px; font-size: 13px; }
+}
