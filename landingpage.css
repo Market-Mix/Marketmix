@@ -1094,6 +1094,8 @@
   .mm-deck-wrapper { display: none; }
 }
  
+.mm-brand .marketmix-logo { display: block; }
+
 /* ─── 8. TESTIMONIALS ─────────────────────────────────────────── */
 .mm-testimonials-section {
   padding: 72px 0;
