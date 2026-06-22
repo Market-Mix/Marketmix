@@ -9,349 +9,194 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
-        /* ===== INPUT STYLES ===== */
-        .input-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
+        :root {
+    --brand: #FF7A00;
+    --brand-dark: #c2410c;
+    --brand-light: #fff7ed;
+}
 
-        .input-row .input-group {
-            flex: 1;
-            margin-bottom: 0;
-        }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #fb923c 0%, #FF7A00 100%);
+    min-height: 100vh;
+    padding: 20px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-        .input-group {
-            position: relative;
-            margin-bottom: 15px;
-        }
+.login-container {
+    max-width: 460px;
+    width: 100%;
+    margin: 20px auto;
+    padding: 36px 32px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(234, 88, 12, 0.18);
+}
 
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #333;
-        }
+.logo-container { text-align: center; margin-bottom: 24px; }
+.marketmix-logo {
+    width: 180px;
+    height: auto;
+    display: inline-block;
+}
 
-        .input-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: all 0.3s;
-            box-sizing: border-box;
-        }
+h2 {
+    text-align: center;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+    font-size: 24px;
+    font-weight: 700;
+}
 
-        .input-group input:focus {
-            outline: none;
-            border-color: #4CAF50;
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-        }
+.subtitle {
+    text-align: center;
+    color: #6b7280;
+    font-size: 14px;
+    margin-bottom: 28px;
+}
 
-        .input-group input.invalid {
-            border-color: #f44336 !important;
-            background-color: #fff5f5;
-        }
+.input-group label { color: #374151; font-size: 13px; font-weight: 600; }
 
-        .input-group input.valid {
-            border-color: #4CAF50 !important;
-            background-color: #f5fff5;
-        }
+.input-group input {
+    padding: 11px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #f9fafb;
+}
 
-        /* Password visibility toggle */
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 42px;
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            padding: 5px;
-            transition: color 0.2s;
-        }
+.input-group input:focus {
+    border-color: var(--brand);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+}
 
-        .password-toggle:hover {
-            color: #333;
-        }
+.input-group input.valid { border-color: #16a34a !important; background: #f0fdf4; }
+.input-group input.invalid { border-color: #dc2626 !important; background: #fef2f2; }
 
-        /* Password strength indicator */
-        .password-strength {
-            margin-top: 8px;
-            display: none;
-            gap: 4px;
-            height: 4px;
-        }
+.password-strength.weak span:nth-child(1) { background-color: #dc2626; }
+.password-strength.medium span:nth-child(1),
+.password-strength.medium span:nth-child(2),
+.password-strength.medium span:nth-child(3) { background-color: var(--brand); }
+.password-strength.strong span { background-color: #16a34a; }
 
-        .password-strength.active {
-            display: flex;
-        }
+.terms-checkbox input[type="checkbox"] { accent-color: var(--brand); }
+.terms-checkbox a { color: var(--brand); font-weight: 600; }
 
-        .password-strength span {
-            flex: 1;
-            background-color: #e0e0e0;
-            border-radius: 2px;
-            transition: background-color 0.3s;
-        }
+.login-btn {
+    background: var(--brand);
+    border-radius: 10px;
+    font-size: 15px;
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
+}
+.login-btn:hover:not(:disabled) {
+    background-color: var(--brand-dark);
+    box-shadow: 0 6px 16px rgba(234, 88, 12, 0.35);
+}
 
-        .password-strength.weak span:nth-child(1) {
-            background-color: #f44336;
-        }
+.or { font-size: 13px; }
 
-        .password-strength.medium span:nth-child(1),
-        .password-strength.medium span:nth-child(2),
-        .password-strength.medium span:nth-child(3) {
-            background-color: #ff9800;
-        }
+.signup-link a { color: var(--brand); }
 
-        .password-strength.strong span {
-            background-color: #4CAF50;
-        }
+.alert-success { background: var(--brand-light); border-color: #fed7aa; color: var(--brand-dark); }
 
-        .password-hint {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-            display: none;
-        }
+/* Google button container needs fixed height so layout doesn't jump */
+#google-signin-container {
+    display: flex;
+    justify-content: center;
+    min-height: 44px;
+}
 
-        .password-hint.active {
-            display: block;
-        }
+/* ===== MOBILE RESPONSIVENESS ===== */
+@media (max-width: 480px) {
+    body {
+        padding: 0;
+        align-items: flex-start;
+    }
 
-        /* Terms checkbox */
-        .terms-checkbox {
-            display: flex;
-            align-items: start;
-            gap: 10px;
-            margin: 20px 0;
-            text-align: left;
-        }
+    .login-container {
+        max-width: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 28px 20px;
+        border-radius: 0;
+        min-height: 100vh;
+        box-shadow: none;
+    }
 
-        .terms-checkbox input[type="checkbox"] {
-            margin-top: 3px;
-            cursor: pointer;
-        }
 
-        .terms-checkbox label {
-            font-size: 14px;
-            color: #666;
-            line-height: 1.4;
-            cursor: pointer;
-        }
+    .marketmix-logo {
+        width: 140px;
+    }
 
-        .terms-checkbox a {
-            color: #2B6CB0;
-            text-decoration: none;
-        }
+    h2 {
+        font-size: 21px;
+    }
 
-        .terms-checkbox a:hover {
-            text-decoration: underline;
-        }
+    .subtitle {
+        font-size: 13px;
+        margin-bottom: 22px;
+    }
 
-        /* Alert styles */
-        .alert {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 14px;
-            animation: slideDown 0.3s ease-out;
-        }
+    /* Stack first/last name instead of side-by-side */
+    .input-row {
+        flex-direction: column;
+        gap: 0;
+    }
 
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+    .input-row .input-group {
+        margin-bottom: 15px;
+    }
 
-        .alert-error {
-            background-color: #fee;
-            border: 1px solid #fcc;
-            color: #c33;
-        }
+    .input-group input {
+        font-size: 16px; /* prevents iOS Safari auto-zoom on focus */
+        padding: 12px 14px;
+    }
 
-        .alert-success {
-            background-color: #efe;
-            border: 1px solid #cfc;
-            color: #3c3;
-        }
+    .password-toggle {
+        top: 38px;
+    }
 
-        .alert-icon {
-            font-size: 18px;
-            flex-shrink: 0;
-        }
+    .terms-checkbox label {
+        font-size: 13px;
+    }
 
-        .alert-success .alert-icon {
-            animation: checkmark 0.5s ease-out;
-        }
+    .login-btn {
+        padding: 14px;
+        font-size: 15px;
+    }
 
-        @keyframes checkmark {
-            0% { transform: scale(0); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
+    #google-signin-container {
+        transform: scale(0.95);
+        transform-origin: center;
+    }
+}
 
-        .alert-message {
-            flex: 1;
-        }
+@media (max-width: 360px) {
+    .login-container {
+        padding: 24px 16px;
+    }
 
-        .alert-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            color: inherit;
-            cursor: pointer;
-            padding: 0;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-
-        .alert-close:hover {
-            opacity: 1;
-        }
-
-        /* Loading spinner */
-        .spinner {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Button states */
-        .login-btn {
-            width: 100%;
-            padding: 14px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .login-btn:hover:not(:disabled) {
-            background-color: #45a049;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-        }
-
-        .login-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Container styles */
-        .login-container {
-            max-width: 480px;
-            margin: 40px auto;
-            padding: 40px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .logo-container {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .marketmix-logo {
-            max-width: 180px;
-            height: auto;
-        }
-
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-
-        .or {
-            text-align: center;
-            color: #666;
-            margin: 20px 0;
-            position: relative;
-        }
-
-        .or::before,
-        .or::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            width: 40%;
-            height: 1px;
-            background-color: #e0e0e0;
-        }
-
-        .or::before {
-            left: 0;
-        }
-
-        .or::after {
-            right: 0;
-        }
-
-        .social-login {
-            margin: 20px 0;
-        }
-
-        .signup-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-        }
-
-        .signup-link a {
-            color: #2B6CB0;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .signup-link a:hover {
-            text-decoration: underline;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            margin: 0;
-        }
+    h2 {
+        font-size: 19px;
+    }
+}
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="logo-container">
-            <img src="images/logo Picture1.png" alt="MarketMix Logo" class="marketmix-logo">
-        </div>
+    <svg class="marketmix-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="180" height="45">
+        <text x="10" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', 'Helvetica Neue', sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
+            <tspan fill="#000000">market</tspan><tspan fill="#FF7A00">mix</tspan>
+        </text>
+    </svg>
+</div>
         <h2>Create an Account</h2>
+         <p class="subtitle">Shop smarter on MarketMix</p>
 
         <form id="signupForm">
             <div class="input-row">
@@ -813,24 +658,23 @@ function getToken() {
         // 3. Uncomment the code below
         
         
-        if (window.google) {
-            window.google.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: handleGoogleSignIn,
-                auto_select: false
-            });
-            
-            window.google.accounts.id.renderButton(
-                document.getElementById('google-signin-container'),
-                { 
-                    theme: 'outline', 
-                    size: 'large',
-                    width: '100%',
-                    text: 'signup_with'
-                }
-            );
-            console.log('✅ Google Sign-In initialized');
-        }
+       // Wait for Google script to actually load before initializing
+function initGoogleSignIn() {
+    if (!window.google || !window.google.accounts) {
+        return setTimeout(initGoogleSignIn, 200); // retry until script loads
+    }
+    window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleSignIn,
+        auto_select: false
+    });
+   window.google.accounts.id.renderButton(
+    document.getElementById('google-signin-container'),
+    { theme: 'outline', size: 'large', width: Math.min(320, window.innerWidth - 80), text: 'signup_with' }
+       );
+    console.log('✅ Google Sign-In initialized');
+}
+initGoogleSignIn();
 
         async function handleGoogleSignIn(response) {
             console.log('🔐 Google Sign-In initiated');
@@ -897,8 +741,6 @@ function getToken() {
         }
         
     </script>
-    
-    <!-- Uncomment when you add Google Client ID -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script> 
+
 </body>
 </html>
