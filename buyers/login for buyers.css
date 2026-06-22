@@ -1,6 +1,8 @@
     :root {
     --brand: #FF7A00;
     --brand-dark: #c2410c;
+     --alert-success: #5cb85c;
+    --alert-text: rgb(245, 245, 245);
     --brand-light: #fff7ed;
 }
     
@@ -112,9 +114,9 @@
         }
 
         .alert-success {
-    background-color: var(--brand-light);
+    background-color: var(--alert-success);
     border: 1px solid #fed7aa;
-    color: var(--brand-dark);
+    color: var(--alert-text);
 }
         .alert-icon {
             font-size: 18px;
