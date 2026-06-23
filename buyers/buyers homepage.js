@@ -269,17 +269,77 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   document.body.addEventListener('click', handleAddToCartButtonClick);
 
-  function renderCard(p, cls='product-card') {
-    const img = p.main_image_url||p.image||'marketplace.png';
-    const price = typeof p.price==='number' ? p.price.toFixed(2) : p.price;
-    const cat = normCat(p.category||p.category_name||'');
-    const inStock = isInStock(p);
-    return `<div class="${cls}" data-product-id="${p.id}" data-category="${cat}">
-      <img src="${img}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" width="300" height="300">
-      <div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div>
-      <div class="meta"><div class="price">₦${price}</div></div></div>
-      <button class="add-to-cart" ${inStock ? '' : 'disabled'}>${inStock ? 'Add to Cart' : 'Out of stock'}</button></div>`;
+  document.body.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.prod-wish-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  await toggleWishlist(btn);
+});
+
+async function toggleWishlist(btn) {
+  const productId = btn.dataset.id;
+  const icon = btn.querySelector('i');
+  const isActive = btn.classList.contains('active');
+  const token = localStorage.getItem('token');
+
+  // Optimistic UI
+  btn.classList.toggle('active');
+  icon.className = isActive ? 'far fa-heart' : 'fas fa-heart';
+
+  try {
+    if (!token) {
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      if (isActive) {
+        wishlist = wishlist.filter(item => (item.id || item.product_id) !== productId);
+      } else {
+        wishlist.push({ id: productId });
+      }
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      showToast(isActive ? 'Removed from wishlist' : 'Added to wishlist!');
+      return;
+    }
+
+    if (isActive) {
+      const res = await fetch(`${API}/wishlist`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const item = (data.data?.items || []).find(i => i.product_id === productId);
+      if (item) {
+        await fetch(`${API}/wishlist/remove/${item.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      showToast('Removed from wishlist');
+    } else {
+      await fetch(`${API}/wishlist/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ product_id: productId })
+      });
+      showToast('Added to wishlist!');
+    }
+  } catch (err) {
+    console.error('Wishlist toggle failed:', err);
+    btn.classList.toggle('active');
+    icon.className = isActive ? 'fas fa-heart' : 'far fa-heart';
+    showToast('Something went wrong');
   }
+}
+
+  function renderCard(p, cls='product-card') {
+  const img = p.main_image_url||p.image||'marketplace.png';
+  const price = typeof p.price==='number' ? p.price.toFixed(2) : p.price;
+  const cat = normCat(p.category||p.category_name||'');
+  const inStock = isInStock(p);
+  return `<div class="${cls}" data-product-id="${p.id}" data-category="${cat}">
+    <div class="prod-img-wrap" style="position:relative">
+      <img src="${img}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async" width="300" height="300">
+      <button class="prod-wish-btn" data-id="${p.id}" title="Add to wishlist" style="position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#94a3b8;z-index:2"><i class="far fa-heart"></i></button>
+    </div>
+    <div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div>
+    <div class="meta"><div class="price">₦${price}</div></div></div>
+    <button class="add-to-cart" ${inStock ? '' : 'disabled'}>${inStock ? 'Add to Cart' : 'Out of stock'}</button></div>`;
+}
 
   async function getCategories() {
     if (cachedCategories) return cachedCategories;
@@ -441,12 +501,14 @@ function makeFloatingList(btn, items) {
           : '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No products available</div>';
         attachCardClicks(bsGrid);
       }
+      syncWishlistHearts();
       if (naGrid) {
         naGrid.innerHTML = newArrivals.length
           ? newArrivals.map(p=>renderCard(p)).join('')
           : '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No products available</div>';
         attachCardClicks(naGrid);
       }
+      syncWishlistHearts();
       if (recGrid) {
         recGrid.innerHTML = recommended.length
           ? recommended.map(p=>`<div class="recommended-item" data-product-id="${p.id}">
@@ -456,9 +518,33 @@ function makeFloatingList(btn, items) {
           : '<div style="grid-column:1/-1;padding:20px;color:#666;text-align:center">No recommended products available</div>';
         attachCardClicks(recGrid);
       }
+      syncWishlistHearts();
       attachCartListeners();
     } catch(e) { console.error('loadAllProducts',e); }
   }
+
+  async function syncWishlistHearts() {
+  const token = localStorage.getItem('token');
+  let wishedIds = [];
+  try {
+    if (token) {
+      const res = await fetch(`${API}/wishlist`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      wishedIds = (data.data?.items || []).map(i => i.product_id);
+    } else {
+      const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      wishedIds = wishlist.map(i => i.id || i.product_id);
+    }
+  } catch (e) { return; }
+
+  wishedIds.forEach(id => {
+    const btn = document.querySelector(`.prod-wish-btn[data-id="${id}"]`);
+    if (btn) {
+      btn.classList.add('active');
+      btn.querySelector('i').className = 'fas fa-heart';
+    }
+  });
+}
 
   async function loadCategories() {
     const cats = await getCategories();

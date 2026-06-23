@@ -138,7 +138,7 @@ function renderCard(p) {
     <div class="mm-prod-img-wrap">
       <img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
       ${hasFlash ? `<span class="mm-prod-flash-tag">🔥 ${disc}% OFF</span>` : ''}
-      <button class="mm-prod-wish" title="Add to wishlist"><i class="far fa-heart"></i></button>
+      <button class="mm-prod-wish" data-id="${p.id}" title="Add to wishlist"><i class="far fa-heart"></i></button>
     </div>
     <div class="mm-prod-body">
       <div class="mm-prod-seller">${esc(cat || 'MarketMix')}</div>
@@ -247,9 +247,34 @@ function renderProductTab(tab) {
   grid.innerHTML = items.length
     ? items.map(renderCard).join('')
     : '<p style="color:#94a3b8;padding:20px;grid-column:1/-1">No products available.</p>';
+    syncWishlistHearts();
   // Enrich visible cards with real ratings (non-blocking)
   const ids = items.map(p => p.id);
   setTimeout(() => enrichWithRatings(ids), 0);
+}
+
+async function syncWishlistHearts() {
+  const token = localStorage.getItem('token');
+  let wishedIds = [];
+
+  try {
+    if (token) {
+      const res = await fetch(`${API}/wishlist`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      wishedIds = (data.data?.items || []).map(i => i.product_id);
+    } else {
+      const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      wishedIds = wishlist.map(i => i.id || i.product_id);
+    }
+  } catch (e) { return; }
+
+  wishedIds.forEach(id => {
+    const btn = document.querySelector(`.mm-prod-wish[data-id="${id}"]`);
+    if (btn) {
+      btn.classList.add('active');
+      btn.querySelector('i').className = 'fas fa-heart';
+    }
+  });
 }
 
 // ===== TRUST STATS (real backend data) =====
@@ -602,14 +627,14 @@ function initClickDelegation() {
       })();
       return;
     }
+  
     // Wishlist button
-    const wishBtn = e.target.closest('.mm-prod-wish');
-    if (wishBtn) {
-      e.stopPropagation(); e.preventDefault();
-      wishBtn.classList.toggle('active');
-      wishBtn.querySelector('i').className = wishBtn.classList.contains('active') ? 'fas fa-heart' : 'far fa-heart';
-      return;
-    }
+const wishBtn = e.target.closest('.mm-prod-wish');
+if (wishBtn) {
+  e.stopPropagation(); e.preventDefault();
+  toggleWishlist(wishBtn);
+  return;
+}
     // Card click → product page
     const card = e.target.closest('.mm-prod-card');
     if (card?.dataset.productId) {
@@ -632,6 +657,60 @@ function initHero() {
     hr.addEventListener('mouseleave', () => paused = false);
   }
 }
+
+async function toggleWishlist(btn) {
+  const productId = btn.dataset.id;
+  const icon = btn.querySelector('i');
+  const isActive = btn.classList.contains('active');
+  const token = localStorage.getItem('token');
+
+  // Optimistic UI update
+  btn.classList.toggle('active');
+  icon.className = isActive ? 'far fa-heart' : 'fas fa-heart';
+
+  try {
+    if (!token) {
+      // Guest fallback — localStorage wishlist (your existing pattern)
+      let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      if (isActive) {
+        wishlist = wishlist.filter(item => (item.id || item.product_id) !== productId);
+      } else {
+        wishlist.push({ id: productId });
+      }
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      showToast(isActive ? 'Removed from wishlist' : 'Added to wishlist!');
+      return;
+    }
+
+    if (isActive) {
+      // Need the wishlist_item id to remove — fetch wishlist first
+      const res = await fetch(`${API}/wishlist`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const item = (data.data?.items || []).find(i => i.product_id === productId);
+      if (item) {
+        await fetch(`${API}/wishlist/remove/${item.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      showToast('Removed from wishlist');
+    } else {
+      await fetch(`${API}/wishlist/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ product_id: productId })
+      });
+      showToast('Added to wishlist!');
+    }
+  } catch (err) {
+    console.error('Wishlist toggle failed:', err);
+    // Revert UI on failure
+    btn.classList.toggle('active');
+    icon.className = isActive ? 'fas fa-heart' : 'far fa-heart';
+    showToast('Something went wrong', 'error');
+  }
+}
+
 
 // ===== NAVBAR =====
 function initNavbar() {

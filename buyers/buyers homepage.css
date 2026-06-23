@@ -55,6 +55,8 @@ button { font-family: inherit; cursor: pointer; }
   width: auto;
 }
 
+.prod-wish-btn.active { color: #ef4444 !important; background: #fff !important; }
+
 .navbar .logo {
   font-size: 22px;
   font-weight: 800;
