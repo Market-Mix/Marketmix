@@ -49,6 +49,11 @@ button { font-family: inherit; cursor: pointer; }
   z-index: 1000;
   box-shadow: 0 1px 8px rgba(0,0,0,0.05);
 }
+.navbar .logo svg {
+  display: block;
+  height: 36px;
+  width: auto;
+}
 
 .navbar .logo {
   font-size: 22px;
@@ -765,11 +770,11 @@ button { font-family: inherit; cursor: pointer; }
 /* ─── Responsive Breakpoints ────────────────────────────────────────────── */
 @media (max-width: 480px) {
   /* Hide logo text or shrink on very small */
-  .navbar .logo { font-size: 18px; }
+   .navbar .logo { font-size: 18px; }
 
   /* Hide desktop search, show mobile search bar */
-  .navbar .search-container { display: none; }
-  .navbar-mobile-search { display: block; }
+ .navbar .search-container { display: block; }
+  .navbar-mobile-search { display: none !important; }
 
   .link-text { display: none; }
   .bottom-nav .nav-link i { font-size: 22px; }
@@ -803,11 +808,9 @@ button { font-family: inherit; cursor: pointer; }
   .new-arrivals-grid,
   .recommended-grid,
   .category-products-grid,
-  .categories-container {
-    grid-template-columns: repeat(4, 1fr);
-  }
+   .categories-container { grid-template-columns: repeat(4, 1fr); }
   .navbar .search-container { display: block; }
-  .navbar-mobile-search { display: none !important; }
+    .navbar-mobile-search { display: none !important; }
   .link-text { display: block; }
 }
 
