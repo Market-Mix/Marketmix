@@ -7,10 +7,10 @@
 <style>
 :root{
   --orange:#FF7A00;
-  --dark:#0B0B0F;
-  --dark2:#15151B;
-  --light:#FFFFFF;
-  --gray:#F6F6F8;
+  --dark:#ffffff;
+  --dark2:#1a462e;
+  --light:#f7efe8;
+  --gray: #F6F6F8;
   --text-dim:#9A9AA5;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -30,20 +30,20 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 .btn-outline:hover{background:#fff;color:var(--dark);}
 
 /* NAV */
-.nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:20px 0;background:rgba(11,11,15,.85);backdrop-filter:blur(10px);}
+.nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:20px 0;background:rgb(255, 255, 255);backdrop-filter:blur(10px);}
 .nav .container{display:flex;justify-content:space-between;align-items:center;}
-.nav-links{display:flex;gap:32px;font-size:14px;font-weight:600;color:#fff;}
+.nav-links{display:flex;gap:32px;font-size:14px;font-weight:600;color:#000000;}
 .nav-links a{opacity:.85;}
 .nav-links a:hover{opacity:1;color:var(--orange);}
 
 /* HERO */
-.hero{min-height:100vh;display:flex;align-items:center;background:radial-gradient(circle at 70% 20%,#1d1410 0%,var(--dark) 55%);position:relative;padding-top:100px;}
+.hero{min-height:100vh;display:flex;align-items:center;background:radial-gradient(circle at 80% 40%,#b4998e 0%,var(--dark) 55%);position:relative;padding-top:100px;}
 .hero::before{content:"";position:absolute;width:600px;height:600px;background:var(--orange);opacity:.12;border-radius:50%;filter:blur(120px);top:-100px;right:-150px;}
 .hero h1{font-size:clamp(42px,7vw,78px);max-width:880px;}
 .hero h1 span{color:var(--orange);}
 .hero p{font-size:19px;color:var(--text-dim);max-width:620px;margin:26px 0 38px;}
 .hero-ctas{display:flex;gap:16px;flex-wrap:wrap;}
-.hero-stats{display:flex;gap:60px;margin-top:70px;flex-wrap:wrap;}
+.hero-stats{display:flex;gap:60px;margin-top:40px; margin-bottom:30px; flex-wrap:wrap;}
 .hero-stats .stat-num{font-size:38px;font-weight:800;color:var(--orange);}
 .hero-stats .stat-label{font-size:13px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;}
 
@@ -61,10 +61,10 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 
 /* VISION/MISSION CARDS */
 .vm-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
-.vm-card{background:var(--dark2);color:#fff;padding:46px;border-radius:22px;border:1px solid #232329;}
+.vm-card{background:#fff;color:#111;padding:46px;border-radius:22px;border:1px solid #ececef;box-shadow:0 10px 30px rgba(0,0,0,.04);}
 .vm-card h3{color:var(--orange);font-size:26px;margin-bottom:18px;}
 .vm-card ul{margin-top:18px;padding-left:0;list-style:none;}
-.vm-card li{padding:8px 0;font-size:15px;color:#cfcfd6;display:flex;gap:10px;}
+.vm-card li{padding:8px 0;font-size:15px;color:#444;display:flex;gap:10px;}
 .vm-card li::before{content:"➤";color:var(--orange);}
 
 /* WHO IT'S FOR */
@@ -77,14 +77,14 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 
 /* HOW IT WORKS - STEPPER */
 .tabs{display:flex;justify-content:center;gap:14px;margin-bottom:60px;flex-wrap:wrap;}
-.tab-btn{padding:12px 26px;border-radius:50px;border:1px solid #2a2a31;background:transparent;color:#cfcfd6;font-weight:700;cursor:pointer;font-size:14px;}
+.tab-btn{padding:12px 26px;border-radius:50px;border:1.5px solid #ddd;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:14px;}
 .tab-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
 .timeline{position:relative;max-width:760px;margin:0 auto;}
 .timeline::before{content:"";position:absolute;left:23px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--orange),transparent);}
 .t-step{display:flex;gap:26px;padding-bottom:46px;position:relative;}
 .t-step .dot{flex:0 0 48px;height:48px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;z-index:1;}
-.t-step h4{font-size:19px;margin-bottom:6px;}
-.t-step p{color:var(--text-dim);font-size:15px;}
+.t-step h4{font-size:19px;margin-bottom:6px;color:#111;}
+.t-step p{color:#666;font-size:15px;}
 .steps-group{display:none;}
 .steps-group.active{display:block;}
 
@@ -111,15 +111,29 @@ footer{background:#000;color:#777;text-align:center;padding:30px 0;font-size:13p
 /* RESPONSIVE */
 @media(max-width:900px){
   .problem-grid{grid-template-columns:1fr;gap:36px;}
-  .vm-grid{grid-template-columns:1fr;}
-  .who-grid{grid-template-columns:1fr 1fr;}
   .nav-links{display:none;}
+}
+@media(max-width:900px){
+  .vm-grid,.who-grid{
+    display:flex;
+    grid-template-columns:none;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    gap:18px;
+    padding-bottom:10px;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .vm-grid::-webkit-scrollbar,.who-grid::-webkit-scrollbar{display:none;}
+  .vm-card{flex:0 0 82%;scroll-snap-align:start;}
+  .who-card{flex:0 0 70%;scroll-snap-align:start;}
 }
 @media(max-width:600px){
   .section{padding:70px 0;}
-  .who-grid{grid-template-columns:1fr;}
   .hero-stats,.cta-stats{gap:34px;}
   .t-step{gap:16px;}
+  .vm-card{flex:0 0 88%;}
+  .who-card{flex:0 0 80%;}
 }
 </style>
 </head>
@@ -129,12 +143,11 @@ footer{background:#000;color:#777;text-align:center;padding:30px 0;font-size:13p
   <div class="container">
     <svg class="marketmix-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="150" height="38">
       <text x="10" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', 'Helvetica Neue', sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
-        <tspan fill="#ffffff">market</tspan><tspan fill="#FF7A00">mix</tspan>
+        <tspan fill="#000000">market</tspan><tspan fill="#FF7A00">mix</tspan>
       </text>
     </svg>
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/about-us.html">About</a>
+      <a href="../index.html">Home</a>
       <a href="/founders.html">Founders</a>
       <a href="#join">Join Waitlist</a>
     </div>
@@ -146,14 +159,14 @@ footer{background:#000;color:#777;text-align:center;padding:30px 0;font-size:13p
   <div class="container">
     <span class="eyebrow">About MarketMix</span>
     <h1>We got tired of watching <span>great businesses</span> stay invisible.</h1>
-    <p>Thousands of business owners build incredible products every day — yet stay hidden because they lack visibility, trust, and the right tools. We built MarketMix to change that.</p>
+    <p style="color: var (var(--text-dim));">Thousands of business owners build incredible products every day — yet stay hidden because they lack visibility, trust, and the right tools. We built MarketMix to change that.</p>
     <div class="hero-ctas">
       <a href="#join" class="btn">Join the Waitlist →</a>
-      <a href="#mission" class="btn btn-outline">Our Mission</a>
+      <a style="color: black; border-color: #FF7A00;" href="#mission" class="btn btn-outline">Our Mission</a>
     </div>
     <div class="hero-stats">
-      <div><div class="stat-num">72hrs</div><div class="stat-label">Escrow Payout</div></div>
-      <div><div class="stat-num">48hrs</div><div class="stat-label">Refund Support</div></div>
+      <div><div class="stat-num">48hrs</div><div class="stat-label">Escrow Payout</div></div>
+      <div><div class="stat-num">24hrs</div><div class="stat-label">Refund Support</div></div>
       <div><div class="stat-num">100%</div><div class="stat-label">Verified Sellers</div></div>
     </div>
   </div>
@@ -173,31 +186,31 @@ footer{background:#000;color:#777;text-align:center;padding:30px 0;font-size:13p
       </ul>
     </div>
     <div class="callout">
-      The problem isn't that small businesses lack value. <span>The problem is they lack visibility, trust, and the right tools.</span>
+      The problem isn't that small businesses lack value. <br><span>The problem is they lack visibility, trust, and the right tools.</span>
     </div>
   </div>
 </section>
 
 <!-- SOLUTION -->
-<section class="section dark">
+<section class="section gray">
   <div class="container solution-box">
     <span class="eyebrow">The Solution</span>
-    <h2>MarketMix is a fast-rising traffic network built to get businesses discovered, trusted, and patronized.</h2>
-    <p style="color:var(--text-dim);font-size:18px;margin-top:22px;">Whether you run a physical store, sell from your hostel room, operate online, or offer professional services — MarketMix gives you the tools to build a real digital presence and reach more customers.</p>
+    <h2 style="color:#111;">MarketMix is a fast-rising traffic network built to get businesses discovered, trusted, and patronized.</h2>
+    <p style="color:#555;font-size:18px;margin-top:22px;">Whether you run a physical store, sell from your hostel room, operate online, or offer professional services - MarketMix gives you the tools to build a real digital presence and reach more customers.</p>
   </div>
 </section>
 
 <!-- VISION & MISSION -->
-<section id="mission" class="section dark2" style="background:var(--dark);">
+<section id="mission" class="section light">
   <div class="container">
     <div style="text-align:center;margin-bottom:50px;">
       <span class="eyebrow">Vision &amp; Mission</span>
-      <h2 style="font-size:clamp(32px,5vw,46px);">Why we exist.</h2>
+      <h2 style="font-size:clamp(32px,5vw,46px);color:#111;">Why we exist.</h2>
     </div>
     <div class="vm-grid">
       <div class="vm-card">
         <h3>Our Vision</h3>
-        <p style="color:#cfcfd6;">A future where every business owner grows without frustration — where small businesses compete equally and buyers shop with confidence.</p>
+        <p style="color:#555;">A future where every business owner grows without frustration — where small businesses compete equally and buyers shop with confidence.</p>
         <ul>
           <li>Equal opportunity to compete online</li>
           <li>Entrepreneurs empowered to solve real problems</li>
@@ -207,7 +220,7 @@ footer{background:#000;color:#777;text-align:center;padding:30px 0;font-size:13p
       </div>
       <div class="vm-card">
         <h3>Our Mission</h3>
-        <p style="color:#cfcfd6;">To make business growth easier by providing the tools, systems, and protection sellers and buyers deserve.</p>
+        <p style="color:#555;">To make business growth easier by providing the tools, systems, and protection sellers and buyers deserve.</p>
         <ul>
           <li>Free digital storefront for every business</li>
           <li>Seller verification &amp; customer protection</li>
@@ -252,11 +265,11 @@ footer{background:#000;color:#777;text-align:center;padding:30px 0;font-size:13p
 </section>
 
 <!-- HOW IT WORKS -->
-<section class="section dark">
+<section class="section gray">
   <div class="container">
     <div style="text-align:center;margin-bottom:40px;">
       <span class="eyebrow">How It Works</span>
-      <h2 style="font-size:clamp(32px,5vw,46px);">Simple for everyone.</h2>
+      <h2 style="font-size:clamp(32px,5vw,46px);color:#111;">Simple for everyone.</h2>
     </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="showTab('sellers',this)">For Sellers</button>
