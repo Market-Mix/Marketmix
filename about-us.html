@@ -50,8 +50,7 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 .nav-links a:hover{opacity:1;color:var(--orange);}
 
 /* HERO */
-.hero{min-height:100vh;display:flex;align-items:center;background:radial-gradient(circle at 90% 30%,#806256 0%,var( --tint-1) 55%);position:relative;padding-top:100px;}
-.hero::before{content:"";position:absolute;width:600px;height:600px;background:var(--orange);opacity:.12;border-radius:50%;filter:blur(120px);top:-100px;right:-150px;}
+.hero{min-height:100vh;display:flex;align-items:center;background:radial-gradient(circle at 90% 30%,var(--navy) 0%,var(--tint-1) 65%);position:relative;padding-top:100px;}
 .hero h1{font-size:clamp(42px,7vw,78px);max-width:880px;}
 .hero h1 span{color:var(--orange);}
 .hero p{font-size:19px;color:var(--text-dim);max-width:620px;margin:26px 0 38px;}
@@ -76,7 +75,11 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 .vm-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
 .vm-card{color:#111;padding:46px;border-radius:22px;border:1px solid #ececef;box-shadow:0 10px 30px rgba(0,0,0,.04);}
 .vm-card:nth-child(1){background:var(--tint-1);}
-.vm-card:nth-child(2){background:var(--tint-3);border-color:var(--navy);}
+.vm-card:nth-child(2){background:var(--navy);color:#fff;}
+.vm-card:nth-child(2) h3{color:var(--orange);}
+.vm-card:nth-child(2) p{color:#cbd5e1;}
+.vm-card:nth-child(2) li{color:#e2e8f0;}
+.vm-card:nth-child(2) li::before{color:var(--orange);}
 .vm-card h3{color:var(--navy);font-size:26px;margin-bottom:18px;}
 .vm-card ul{margin-top:18px;padding-left:0;list-style:none;}
 .vm-card li{padding:8px 0;font-size:15px;color:#444;display:flex;gap:10px;}
@@ -276,7 +279,7 @@ if(window.matchMedia('(max-width:900px)').matches){
       </div>
       <div class="vm-card" data-animate="right">
         <h3>Our Mission</h3>
-        <p style="color:#555;">To make business growth easier by providing the tools, systems, and protection sellers and buyers deserve.</p>
+        <p style="color:#ffffff;">To make business growth easier by providing the tools, systems, and protection sellers and buyers deserve.</p>
         <ul>
           <li>Free digital storefront for every business</li>
           <li>Seller verification &amp; customer protection</li>
