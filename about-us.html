@@ -94,6 +94,8 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
   overflow:hidden;
 }
 .flow-logo{
+  width:min(600px, 80vw);
+  height:auto;
   opacity:0;
   transform:translateX(-120%) scale(1.6,0.6) skewX(-12deg);
   will-change:transform,opacity;
@@ -334,11 +336,11 @@ if(window.matchMedia('(max-width:900px)').matches){
 
 <!-- logo slidein -->
 <section class="logo-flow-divider">
-  <svg class="marketmix-logo flow-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="600" height="100">
-    <text x="10" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', 'Helvetica Neue', sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
-      <tspan fill="#000000">market</tspan><tspan fill="#FF7A00">mix</tspan>
-    </text>
-  </svg>
+ <svg class="marketmix-logo flow-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80">
+  <text x="10" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', 'Helvetica Neue', sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
+    <tspan fill="#000000">market</tspan><tspan fill="#FF7A00">mix</tspan>
+  </text>
+</svg>
 </section>
 
 
