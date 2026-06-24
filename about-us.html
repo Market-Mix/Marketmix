@@ -22,6 +22,9 @@
   --shade-2:#FFF6EC;
   --shade-3:#FFE9D3;
   --shade-4:#FFDCB8;
+    --navy:#1e3a5f;
+  --navy-dark:#142b46;
+  --accent-blue:#2563eb;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;color:#111;line-height:1.5;overflow-x:hidden;}
@@ -62,7 +65,7 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 .problem-list{list-style:none;margin-top:24px;}
 .problem-list li{padding:16px 0;border-bottom:1px solid #e7e7ea;font-size:18px;display:flex;gap:14px;}
 .problem-list li::before{content:"✕";color:var(--orange);font-weight:800;}
-.callout{background:var(--dark);color:#fff;padding:40px;border-radius:20px;font-size:22px;font-weight:700;line-height:1.4;}
+.callout{background:var(--navy);color:#fff;padding:40px;border-radius:20px;font-size:22px;font-weight:700;line-height:1.4;}
 .callout span{color:var(--orange);}
 
 /* SOLUTION */
@@ -73,8 +76,8 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 .vm-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
 .vm-card{color:#111;padding:46px;border-radius:22px;border:1px solid #ececef;box-shadow:0 10px 30px rgba(0,0,0,.04);}
 .vm-card:nth-child(1){background:var(--tint-1);}
-.vm-card:nth-child(2){background:var(--tint-3);}
-.vm-card h3{color:var(--orange);font-size:26px;margin-bottom:18px;}
+.vm-card:nth-child(2){background:var(--tint-3);border-color:var(--navy);}
+.vm-card h3{color:var(--navy);font-size:26px;margin-bottom:18px;}
 .vm-card ul{margin-top:18px;padding-left:0;list-style:none;}
 .vm-card li{padding:8px 0;font-size:15px;color:#444;display:flex;gap:10px;}
 .vm-card li::before{content:"➤";color:var(--orange);}
@@ -97,12 +100,11 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 /* HOW IT WORKS - STEPPER */
 .tabs{display:flex;justify-content:center;gap:14px;margin-bottom:60px;flex-wrap:wrap;}
 .tab-btn{padding:12px 26px;border-radius:50px;border:1.5px solid #ddd;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:14px;}
-.tab-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+.tab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
 .timeline{position:relative;max-width:760px;margin:0 auto;}
-.timeline::before{content:"";position:absolute;left:23px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--orange),transparent);}
-.t-step{display:flex;gap:26px;padding-bottom:46px;position:relative;}
-.t-step .dot{flex:0 0 48px;height:48px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;z-index:1;}
-.t-step h4{font-size:19px;margin-bottom:6px;color:#111;}
+.t-step .dot{flex:0 0 48px;height:48px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;z-index:1;}
+.timeline::before{content:"";position:absolute;left:23px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--navy),transparent);}
+.t-step{display:flex;gap:26px;padding-bottom:46px;position:relative;}.t-step h4{font-size:19px;margin-bottom:6px;color:#111;}
 .t-step p{color:#666;font-size:15px;}
 .steps-group{display:none;}
 .steps-group.active{display:block;}
@@ -202,7 +204,7 @@ if(window.matchMedia('(max-width:900px)').matches){
     <div class="nav-links">
       <a href="../index.html">Home</a>
       <a href="founders.html">Founders</a>
-      <a href="#join">Join Waitlist</a>
+      <a href="waitlist.html">Join Waitlist</a>
     </div>
   </div>
 </nav>
@@ -214,7 +216,7 @@ if(window.matchMedia('(max-width:900px)').matches){
     <h1>We got tired of watching <span>potential businesses</span> stay invisible.</h1>
     <p style="color: #000;" >Thousands of business owners build incredible products every day, yet stay hidden because they lack visibility, trust, and the right tools. We built MarketMix to change that.</p>
     <div class="hero-ctas">
-      <a href="#join" class="btn">Join the Waitlist →</a>
+      <a href="waitlist.html" class="btn">Join the Waitlist →</a>
       <a style= "color: var(--orange); border-color: var(--orange);" href="#mission" class="btn btn-outline">Our Mission</a>
     </div>
     <div class="hero-stats">
@@ -378,7 +380,7 @@ if(window.matchMedia('(max-width:900px)').matches){
     <span class="eyebrow">Join The Movement</span>
     <h2 style="color: #000000;">Your next <span style ="color: var(--orange);">customer</span> is already <span style ="color: var(--orange);">searching</span> for what you offer.</h2>
     <p>Join our waitlist today and become one of the first businesses to experience the future of trusted commerce.</p>
-    <a href="" class="btn">Join the Waitlist →</a>
+    <a href="waitlist.html" class="btn">Join the Waitlist →</a>
     <div class="cta-stats">
       <div><div class="stat-num">Free</div><div class="stat-label">Digital Storefront</div></div>
       <div><div class="stat-num">Secure</div><div class="stat-label">Escrow Payments</div></div>
@@ -390,24 +392,34 @@ if(window.matchMedia('(max-width:900px)').matches){
 <footer>© 2026 MarketMix. All rights reserved.</footer>
 
 <script>
-function showTab(id, btn){
-  document.querySelectorAll('.steps-group').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  btn.classList.add('active');
-}
-
-const revealEls = document.querySelectorAll('[data-animate]');
-if(revealEls.length){
-  const io = new IntersectionObserver((entries)=>{
+if(window.matchMedia('(max-width:900px)').matches){
+  const dirs=['reveal-left','reveal-right','reveal-up'];
+  document.querySelectorAll('.vm-card,.who-card').forEach((card,i)=>{
+    card.classList.add(dirs[i%dirs.length]);
+  });
+  const observer=new IntersectionObserver(entries=>{
     entries.forEach(e=>{
-      if(e.isIntersecting){
-        e.target.classList.add('in-view');
-        io.unobserve(e.target);
-      }
+      if(e.isIntersecting){e.target.classList.add('in-view');observer.unobserve(e.target);}
     });
-  },{threshold:0.2, rootMargin:'0px 0px -40px 0px'});
-  revealEls.forEach(el=>io.observe(el));
+  },{threshold:.2});
+  document.querySelectorAll('.vm-card,.who-card').forEach(c=>observer.observe(c));
+
+  // Auto-nudge: peek-scroll each row once it enters view, so users know it's swipeable
+  function nudge(row){
+    if(!row || row.dataset.nudged) return;
+    row.dataset.nudged = '1';
+    row.scrollTo({left:0, behavior:'auto'});
+    setTimeout(()=>{
+      row.scrollBy({left: row.clientWidth*0.35, behavior:'smooth'});
+      setTimeout(()=> row.scrollBy({left: -row.clientWidth*0.35, behavior:'smooth'}), 650);
+    }, 400);
+  }
+  const rowObserver = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ nudge(e.target); rowObserver.unobserve(e.target); }
+    });
+  },{threshold:.3});
+  document.querySelectorAll('.vm-grid,.who-grid').forEach(r=>rowObserver.observe(r));
 }
 </script>
 </body>

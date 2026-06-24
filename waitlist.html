@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join the Waitlist | MarketMix</title>
+  <style>
+    :root {
+      --orange: #FF7A00;
+      --orange-dark: #E06A00;
+      --blue: #1e40af;
+      --blue-dark: #1d4ed8;
+      --bg: #f7fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* NAV */
+    .nav {
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav a { text-decoration: none; color: var(--muted); font-size: 14px; font-weight: 600; }
+    .nav a:hover { color: var(--orange); }
+
+    /* HERO STRIP */
+    .hero-strip {
+      background: linear-gradient(135deg, var(--blue) 0%, #1e3a8a 50%, var(--blue-dark) 100%);
+      color: #fff;
+      text-align: center;
+      padding: 60px 24px 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-strip::before {
+      content: "";
+      position: absolute;
+      width: 400px; height: 400px;
+      background: var(--orange);
+      opacity: 0.12;
+      border-radius: 50%;
+      filter: blur(100px);
+      top: -150px; right: -100px;
+    }
+    .hero-strip::after {
+      content: "";
+      position: absolute;
+      width: 300px; height: 300px;
+      background: var(--orange);
+      opacity: 0.08;
+      border-radius: 50%;
+      filter: blur(80px);
+      bottom: -100px; left: -80px;
+    }
+    .hero-strip h1 {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      position: relative;
+      z-index: 1;
+      line-height: 1.2;
+    }
+    .hero-strip h1 span { color: var(--orange); }
+    .hero-strip p {
+      margin: 14px auto 0;
+      max-width: 480px;
+      color: rgba(255,255,255,0.8);
+      font-size: 15px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* PERKS ROW */
+    .perks {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 20px 24px;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+    }
+    .perk {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .perk .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--orange);
+      flex-shrink: 0;
+    }
+
+    /* MAIN */
+    .main {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px 60px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 460px;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 7px;
+    }
+    input, select {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      background: #f8fafc;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--orange);
+      background: #fff;
+    }
+
+    /* Role selector */
+    .role-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .role-opt {
+      position: relative;
+    }
+    .role-opt input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0; height: 0;
+    }
+    .role-opt label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 14px 8px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: #f8fafc;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      transition: all 0.2s;
+      text-align: center;
+      margin-bottom: 0;
+    }
+    .role-opt label .icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+    .role-opt input[type="radio"]:checked + label {
+      border-color: var(--orange);
+      background: #fff5eb;
+      color: var(--orange);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 15px;
+      background: var(--orange);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-submit:hover { background: var(--orange-dark); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* STATES */
+    .error-msg {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* SUCCESS */
+    .success-overlay {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 10px 0;
+    }
+    .success-overlay.show { display: flex; }
+    .form-content.hidden { display: none; }
+
+    .checkmark {
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 20px;
+      animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes pop {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .success-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .success-msg {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    .btn-whatsapp {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 15px;
+      background: #25D366;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      margin-bottom: 12px;
+    }
+    .btn-whatsapp:hover { background: #1da851; transform: translateY(-1px); }
+
+    .btn-back {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #f1f5f9;
+      color: var(--muted);
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    .btn-back:hover { background: var(--border); }
+
+    /* COUNTER */
+    .counter-strip {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      padding: 28px 24px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .counter-item { text-align: center; }
+    .counter-num { font-size: 1.6rem; font-weight: 800; color: var(--orange); }
+    .counter-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+
+    /* SPINNER */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .btn-submit.loading .spinner { display: block; }
+    .btn-submit.loading .btn-label { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* MOBILE */
+    @media (max-width: 480px) {
+      .card { padding: 24px 18px; border-radius: 16px; }
+      .hero-strip { padding: 44px 16px 36px; }
+      .counter-strip { gap: 24px; padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="about-us.html">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="130" height="32">
+      <text x="10" y="58" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
+        <tspan fill="#000000">market</tspan><tspan fill="#FF7A00">mix</tspan>
+      </text>
+    </svg>
+  </a>
+  <a href="about-us.html">← Back</a>
+</nav>
+
+<div class="hero-strip">
+  <h1>Be First. <span>Get In Early.</span></h1>
+  <p>Join thousands of sellers and buyers already waiting to be part of Nigeria's most trusted marketplace.</p>
+</div>
+
+<div class="perks">
+  <div class="perk"><span class="dot"></span> Free digital storefront</div>
+  <div class="perk"><span class="dot"></span> Secure escrow payments</div>
+  <div class="perk"><span class="dot"></span> Verified seller network</div>
+  <div class="perk"><span class="dot"></span> 24hr refund support</div>
+</div>
+
+<main class="main">
+  <div class="card">
+
+    <div class="form-content" id="formContent">
+      <div class="card-title">Reserve your spot</div>
+      <div class="card-sub">Fill in your details below and we'll notify you the moment we launch.</div>
+
+      <div class="error-msg" id="errorMsg"></div>
+
+      <form id="waitlistForm">
+        <div class="form-group">
+          <label for="full_name">Full Name</label>
+          <input type="text" id="full_name" name="full_name" placeholder="e.g. Adaeze Johnson" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <input type="tel" id="phone" name="phone" placeholder="+234 800 000 0000">
+        </div>
+
+        <div class="form-group">
+          <label>I want to join as</label>
+          <div class="role-options">
+            <div class="role-opt">
+              <input type="radio" name="role" id="role_buyer" value="buyer" checked>
+              <label for="role_buyer">
+                <span class="icon">🛍️</span>
+                Buyer
+              </label>
+            </div>
+            <div class="role-opt">
+              <input type="radio" name="role" id="role_seller" value="seller">
+              <label for="role_seller">
+                <span class="icon">🏪</span>
+                Seller
+              </label>
+            </div>
+            <div class="role-opt">
+              <input type="radio" name="role" id="role_both" value="both">
+              <label for="role_both">
+                <span class="icon">🤝</span>
+                Both
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span class="btn-label">Join the Waitlist →</span>
+          <span class="spinner"></span>
+        </button>
+      </form>
+    </div>
+
+    <div class="success-overlay" id="successOverlay">
+      <div class="checkmark">🎉</div>
+      <div class="success-title">You're on the list!</div>
+      <p class="success-msg">Welcome to MarketMix, <strong id="successName"></strong>! You're in early. We'll reach out as soon as we launch.<br><br>Join our WhatsApp community to get exclusive updates, behind-the-scenes access, and early perks.</p>
+      <a href="https://bit.ly/49cG3Qb" target="_blank" class="btn-whatsapp">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.12 1.535 5.847L.057 23.5l5.797-1.522A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9c-1.96 0-3.792-.525-5.365-1.44l-.385-.228-3.985 1.046 1.064-3.875-.249-.398A9.856 9.856 0 012.1 12C2.1 6.534 6.534 2.1 12 2.1S21.9 6.534 21.9 12 17.466 21.9 12 21.9z"/></svg>
+        Join Our WhatsApp Community
+      </a>
+      <a href="about-us.html" class="btn-back">← Back to MarketMix</a>
+    </div>
+
+  </div>
+</main>
+
+<div class="counter-strip">
+  <div class="counter-item">
+    <div class="counter-num">Free</div>
+    <div class="counter-label">Storefront</div>
+  </div>
+  <div class="counter-item">
+    <div class="counter-num">48hr</div>
+    <div class="counter-label">Escrow Release</div>
+  </div>
+  <div class="counter-item">
+    <div class="counter-num">100%</div>
+    <div class="counter-label">Verified Sellers</div>
+  </div>
+  <div class="counter-item">
+    <div class="counter-num">0</div>
+    <div class="counter-label">Scam Tolerance</div>
+  </div>
+</div>
+
+<script>
+  const API = 'https://marketmix-backend.onrender.com/api';
+
+  document.getElementById('waitlistForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const errEl = document.getElementById('errorMsg');
+
+    const full_name = document.getElementById('full_name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const role = document.querySelector('input[name="role"]:checked').value;
+
+    errEl.style.display = 'none';
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(`${API}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name, email, phone, role })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Something went wrong. Please try again.');
+      }
+
+      document.getElementById('successName').textContent = full_name.split(' ')[0];
+      document.getElementById('formContent').classList.add('hidden');
+      document.getElementById('successOverlay').classList.add('show');
+
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
