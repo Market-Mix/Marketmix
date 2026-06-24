@@ -29,11 +29,11 @@
       background:var(--bg);
       color:var(--text);
     }
-    .cart-container{
-      max-width: 960px;
-      margin: 32px auto;
-      padding: 0 16px;
-    }
+    .cart-container {
+  max-width: 520px;
+  margin: 24px auto;
+  padding: 0 16px 100px;
+}
 
     h1{
       margin: 0 0 16px;
@@ -185,12 +185,11 @@
   margin: 0 0 4px;
   letter-spacing: -0.3px;
 }
-      .cart-container {
-  max-width: 680px;
-  margin: 20px auto;
-  padding: 0 16px 100px;
-}
-     .cart-item {
+    .cart-container {
+    margin: 12px auto;
+    padding: 0 10px 90px;
+  }
+.cart-item {
   display: flex;
   align-items: flex-start;
   gap: 14px;
@@ -764,18 +763,19 @@
             if (item.id && token) {
               const resp = await fetch(`${API_BASE}/cart/${item.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
               if (resp.ok) {
-                cart.splice(index,1);
-                saveAndRender();
-                await notifyCartRemoval();
+               const itemRef = item;
+               cart = cart.filter(c => c !== itemRef);
+               saveAndRender();
+               await notifyCartRemoval();
                 return;
               }
             }
           } catch(e) { console.warn('Backend delete failed', e); }
 
           // fallback local remove
-          cart.splice(index,1);
-          saveAndRender();
-          await notifyCartRemoval();
+         cart = cart.filter(c => c !== item);
+         saveAndRender();
+         await notifyCartRemoval();
         });
 
         container.appendChild(div);
