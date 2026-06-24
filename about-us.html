@@ -85,6 +85,43 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 .vm-card li{padding:8px 0;font-size:15px;color:#444;display:flex;gap:10px;}
 .vm-card li::before{content:"➤";color:var(--orange);}
 
+/* logo flow */
+.logo-flow-divider{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:60px 0;
+  overflow:hidden;
+}
+.flow-logo{
+  opacity:0;
+  transform:translateX(-120%) scale(1.6,0.6) skewX(-12deg);
+  will-change:transform,opacity;
+}
+.flow-logo.flow-in{
+  animation:logoFlowIn 1.7s cubic-bezier(.2,.9,.25,1) forwards;
+}
+@keyframes logoFlowIn{
+  0%{
+    opacity:0;
+    transform:translateX(-120%) scale(1.6,0.6) skewX(-12deg);
+  }
+  55%{
+    opacity:1;
+    transform:translateX(8%) scale(0.92,1.12) skewX(4deg);
+  }
+  75%{
+    transform:translateX(-3%) scale(1.05,0.96) skewX(-2deg);
+  }
+  90%{
+    transform:translateX(1%) scale(0.98,1.02) skewX(1deg);
+  }
+  100%{
+    opacity:1;
+    transform:translateX(0) scale(1,1) skewX(0deg);
+  }
+}
+
 /* WHO IT'S FOR */
 .who-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;}
 .who-card{border:1px solid #ececef;border-radius:18px;padding:32px 26px;transition:.25s;}
@@ -180,7 +217,7 @@ footer{background:#000;color:#777;text-align:center;padding:30px 0;font-size:13p
 </style>
 </head>
 
-<script>
+<!-- <script>
 if(window.matchMedia('(max-width:900px)').matches){
   const dirs=['reveal-left','reveal-right','reveal-up'];
   document.querySelectorAll('.vm-card,.who-card').forEach((card,i)=>{
@@ -193,7 +230,9 @@ if(window.matchMedia('(max-width:900px)').matches){
   },{threshold:.2});
   document.querySelectorAll('.vm-card,.who-card').forEach(c=>observer.observe(c));
 }
-</script>
+</script> -->
+
+
 
 <body>
 
@@ -216,11 +255,11 @@ if(window.matchMedia('(max-width:900px)').matches){
 <section class="hero">
   <div class="container">
     <span class="eyebrow">About MarketMix</span>
-    <h1>We got tired of watching <span>potential businesses</span> stay invisible.</h1>
-    <p style="color: #000;" >Thousands of business owners build incredible products every day, yet stay hidden because they lack visibility, trust, and the right tools. We built MarketMix to change that.</p>
+    <h1>Small businesses don't fail because they're not good enough. Many struggle because they're <span>difficult to find, trust, or buy from.</span></h1>
+    <p style="color: #000;">For years, we've watched hardworking business owners struggle to grow, not because their products were poor, but because they lacked access to the visibility, tools, and trust that larger businesses enjoy. We don't believe success online should require expensive ads or a massive following. So we built MarketMix.</p>
     <div class="hero-ctas">
       <a href="waitlist.html" class="btn">Join the Waitlist →</a>
-      <a style= "color: var(--orange); border-color: var(--orange);" href="#mission" class="btn btn-outline">Our Mission</a>
+      <a style="color: var(--navy-dark); border-color: var(--navy);" href="#mission" class="btn btn-outline">Our Mission</a>
     </div>
     <div class="hero-stats">
       <div><div style="color: var(--dark2);" class="stat-num">48hrs</div><div class="stat-label">Escrow Payout</div></div>
@@ -235,16 +274,16 @@ if(window.matchMedia('(max-width:900px)').matches){
   <div class="container problem-grid">
     <div>
       <span class="eyebrow">The Problem</span>
-      <h2 style="font-size:clamp(32px,5vw,46px);">Niche products. <br>Zero visibility.</h2>
+      <h2 style="font-size:clamp(32px,5vw,46px);">Great products. <br>No visibility.</h2>
       <ul class="problem-list">
-        <li>They can't afford expensive advertising.</li>
-        <li>They don't have a website.</li>
-        <li>They're not popular online.</li>
+        <li>Many are told success online needs expensive ads.</li>
+        <li>Or a professional website they can't afford.</li>
+        <li>Or a massive social media following.</li>
         <li>Customers struggle to find and trust them.</li>
       </ul>
     </div>
     <div class="callout">
-      The problem isn't that small businesses lack value. <span>The problem is they lack visibility, trust, and the right tools.</span>
+      Small businesses don't fail because they're not good enough. <span>They struggle because they're difficult to find, trust, or buy from.</span>
     </div>
   </div>
 </section>
@@ -254,8 +293,8 @@ if(window.matchMedia('(max-width:900px)').matches){
   <div class="container solution-box">
     <span class="eyebrow">The Solution</span>
     <hr> <br>
-    <h2 style="color:#111;">MarketMix is a fast-rising traffic network built to get businesses discovered, trusted, and patronized.</h2>
-    <p style="color:#555;font-size:18px;margin-top:22px;">Whether you run a physical store, sell from your hostel room, operate online, or offer professional services, MarketMix gives you the tools to build a real digital presence and reach more customers.</p>
+    <h2 style="color:#111;">MarketMix is a growing Traffic Network built to help businesses become easier to discover, easier to trust, and easier to buy from.</h2>
+    <p style="color:#555;font-size:18px;margin-top:22px;">Whether you operate from a physical store, a university hostel, from home, or anywhere in between, MarketMix gives you the tools to showcase your products, reach more customers, and grow with confidence.</p>
   </div>
 </section>
 
@@ -269,28 +308,39 @@ if(window.matchMedia('(max-width:900px)').matches){
     <div class="vm-grid">
       <div class="vm-card" data-animate="left">
         <h3>Our Vision</h3>
-        <p style="color:#555;">A future where every business owner grows without frustration - where small businesses compete equally and buyers shop with confidence.</p>
+        <p style="color:#555;">A platform where every small business owner can grow without unnecessary barriers, and a generation of entrepreneurs passionate about solving real problems.</p>
         <ul>
-          <li>Equal opportunity to compete online</li>
-          <li>Entrepreneurs empowered to solve real problems</li>
-          <li>Access to tools for visibility and trust</li>
-          <li>Buying and selling made simple and safe</li>
+          <li>Every business owner can grow without unnecessary barriers</li>
+          <li>A generation of entrepreneurs solving real problems</li>
+          <li>Access to the tools needed to be discovered and trusted</li>
+          <li>A safe, reliable ecosystem for buyers and sellers everywhere</li>
+          <li>Buying and selling made simple for everyone</li>
         </ul>
       </div>
       <div class="vm-card" data-animate="right">
         <h3>Our Mission</h3>
-        <p style="color:#ffffff;">To make business growth easier by providing the tools, systems, and protection sellers and buyers deserve.</p>
+        <p style="color:#ffffff;">To equip every business owner with the tools, systems, and protection sellers and buyers deserve.</p>
         <ul>
-          <li>Free digital storefront for every business</li>
-          <li>Seller verification &amp; customer protection</li>
-          <li>Zero scams, secure escrow on every order</li>
-          <li>A reliable platform that scales with you</li>
-          <li>Re-define the concept of online buying and selling in Nigeria, then Africa.</li>
+          <li>Free digital storefront &amp; customizable business link</li>
+          <li>Systems that promote trust, accountability &amp; transparency</li>
+          <li>A community where business owners learn and grow together</li>
+          <li>A simple, reliable platform to serve customers efficiently</li>
+          <li>Help businesses stay confident, credible, and in control</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
+
+<!-- logo slidein -->
+<section class="logo-flow-divider">
+  <svg class="marketmix-logo flow-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="600" height="100">
+    <text x="10" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', 'Helvetica Neue', sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
+      <tspan fill="#000000">market</tspan><tspan fill="#FF7A00">mix</tspan>
+    </text>
+  </svg>
+</section>
+
 
 <!-- WHO IT'S FOR -->
 <section class="section light">
@@ -302,18 +352,18 @@ if(window.matchMedia('(max-width:900px)').matches){
     <div class="who-grid">
       <div class="who-card" data-animate="left">
         <div class="num">01</div>
-        <h3>The Growing Business Owner</h3>
+        <h3>The Unnoticed Business Owner</h3>
         <p>Tired of hearing "I didn't know you sold this." Get found by the customers already looking for you.</p>
       </div>
       <div class="who-card" data-animate="right">
         <div class="num">02</div>
-        <h3>The Consistent Vendor</h3>
-        <p>You post products daily but need a bigger audience. MarketMix puts you in front of more buyers.</p>
+        <h3>The Daily Vendor</h3>
+        <p>You post products every day but still struggle to reach enough customers. MarketMix puts you in front of more buyers.</p>
       </div>
       <div class="who-card" data-animate="up">
         <div class="num">03</div>
-        <h3>The Ambitious Builder</h3>
-        <p>You want real systems for sales, customers, finances, and growth - not guesswork.</p>
+        <h3>The Growth-Minded Entrepreneur</h3>
+        <p>You want a better way to showcase products, manage sales, build trust, and grow consistently.</p>
       </div>
       <div class="who-card" data-animate="left">
         <div class="num">04</div>
@@ -338,23 +388,23 @@ if(window.matchMedia('(max-width:900px)').matches){
 
     <div class="steps-group active" id="sellers">
       <div class="timeline">
-        <div class="t-step"><div class="dot">1</div><div><h4>Create an Account</h4><p>Sign up and create your business profile.</p></div></div>
-        <div class="t-step"><div class="dot">2</div><div><h4>Complete Verification</h4><p>Verify your identity through our KYC process to build customer trust.</p></div></div>
-        <div class="t-step"><div class="dot">3</div><div><h4>Upload Products or Services</h4><p>Create your digital store and start reaching more customers.</p></div></div>
-        <div class="t-step"><div class="dot">4</div><div><h4>Make Sales</h4><p>Customers browse, order, and pay securely.</p></div></div>
-        <div class="t-step"><div class="dot">5</div><div><h4>Get Paid Safely</h4><p>Payments stay protected until delivery is confirmed. Funds release within 72 hours.</p></div></div>
-        <div class="t-step"><div class="dot">6</div><div><h4>Manage Funds Securely</h4><p>Earnings sit in your escrow wallet until you're ready to withdraw.</p></div></div>
-        <div class="t-step" style="padding-bottom:0;"><div class="dot">7</div><div><h4>Earn Growth Rewards</h4><p>Successful sales earn points convertible into advertising credits.</p></div></div>
+        <div class="t-step"><div class="dot">1</div><div><h4>Create Your Account</h4><p>Sign up and set up your business profile.</p></div></div>
+        <div class="t-step"><div class="dot">2</div><div><h4>Complete Verification</h4><p>Complete your verification process to build customer trust.</p></div></div>
+        <div class="t-step"><div class="dot">3</div><div><h4>Upload Products or Services</h4><p>Begin reaching more potential customers.</p></div></div>
+        <div class="t-step"><div class="dot">4</div><div><h4>Make a Sale</h4><p>Customers browse, order, and pay securely.</p></div></div>
+        <div class="t-step"><div class="dot">5</div><div><h4>Get Paid</h4><p>Once the order is confirmed, funds are released according to the platform's payout schedule.</p></div></div>
+        <div class="t-step"><div class="dot">6</div><div><h4>Manage Funds Securely</h4><p>Keep your earnings securely stored until you're ready to withdraw them.</p></div></div>
+        <div class="t-step" style="padding-bottom:0;"><div class="dot">7</div><div><h4>Earn Growth Rewards</h4><p>Earn points from successful sales and use them for advertising opportunities within the platform.</p></div></div>
       </div>
     </div>
 
     <div class="steps-group" id="buyers">
       <div class="timeline">
-        <div class="t-step"><div class="dot">1</div><div><h4>Discover Products &amp; Services</h4><p>Find exactly what you're looking for from verified businesses.</p></div></div>
+        <div class="t-step"><div class="dot">1</div><div><h4>Find What You Want to Buy</h4><p>Discover exactly what you're looking for from verified businesses.</p></div></div>
         <div class="t-step"><div class="dot">2</div><div><h4>Place Your Order</h4><p>Order with confidence through a secure process.</p></div></div>
-        <div class="t-step"><div class="dot">3</div><div><h4>Pay Securely</h4><p>Funds are protected until the transaction is completed.</p></div></div>
-        <div class="t-step"><div class="dot">4</div><div><h4>Receive Your Order</h4><p>Get your products delivered quickly and efficiently.</p></div></div>
-        <div class="t-step" style="padding-bottom:0;"><div class="dot">5</div><div><h4>Get Protection When Needed</h4><p>Submit a complaint or refund request and get support within 48 hours.</p></div></div>
+        <div class="t-step"><div class="dot">3</div><div><h4>Make Payment Securely</h4><p>Pay securely through the platform.</p></div></div>
+        <div class="t-step"><div class="dot">4</div><div><h4>Receive Your Order</h4><p>Get your order through the seller's preferred delivery method.</p></div></div>
+        <div class="t-step" style="padding-bottom:0;"><div class="dot">5</div><div><h4>Get Support When Needed</h4><p>If an issue arises, our support and dispute resolution process helps both parties reach a fair outcome.</p></div></div>
       </div>
     </div>
   </div>
@@ -363,12 +413,12 @@ if(window.matchMedia('(max-width:900px)').matches){
 <!-- FOUNDERS -->
 <section class="section light founders">
   <div class="container">
-    <span class="eyebrow">A Message From The Founders</span>
+    <span class="eyebrow">A Message From The Co-Founders</span>
     <div class="quote-mark">"</div>
     <blockquote>
-      Think about the last business you recommended to a friend. Why did you recommend them? <span>Because you trusted them.</span> Trust is one of the most valuable assets any business can build.
+      Think about the last business you confidently recommended to a friend. Why did you recommend them? <span>Because you trusted them.</span> Trust is one of the most valuable assets a business can earn.
     </blockquote>
-    <p style="max-width:760px;color:#000000;font-size:17px;">MarketMix exists to help businesses become more visible, more credible, and more successful. We're not just building another marketplace, we're building a generation of business owners who can compete confidently, grow sustainably, and reach customers across the nation and beyond. And we'd love for you to be part of that journey.</p>
+    <p style="max-width:760px;color:#000000;font-size:17px;">At MarketMix, we're building a network where businesses can earn that trust through transparency, reliability, visibility, and customer satisfaction. <br> <span style= "color: var(--orange); ">Our goal is simple:</span>  to help businesses become more visible, more credible, and more profitable. We believe every hardworking entrepreneur deserves access to the same opportunities that larger businesses enjoy, a future where small businesses can compete confidently, grow sustainably, and reach customers far beyond their immediate environment. And we'd love for you to be part of that journey.</p>
 
     <div class="founders-divider"></div>
     <div class="meet-founders">
@@ -381,19 +431,18 @@ if(window.matchMedia('(max-width:900px)').matches){
 <section id="join" class="section cta-section">
   <div class="container">
     <span class="eyebrow">Join The Movement</span>
-    <h2 style="color: #000000;">Your next <span style ="color: var(--orange);">customer</span> is already <span style ="color: var(--orange);">searching</span> for what you offer.</h2>
-    <p>Join our waitlist today and become one of the first businesses to experience the future of trusted commerce.</p>
+    <h2 style="color: #000000;">The future belongs to <span style="color: var(--navy);"> businesses </span>that people can easily find, trust, and <span style="color: var(--orange);">buy</span> from.</h2>
+    <p>Take control of your business growth today and join the MarketMix waitlist.</p>
     <a href="waitlist.html" class="btn">Join the Waitlist →</a>
     <div class="cta-stats">
       <div><div class="stat-num">Free</div><div class="stat-label">Digital Storefront</div></div>
-      <div><div class="stat-num">Secure</div><div class="stat-label">Escrow Payments</div></div>
+      <div><div class="stat-num">Secure</div><div class="stat-label">Payments</div></div>
       <div><div class="stat-num">Verified</div><div class="stat-label">Seller Network</div></div>
     </div>
   </div>
 </section>
 
 <footer>© 2026 MarketMix. All rights reserved.</footer>
-
 <script>
 function showTab(id, btn){
   document.querySelectorAll('.steps-group').forEach(el=>el.classList.remove('active'));
@@ -431,6 +480,20 @@ if(window.matchMedia('(max-width:900px)').matches){
   },{threshold:.3});
   document.querySelectorAll('.vm-grid,.who-grid').forEach(r=>rowObserver.observe(r));
 }
+
+(function(){
+  const logo = document.querySelector('.flow-logo');
+  if(!logo) return;
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        logo.classList.add('flow-in');
+        obs.unobserve(e.target);
+      }
+    });
+  },{threshold:.4});
+  obs.observe(logo);
+})();
 </script>
 </body>
 </html>
