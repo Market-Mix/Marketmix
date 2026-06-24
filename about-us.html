@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>About Us | MarketMix</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <style>
   html, body { overflow-x: hidden; max-width: 100%; }
 .about-hero, .about-section, .waitlist-cta, .marquee-divider { max-width: 100%; }
@@ -84,6 +85,8 @@ h1,h2,h3{font-weight:800;letter-spacing:-1.5px;line-height:1.05;}
 .vm-card ul{margin-top:18px;padding-left:0;list-style:none;}
 .vm-card li{padding:8px 0;font-size:15px;color:#444;display:flex;gap:10px;}
 .vm-card li::before{content:"➤";color:var(--orange);}
+
+.scroll-progress{position:fixed;top:0;left:0;height:3px;background:var(--orange);z-index:200;width:0%;transition:width .1s;}
 
 /* logo flow */
 .logo-flow-divider{
@@ -257,11 +260,11 @@ if(window.matchMedia('(max-width:900px)').matches){
 <section class="hero">
   <div class="container">
     <span class="eyebrow">About MarketMix</span>
-    <h1>Small businesses don't fail because they're not good enough. Many struggle because they're <span>difficult to find, trust, or buy from.</span></h1>
-    <p style="color: #000;">For years, we've watched hardworking business owners struggle to grow, not because their products were poor, but because they lacked access to the visibility, tools, and trust that larger businesses enjoy. We don't believe success online should require expensive ads or a massive following. So we built MarketMix.</p>
+    <h1>We Built the <span>Marketplace We Wish Existed.</span></h1>
+    <p style="color:#000;">Millions of talented entrepreneurs, creators, freelancers, students, and small business owners are trying to sell something valuable. They simply don't have access to customers. The internet has sold people a dream that success online requires expensive ads, a professional website, or thousands of followers. We don't believe that's true. That's why MarketMix was created.</p>
     <div class="hero-ctas">
       <a href="waitlist.html" class="btn">Join the Waitlist →</a>
-      <a style= "color: var(--navy-dark); border-color: var(--navy);" href="#mission" class="btn btn-outline">Our Mission</a>
+      <a style="color: var(--navy-dark); border-color: var(--navy);" href="#mission" class="btn btn-outline">Our Mission</a>
     </div>
     <div class="hero-stats">
       <div><div style="color: var(--dark2);" class="stat-num">48hrs</div><div class="stat-label">Escrow Payout</div></div>
@@ -276,16 +279,16 @@ if(window.matchMedia('(max-width:900px)').matches){
   <div class="container problem-grid">
     <div>
       <span class="eyebrow">The Problem</span>
-      <h2 style="font-size:clamp(32px,5vw,46px);">Great products. <br>No visibility.</h2>
+      <h2 style="font-size:clamp(32px,5vw,46px);">Good sellers, hidden. <br>Good buyers, disconnected.</h2>
       <ul class="problem-list">
-        <li>Many are told success online needs expensive ads.</li>
-        <li>Or a professional website they can't afford.</li>
-        <li>Or a massive social media following.</li>
-        <li>Customers struggle to find and trust them.</li>
+        <li>Hours spent posting products hoping someone sees them.</li>
+        <li>Stuck depending on status views and algorithms.</li>
+        <li>Great products that never reach the people who need them.</li>
+        <li>Buyers can't find trustworthy vendors in one place.</li>
       </ul>
     </div>
     <div class="callout">
-      Small businesses don't fail because they're not good enough. <span>They struggle because they're difficult to find, trust, or buy from.</span>
+      Good sellers remain hidden. Good buyers remain disconnected. <span>And opportunities are lost every single day.</span>
     </div>
   </div>
 </section>
@@ -293,10 +296,10 @@ if(window.matchMedia('(max-width:900px)').matches){
 <!-- SOLUTION -->
 <section class="section gray">
   <div class="container solution-box">
-    <span class="eyebrow">The Solution</span>
+    <span class="eyebrow">Our Solution</span>
     <hr> <br>
-    <h2 style="color:#111;">MarketMix is a growing Traffic Network built to help businesses become easier to discover, easier to trust, and easier to buy from.</h2>
-    <p style="color:#555;font-size:18px;margin-top:22px;">Whether you operate from a physical store, a university hostel, from home, or anywhere in between, MarketMix gives you the tools to showcase your products, reach more customers, and grow with confidence.</p>
+    <h2 style="color:#111;">MarketMix is a digital marketplace designed to connect buyers and sellers directly.</h2>
+    <p style="color:#555;font-size:18px;margin-top:22px;">We provide a platform where entrepreneurs can showcase their products and services, build credibility, reach more customers, and grow their businesses without needing a massive marketing budget. For buyers, MarketMix makes it easier to discover quality products and trusted vendors without endlessly searching through social media.</p>
   </div>
 </section>
 
@@ -310,24 +313,22 @@ if(window.matchMedia('(max-width:900px)').matches){
     <div class="vm-grid">
       <div class="vm-card" data-animate="left">
         <h3>Our Vision</h3>
-        <p style="color:#555;">A platform where every small business owner can grow without unnecessary barriers, and a generation of entrepreneurs passionate about solving real problems.</p>
+        <p style="color:#555;">To become one of the most trusted marketplaces where businesses of every size can compete fairly, connect with customers globally, and build sustainable growth.</p>
         <ul>
-          <li>Every business owner can grow without unnecessary barriers</li>
-          <li>A generation of entrepreneurs solving real problems</li>
-          <li>Access to the tools needed to be discovered and trusted</li>
-          <li>A safe, reliable ecosystem for buyers and sellers everywhere</li>
-          <li>Buying and selling made simple for everyone</li>
+          <li>A future where anyone with a valuable product can access opportunity</li>
+          <li>Businesses of every size competing fairly</li>
+          <li>Customers reached far beyond their immediate environment</li>
+          <li>A trusted ecosystem for buyers and sellers everywhere</li>
         </ul>
       </div>
       <div class="vm-card" data-animate="right">
         <h3>Our Mission</h3>
-        <p style="color:#ffffff;">To equip every business owner with the tools, systems, and protection sellers and buyers deserve.</p>
+        <p style="color:#ffffff;">To make online commerce accessible to everyone — where the quality of your product matters more than the size of your wallet.</p>
         <ul>
-          <li>Free digital storefront &amp; customizable business link</li>
-          <li>Systems that promote trust, accountability &amp; transparency</li>
-          <li>A community where business owners learn and grow together</li>
-          <li>A simple, reliable platform to serve customers efficiently</li>
-          <li>Help businesses stay confident, credible, and in control</li>
+          <li>Help entrepreneurs grow without large ad budgets</li>
+          <li>Help buyers discover real value, easily</li>
+          <li>Create an ecosystem open to everyone</li>
+          <li>Build opportunity through visibility, not spend</li>
         </ul>
       </div>
     </div>
@@ -348,29 +349,29 @@ if(window.matchMedia('(max-width:900px)').matches){
 <section class="section light">
   <div class="container">
     <div style="text-align:center;margin-bottom:50px;">
-      <span class="eyebrow">Who MarketMix Is For</span>
-      <h2 style="font-size:clamp(32px,5vw,46px);">Built for people like you.</h2>
+      <span class="eyebrow">What Makes MarketMix Different</span>
+      <h2 style="font-size:clamp(32px,5vw,46px);">Built for the modern entrepreneur.</h2>
     </div>
     <div class="who-grid">
       <div class="who-card" data-animate="left">
         <div class="num">01</div>
-        <h3>The Unnoticed Business Owner</h3>
-        <p>Tired of hearing "I didn't know you sold this." Get found by the customers already looking for you.</p>
+        <h3>Accessibility First</h3>
+        <p>We focus on making selling online simple and affordable for everyone.</p>
       </div>
       <div class="who-card" data-animate="right">
         <div class="num">02</div>
-        <h3>The Daily Vendor</h3>
-        <p>You post products every day but still struggle to reach enough customers. MarketMix puts you in front of more buyers.</p>
+        <h3>Opportunity for Everyone</h3>
+        <p>Student, freelancer, startup founder, artisan, or creator — MarketMix is built for you.</p>
       </div>
       <div class="who-card" data-animate="up">
         <div class="num">03</div>
-        <h3>The Growth-Minded Entrepreneur</h3>
-        <p>You want a better way to showcase products, manage sales, build trust, and grow consistently.</p>
+        <h3>Trust &amp; Transparency</h3>
+        <p>A marketplace where buyers and sellers can interact with confidence.</p>
       </div>
       <div class="who-card" data-animate="left">
         <div class="num">04</div>
-        <h3>The Smart Buyer</h3>
-        <p>You want to purchase confidently, without worrying about scams or unreliable sellers.</p>
+        <h3>Community Driven Growth</h3>
+        <p>Success shouldn't depend solely on ad spend — grow through visibility and reputation.</p>
       </div>
     </div>
   </div>
@@ -415,12 +416,12 @@ if(window.matchMedia('(max-width:900px)').matches){
 <!-- FOUNDERS -->
 <section class="section light founders">
   <div class="container">
-    <span class="eyebrow">A Message From The Co-Founders</span>
+    <span class="eyebrow">Our Commitment</span>
     <div class="quote-mark">"</div>
     <blockquote>
-      Think about the last business you confidently recommended to a friend. Why did you recommend them? <span>Because you trusted them.</span> Trust is one of the most valuable assets a business can earn.
+      Every update, every feature, and every decision is guided by one simple question: <span>"Will this create more opportunities for our users?"</span>
     </blockquote>
-    <p style="max-width:760px;color:#000000;font-size:17px;">At MarketMix, we're building a network where businesses can earn that trust through transparency, reliability, visibility, and customer satisfaction. <br> <span style= "color: var(--orange); ">Our goal is simple:</span>  to help businesses become more visible, more credible, and more profitable. We believe every hardworking entrepreneur deserves access to the same opportunities that larger businesses enjoy, a future where small businesses can compete confidently, grow sustainably, and reach customers far beyond their immediate environment. And we'd love for you to be part of that journey.</p>
+    <p style="max-width:760px;color:#000000;font-size:17px;">We're committed to continuously improving MarketMix by listening to our users, building meaningful features, and creating an environment where businesses can thrive. <br><span style="color: var(--orange);">If the answer is yes,</span> we're moving in the right direction.</p>
 
     <div class="founders-divider"></div>
     <div class="meet-founders">
@@ -433,8 +434,8 @@ if(window.matchMedia('(max-width:900px)').matches){
 <section id="join" class="section cta-section">
   <div class="container">
     <span class="eyebrow">Join The Movement</span>
-    <p>Join our waitlist today and become one of the first businesses to experience the future of trusted commerce.</p>
-    <h2 style="color: #000000;">The future belongs to <span style="color: var(--navy);"> businesses </span>that people can easily find, trust, and <span style="color: var(--orange);">buy</span> from.</h2>
+    <p>MarketMix is built for dreamers, creators, builders, hustlers, and innovators who refuse to let limited visibility hold them back.</p>
+    <h2 style="color: #000000;">Whether you're here to <span style="color: var(--navy);">buy</span>, sell, discover, or <span style="color: var(--orange);">grow</span> — welcome to MarketMix.</h2>
     <a href="waitlist.html" class="btn">Join the Waitlist →</a>
     <div class="cta-stats">
       <div><div class="stat-num">Free</div><div class="stat-label">Digital Storefront</div></div>
@@ -443,8 +444,38 @@ if(window.matchMedia('(max-width:900px)').matches){
     </div>
   </div>
 </section>
+<footer style="background:#0B0B0F;color:#9999a3;padding:50px 0 20px;">
+  <div class="container" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:30px;padding-bottom:30px;border-bottom:1px solid #222;">
 
-<footer>© 2026 MarketMix. All rights reserved.</footer>
+    <div style="flex:1;min-width:220px;">
+      <svg class="marketmix-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="150" height="38">
+        <text x="10" y="58" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
+          <tspan fill="#ffffff">market</tspan><tspan fill="#FF7A00">mix</tspan>
+        </text>
+      </svg>
+      <p style="margin-top:14px;font-size:13px;line-height:1.7;max-width:280px;">A growing traffic network helping businesses become easier to discover, trust, and buy from.</p>
+    </div>
+
+    <div style="flex:1;min-width:160px;">
+      <h3 style="color:#fff;font-size:14px;margin-bottom:14px;">Quick Links</h3>
+      <div style="display:flex;flex-direction:column;gap:9px;font-size:13px;">
+        <a href="../index.html" style="color:#9999a3;">Home</a>
+        <a href="founders.html" style="color:#9999a3;">Founders</a>
+        <a href="waitlist.html" style="color:#9999a3;">Join Waitlist</a>
+      </div>
+    </div>
+
+   <div style="flex:1;min-width:160px;">
+  <div style="display:flex;gap:16px; line-height:1;">
+    <a href="https://www.tiktok.com/@marketmixhq" style="color:var(--orange);font-size:20px;"><i class="fa-brands fa-tiktok"></i></a>
+    <a href="https://x.com/marketmixhq" style="color:var(--orange);font-size:20px;"><i class="fa-brands fa-x-twitter"></i></a>
+    <a href="https://instagram.com/marketmixhq" style="color:var(--orange);font-size:20px;"><i class="fa-brands fa-instagram"></i></a>
+    <!-- <a href="#" style="color:var(--orange);font-size:20px;"><i class="fa-brands fa-linkedin"></i></a> -->
+  </div>
+</div>
+  </div>
+  <p style="text-align:center;font-size:12px;color:#666;padding-top:18px;">© 2026 MarketMix. All rights reserved.</p>
+</footer>
 <script>
 function showTab(id, btn){
   document.querySelectorAll('.steps-group').forEach(el=>el.classList.remove('active'));
@@ -497,6 +528,34 @@ if(window.matchMedia('(max-width:900px)').matches){
   },{threshold:.2});
   obs.observe(wrapper);
 })();
+
+function animateCounter(el, end, suffix='') {
+  let start = 0;
+  const dur = 1200, t0 = performance.now();
+  function tick(t) {
+    const p = Math.min((t - t0) / dur, 1);
+    el.textContent = Math.floor(p * end) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+// usage: animateCounter(document.querySelector('.stat-num'), 100, '%')
+
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.querySelector('.scroll-progress').style.width = pct + '%';
+});
+
+document.querySelectorAll('.btn').forEach(btn => {
+  btn.addEventListener('mousemove', e => {
+    const r = btn.getBoundingClientRect();
+    const x = (e.clientX - r.left - r.width/2) * 0.15;
+    const y = (e.clientY - r.top - r.height/2) * 0.15;
+    btn.style.transform = `translate(${x}px,${y}px)`;
+  });
+  btn.addEventListener('mouseleave', () => btn.style.transform = '');
+});
 </script>
 </body>
 </html>
