@@ -485,7 +485,8 @@ if(window.matchMedia('(max-width:900px)').matches){
 
 (function(){
   const logo = document.querySelector('.flow-logo');
-  if(!logo) return;
+  const wrapper = document.querySelector('.logo-flow-divider');
+  if(!logo || !wrapper) return;
   const obs = new IntersectionObserver(entries=>{
     entries.forEach(e=>{
       if(e.isIntersecting){
@@ -493,8 +494,8 @@ if(window.matchMedia('(max-width:900px)').matches){
         obs.unobserve(e.target);
       }
     });
-  },{threshold:.4});
-  obs.observe(logo);
+  },{threshold:.2});
+  obs.observe(wrapper);
 })();
 </script>
 </body>
