@@ -29,6 +29,20 @@ function getToken() {
       }
     } catch (e) {}
   </script>
+
+  <style>
+     @keyframes splatPulse {
+    0%,100% { box-shadow: 0 4px 16px rgba(255,122,0,0.35); border-radius: 50%; }
+    50% { box-shadow: 0 8px 28px rgba(255,122,0,0.55); border-radius: 42% 58% 55% 45% / 48% 52% 48% 52%; }
+  }
+  #profileImage {
+    animation: splatPulse 5s ease-in-out infinite;
+  }
+  @media (max-width: 600px) {
+    #profileImage { width: 80px !important; height: 80px !important; }
+    #logoSplat svg { width: 68px !important; height: 17px !important; }
+  }
+  </style>
 </head>
 <body>
   <!-- Loading Overlay -->
@@ -45,13 +59,14 @@ function getToken() {
 
     <!-- Profile Card -->
     <div class="profile-card">
-      <!-- Replace <img id="profileImage" src="elon.jfif" alt="Buyer Image"> with: -->
-<div id="profileImage" style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#FF7A00,#E06A00);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 16px rgba(255,122,0,0.35)">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="60" height="30">
-    <text x="2" y="30" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="28" letter-spacing="-1px">
-      <tspan fill="#fff">M</tspan><tspan fill="rgba(255,255,255,0.75)">X</tspan>
-    </text>
-  </svg>
+      <div id="profileImage" style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#FF7A00,#E06A00);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 16px rgba(255,122,0,0.35);overflow:hidden;position:relative;">
+  <div id="logoSplat" style="position:absolute;transition:transform 0.6s cubic-bezier(.68,-0.55,.27,1.55),top 0.6s cubic-bezier(.68,-0.55,.27,1.55),left 0.6s cubic-bezier(.68,-0.55,.27,1.55);top:50%;left:50%;transform:translate(-50%,-50%)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="90" height="22">
+      <text x="10" y="58" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px">
+        <tspan fill="#fff">market</tspan><tspan fill="rgba(255,255,255,0.6)">mix</tspan>
+      </text>
+    </svg>
+  </div>
 </div>
       <div class="info">
         <p><strong>Name:</strong> <span id="userName">Loading...</span></p>
@@ -441,6 +456,26 @@ function getToken() {
         alert.remove();
       }, 5000);
     }
+     // profile animation
+    const splat = document.getElementById('logoSplat');
+  const positions = [
+    { top: '50%', left: '50%', rotate: '0deg', scale: 1 },
+    { top: '35%', left: '60%', rotate: '-12deg', scale: 0.85 },
+    { top: '62%', left: '38%', rotate: '10deg', scale: 0.9 },
+    { top: '40%', left: '35%', rotate: '15deg', scale: 0.8 },
+    { top: '58%', left: '62%', rotate: '-8deg', scale: 0.88 },
+    { top: '30%', left: '50%', rotate: '6deg', scale: 0.82 },
+  ];
+  let idx = 0;
+  function animateSplat() {
+    idx = (idx + 1) % positions.length;
+    const p = positions[idx];
+    splat.style.top = p.top;
+    splat.style.left = p.left;
+    splat.style.transform = `translate(-50%,-50%) rotate(${p.rotate}) scale(${p.scale})`;
+  }
+  setInterval(animateSplat, 5000);
+
   </script>
 </body>
 </html>
