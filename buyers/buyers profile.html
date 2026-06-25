@@ -45,7 +45,14 @@ function getToken() {
 
     <!-- Profile Card -->
     <div class="profile-card">
-      <img id="profileImage" src="elon.jfif" alt="Buyer Image">
+      <!-- Replace <img id="profileImage" src="elon.jfif" alt="Buyer Image"> with: -->
+<div id="profileImage" style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#FF7A00,#E06A00);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 16px rgba(255,122,0,0.35)">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="60" height="30">
+    <text x="2" y="30" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="28" letter-spacing="-1px">
+      <tspan fill="#fff">M</tspan><tspan fill="rgba(255,255,255,0.75)">X</tspan>
+    </text>
+  </svg>
+</div>
       <div class="info">
         <p><strong>Name:</strong> <span id="userName">Loading...</span></p>
         <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
