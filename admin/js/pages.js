@@ -1,4 +1,151 @@
 // Dashboard Page
+let adminRefundCases = [];
+let refundFetchRetryTimer = null;
+let refundFetchRetryCount = 0;
+const ADMIN_API_BASE = window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api';
+
+function getAdminAuthToken() {
+  if (window.ADMIN_AUTH_TOKEN) return window.ADMIN_AUTH_TOKEN;
+
+  const storedToken = localStorage.getItem('adminToken');
+  if (storedToken) return storedToken;
+
+  const sessionValue = localStorage.getItem('adminSession');
+  if (sessionValue) {
+    try {
+      const session = JSON.parse(sessionValue);
+      return session?.token || '';
+    } catch (err) {
+      return '';
+    }
+  }
+
+  return localStorage.getItem('token') || '';
+}
+
+function getAdminAuthHeaders() {
+  const token = getAdminAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function normalizeRefundCase(refundCase) {
+  const status = refundCase.marketmix_decision === 'approved'
+    ? 'Approved'
+    : refundCase.marketmix_decision === 'rejected'
+      ? 'Denied'
+      : 'Pending';
+
+  const createdAt = refundCase.created_at || refundCase.createdAt || refundCase.date || null;
+  const createdDate = createdAt ? new Date(createdAt).toLocaleDateString() : '';
+
+  return {
+    id: String(refundCase.id || refundCase.refund_id || refundCase.case_id || ''),
+    orderId: String(refundCase.order_id || refundCase.orderId || ''),
+    buyer: refundCase.buyer_name || refundCase.buyer || refundCase.buyer_id || 'Unknown',
+    seller: refundCase.store_name || refundCase.seller_name || refundCase.seller || refundCase.seller_id || 'Unknown',
+    amount: refundCase.amount || refundCase.total_amount || refundCase.refund_amount || '',
+    status,
+    date: createdDate,
+    returnDate: createdDate,
+    productName: refundCase.product_name || refundCase.productName || 'Unknown product',
+    productImage: refundCase.product_image || refundCase.productImage || '',
+    reason: refundCase.complaint_text || refundCase.reason || '',
+    notes: refundCase.notes || ''
+  };
+}
+
+async function fetchAdminRefundCases() {
+  const container = document.getElementById('returnTableContainer');
+  if (!container) return;
+
+  const token = getAdminAuthToken();
+  if (!token) {
+    if (refundFetchRetryCount < 5) {
+      refundFetchRetryCount += 1;
+      container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-gray-600 dark:text-gray-400">Waiting for admin authentication...</p></div>`;
+      if (refundFetchRetryTimer) clearTimeout(refundFetchRetryTimer);
+      refundFetchRetryTimer = setTimeout(() => {
+        refundFetchRetryTimer = null;
+        fetchAdminRefundCases();
+      }, 750);
+      return;
+    }
+
+    container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-red-600 dark:text-red-400">Admin auth token missing. Please provide a valid admin JWT in localStorage.adminToken or window.ADMIN_AUTH_TOKEN.</p></div>`;
+    return;
+  }
+
+  if (refundFetchRetryTimer) {
+    clearTimeout(refundFetchRetryTimer);
+    refundFetchRetryTimer = null;
+  }
+  refundFetchRetryCount = 0;
+
+  container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-gray-600 dark:text-gray-400">Loading return requests...</p></div>`;
+
+  const headers = getAdminAuthHeaders();
+  if (!headers.Authorization) {
+    container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-red-600 dark:text-red-400">Admin auth token missing. Please provide a valid admin JWT in localStorage.adminToken or window.ADMIN_AUTH_TOKEN.</p></div>`;
+    return;
+  }
+
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/admin/refunds`, { headers });
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const message = body?.message || 'Unable to fetch refund cases from backend.';
+      container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-red-600 dark:text-red-400">${message}</p></div>`;
+      return;
+    }
+
+    adminRefundCases = (body?.refundCases || []).map(normalizeRefundCase);
+    applyReturnFilters();
+  } catch (err) {
+    container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-red-600 dark:text-red-400">Error loading refund cases: ${err.message || 'Unknown error'}</p></div>`;
+  }
+}
+
+function applyReturnFilters() {
+  const searchInput = document.getElementById('returnSearch');
+  const statusSelect = document.getElementById('returnStatusFilter');
+  if (!searchInput || !statusSelect) return;
+
+  const query = searchInput.value.toLowerCase().trim();
+  const statusFilter = statusSelect.value;
+
+  const filtered = adminRefundCases.filter(refund => {
+    const matchesQuery = !query || [refund.orderId, refund.buyer, refund.seller, refund.productName]
+      .some(value => String(value || '').toLowerCase().includes(query));
+    const matchesStatus = statusFilter === 'all' || refund.status === statusFilter;
+    return matchesQuery && matchesStatus;
+  });
+
+  const container = document.getElementById('returnTableContainer');
+  if (!container) return;
+
+  if (!filtered.length) {
+    container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-gray-600 dark:text-gray-400">No returns found matching your search or filter.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = renderTable(['ID', 'Buyer', 'Seller', 'Amount', 'Status', 'Date'], filtered, [
+    { label: 'View', callback: 'viewReturn' }
+  ]);
+}
+
+function createRefundErrorToast(message) {
+  showToast(message, 'error');
+}
+
+function getAdminReturnActionHeaders() {
+  const authHeaders = getAdminAuthHeaders();
+  return {
+    ...authHeaders,
+    'Content-Type': 'application/json'
+  };
+}
+
 function renderDashboard() {
   const html = `
     <div>
@@ -647,8 +794,9 @@ function generateRevenueChart() {
   const values = data.values;
   
   const canvas = document.getElementById('revenueChart');
-  if (!canvas) return;
+  if (!canvas || !window.Chart) return;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return;
   
   // Register datalabels plugin if available
   if (window.Chart && window.Chart.register && window.ChartDataLabels) {
@@ -656,9 +804,10 @@ function generateRevenueChart() {
   }
   
   // Destroy existing chart if any
-  if (window.revenueChart) {
+  if (window.revenueChart && typeof window.revenueChart.destroy === 'function') {
     window.revenueChart.destroy();
   }
+  window.revenueChart = null;
   
   const total = values.reduce((s, v) => s + v, 0) || 1;
   
@@ -1006,25 +1155,42 @@ function renderReturns() {
       
       <div class="mb-6 flex gap-4">
         <input type="text" id="returnSearch" placeholder="Search returns by Order ID or Buyer..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <select class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-          <option>All Status</option>
-          <option>Pending</option>
-          <option>Approved</option>
-          <option>Denied</option>
+        <select id="returnStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          <option value="all">All Status</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Denied">Denied</option>
         </select>
         <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
       </div>
 
-      ${renderTable(['ID', 'Buyer', 'Seller', 'Amount', 'Status', 'Date'], dummyData.returns, [
-        { label: 'View', callback: 'viewReturn' }
-      ])}
+      <div id="returnTableContainer">
+        ${renderTable(['ID', 'Buyer', 'Seller', 'Amount', 'Status', 'Date'], [], [
+          { label: 'View', callback: 'viewReturn' }
+        ])}
+      </div>
     </div>
   `;
   document.getElementById('content').innerHTML = html;
+
+  document.getElementById('returnSearch').addEventListener('input', () => {
+    applyReturnFilters();
+  });
+
+  document.getElementById('returnStatusFilter').addEventListener('change', () => {
+    applyReturnFilters();
+  });
+
+  fetchAdminRefundCases();
 }
 
 function viewReturn(id) {
-  const returnRequest = dummyData.returns.find(r => r.id === id);
+  const returnRequest = adminRefundCases.find(r => r.id === id);
+  if (!returnRequest) {
+    showToast('Return request not found. Please refresh the list.', 'error');
+    loadPage('returns');
+    return;
+  }
   const html = `
     <div>
       <button onclick="loadPage('returns')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Returns & Refunds</button>

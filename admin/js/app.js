@@ -423,31 +423,83 @@ function savePassword() {
 }
 
 // Returns & Refunds Functions
-function approveReturn(id) {
-  const returnRequest = dummyData.returns.find(r => r.id === id);
-  if (returnRequest) {
-    returnRequest.status = 'Approved';
+function getAdminReturnToken() {
+  if (window.ADMIN_AUTH_TOKEN) return window.ADMIN_AUTH_TOKEN;
+
+  const storedToken = localStorage.getItem('adminToken');
+  if (storedToken) return storedToken;
+
+  const sessionValue = localStorage.getItem('adminSession');
+  if (sessionValue) {
+    try {
+      const session = JSON.parse(sessionValue);
+      if (session?.token) return session.token;
+    } catch (err) {
+      // ignore invalid session value
+    }
+  }
+
+  return localStorage.getItem('token') || '';
+}
+
+async function approveReturn(id) {
+  const token = getAdminReturnToken();
+  if (!token) {
+    showToast('Admin auth token missing. Cannot approve refund.', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api'}/admin/refunds/${id}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(body?.message || `Unable to approve refund ${id}`);
+    }
+
     showToast('Return request approved successfully', 'success');
     loadPage('returns');
+  } catch (err) {
+    showToast(err.message || 'Failed to approve refund', 'error');
   }
 }
 
-function denyReturn(id) {
-  const returnRequest = dummyData.returns.find(r => r.id === id);
-  if (returnRequest) {
-    returnRequest.status = 'Denied';
-    showToast('Return request denied', 'success');
+async function denyReturn(id) {
+  const token = getAdminReturnToken();
+  if (!token) {
+    showToast('Admin auth token missing. Cannot reject refund.', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api'}/admin/refunds/${id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(body?.message || `Unable to reject refund ${id}`);
+    }
+
+    showToast('Return request denied successfully', 'success');
     loadPage('returns');
+  } catch (err) {
+    showToast(err.message || 'Failed to reject refund', 'error');
   }
 }
 
 function deleteReturn(id) {
-  const index = dummyData.returns.findIndex(r => r.id === id);
-  if (index > -1) {
-    dummyData.returns.splice(index, 1);
-    showToast('Return request deleted successfully', 'success');
-    loadPage('returns');
-  }
+  showToast('Delete action is not supported for backend refund cases.', 'error');
 }
 
 // Category Functions
