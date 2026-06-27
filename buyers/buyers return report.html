@@ -2045,8 +2045,8 @@
       id: caseData.id,
       order_id: caseData.order_id,
       product_name: caseData.product_name || orderData.product_name || 'Purchased item',
-      total_amount: caseData.total_amount || orderData.total_amount || 0,
-      status: caseData.status || 'pending',
+      total_amount: caseData.total_amount || caseData.amount || caseData.refund_amount || orderData.total_amount || 0,
+      status: caseData.resolution_status || caseData.status || 'pending',
       displayStatus: statusMeta.label,
       statusClass: statusMeta.className,
       statusKey: statusMeta.statusKey,
@@ -3011,7 +3011,8 @@
           timeLeft = expiryTime - now;
         }
 
-        if (timeLeft > 0 && !isRejected) {
+        const chatAllowed = !['approved', 'denied', 'resolved', 'escalated'].includes(statusMeta.statusKey);
+      if (timeLeft > 0 && chatAllowed) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
           const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
@@ -3024,10 +3025,28 @@
             </button>
           `;
           chatBtnHtml = getChatButtonWithBadge(caseId, btnHtml);
-        } else if (isRejected) {
+        } else if (statusMeta.statusKey === 'denied') {
           chatBtnHtml = `
             <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat disabled for rejected orders">
               <i class="fas fa-comments"></i> Rejected
+            </button>
+          `;
+        } else if (statusMeta.statusKey === 'approved') {
+          chatBtnHtml = `
+            <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat closed after approval">
+              <i class="fas fa-comments"></i> Approved
+            </button>
+          `;
+        } else if (statusMeta.statusKey === 'resolved') {
+          chatBtnHtml = `
+            <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat disabled for resolved orders">
+              <i class="fas fa-comments"></i> Resolved
+            </button>
+          `;
+        } else if (statusMeta.statusKey === 'escalated') {
+          chatBtnHtml = `
+            <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat disabled for escalated cases">
+              <i class="fas fa-comments"></i> Escalated
             </button>
           `;
         } else {
@@ -3192,7 +3211,11 @@
   function openChat(reportId) {
     const report = currentReports.find(r => String(r.id) === String(reportId));
     if (!report) return;
-    if (getRefundDisplayState(report).isRejected) return;
+    const statusMeta = getRefundDisplayState(report);
+    if (['approved', 'denied', 'resolved', 'escalated'].includes(statusMeta.statusKey)) {
+      showNotification('Chat is disabled for this refund case because it has been finalized.', 'info');
+      return;
+    }
 
     currentChatData = report;
     openChatPanel(report);
@@ -3397,8 +3420,9 @@
       document.getElementById('chatOrderId').textContent = `Order ID: ${report.order_id}`;
       
       const statusElement = document.getElementById('chatResolutionStatus');
-      statusElement.className = `resolution-status ${report.status}`;
-      statusElement.innerHTML = `<i class="fas fa-circle"></i> ${report.status.replace(/_/g, ' ').toUpperCase()}`;
+      const detailStatus = getRefundDisplayState(report);
+      statusElement.className = `resolution-status ${detailStatus.statusKey}`;
+      statusElement.innerHTML = `<i class="fas fa-circle"></i> ${detailStatus.label.toUpperCase()}`;
 
       // Update 2-day countdown banner after evidence submission
       const countdownBanner = document.getElementById('chatCountdownBanner');
@@ -3517,8 +3541,8 @@
   }
 
   function applyChatLockState(caseInfo) {
-    const status = String(caseInfo.resolution_status || '').toLowerCase();
-    const readOnly = ['resolved', 'escalated'].includes(status);
+    const detailStatus = getRefundDisplayState(caseInfo);
+    const readOnly = ['approved', 'denied', 'resolved', 'escalated'].includes(detailStatus.statusKey);
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendChatBtn');
     const fileInput = document.getElementById('chatFileInput');
@@ -3528,15 +3552,16 @@
     if (sendBtn) sendBtn.disabled = readOnly;
     if (fileInput) fileInput.disabled = readOnly;
 
-    if (readOnly) {
-      if (infoText) infoText.textContent = 'Chat is read-only for resolved or escalated cases.';
-      const statusEl = document.getElementById('chatResolutionStatus');
-      if (statusEl) {
-        statusEl.className = 'resolution-status ' + status;
-        statusEl.textContent = status === 'resolved' ? 'Case Resolved' : 'Escalated to MarketMix';
-      }
-    } else {
-      if (infoText) infoText.textContent = 'All conversations are monitored by MarketMix';
+    if (infoText) {
+      infoText.textContent = readOnly
+        ? 'Chat is disabled for finalized refund cases.'
+        : 'All conversations are monitored by MarketMix';
+    }
+
+    const statusEl = document.getElementById('chatResolutionStatus');
+    if (statusEl) {
+      statusEl.className = 'resolution-status ' + detailStatus.statusKey;
+      statusEl.textContent = detailStatus.label.toUpperCase();
     }
   }
 
@@ -3876,10 +3901,19 @@
     document.getElementById('detailsStore').textContent = report.store_name;
     document.getElementById('detailsProduct').textContent = report.product_name;
     document.getElementById('detailsOrderId').textContent = report.order_id;
-    document.getElementById('detailsStatus').textContent = report.status.replace(/_/g, ' ').toUpperCase();
-    document.getElementById('detailsDecision').textContent = report.marketmix_reason || (['resolved','rejected','refunded'].includes(report.status) ? 'MarketMix decision recorded.' : 'Awaiting MarketMix review.');
-    document.getElementById('detailsReason').textContent = report.reason.replace(/_/g, ' ').toUpperCase();
-    document.getElementById('detailsDescription').textContent = report.description;
+
+    const detailStatus = getRefundDisplayState(report);
+    document.getElementById('detailsStatus').textContent = detailStatus.label.toUpperCase();
+
+    const decisionNote = report.marketmix_reason
+      || (detailStatus.statusKey === 'approved' ? 'Approved by MarketMix.'
+        : detailStatus.statusKey === 'denied' ? 'Denied by MarketMix.'
+        : 'Awaiting MarketMix review.');
+    document.getElementById('detailsDecision').textContent = decisionNote;
+
+    document.getElementById('detailsAmount').textContent = `₦${formatCurrency(report.total_amount || report.amount || report.refund_amount || 0)}`;
+    document.getElementById('detailsReason').textContent = (report.reason || '').replace(/_/g, ' ').toUpperCase();
+    document.getElementById('detailsDescription').textContent = report.description || '';
     
     // Render specifications if available
     const specsSection = document.getElementById('detailsSpecifications');

@@ -37,11 +37,11 @@ function getRefundDisplayState(refundCase = {}) {
   const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
   const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
 
-  if (decision === 'approved' || resolution === 'waiting_seller_return_decision') {
+  if (decision === 'approved' || resolution === 'approved' || resolution === 'waiting_seller_return_decision') {
     return { label: 'Approved', className: 'approved', statusKey: 'approved' };
   }
 
-  if (decision === 'rejected' || resolution === 'refund_rejected') {
+  if (decision === 'rejected' || resolution === 'rejected' || resolution === 'refund_rejected') {
     return { label: 'Denied', className: 'denied', statusKey: 'denied' };
   }
 
@@ -62,13 +62,35 @@ function getRefundDisplayState(refundCase = {}) {
 
 function normalizeRefundCase(refundCase) {
   const displayState = getRefundDisplayState(refundCase);
-  const amountValue = Number(refundCase.amount ?? refundCase.total_amount ?? refundCase.refund_amount ?? 0);
+  const backendAmountValue = Number(refundCase.total_amount ?? refundCase.amount ?? refundCase.refund_amount ?? 0);
   const createdAt = refundCase.created_at || refundCase.createdAt || refundCase.date || null;
   const createdDate = createdAt ? new Date(createdAt).toLocaleDateString() : '';
 
   return {
     id: String(refundCase.id || refundCase.refund_id || refundCase.case_id || ''),
     orderId: String(refundCase.order_id || refundCase.orderId || ''),
+    buyer: refundCase.buyer_name || refundCase.buyer || refundCase.buyer_id || 'Unknown',
+    seller: refundCase.store_name || refundCase.seller_name || refundCase.seller || refundCase.seller_id || 'Unknown',
+    amount: formatRefundAmount(backendAmountValue),
+    amountValue: backendAmountValue,
+    backendAmount: backendAmountValue,
+    status: displayState.label,
+    statusClass: displayState.className,
+    statusKey: displayState.statusKey,
+    date: createdDate,
+    returnDate: createdDate,
+    productName: refundCase.product_name || refundCase.productName || 'Unknown product',
+    productImage: refundCase.product_image || refundCase.productImage || '',
+    evidenceUrl: refundCase.evidence_url || refundCase.evidenceUrl || refundCase.evidenceURL || '',
+    evidenceType: refundCase.evidence_type || refundCase.evidenceType || '',
+    reason: refundCase.complaint_text || refundCase.reason || '',
+    notes: refundCase.notes || '',
+    marketmixDecision: refundCase.marketmix_decision || '',
+    marketmixDecidedAt: refundCase.marketmix_decided_at || refundCase.marketmixDecidedAt || '',
+    marketmixDecidedBy: refundCase.marketmix_decided_by || refundCase.marketmixDecidedBy || '',
+    rawResolutionStatus: refundCase.resolution_status || '',
+    rawStatus: refundCase.status || ''
+  };
     buyer: refundCase.buyer_name || refundCase.buyer || refundCase.buyer_id || 'Unknown',
     seller: refundCase.store_name || refundCase.seller_name || refundCase.seller || refundCase.seller_id || 'Unknown',
     amount: formatRefundAmount(amountValue),
@@ -1315,7 +1337,7 @@ function viewReturn(id) {
             <div class="grid grid-cols-2 gap-4">
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Refund Amount</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg">${returnRequest.amount}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg">${returnRequest.backendAmount ? formatRefundAmount(returnRequest.backendAmount) : returnRequest.amount}</p>
               </div>
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Status</p>
@@ -1339,7 +1361,7 @@ function viewReturn(id) {
               <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Request Date:</span> ${returnRequest.date}</p>
               <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Status:</span> ${getRefundStatusBadgeMarkup(returnRequest)}</p>
               <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">MarketMix Decision:</span> ${returnRequest.marketmixDecision ? (returnRequest.marketmixDecision === 'approved' ? 'Approved' : 'Denied') : 'Pending'}</p>
-              ${returnRequest.reason ? `<p class="text-sm text-blue-800 dark:text-blue-300 mt-2"><span class="font-semibold">Decision Note:</span> ${returnRequest.reason}</p>` : ''}
+              ${returnRequest.marketmixReason ? `<p class="text-sm text-blue-800 dark:text-blue-300 mt-2"><span class="font-semibold">Decision Note:</span> ${returnRequest.marketmixReason}</p>` : ''}
             </div>
           </div>
         </div>
