@@ -2642,7 +2642,7 @@
     }
 
     // Update button visibility based on resolution status
-    const viewBtn = targetRow.querySelector('[onclick*="showDetailsModal"]');
+    const viewBtn = targetRow.querySelector('[onclick*="viewDetails"]') || targetRow.querySelector('[onclick*="showDetailsModal"]');
     const chatBtnArea = targetRow.querySelector('.btn-chat');
     const actionBtn = targetRow.querySelector('.btn-action');
 
