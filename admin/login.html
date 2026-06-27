@@ -129,12 +129,13 @@
       }
     });
 
-    function handleLogin(event) {
+    async function handleLogin(event) {
       event.preventDefault();
       
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const rememberMe = document.getElementById('rememberMe').checked;
+      const apiBase = window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api';
 
       // Clear previous errors
       clearErrors();
@@ -152,32 +153,51 @@
 
       if (hasErrors) return;
 
-      // Validate credentials (dummy: admin/admin123)
-      if (username !== 'admin' || password !== 'admin123') {
-        showError('passwordError', 'Invalid username or password');
-        return;
+      try {
+        const response = await fetch(`${apiBase}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: username,
+            password: password
+          })
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.message || 'Invalid username or password');
+        }
+
+        const token = data?.data?.token || data?.token || '';
+        if (!token) {
+          throw new Error('The backend did not return an authentication token.');
+        }
+
+        localStorage.setItem('adminToken', token);
+        localStorage.setItem('adminSession', JSON.stringify({
+          username: username,
+          email: username,
+          token: token,
+          user: data?.data?.user || data?.user || null,
+          loginTime: new Date().toISOString()
+        }));
+
+        if (rememberMe) {
+          localStorage.setItem('adminUsername', username);
+        } else {
+          localStorage.removeItem('adminUsername');
+        }
+
+        showToast('Login successful! Redirecting...', 'success');
+
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1000);
+      } catch (error) {
+        showError('passwordError', error.message || 'Login failed');
       }
-
-      // Save session
-      localStorage.setItem('adminSession', JSON.stringify({
-        username: username,
-        loginTime: new Date().toISOString()
-      }));
-
-      // Remember username if checked
-      if (rememberMe) {
-        localStorage.setItem('adminUsername', username);
-      } else {
-        localStorage.removeItem('adminUsername');
-      }
-
-      // Show success toast
-      showToast('Login successful! Redirecting...', 'success');
-
-      // Redirect to dashboard after a short delay
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 1000);
     }
 
     function showError(elementId, message) {

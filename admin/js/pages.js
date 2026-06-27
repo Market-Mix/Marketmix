@@ -14,7 +14,7 @@ function getAdminAuthToken() {
   if (sessionValue) {
     try {
       const session = JSON.parse(sessionValue);
-      return session?.token || '';
+      return session?.token || session?.accessToken || session?.authToken || session?.jwt || session?.user?.token || '';
     } catch (err) {
       return '';
     }
@@ -29,11 +29,10 @@ function getAdminAuthHeaders() {
 }
 
 function normalizeRefundCase(refundCase) {
-  const status = refundCase.marketmix_decision === 'approved'
-    ? 'Approved'
-    : refundCase.marketmix_decision === 'rejected'
-      ? 'Denied'
-      : 'Pending';
+  const hasDecision = refundCase.marketmix_decision === 'approved' || refundCase.marketmix_decision === 'rejected';
+  const status = hasDecision
+    ? (refundCase.marketmix_decision === 'approved' ? 'Approved' : 'Denied')
+    : (refundCase.resolution_status === 'escalated' ? 'Pending' : 'Pending');
 
   const createdAt = refundCase.created_at || refundCase.createdAt || refundCase.date || null;
   const createdDate = createdAt ? new Date(createdAt).toLocaleDateString() : '';
@@ -50,7 +49,9 @@ function normalizeRefundCase(refundCase) {
     productName: refundCase.product_name || refundCase.productName || 'Unknown product',
     productImage: refundCase.product_image || refundCase.productImage || '',
     reason: refundCase.complaint_text || refundCase.reason || '',
-    notes: refundCase.notes || ''
+    notes: refundCase.notes || '',
+    rawResolutionStatus: refundCase.resolution_status || '',
+    rawStatus: refundCase.status || ''
   };
 }
 
@@ -99,7 +100,8 @@ async function fetchAdminRefundCases() {
       return;
     }
 
-    adminRefundCases = (body?.refundCases || []).map(normalizeRefundCase);
+    const refundCases = Array.isArray(body?.data?.refundCases) ? body.data.refundCases : [];
+    adminRefundCases = refundCases.map(normalizeRefundCase);
     applyReturnFilters();
   } catch (err) {
     container.innerHTML = `<div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow"><p class="text-sm text-red-600 dark:text-red-400">Error loading refund cases: ${err.message || 'Unknown error'}</p></div>`;
@@ -117,7 +119,11 @@ function applyReturnFilters() {
   const filtered = adminRefundCases.filter(refund => {
     const matchesQuery = !query || [refund.orderId, refund.buyer, refund.seller, refund.productName]
       .some(value => String(value || '').toLowerCase().includes(query));
-    const matchesStatus = statusFilter === 'all' || refund.status === statusFilter;
+
+    const normalizedStatus = String(refund.status || '').toLowerCase();
+    const normalizedResolutionStatus = String(refund.rawResolutionStatus || '').toLowerCase();
+    const matchesStatus = statusFilter === 'all' || normalizedStatus === statusFilter.toLowerCase() || normalizedResolutionStatus === statusFilter.toLowerCase();
+
     return matchesQuery && matchesStatus;
   });
 

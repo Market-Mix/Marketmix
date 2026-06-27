@@ -433,7 +433,7 @@ function getAdminReturnToken() {
   if (sessionValue) {
     try {
       const session = JSON.parse(sessionValue);
-      if (session?.token) return session.token;
+      return session?.token || session?.accessToken || session?.authToken || session?.jwt || session?.user?.token || '';
     } catch (err) {
       // ignore invalid session value
     }
