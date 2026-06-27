@@ -33,6 +33,54 @@ function formatRefundAmount(value) {
   return `₦${amount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
 }
 
+function parseRefundProductSpecs(refund = {}) {
+  let color = refund.color || null;
+  let size = refund.size || null;
+  let snapshot = refund.product_snapshot || refund.productSnapshot || null;
+
+  if ((!color || !size) && snapshot) {
+    if (typeof snapshot === 'string') {
+      try {
+        snapshot = JSON.parse(snapshot);
+      } catch (err) {
+        snapshot = {};
+      }
+    }
+    color = color || snapshot?.color || null;
+    size = size || snapshot?.size || null;
+  }
+
+  return { color, size };
+}
+
+function renderRefundSpecifications(refund = {}) {
+  const { color, size } = parseRefundProductSpecs(refund);
+  if (!color && !size) return '';
+
+  const specs = [];
+  if (color) specs.push(`<div class="text-gray-900 dark:text-white"><span class="font-semibold">Color:</span> ${escapeHtml(color)}</div>`);
+  if (size) specs.push(`<div class="text-gray-900 dark:text-white"><span class="font-semibold">Size:</span> ${escapeHtml(size)}</div>`);
+
+  return `
+    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+      <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-3">Product Specifications</p>
+      <div class="space-y-2">
+        ${specs.join('')}
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(text) {
+  if (text === undefined || text === null) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function getRefundDisplayState(refundCase = {}) {
   const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
   const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
@@ -71,12 +119,16 @@ function normalizeRefundCase(refundCase) {
     orderId: String(refundCase.order_id || refundCase.orderId || ''),
     buyer: refundCase.buyer_name || refundCase.buyer || refundCase.buyer_id || 'Unknown',
     seller: refundCase.store_name || refundCase.seller_name || refundCase.seller || refundCase.seller_id || 'Unknown',
+    color: refundCase.color || null,
+    size: refundCase.size || null,
+    productSnapshot: refundCase.product_snapshot || refundCase.productSnapshot || null,
     amount: formatRefundAmount(backendAmountValue),
     amountValue: backendAmountValue,
     backendAmount: backendAmountValue,
     status: displayState.label,
     statusClass: displayState.className,
     statusKey: displayState.statusKey,
+    rawResolutionStatus: refundCase.resolution_status || refundCase.status || '',
     date: createdDate,
     returnDate: createdDate,
     productName: refundCase.product_name || refundCase.productName || 'Unknown product',
@@ -88,25 +140,6 @@ function normalizeRefundCase(refundCase) {
     marketmixDecision: refundCase.marketmix_decision || '',
     marketmixDecidedAt: refundCase.marketmix_decided_at || refundCase.marketmixDecidedAt || '',
     marketmixDecidedBy: refundCase.marketmix_decided_by || refundCase.marketmixDecidedBy || '',
-    rawResolutionStatus: refundCase.resolution_status || '',
-    rawStatus: refundCase.status || ''
-  };
-    amountValue,
-    status: displayState.label,
-    statusClass: displayState.className,
-    statusKey: displayState.statusKey,
-    date: createdDate,
-    returnDate: createdDate,
-    productName: refundCase.product_name || refundCase.productName || 'Unknown product',
-    productImage: refundCase.product_image || refundCase.productImage || '',
-    evidenceUrl: refundCase.evidence_url || refundCase.evidenceUrl || '',
-    evidenceType: refundCase.evidence_type || refundCase.evidenceType || '',
-    reason: refundCase.complaint_text || refundCase.reason || '',
-    notes: refundCase.notes || '',
-    marketmixDecision: refundCase.marketmix_decision || '',
-    marketmixDecidedAt: refundCase.marketmix_decided_at || refundCase.marketmixDecidedAt || '',
-    marketmixDecidedBy: refundCase.marketmix_decided_by || refundCase.marketmixDecidedBy || '',
-    rawResolutionStatus: refundCase.resolution_status || '',
     rawStatus: refundCase.status || ''
   };
 }
@@ -1308,6 +1341,7 @@ function viewReturn(id) {
               <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Product Name / Order ID</p>
               <p class="font-semibold text-gray-900 dark:text-white text-lg">${returnRequest.productName}</p>
               <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Order ID: ${returnRequest.orderId}</p>
+              ${renderRefundSpecifications(returnRequest)}
             </div>
             
             <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">

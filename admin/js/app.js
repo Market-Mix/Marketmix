@@ -125,23 +125,91 @@ function setupEventListeners() {
   });
 }
 
-function openModal(title, message, callback) {
+let currentModalConfig = {
+  requiresReason: false,
+  confirmText: 'Confirm',
+  confirmClass: 'bg-red-600',
+  callback: null
+};
+
+function openModal(title, message, callback, options = {}) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalMessage').textContent = message;
-    document.getElementById('confirmModal').classList.remove('hidden');
+  const reasonField = document.getElementById('modalReason');
+  const reasonError = document.getElementById('modalReasonError');
+  const confirmBtn = document.getElementById('modalConfirmBtn');
+
+  currentModalConfig = {
+    requiresReason: options.requiresReason === true,
+    confirmText: options.confirmText || 'Confirm',
+    confirmClass: options.confirmClass || 'bg-red-600',
+    callback
+  };
+
+  reasonField.value = '';
+  reasonError.textContent = '';
+  reasonError.classList.add('hidden');
+
+  if (currentModalConfig.requiresReason) {
+    reasonField.placeholder = options.placeholder || '';
+    reasonField.classList.remove('hidden');
+  } else {
+    reasonField.classList.add('hidden');
+  }
+
+  confirmBtn.textContent = currentModalConfig.confirmText;
+  confirmBtn.className = `px-4 py-2 text-white rounded ${currentModalConfig.confirmClass} hover:opacity-90`;
+
+  const modal = document.getElementById('confirmModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('active');
   currentAction = callback;
 }
 
 function closeModal() {
-  document.getElementById('confirmModal').classList.remove('active');
-    document.getElementById('confirmModal').classList.add('hidden');
+  const reasonField = document.getElementById('modalReason');
+  const reasonError = document.getElementById('modalReasonError');
+  reasonField.value = '';
+  reasonField.classList.add('hidden');
+  reasonError.textContent = '';
+  reasonError.classList.add('hidden');
+
+  const modal = document.getElementById('confirmModal');
+  modal.classList.remove('active');
+  modal.classList.add('hidden');
   currentAction = null;
+  currentModalConfig = {
+    requiresReason: false,
+    confirmText: 'Confirm',
+    confirmClass: 'bg-red-600',
+    callback: null
+  };
 }
 
-function confirmAction() {
-  if (currentAction) {
-    currentAction();
+async function confirmAction() {
+  if (!currentAction) return;
+
+  if (currentModalConfig.requiresReason) {
+    const reasonField = document.getElementById('modalReason');
+    const reasonError = document.getElementById('modalReasonError');
+    const reason = reasonField.value.trim();
+
+    if (!reason) {
+      reasonError.textContent = 'Decision reason is required.';
+      reasonError.classList.remove('hidden');
+      return;
+    }
+    if (reason.length < 20) {
+      reasonError.textContent = 'Decision reason must be at least 20 characters.';
+      reasonError.classList.remove('hidden');
+      return;
+    }
+
+    await currentAction(reason);
+  } else {
+    await currentAction();
   }
+
   closeModal();
 }
 
@@ -442,7 +510,21 @@ function getAdminReturnToken() {
   return localStorage.getItem('token') || '';
 }
 
-async function approveReturn(id) {
+function approveReturn(id) {
+  openModal(
+    'Approve Refund',
+    'Explain why MarketMix approved this refund.',
+    (reason) => approveReturnConfirmed(id, reason),
+    {
+      requiresReason: true,
+      placeholder: 'Explain why MarketMix approved this refund...',
+      confirmText: 'Approve Refund',
+      confirmClass: 'bg-green-600'
+    }
+  );
+}
+
+async function approveReturnConfirmed(id, reason) {
   const token = getAdminReturnToken();
   if (!token) {
     showToast('Admin auth token missing. Cannot approve refund.', 'error');
@@ -455,7 +537,8 @@ async function approveReturn(id) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
-      }
+      },
+      body: JSON.stringify({ reason })
     });
 
     const body = await response.json().catch(() => null);
@@ -473,7 +556,21 @@ async function approveReturn(id) {
   }
 }
 
-async function denyReturn(id) {
+function denyReturn(id) {
+  openModal(
+    'Reject Refund',
+    'Explain why MarketMix rejected this refund.',
+    (reason) => denyReturnConfirmed(id, reason),
+    {
+      requiresReason: true,
+      placeholder: 'Explain why MarketMix rejected this refund...',
+      confirmText: 'Reject Refund',
+      confirmClass: 'bg-red-600'
+    }
+  );
+}
+
+async function denyReturnConfirmed(id, reason) {
   const token = getAdminReturnToken();
   if (!token) {
     showToast('Admin auth token missing. Cannot reject refund.', 'error');
@@ -486,7 +583,8 @@ async function denyReturn(id) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
-      }
+      },
+      body: JSON.stringify({ reason })
     });
 
     const body = await response.json().catch(() => null);

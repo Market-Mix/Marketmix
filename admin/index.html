@@ -149,9 +149,11 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
       <h2 class="text-lg font-bold text-gray-900 dark:text-white" id="modalTitle">Confirm Action</h2>
       <p class="text-gray-600 dark:text-gray-300 mt-2" id="modalMessage">Are you sure?</p>
+      <textarea id="modalReason" rows="4" class="mt-4 w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 hidden" placeholder=""></textarea>
+      <p id="modalReasonError" class="text-sm text-red-600 mt-2 hidden"></p>
       <div class="flex justify-end gap-3 mt-6">
         <button onclick="closeModal()" class="px-4 py-2 text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300">Cancel</button>
-        <button onclick="confirmAction()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+        <button id="modalConfirmBtn" onclick="confirmAction()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
       </div>
     </div>
   </div>
