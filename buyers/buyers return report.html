@@ -1963,6 +1963,33 @@
     return 'Store';
   }
 
+  function getRefundDisplayState(refundCase = {}) {
+    const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
+    const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
+
+    if (decision === 'approved' || resolution === 'waiting_seller_return_decision') {
+      return { label: 'Approved', className: 'approved', statusKey: 'approved', isRejected: false };
+    }
+
+    if (decision === 'rejected' || resolution === 'refund_rejected') {
+      return { label: 'Denied', className: 'denied', statusKey: 'denied', isRejected: true };
+    }
+
+    if (resolution === 'waiting_buyer_confirmation') {
+      return { label: 'Awaiting Buyer Confirmation', className: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation', isRejected: false };
+    }
+
+    if (resolution === 'resolved') {
+      return { label: 'Resolved', className: 'resolved', statusKey: 'resolved', isRejected: false };
+    }
+
+    if (resolution === 'escalated') {
+      return { label: 'Escalated', className: 'escalated', statusKey: 'escalated', isRejected: false };
+    }
+
+    return { label: 'Pending', className: 'pending', statusKey: 'pending', isRejected: false };
+  }
+
   function mapRefundCaseToReport(caseData, orderData = {}) {
     // If status is 'pending' (complaint started), use created_at as evidence submission time for countdown
     const evidenceSubmittedTime = caseData.evidence_submitted_at || (caseData.status !== 'purchased' ? caseData.created_at : null);
@@ -1999,6 +2026,8 @@
       }
     }
     
+    const statusMeta = getRefundDisplayState(caseData);
+
     console.log('DEBUG mapRefundCaseToReport:', {
       order_id: caseData.order_id,
       status: caseData.status,
@@ -2017,7 +2046,10 @@
       order_id: caseData.order_id,
       product_name: caseData.product_name || orderData.product_name || 'Purchased item',
       total_amount: caseData.total_amount || orderData.total_amount || 0,
-      status: caseData.status,
+      status: caseData.status || 'pending',
+      displayStatus: statusMeta.label,
+      statusClass: statusMeta.className,
+      statusKey: statusMeta.statusKey,
       reason: caseData.reason || '',
       description: caseData.complaint_text || '',
       purchase_date: caseData.purchase_date || orderData.created_at,
@@ -2034,6 +2066,9 @@
       messages: [],
       chat_started: caseData.chat_started || false,
       resolution_status: caseData.resolution_status || 'pending',
+      marketmix_decision: caseData.marketmix_decision || null,
+      marketmix_decided_at: caseData.marketmix_decided_at || null,
+      marketmix_decided_by: caseData.marketmix_decided_by || null,
       seller_marked_resolved: caseData.seller_marked_resolved || false,
       buyer_confirmed_resolution: caseData.buyer_confirmed_resolution || false,
       escalated_to_marketmix: caseData.escalated_to_marketmix || false,
@@ -2932,7 +2967,8 @@
 
     container.innerHTML = sortedReports.map(report => {
       const complaintStarted = !!report.evidence_submitted_at;
-      const isRejected = report.status === 'rejected';
+      const statusMeta = getRefundDisplayState(report);
+      const isRejected = statusMeta.isRejected;
       const resolution = String(report.resolution_status || 'pending').toLowerCase();
       const caseId = getReportCaseId(report);
       const unreadCount = getUnreadCount(caseId);
@@ -2947,8 +2983,8 @@
 
       if (complaintStarted) {
         statusHtml = `
-          <span class="status-badge ${report.status}">
-            ${report.status.replace(/_/g, ' ')}
+          <span class="status-badge ${statusMeta.className}">
+            ${statusMeta.label}
           </span>
         `;
         viewBtnHtml = `
@@ -3050,7 +3086,7 @@
     const status = document.getElementById('statusFilter').value;
     const filtered = status === 'all' 
       ? currentReports 
-      : currentReports.filter(r => r.status === status);
+      : currentReports.filter(r => getRefundDisplayState(r).statusKey === status);
     renderReports(filtered);
   }
 
@@ -3156,7 +3192,7 @@
   function openChat(reportId) {
     const report = currentReports.find(r => String(r.id) === String(reportId));
     if (!report) return;
-    if (report.status === 'rejected') return;
+    if (getRefundDisplayState(report).isRejected) return;
 
     currentChatData = report;
     openChatPanel(report);

@@ -28,12 +28,41 @@ function getAdminAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function normalizeRefundCase(refundCase) {
-  const hasDecision = refundCase.marketmix_decision === 'approved' || refundCase.marketmix_decision === 'rejected';
-  const status = hasDecision
-    ? (refundCase.marketmix_decision === 'approved' ? 'Approved' : 'Denied')
-    : (refundCase.resolution_status === 'escalated' ? 'Pending' : 'Pending');
+function formatRefundAmount(value) {
+  const amount = Number(value || 0);
+  return `₦${amount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
+}
 
+function getRefundDisplayState(refundCase = {}) {
+  const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
+  const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
+
+  if (decision === 'approved' || resolution === 'waiting_seller_return_decision') {
+    return { label: 'Approved', className: 'approved', statusKey: 'approved' };
+  }
+
+  if (decision === 'rejected' || resolution === 'refund_rejected') {
+    return { label: 'Denied', className: 'denied', statusKey: 'denied' };
+  }
+
+  if (resolution === 'waiting_buyer_confirmation') {
+    return { label: 'Awaiting Buyer Confirmation', className: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation' };
+  }
+
+  if (resolution === 'resolved') {
+    return { label: 'Resolved', className: 'resolved', statusKey: 'resolved' };
+  }
+
+  if (resolution === 'escalated') {
+    return { label: 'Escalated', className: 'escalated', statusKey: 'escalated' };
+  }
+
+  return { label: 'Pending', className: 'pending', statusKey: 'pending' };
+}
+
+function normalizeRefundCase(refundCase) {
+  const displayState = getRefundDisplayState(refundCase);
+  const amountValue = Number(refundCase.amount ?? refundCase.total_amount ?? refundCase.refund_amount ?? 0);
   const createdAt = refundCase.created_at || refundCase.createdAt || refundCase.date || null;
   const createdDate = createdAt ? new Date(createdAt).toLocaleDateString() : '';
 
@@ -42,14 +71,22 @@ function normalizeRefundCase(refundCase) {
     orderId: String(refundCase.order_id || refundCase.orderId || ''),
     buyer: refundCase.buyer_name || refundCase.buyer || refundCase.buyer_id || 'Unknown',
     seller: refundCase.store_name || refundCase.seller_name || refundCase.seller || refundCase.seller_id || 'Unknown',
-    amount: refundCase.amount || refundCase.total_amount || refundCase.refund_amount || '',
-    status,
+    amount: formatRefundAmount(amountValue),
+    amountValue,
+    status: displayState.label,
+    statusClass: displayState.className,
+    statusKey: displayState.statusKey,
     date: createdDate,
     returnDate: createdDate,
     productName: refundCase.product_name || refundCase.productName || 'Unknown product',
     productImage: refundCase.product_image || refundCase.productImage || '',
+    evidenceUrl: refundCase.evidence_url || refundCase.evidenceUrl || '',
+    evidenceType: refundCase.evidence_type || refundCase.evidenceType || '',
     reason: refundCase.complaint_text || refundCase.reason || '',
     notes: refundCase.notes || '',
+    marketmixDecision: refundCase.marketmix_decision || '',
+    marketmixDecidedAt: refundCase.marketmix_decided_at || refundCase.marketmixDecidedAt || '',
+    marketmixDecidedBy: refundCase.marketmix_decided_by || refundCase.marketmixDecidedBy || '',
     rawResolutionStatus: refundCase.resolution_status || '',
     rawStatus: refundCase.status || ''
   };
@@ -120,7 +157,7 @@ function applyReturnFilters() {
     const matchesQuery = !query || [refund.orderId, refund.buyer, refund.seller, refund.productName]
       .some(value => String(value || '').toLowerCase().includes(query));
 
-    const normalizedStatus = String(refund.status || '').toLowerCase();
+    const normalizedStatus = String(refund.statusKey || '').toLowerCase();
     const normalizedResolutionStatus = String(refund.rawResolutionStatus || '').toLowerCase();
     const matchesStatus = statusFilter === 'all' || normalizedStatus === statusFilter.toLowerCase() || normalizedResolutionStatus === statusFilter.toLowerCase();
 
@@ -150,6 +187,43 @@ function getAdminReturnActionHeaders() {
     ...authHeaders,
     'Content-Type': 'application/json'
   };
+}
+
+function renderRefundEvidence(refundRequest = {}) {
+  const evidenceUrl = refundRequest.evidenceUrl || refundRequest.evidence_url || refundRequest.evidenceURL || '';
+  if (!evidenceUrl) {
+    return `<div class="text-center"><i class="fas fa-image text-4xl text-gray-400 mb-2"></i><p class="text-gray-600 dark:text-gray-400 text-sm">No evidence uploaded.</p></div>`;
+  }
+
+  const normalizedUrl = String(evidenceUrl).split('?')[0].split('#')[0];
+  const lower = normalizedUrl.toLowerCase();
+  const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(lower);
+  const isVideo = /\.(mp4|webm|mov|avi)$/i.test(lower);
+
+  if (isImage) {
+    return `<a href="${evidenceUrl}" target="_blank" rel="noopener noreferrer"><img src="${evidenceUrl}" alt="Refund evidence" class="max-h-full max-w-full object-contain cursor-pointer"></a>`;
+  }
+
+  if (isVideo) {
+    return `<video controls class="w-full rounded-lg"><source src="${evidenceUrl}"></video>`;
+  }
+
+  return `<a href="${evidenceUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline">Open evidence in new tab</a>`;
+}
+
+function getRefundStatusBadgeMarkup(refundRequest = {}) {
+  const displayState = getRefundDisplayState(refundRequest);
+  const colorClasses = {
+    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    denied: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    waiting_buyer_confirmation: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    resolved: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    escalated: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+  };
+
+  const classes = colorClasses[displayState.statusKey] || colorClasses.pending;
+  return `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${classes}">${displayState.label}</span>`;
 }
 
 function renderDashboard() {
@@ -1163,9 +1237,12 @@ function renderReturns() {
         <input type="text" id="returnSearch" placeholder="Search returns by Order ID or Buyer..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
         <select id="returnStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
           <option value="all">All Status</option>
-          <option value="Pending">Pending</option>
-          <option value="Approved">Approved</option>
-          <option value="Denied">Denied</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="denied">Denied</option>
+          <option value="waiting_buyer_confirmation">Awaiting Buyer Confirmation</option>
+          <option value="resolved">Resolved</option>
+          <option value="escalated">Escalated</option>
         </select>
         <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
       </div>
@@ -1238,21 +1315,21 @@ function viewReturn(id) {
             <div class="grid grid-cols-2 gap-4">
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Refund Amount</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg">$${returnRequest.amount}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg">${returnRequest.amount}</p>
               </div>
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Status</p>
-                <p class="font-semibold text-lg">${returnRequest.status === 'Approved' ? '<span class="text-green-600">Approved</span>' : returnRequest.status === 'Denied' ? '<span class="text-red-600">Denied</span>' : '<span class="text-yellow-600">Pending</span>'}</p>
+                <div class="font-semibold text-lg">${getRefundStatusBadgeMarkup(returnRequest)}</div>
               </div>
             </div>
           </div>
           
-          <!-- Product Image (Right) -->
+          <!-- Evidence / Return Details (Right) -->
           <div class="space-y-4">
             <div>
-              <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">Product Image</label>
-              <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700 h-80 flex items-center justify-center overflow-hidden">
-                ${returnRequest.productImage ? `<img src="${returnRequest.productImage}" alt="${returnRequest.productName}" class="max-h-full max-w-full object-contain">` : `<div class="text-center"><i class="fas fa-image text-4xl text-gray-400 mb-2"></i><p class="text-gray-600 dark:text-gray-400 text-sm">No image available</p></div>`}
+              <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">Buyer Evidence</label>
+              <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700 min-h-80 flex items-center justify-center overflow-hidden">
+                ${renderRefundEvidence(returnRequest)}
               </div>
             </div>
             
@@ -1260,14 +1337,16 @@ function viewReturn(id) {
               <p class="text-sm text-blue-900 dark:text-blue-200 font-semibold mb-3">Return Details</p>
               <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Return Date:</span> ${returnRequest.returnDate}</p>
               <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Request Date:</span> ${returnRequest.date}</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Status:</span> ${returnRequest.status}</p>
+              <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Status:</span> ${getRefundStatusBadgeMarkup(returnRequest)}</p>
+              <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">MarketMix Decision:</span> ${returnRequest.marketmixDecision ? (returnRequest.marketmixDecision === 'approved' ? 'Approved' : 'Denied') : 'Pending'}</p>
+              ${returnRequest.reason ? `<p class="text-sm text-blue-800 dark:text-blue-300 mt-2"><span class="font-semibold">Decision Note:</span> ${returnRequest.reason}</p>` : ''}
             </div>
           </div>
         </div>
         
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
           <div class="flex gap-3 flex-wrap">
-            ${returnRequest.status === 'Pending' ? `
+            ${returnRequest.status === 'Pending' || returnRequest.statusKey === 'pending' ? `
               <button onclick="approveReturn('${returnRequest.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold flex items-center gap-2">
                 <i class="fas fa-check"></i> Approve Refund
               </button>

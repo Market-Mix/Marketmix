@@ -464,6 +464,9 @@ async function approveReturn(id) {
     }
 
     showToast('Return request approved successfully', 'success');
+    if (typeof fetchAdminRefundCases === 'function') {
+      fetchAdminRefundCases();
+    }
     loadPage('returns');
   } catch (err) {
     showToast(err.message || 'Failed to approve refund', 'error');
@@ -492,6 +495,9 @@ async function denyReturn(id) {
     }
 
     showToast('Return request denied successfully', 'success');
+    if (typeof fetchAdminRefundCases === 'function') {
+      fetchAdminRefundCases();
+    }
     loadPage('returns');
   } catch (err) {
     showToast(err.message || 'Failed to reject refund', 'error');

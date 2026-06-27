@@ -31,10 +31,38 @@ function getCurrentSellerId() {
   return user?.id || user?._id || user?.userId || null;
 }
 
+function getRefundStatusMeta(refundCase = {}) {
+  const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
+  const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
+
+  if (decision === 'approved' || resolution === 'waiting_seller_return_decision') {
+    return { label: 'Approved', statusClass: 'approved', statusKey: 'approved', isRejected: false };
+  }
+
+  if (decision === 'rejected' || resolution === 'refund_rejected') {
+    return { label: 'Denied', statusClass: 'denied', statusKey: 'denied', isRejected: true };
+  }
+
+  if (resolution === 'waiting_buyer_confirmation') {
+    return { label: 'Awaiting Buyer Confirmation', statusClass: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation', isRejected: false };
+  }
+
+  if (resolution === 'resolved') {
+    return { label: 'Resolved', statusClass: 'resolved', statusKey: 'resolved', isRejected: false };
+  }
+
+  if (resolution === 'escalated') {
+    return { label: 'Escalated', statusClass: 'escalated', statusKey: 'escalated', isRejected: false };
+  }
+
+  return { label: 'Pending', statusClass: 'pending', statusKey: 'pending', isRejected: false };
+}
+
 function mapRefundCaseFromSupabase(caseData) {
   // Extract color/size from order_item or product_snapshot
   let color = caseData.color || null;
   let size = caseData.size || null;
+  const statusMeta = getRefundStatusMeta(caseData);
   
   let ps = caseData.product_snapshot;
   if (ps && typeof ps === 'string') {
@@ -56,7 +84,9 @@ function mapRefundCaseFromSupabase(caseData) {
     notes: caseData.complaint_text || caseData.reason || '',
     productImage: caseData.product_image || caseData.product_image_url || 'https://via.placeholder.com/200?text=Product',
     amount: Number(caseData.total_amount || caseData.amount || 0),
-    status: caseData.status ? String(caseData.status).charAt(0).toUpperCase() + String(caseData.status).slice(1) : 'Pending',
+    status: statusMeta.label,
+    statusClass: statusMeta.statusClass,
+    statusKey: statusMeta.statusKey,
     marketMixReason: caseData.marketmix_reason || caseData.seller_response || 'Awaiting review.',
     purchase_date: caseData.purchase_date || caseData.created_at,
     evidence_submitted_at: caseData.evidence_submitted_at || caseData.created_at,
@@ -67,6 +97,9 @@ function mapRefundCaseFromSupabase(caseData) {
     store_name: caseData.store_name || 'Store',
     chat_started: caseData.chat_started || false,
     resolution_status: caseData.resolution_status || 'pending',
+    marketmix_decision: caseData.marketmix_decision || null,
+    marketmix_decided_at: caseData.marketmix_decided_at || null,
+    marketmix_decided_by: caseData.marketmix_decided_by || null,
     seller_marked_resolved: caseData.seller_marked_resolved || false,
     buyer_confirmed_resolution: caseData.buyer_confirmed_resolution || false,
     escalated_to_marketmix: caseData.escalated_to_marketmix || false,
@@ -505,14 +538,15 @@ function renderTable(data = returnsData) {
     const row = document.createElement('div');
     row.className = 'table-row';
     
-    const statusClass = item.status.toLowerCase();
+    const statusMeta = getRefundStatusMeta(item);
+    const statusClass = statusMeta.statusClass;
     const now = Date.now();
     let chatBtnHtml = '';
     let workflowBtnHtml = '';
     let chatDate = item.date;
     row.dataset.refundId = item.id;
 
-    const pending = item.status.toLowerCase() === 'pending';
+    const pending = statusMeta.statusKey === 'pending';
     const hasEvidence = !!item.evidence_submitted_at;
 
     if (pending && hasEvidence) {
@@ -607,7 +641,7 @@ function renderTable(data = returnsData) {
       </div>
       <div class="col-order">${item.orderId}</div>
       <div class="col-amount">\₦${item.amount.toFixed(2)}</div>
-      <div class="col-status"><span class="status-badge ${statusClass}">${item.status}</span></div>
+      <div class="col-status"><span class="status-badge ${statusClass}">${statusMeta.label}</span></div>
       <div class="col-date">${chatDate}</div>
       <div class="col-action"><button class="btn-action" onclick="openModal('${item.id}')">View</button></div>
       <div class="col-chat">${chatBtnHtml}</div>
@@ -632,7 +666,7 @@ function openModal(returnId) {
   document.getElementById('modalBuyerName').textContent = returnItem.buyerName;
   document.getElementById('modalProductName').textContent = returnItem.productName;
   document.getElementById('modalOrderId').textContent = returnItem.orderId;
-  document.getElementById('modalAmount').textContent = `$${returnItem.amount.toFixed(2)}`;
+  document.getElementById('modalAmount').textContent = `₦${Number(returnItem.amount || 0).toLocaleString('en-NG')}`;
   document.getElementById('modalReason').textContent = returnItem.reason;
   document.getElementById('modalNotes').textContent = returnItem.notes || 'No additional notes';
   const modalProductImage = document.getElementById('modalProductImage');
@@ -713,15 +747,16 @@ function openModal(returnId) {
     }
   }
   
+  const statusMeta = getRefundStatusMeta(returnItem);
   const statusElement = document.getElementById('modalStatus');
-  statusElement.textContent = returnItem.status;
-  statusElement.className = `status-badge ${returnItem.status.toLowerCase()}`;
+  statusElement.textContent = statusMeta.label;
+  statusElement.className = `status-badge ${statusMeta.statusClass}`;
 
   // Show admin decision status
   const adminDecisionElement = document.getElementById('adminDecision');
-  adminDecisionElement.textContent = returnItem.status;
-  adminDecisionElement.className = `status-badge ${returnItem.status.toLowerCase()}`;
-  document.getElementById('adminReason').textContent = returnItem.marketMixReason || 'Awaiting final review.';
+  adminDecisionElement.textContent = statusMeta.label;
+  adminDecisionElement.className = `status-badge ${statusMeta.statusClass}`;
+  document.getElementById('adminReason').textContent = returnItem.marketMixReason || (returnItem.marketmix_decision ? `Reviewed by ${returnItem.marketmix_decided_by || 'MarketMix'}` : 'Awaiting final review.');
 
   // Show modal
   modalBackdrop.classList.add('active');
