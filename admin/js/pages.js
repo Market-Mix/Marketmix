@@ -91,9 +91,6 @@ function normalizeRefundCase(refundCase) {
     rawResolutionStatus: refundCase.resolution_status || '',
     rawStatus: refundCase.status || ''
   };
-    buyer: refundCase.buyer_name || refundCase.buyer || refundCase.buyer_id || 'Unknown',
-    seller: refundCase.store_name || refundCase.seller_name || refundCase.seller || refundCase.seller_id || 'Unknown',
-    amount: formatRefundAmount(amountValue),
     amountValue,
     status: displayState.label,
     statusClass: displayState.className,
