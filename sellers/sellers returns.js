@@ -87,7 +87,7 @@ function mapRefundCaseFromSupabase(caseData) {
     status: statusMeta.label,
     statusClass: statusMeta.statusClass,
     statusKey: statusMeta.statusKey,
-    marketMixReason: caseData.marketmix_reason || caseData.seller_response || 'Awaiting review.',
+    marketMixReason: caseData.marketmix_decision_reason || caseData.marketmix_reason || caseData.seller_response || 'Awaiting review.',
     purchase_date: caseData.purchase_date || caseData.created_at,
     evidence_submitted_at: caseData.evidence_submitted_at || caseData.created_at,
     messages: [],

@@ -2057,7 +2057,7 @@
       evidence_submitted_at: evidenceSubmittedTime,
       evidence_url: caseData.evidence_url,
       seller_response: caseData.seller_response,
-      marketmix_reason: caseData.marketmix_reason,
+      marketmix_reason: caseData.marketmix_decision_reason || caseData.marketmix_reason,
       store_name: resolveStoreName(orderData) || resolveStoreName(caseData) || 'Store',
       seller_id: caseData.seller_id || orderData.seller_id,
       color: color,
@@ -2981,18 +2981,16 @@
       let chatBtnHtml = '';
       let actionBtnHtml = '';
 
-      if (complaintStarted) {
-        statusHtml = `
-          <span class="status-badge ${statusMeta.className}">
-            ${statusMeta.label}
-          </span>
-        `;
-        viewBtnHtml = `
-          <button class="btn-action" onclick="viewDetails('${getInlineHandlerId(report.id)}')">
-            <i class="fas fa-eye"></i> View
-          </button>
-        `;
-      }
+      statusHtml = `
+        <span class="status-badge ${statusMeta.className}">
+          ${statusMeta.label}
+        </span>
+      `;
+      viewBtnHtml = `
+        <button class="btn-action" onclick="viewDetails('${getInlineHandlerId(report.id)}')">
+          <i class="fas fa-eye"></i> View
+        </button>
+      `;
 
       if (report.evidence_submitted_at || report.purchase_date) {
         const now = Date.now();

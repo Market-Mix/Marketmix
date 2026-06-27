@@ -1399,7 +1399,7 @@ function viewReturn(id) {
         
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
           <div class="flex gap-3 flex-wrap">
-            ${returnRequest.status === 'Pending' || returnRequest.statusKey === 'pending' ? `
+            ${['Escalated'].includes(returnRequest.status) || ['escalated'].includes(returnRequest.statusKey) ? `
               <button onclick="approveReturn('${returnRequest.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold flex items-center gap-2">
                 <i class="fas fa-check"></i> Approve Refund
               </button>
