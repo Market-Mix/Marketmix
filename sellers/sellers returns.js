@@ -939,34 +939,47 @@ document.addEventListener('keydown', (e) => {
 
 // ─── Refund Workflow Confirmation Modals (Seller) ─────────────────────────────
 function createMarketmixConfirmDialog() {
-  if (document.getElementById('marketmixConfirmDialog')) return;
-
-  const dialog = document.createElement('div');
-  dialog.id = 'marketmixConfirmDialog';
-  dialog.className = 'marketmix-confirm-dialog';
-  dialog.innerHTML = `
-    <div class="marketmix-confirm-backdrop"></div>
-    <div class="marketmix-confirm-card">
-      <div class="marketmix-confirm-header">
-        <h3 id="marketmixConfirmTitle">Confirm Action</h3>
-        <button class="marketmix-confirm-close" id="marketmixConfirmClose">&times;</button>
+  let dialog = document.getElementById('marketmixConfirmDialog');
+  if (!dialog) {
+    dialog = document.createElement('div');
+    dialog.id = 'marketmixConfirmDialog';
+    dialog.className = 'marketmix-confirm-dialog';
+    dialog.innerHTML = `
+      <div class="marketmix-confirm-backdrop"></div>
+      <div class="marketmix-confirm-card">
+        <div class="marketmix-confirm-header">
+          <h3 id="marketmixConfirmTitle">Confirm Action</h3>
+          <button class="marketmix-confirm-close" id="marketmixConfirmClose">&times;</button>
+        </div>
+        <div class="marketmix-confirm-body">
+          <p id="marketmixConfirmMessage"></p>
+        </div>
+        <div class="marketmix-confirm-actions">
+          <button type="button" id="marketmixCancelBtn" class="marketmix-btn marketmix-btn-secondary">Cancel</button>
+          <button type="button" id="marketmixConfirmBtn" class="marketmix-btn marketmix-btn-primary">Confirm</button>
+        </div>
       </div>
-      <div class="marketmix-confirm-body">
-        <p id="marketmixConfirmMessage"></p>
-      </div>
-      <div class="marketmix-confirm-actions">
-        <button id="marketmixCancelBtn" class="marketmix-btn marketmix-btn-secondary">Cancel</button>
-        <button id="marketmixConfirmBtn" class="marketmix-btn marketmix-btn-primary">Confirm</button>
-      </div>
-    </div>
-  `;
+    `;
 
-  document.body.appendChild(dialog);
+    document.body.appendChild(dialog);
+  }
 
-  dialog.querySelector('#marketmixConfirmClose')?.addEventListener('click', closeMarketmixConfirmDialog);
-  dialog.querySelector('#marketmixCancelBtn')?.addEventListener('click', closeMarketmixConfirmDialog);
-  dialog.querySelector('#marketmixConfirmBtn')?.addEventListener('click', confirmDialogAction);
-  dialog.querySelector('.marketmix-confirm-backdrop')?.addEventListener('click', closeMarketmixConfirmDialog);
+  if (dialog.dataset.confirmDialogSetup === 'true') return;
+
+  dialog.addEventListener('click', event => {
+    const target = event.target;
+    if (target.closest('#marketmixConfirmClose') || target.closest('#marketmixCancelBtn') || target.closest('.marketmix-confirm-backdrop')) {
+      event.preventDefault();
+      closeMarketmixConfirmDialog();
+      return;
+    }
+    if (target.closest('#marketmixConfirmBtn')) {
+      event.preventDefault();
+      confirmDialogAction();
+    }
+  });
+
+  dialog.dataset.confirmDialogSetup = 'true';
 }
 
 function openMarketmixConfirmDialog(options) {
@@ -996,6 +1009,10 @@ function openMarketmixConfirmDialog(options) {
 
   confirmBtn.textContent = options.confirmText || 'Confirm';
   cancelBtn.textContent = options.cancelText || 'Cancel';
+
+  // Ensure the confirmation buttons are clickable when dialog is reused.
+  confirmBtn.disabled = false;
+  cancelBtn.disabled = false;
 
   dialog.classList.add('active');
   document.body.style.overflow = 'hidden';
