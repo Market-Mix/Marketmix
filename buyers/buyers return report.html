@@ -76,9 +76,9 @@
     .table-header,
     .table-row {
       display: grid;
-      grid-template-columns: 110px 130px 90px 85px 90px 90px 85px 120px;
+      grid-template-columns: 110px 130px 90px 85px 90px 90px 180px 120px;
       gap: 0.75rem;
-      align-items: center;
+      align-items: start;
       padding: 0.9rem;
       border-bottom: 1px solid #eee;
       font-size: 0.9rem;
@@ -89,6 +89,7 @@
       font-weight: 600;
       color: #F97316;
       border-bottom: 2px solid #ddd;
+      align-items: center;
     }
 
     .table-row {
@@ -97,6 +98,20 @@
 
     .table-row:hover {
       background: #f8fafc;
+    }
+
+    .col-action {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .col-action .btn-action,
+    .col-action button,
+    .col-action span {
+      flex: 0 1 auto;
+      white-space: nowrap;
     }
 
     /* ========== STATUS BADGE ========== */
@@ -3147,6 +3162,8 @@
           </button>
         `;
       } else if (String(report.seller_return_choice || '').toLowerCase() === 'return_product' && !report.shipping_status && !report.courier_name && !report.tracking_number && !report.buyer_shipped_at) {
+        // Show Ship Product button only, hide View button
+        viewBtnHtml = '';
         actionBtnHtml = `
           <button class="btn-action" style="background: #0ea5e9; color: white;" onclick="openShipmentModal('${report.id}')">
             <i class="fas fa-truck"></i> Ship Product
