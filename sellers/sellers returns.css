@@ -338,6 +338,173 @@
   font-size: 1rem;
 }
 
+/* MarketMix Toast Notification */
+.markettmix-toast, .marketmix-toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 99999;
+  min-width: 300px;
+  max-width: 380px;
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  animation: marketmix-toast-in 0.22s ease-out;
+}
+
+.markettmix-toast-icon, .marketmix-toast-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.marketmix-toast-content {
+  flex: 1;
+}
+
+.marketmix-toast-content strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
+.marketmix-toast-content p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.marketmix-toast.success {
+  background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+}
+
+.marketmix-toast.warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.marketmix-toast.error {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+}
+
+@keyframes marketmix-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* MarketMix Confirmation Dialog */
+.markettmix-confirm-dialog, .marketmix-confirm-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.markettmix-confirm-dialog.active, .marketmix-confirm-dialog.active {
+  display: flex;
+}
+
+.markettmix-confirm-backdrop, .marketmix-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.markettmix-confirm-card, .marketmix-confirm-card {
+  position: relative;
+  width: min(480px, 100%);
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.markettmix-confirm-header, .marketmix-confirm-header {
+  padding: 1.5rem 1.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.markettmix-confirm-header h3, .marketmix-confirm-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #111827;
+}
+
+.markettmix-confirm-close, .marketmix-confirm-close {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.markettmix-confirm-body, .marketmix-confirm-body {
+  padding: 0 1.5rem 1.25rem;
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.markettmix-confirm-actions, .marketmix-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0 1.5rem 1.5rem;
+  justify-content: flex-end;
+}
+
+.markettmix-btn, .marketmix-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.3rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.markettmix-btn:hover, .marketmix-btn:hover {
+  transform: translateY(-1px);
+}
+
+.markettmix-btn-primary, .marketmix-btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.markettmix-btn-secondary, .marketmix-btn-secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.markettmix-btn-primary:hover, .marketmix-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.markettmix-btn-secondary:hover, .marketmix-btn-secondary:hover {
+  filter: brightness(0.95);
+}
+
 /* Responsive Design */
 @media (max-width: 900px) {
   .table-header,

@@ -812,30 +812,116 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ─── Refund Workflow Confirmation Modals (Seller) ─────────────────────────────
+function createMarketmixConfirmDialog() {
+  if (document.getElementById('marketmixConfirmDialog')) return;
+
+  const dialog = document.createElement('div');
+  dialog.id = 'marketmixConfirmDialog';
+  dialog.className = 'marketmix-confirm-dialog';
+  dialog.innerHTML = `
+    <div class="marketmix-confirm-backdrop"></div>
+    <div class="marketmix-confirm-card">
+      <div class="marketmix-confirm-header">
+        <h3 id="marketmixConfirmTitle">Confirm Action</h3>
+        <button class="marketmix-confirm-close" id="marketmixConfirmClose">&times;</button>
+      </div>
+      <div class="marketmix-confirm-body">
+        <p id="marketmixConfirmMessage"></p>
+      </div>
+      <div class="marketmix-confirm-actions">
+        <button id="marketmixCancelBtn" class="marketmix-btn marketmix-btn-secondary">Cancel</button>
+        <button id="marketmixConfirmBtn" class="marketmix-btn marketmix-btn-primary">Confirm</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  dialog.querySelector('#marketmixConfirmClose')?.addEventListener('click', closeMarketmixConfirmDialog);
+  dialog.querySelector('#marketmixCancelBtn')?.addEventListener('click', closeMarketmixConfirmDialog);
+  dialog.querySelector('#marketmixConfirmBtn')?.addEventListener('click', confirmDialogAction);
+  dialog.querySelector('.marketmix-confirm-backdrop')?.addEventListener('click', closeMarketmixConfirmDialog);
+}
+
+function openMarketmixConfirmDialog(options) {
+  createMarketmixConfirmDialog();
+
+  const dialog = document.getElementById('marketmixConfirmDialog');
+  const dialogTitle = document.getElementById('marketmixConfirmTitle');
+  const dialogMessage = document.getElementById('marketmixConfirmMessage');
+  const confirmBtn = document.getElementById('marketmixConfirmBtn');
+  const cancelBtn = document.getElementById('marketmixCancelBtn');
+
+  if (!dialog || !dialogTitle || !dialogMessage || !confirmBtn || !cancelBtn) {
+    return;
+  }
+
+  dialogTitle.textContent = options.title || 'Confirm action';
+  dialogMessage.textContent = options.message || '';
+  dialog.dataset.confirmAction = options.action || '';
+  dialog.dataset.refundId = options.refundId || '';
+  dialog.dataset.decision = options.decision || '';
+
+  confirmBtn.textContent = options.confirmText || 'Confirm';
+  cancelBtn.textContent = options.cancelText || 'Cancel';
+
+  dialog.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMarketmixConfirmDialog() {
+  const dialog = document.getElementById('marketmixConfirmDialog');
+  if (!dialog) return;
+  dialog.classList.remove('active');
+  dialog.dataset.confirmAction = '';
+  dialog.dataset.refundId = '';
+  dialog.dataset.decision = '';
+  document.body.style.overflow = 'auto';
+}
+
+function confirmDialogAction() {
+  const dialog = document.getElementById('marketmixConfirmDialog');
+  if (!dialog) return;
+  const action = dialog.dataset.confirmAction;
+  const refundId = dialog.dataset.refundId;
+  const decision = dialog.dataset.decision;
+  closeMarketmixConfirmDialog();
+
+  if (action === 'markResolved') {
+    markRefundResolved(refundId);
+  } else if (action === 'escalateSeller') {
+    escalateRefund(refundId, 'seller');
+  } else if (action === 'sellerReturnDecision') {
+    submitSellerReturnDecision(refundId, decision);
+  }
+}
+
 function showConfirmMarkResolved(refundId) {
   const refund = returnsData.find(r => r.id === refundId);
   if (!refund) return;
 
-  const confirmed = confirm(
-    `Mark refund as resolved?\n\nBuyer: ${refund.buyerName}\nProduct: ${refund.productName}\n\nThe buyer will be asked to confirm if they are satisfied.`
-  );
-
-  if (confirmed) {
-    markRefundResolved(refundId);
-  }
+  openMarketmixConfirmDialog({
+    title: 'Mark Refund Resolved',
+    message: `Mark refund as resolved?\n\nBuyer: ${refund.buyerName}\nProduct: ${refund.productName}\n\nThe buyer will be asked to confirm if they are satisfied.`,
+    confirmText: 'Mark Resolved',
+    cancelText: 'Cancel',
+    action: 'markResolved',
+    refundId
+  });
 }
 
 function showConfirmEscalateSeller(refundId) {
   const refund = returnsData.find(r => r.id === refundId);
   if (!refund) return;
 
-  const confirmed = confirm(
-    `Escalate this refund to MarketMix?\n\nBuyer: ${refund.buyerName}\nProduct: ${refund.productName}\n\nMarketMix support will review and make a final decision.`
-  );
-
-  if (confirmed) {
-    escalateRefund(refundId, 'seller');
-  }
+  openMarketmixConfirmDialog({
+    title: 'Escalate to MarketMix',
+    message: `Escalate this refund to MarketMix?\n\nBuyer: ${refund.buyerName}\nProduct: ${refund.productName}\n\nMarketMix support will review and make a final decision.`,
+    confirmText: 'Escalate',
+    cancelText: 'Cancel',
+    action: 'escalateSeller',
+    refundId
+  });
 }
 
 function showConfirmSellerReturnDecision(refundId, decision) {
@@ -844,13 +930,18 @@ function showConfirmSellerReturnDecision(refundId, decision) {
 
   const title = decision === 'return_product' ? 'Return Product' : 'Returnless Refund';
   const message = decision === 'return_product'
-    ? 'The buyer will be instructed to return your product. The shipping reimbursement for the buyer will be deducted from your account according to MarketMix refund policy. Do you want to continue?'
-    : 'The buyer will keep the product. The refund will proceed without requiring a return. Do you want to continue?';
+    ? 'The buyer will be instructed to return your product. The shipping reimbursement for the buyer will be deducted from your account according to MarketMix refund policy.'
+    : 'The buyer will keep the product. The refund will proceed without requiring a return.';
 
-  const confirmed = confirm(`${title}\n\n${message}`);
-  if (confirmed) {
-    submitSellerReturnDecision(refundId, decision);
-  }
+  openMarketmixConfirmDialog({
+    title: title,
+    message: `${message}\n\nDo you want to continue?`,
+    confirmText: 'Yes, continue',
+    cancelText: 'Cancel',
+    action: 'sellerReturnDecision',
+    refundId,
+    decision
+  });
 }
 
 async function submitSellerReturnDecision(refundId, decision) {
@@ -866,21 +957,18 @@ async function submitSellerReturnDecision(refundId, decision) {
 
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (response.status === 409) {
-        alert(result.message || 'A seller decision has already been submitted for this refund.');
-      } else {
-        alert(result.message || 'Failed to submit seller decision');
-      }
+      const message = result.message || 'Failed to submit seller decision.';
+      renderMarketmixNotification(message, 'error');
       return;
     }
 
-    showNotification(decision === 'return_product' ? 'Return Product decision submitted.' : 'Returnless Refund decision submitted.', 'success');
+    renderMarketmixNotification(decision === 'return_product' ? 'Return Product decision submitted.' : 'Returnless Refund decision submitted.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
     console.error('Error submitting seller return decision:', err);
-    alert(err.message || 'Failed to submit seller return decision');
+    renderMarketmixNotification(err.message || 'Failed to submit seller return decision.', 'error');
   }
 }
 
@@ -899,18 +987,18 @@ async function markRefundResolved(refundId) {
     const result = await response.json();
     if (!response.ok) {
       console.error('❌ Failed to mark refund resolved:', result);
-      alert('Error: ' + (result.message || 'Failed to mark resolved'));
+      renderMarketmixNotification(result.message || 'Failed to mark resolved', 'error');
       return;
     }
 
     console.log('✅ Refund marked as resolved');
-    showNotification('Refund marked as resolved. Buyer will confirm.', 'success');
+    renderMarketmixNotification('Refund marked as resolved. Buyer will confirm.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
     console.error('❌ Error marking refund resolved:', err);
-    alert('Error: ' + err.message);
+    renderMarketmixNotification(err.message || 'Error marking refund resolved.', 'error');
   }
 }
 
@@ -929,18 +1017,18 @@ async function escalateRefund(refundId, escalatedBy) {
     const result = await response.json();
     if (!response.ok) {
       console.error('❌ Failed to escalate refund:', result);
-      alert('Error: ' + (result.message || 'Failed to escalate'));
+      renderMarketmixNotification(result.message || 'Failed to escalate', 'error');
       return;
     }
 
     console.log('✅ Refund escalated to MarketMix');
-    showNotification('Refund escalated to MarketMix support.', 'success');
+    renderMarketmixNotification('Refund escalated to MarketMix support.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
     console.error('❌ Error escalating refund:', err);
-    alert('Error: ' + err.message);
+    renderMarketmixNotification(err.message || 'Error escalating refund.', 'error');
   }
 }
 
@@ -1403,34 +1491,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Notification
+function renderMarketmixNotification(message, type = 'success') {
+  showNotification(message, type);
+}
+
 function showNotification(message, type = 'success') {
+  const existing = document.querySelector('.marketmix-toast');
+  if (existing) existing.remove();
+
   const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
+  notification.className = `marketmix-toast ${type}`;
   notification.innerHTML = `
-    <span>${message}</span>
-    <button onclick="this.parentElement.remove()">&times;</button>
+    <div class="marketmix-toast-icon">${type === 'success' ? '&#10004;' : type === 'warning' ? '&#9888;' : '&#10060;'}</div>
+    <div class="marketmix-toast-content">
+      <strong>MarketMix</strong>
+      <p>${message}</p>
+    </div>
   `;
-  
   notification.style.cssText = `
     position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 1rem 1.5rem;
-    background: ${type === 'success' ? '#28a745' : '#17a2b8'};
-    color: white;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    z-index: 2000;
+    top: 1rem;
+    right: 1rem;
+    min-width: 300px;
+    max-width: 380px;
+    padding: 1rem 1.25rem;
+    border-radius: 16px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+    color: #fff;
+    z-index: 99999;
+    animation: marketmix-toast-in 0.22s ease-out;
   `;
+
+  if (type === 'success') {
+    notification.style.background = 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)';
+  } else if (type === 'warning') {
+    notification.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+  } else {
+    notification.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
+  }
 
   document.body.appendChild(notification);
 
   setTimeout(() => {
-    notification.remove();
-  }, 3000);
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateY(-12px)';
+    setTimeout(() => notification.remove(), 400);
+  }, 3200);
 }
 
