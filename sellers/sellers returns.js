@@ -55,6 +55,10 @@ function getRefundStatusMeta(refundCase = {}) {
     return { label: 'Awaiting Buyer Confirmation', statusClass: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation', isRejected: false };
   }
 
+  if (resolution === 'return_in_transit') {
+    return { label: 'Return In Transit', statusClass: 'return_in_transit', statusKey: 'return_in_transit', isRejected: false };
+  }
+
   if (resolution === 'resolved') {
     return { label: 'Resolved', statusClass: 'resolved', statusKey: 'resolved', isRejected: false };
   }
@@ -123,6 +127,11 @@ function mapRefundCaseFromSupabase(caseData) {
     seller_resolved_at: caseData.seller_resolved_at || null,
     escalated_at: caseData.escalated_at || null,
     buyer_confirmed_at: caseData.buyer_confirmed_at || null,
+    shipping_status: caseData.shipping_status || null,
+    courier_name: caseData.courier_name || null,
+    tracking_number: caseData.tracking_number || null,
+    shipping_receipt_url: caseData.shipping_receipt_url || null,
+    buyer_shipped_at: caseData.buyer_shipped_at || null,
     color: color,
     size: size,
     product_snapshot: ps
@@ -837,6 +846,28 @@ function openModal(returnId) {
 
   // Debug: evidence URL
   console.log('Refund evidence URL:', returnItem.evidence_url || returnItem.evidenceUrl || returnItem.evidenceUrl);
+
+  const shipmentGroup = document.getElementById('shipmentStatusGroup');
+  const shippingStatusEl = document.getElementById('modalShippingStatus');
+  const courierEl = document.getElementById('modalCourierName');
+  const trackingEl = document.getElementById('modalTrackingNumber');
+  const shippedOnEl = document.getElementById('modalShippedOn');
+  const receiptLinkEl = document.getElementById('modalReceiptLink');
+
+  if (shipmentGroup && shippingStatusEl && courierEl && trackingEl && shippedOnEl && receiptLinkEl) {
+    const hasShipmentInfo = Boolean(returnItem.courier_name || returnItem.tracking_number || returnItem.shipping_receipt_url || returnItem.shipping_status || returnItem.buyer_shipped_at);
+    shipmentGroup.style.display = hasShipmentInfo ? 'block' : 'none';
+    const shippingStatus = String(returnItem.shipping_status || '').toLowerCase();
+    shippingStatusEl.textContent = shippingStatus === 'in_transit' ? 'In transit' : shippingStatus === 'delivered' ? 'Delivered' : 'Pending';
+    courierEl.textContent = returnItem.courier_name || '-';
+    trackingEl.textContent = returnItem.tracking_number || '-';
+    shippedOnEl.textContent = returnItem.buyer_shipped_at ? formatDate(returnItem.buyer_shipped_at) : '-';
+    if (returnItem.shipping_receipt_url) {
+      receiptLinkEl.innerHTML = `<a href="${returnItem.shipping_receipt_url}" target="_blank" rel="noopener noreferrer">View receipt</a>`;
+    } else {
+      receiptLinkEl.textContent = '-';
+    }
+  }
 
   // Render Buyer Evidence into modalEvidence
   const evidenceContainer = document.getElementById('modalEvidence');

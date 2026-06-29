@@ -97,6 +97,10 @@ function getRefundDisplayState(refundCase = {}) {
     return { label: 'Awaiting Buyer Confirmation', className: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation' };
   }
 
+  if (resolution === 'return_in_transit') {
+    return { label: 'Return In Transit', className: 'return_in_transit', statusKey: 'return_in_transit' };
+  }
+
   if (resolution === 'resolved') {
     return { label: 'Resolved', className: 'resolved', statusKey: 'resolved' };
   }
@@ -141,6 +145,11 @@ function normalizeRefundCase(refundCase) {
     marketmixDecidedAt: refundCase.marketmix_decided_at || refundCase.marketmixDecidedAt || '',
     marketmixDecidedBy: refundCase.marketmix_decided_by || refundCase.marketmixDecidedBy || '',
     sellerReturnChoice: refundCase.seller_return_choice || '',
+    shippingStatus: refundCase.shipping_status ? (String(refundCase.shipping_status).toLowerCase() === 'in_transit' ? 'In transit' : String(refundCase.shipping_status).toLowerCase() === 'delivered' ? 'Delivered' : 'Pending') : 'Pending',
+    courierName: refundCase.courier_name || '',
+    trackingNumber: refundCase.tracking_number || '',
+    shippedOn: refundCase.buyer_shipped_at ? new Date(refundCase.buyer_shipped_at).toLocaleDateString() : '',
+    receiptUrl: refundCase.shipping_receipt_url || '',
     rawStatus: refundCase.status || ''
   };
 }
@@ -1395,6 +1404,16 @@ function viewReturn(id) {
               <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">MarketMix Decision:</span> ${returnRequest.marketmixDecision ? (returnRequest.marketmixDecision === 'approved' ? 'Approved' : 'Denied') : 'Pending'}</p>
               ${returnRequest.marketmixReason ? `<p class="text-sm text-blue-800 dark:text-blue-300 mt-2"><span class="font-semibold">Decision Note:</span> ${returnRequest.marketmixReason}</p>` : ''}
               ${returnRequest.sellerReturnChoice ? `<p class="text-sm text-blue-800 dark:text-blue-300 mt-2"><span class="font-semibold">Seller Decision:</span> ${returnRequest.sellerReturnChoice === 'return_product' ? 'Return Product' : 'Returnless Refund'}</p>` : ''}
+              ${returnRequest.sellerReturnChoice === 'return_product' ? `
+                <div class="mt-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white/70 dark:bg-slate-800/60 p-3">
+                  <p class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Buyer Return Shipment</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Status:</span> ${returnRequest.shippingStatus || 'Pending'}</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Courier:</span> ${returnRequest.courierName || '-'}</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Tracking Number:</span> ${returnRequest.trackingNumber || '-'}</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Shipped On:</span> ${returnRequest.shippedOn || '-'}</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Receipt:</span> ${returnRequest.receiptUrl ? `<a href="${returnRequest.receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">View receipt</a>` : '-'}</p>
+                </div>
+              ` : ''}
             </div>
           </div>
         </div>

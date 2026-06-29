@@ -1427,6 +1427,21 @@
         <span class="detail-value" id="detailsDecision">---</span>
       </div>
 
+      <div id="detailsReturnInstructionsSection" style="display: none; margin-top: 1rem;">
+        <div class="detail-row">
+          <span class="detail-label">Return Instructions:</span>
+          <div class="detail-value" id="detailsReturnInstructions">---</div>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Shipping Status:</span>
+          <span class="detail-value" id="detailsShippingStatus">---</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Shipment Details:</span>
+          <div class="detail-value" id="detailsShippingSummary">---</div>
+        </div>
+      </div>
+
       <!-- Account Details Section -->
       <div class="account-details-section" id="accountDetailsSection" style="display: none;">
         <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #333;">Refund Account Details</h3>
@@ -1453,7 +1468,10 @@
         <button class="btn-edit-account" id="editAccountBtn" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit Bank Details</button>
       </div>
 
-      <button class="details-close-btn" id="detailsCloseActionBtn">Close</button>
+      <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; justify-content:flex-end; margin-top: 1rem;">
+        <button class="details-close-btn" id="detailsShipBtn" style="display:none; background:#0ea5e9; color:#fff;">Ship Product</button>
+        <button class="details-close-btn" id="detailsCloseActionBtn">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1489,6 +1507,36 @@
       </div>
       
       <button class="btn-submit-evidence" id="submitEvidenceBtn">Submit & Start Chat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shipment Modal -->
+<div class="evidence-modal" id="shipmentModal">
+  <div class="evidence-modal-content">
+    <div class="evidence-header">
+      <h2 id="shipmentModalTitle">Ship Product</h2>
+      <button class="evidence-close" id="shipmentCloseBtn">&times;</button>
+    </div>
+    <div class="evidence-body">
+      <p class="evidence-info">Share the courier, tracking details, and receipt for the returned product.</p>
+      <div class="form-group">
+        <label>Courier Name</label>
+        <input type="text" id="shipmentCourier" placeholder="e.g. FedEx, DHL, GIG">
+      </div>
+      <div class="form-group">
+        <label>Tracking Number</label>
+        <input type="text" id="shipmentTracking" placeholder="Tracking number">
+      </div>
+      <div class="form-group">
+        <label>Upload Shipping Receipt</label>
+        <input type="file" id="shipmentReceiptInput" accept="image/*,.pdf">
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="shipmentNotes" rows="3" placeholder="Add any extra shipping details..."></textarea>
+      </div>
+      <button class="btn-submit-evidence" id="submitShipmentBtn">Submit Shipment Details</button>
     </div>
   </div>
 </div>
@@ -1979,6 +2027,14 @@
       return { label: 'Denied', className: 'denied', statusKey: 'denied', isRejected: true };
     }
 
+    if (resolution === 'return_required') {
+      return { label: 'Return Required', className: 'approved', statusKey: 'return_required', isRejected: false };
+    }
+
+    if (resolution === 'return_in_transit') {
+      return { label: 'Return In Transit', className: 'approved', statusKey: 'return_in_transit', isRejected: false };
+    }
+
     if (resolution === 'waiting_buyer_confirmation') {
       return { label: 'Awaiting Buyer Confirmation', className: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation', isRejected: false };
     }
@@ -2078,7 +2134,22 @@
       escalated_to_marketmix: caseData.escalated_to_marketmix || false,
       seller_resolved_at: caseData.seller_resolved_at || null,
       escalated_at: caseData.escalated_at || null,
-      buyer_confirmed_at: caseData.buyer_confirmed_at || null
+      buyer_confirmed_at: caseData.buyer_confirmed_at || null,
+      seller_return_choice: caseData.seller_return_choice || null,
+      return_address_line1: caseData.return_address_line1 || null,
+      return_address_line2: caseData.return_address_line2 || null,
+      return_city: caseData.return_city || null,
+      return_state: caseData.return_state || null,
+      return_postal_code: caseData.return_postal_code || null,
+      return_country: caseData.return_country || null,
+      buyer_return_deadline: caseData.buyer_return_deadline || null,
+      courier_name: caseData.courier_name || null,
+      tracking_number: caseData.tracking_number || null,
+      shipping_receipt_url: caseData.shipping_receipt_url || null,
+      shipping_status: caseData.shipping_status || null,
+      buyer_shipped_at: caseData.buyer_shipped_at || null,
+      return_received: caseData.return_received || false,
+      return_received_at: caseData.return_received_at || null
     };
   }
 
@@ -2391,6 +2462,7 @@
   let buyerAttachedFile = null;
   let buyerMediaCache = {}; // session-only preview cache for attachments
   let buyerAccountDetails = null; // stored account details for refunds
+  let currentShipmentCase = null; // active refund case for shipment submission
   let unreadCounts = {}; // track unread messages per report (in-memory only)
   let caseInfoCache = {}; // cache for latest case info per refund ID (in-memory only)
   let pollingIntervals = {}; // track polling intervals per case (in-memory only)
@@ -2926,6 +2998,13 @@
     document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
     document.getElementById('detailsCloseBtn').addEventListener('click', closeDetailsModal);
     document.getElementById('detailsCloseActionBtn').addEventListener('click', closeDetailsModal);
+    document.getElementById('shipmentCloseBtn').addEventListener('click', closeShipmentModal);
+    document.getElementById('submitShipmentBtn').addEventListener('click', submitShipmentDetails);
+    document.getElementById('detailsShipBtn').addEventListener('click', () => {
+      if (currentShipmentCase) {
+        openShipmentModal(currentShipmentCase.id);
+      }
+    });
 
     // Account modal event listeners
     document.getElementById('saveAccountBtn').addEventListener('click', saveAccountDetails);
@@ -3065,6 +3144,12 @@
         actionBtnHtml = `
           <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmBuyerSatisfied('${report.id}')">
             <i class="fas fa-check"></i> Satisfied
+          </button>
+        `;
+      } else if (String(report.seller_return_choice || '').toLowerCase() === 'return_product' && !report.shipping_status && !report.courier_name && !report.tracking_number && !report.buyer_shipped_at) {
+        actionBtnHtml = `
+          <button class="btn-action" style="background: #0ea5e9; color: white;" onclick="openShipmentModal('${report.id}')">
+            <i class="fas fa-truck"></i> Ship Product
           </button>
         `;
       } else if (resolution === 'resolved') {
@@ -3896,10 +3981,56 @@
     });
   }
 
+  function renderReturnInstructions(report = {}) {
+    const section = document.getElementById('detailsReturnInstructionsSection');
+    const instructionsEl = document.getElementById('detailsReturnInstructions');
+    const summaryEl = document.getElementById('detailsShippingSummary');
+    const shippingStatusEl = document.getElementById('detailsShippingStatus');
+    const shipBtn = document.getElementById('detailsShipBtn');
+
+    const isReturnProduct = String(report.seller_return_choice || '').toLowerCase() === 'return_product' || String(report.resolution_status || '').toLowerCase() === 'return_required' || String(report.resolution_status || '').toLowerCase() === 'return_in_transit';
+    if (!isReturnProduct) {
+      section.style.display = 'none';
+      shipBtn.style.display = 'none';
+      return;
+    }
+
+    const addressParts = [report.return_address_line1, report.return_address_line2, report.return_city, report.return_state, report.return_postal_code, report.return_country].filter(Boolean);
+    const deadline = Number(report.buyer_return_deadline || report.return_deadline || 0);
+    const addressText = addressParts.join(', ') || 'Address will be shared by the seller once the refund is approved.';
+    const deadlineText = Number.isInteger(deadline) && deadline > 0 ? `${deadline} day${deadline === 1 ? '' : 's'}` : 'Not provided';
+
+    instructionsEl.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:0.35rem;">
+        <strong style="color:#0f172a;">Please ship the item back to the seller using the address below.</strong>
+        <span>${addressText}</span>
+        <span><strong>Deadline:</strong> ${deadlineText}</span>
+        <span><strong>Instructions:</strong> Pack the item securely and keep the proof of shipment until the refund is finalized.</span>
+      </div>
+    `;
+
+    const shippingStatus = report.shipping_status || (report.courier_name || report.tracking_number ? 'in_transit' : 'pending');
+    const normalizedStatus = String(shippingStatus).toLowerCase();
+    const statusLabel = normalizedStatus === 'in_transit' ? 'In transit' : normalizedStatus === 'delivered' ? 'Delivered' : 'Pending';
+    shippingStatusEl.textContent = statusLabel;
+
+    const shippingParts = [];
+    if (report.courier_name) shippingParts.push(`Courier: ${report.courier_name}`);
+    if (report.tracking_number) shippingParts.push(`Tracking: ${report.tracking_number}`);
+    if (report.buyer_shipped_at) shippingParts.push(`Shipped on: ${formatDate(report.buyer_shipped_at)}`);
+    if (report.shipping_receipt_url) shippingParts.push(`Receipt: ${report.shipping_receipt_url}`);
+    summaryEl.innerHTML = shippingParts.length ? shippingParts.map(part => `<div>${part}</div>`).join('') : '<span>No shipment details submitted yet.</span>';
+
+    const alreadyShipped = ['in_transit', 'delivered'].includes(normalizedStatus) || !!(report.courier_name || report.tracking_number || report.buyer_shipped_at);
+    shipBtn.style.display = alreadyShipped ? 'none' : 'inline-flex';
+    section.style.display = 'block';
+  }
+
   function viewDetails(reportId) {
     const report = currentReports.find(r => String(r.id) === String(reportId));
     if (!report || report.status === 'purchased') return;
 
+    currentShipmentCase = report;
     document.getElementById('detailsStore').textContent = report.store_name;
     document.getElementById('detailsProduct').textContent = report.product_name;
     document.getElementById('detailsOrderId').textContent = report.order_id;
@@ -3932,6 +4063,8 @@
       specsSection.innerHTML = specsHtml || '<p style="color: #999; font-size: 0.9em;">No specifications available.</p>';
     }
 
+    renderReturnInstructions(report);
+
     // Show account details if available
     const accountSection = document.getElementById('accountDetailsSection');
     if (buyerAccountDetails) {
@@ -3946,6 +4079,85 @@
     }
 
     document.getElementById('detailsModal').classList.add('active');
+  }
+
+  function openShipmentModal(reportId) {
+    const report = currentReports.find(r => String(r.id) === String(reportId));
+    if (!report) return;
+
+    currentShipmentCase = report;
+    document.getElementById('shipmentModalTitle').textContent = `Ship Product — ${report.product_name}`;
+    document.getElementById('shipmentCourier').value = report.courier_name || '';
+    document.getElementById('shipmentTracking').value = report.tracking_number || '';
+    document.getElementById('shipmentNotes').value = '';
+    document.getElementById('shipmentReceiptInput').value = '';
+    document.getElementById('shipmentModal').classList.add('active');
+  }
+
+  function closeShipmentModal() {
+    document.getElementById('shipmentModal').classList.remove('active');
+    document.getElementById('shipmentCourier').value = '';
+    document.getElementById('shipmentTracking').value = '';
+    document.getElementById('shipmentNotes').value = '';
+    document.getElementById('shipmentReceiptInput').value = '';
+  }
+
+  async function submitShipmentDetails() {
+    if (!currentShipmentCase) return;
+
+    const submitBtn = document.getElementById('submitShipmentBtn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+
+    try {
+      const courierName = document.getElementById('shipmentCourier').value.trim();
+      const trackingNumber = document.getElementById('shipmentTracking').value.trim();
+      const notes = document.getElementById('shipmentNotes').value.trim();
+      const receiptFile = document.getElementById('shipmentReceiptInput').files?.[0] || null;
+
+      let receiptUrl = currentShipmentCase.shipping_receipt_url || null;
+      if (receiptFile) {
+        const uploadResult = await uploadEvidenceFile(receiptFile, currentShipmentCase.id);
+        if (!uploadResult) {
+          showNotification('Receipt upload failed. Please try again.', 'error');
+          return;
+        }
+        receiptUrl = uploadResult.url;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/refunds/${encodeURIComponent(currentShipmentCase.id)}/shipment-update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          courier_name: courierName,
+          tracking_number: trackingNumber,
+          shipping_receipt_url: receiptUrl,
+          notes
+        })
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.message || 'Failed to submit shipment details');
+      }
+
+      showNotification('Shipment details submitted successfully.', 'success');
+      closeShipmentModal();
+      await loadReturnReportsAndRefresh();
+      if (currentShipmentCase) {
+        viewDetails(currentShipmentCase.id);
+      }
+    } catch (err) {
+      console.error('Shipment update failed:', err);
+      showNotification(err.message || 'Could not submit shipment details.', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
   }
 
   function closeDetailsModal() {
