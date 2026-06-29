@@ -1163,6 +1163,8 @@ async function submitSellerReturnDecision(refundId, decision) {
       Object.assign(payload, getReturnAddressFormData());
     }
 
+    console.log('📤 Submitting seller return decision:', { refundId, decision, payload });
+
     const response = await fetch(`${API_BASE}/seller/refunds/${refundId}/seller-return-decision`, {
       method: 'POST',
       headers: {
@@ -1173,12 +1175,16 @@ async function submitSellerReturnDecision(refundId, decision) {
     });
 
     const result = await response.json().catch(() => ({}));
+    console.log('📥 Backend response:', { status: response.status, result });
+    
     if (!response.ok) {
-      const message = result.message || 'Failed to submit seller decision.';
+      const message = result.message || result.details || 'Failed to submit seller decision.';
+      console.error('❌ Error message:', message);
       renderMarketmixNotification(message, 'error');
       return;
     }
 
+    console.log('✅ Decision submitted successfully');
     renderMarketmixNotification(decision === 'return_product' ? 'Return Product decision submitted.' : 'Returnless Refund decision submitted.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
