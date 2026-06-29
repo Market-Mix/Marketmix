@@ -140,6 +140,7 @@ function normalizeRefundCase(refundCase) {
     marketmixDecision: refundCase.marketmix_decision || '',
     marketmixDecidedAt: refundCase.marketmix_decided_at || refundCase.marketmixDecidedAt || '',
     marketmixDecidedBy: refundCase.marketmix_decided_by || refundCase.marketmixDecidedBy || '',
+    sellerReturnChoice: refundCase.seller_return_choice || '',
     rawStatus: refundCase.status || ''
   };
 }
@@ -1393,6 +1394,7 @@ function viewReturn(id) {
               <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Status:</span> ${getRefundStatusBadgeMarkup(returnRequest)}</p>
               <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">MarketMix Decision:</span> ${returnRequest.marketmixDecision ? (returnRequest.marketmixDecision === 'approved' ? 'Approved' : 'Denied') : 'Pending'}</p>
               ${returnRequest.marketmixReason ? `<p class="text-sm text-blue-800 dark:text-blue-300 mt-2"><span class="font-semibold">Decision Note:</span> ${returnRequest.marketmixReason}</p>` : ''}
+              ${returnRequest.sellerReturnChoice ? `<p class="text-sm text-blue-800 dark:text-blue-300 mt-2"><span class="font-semibold">Seller Decision:</span> ${returnRequest.sellerReturnChoice === 'return_product' ? 'Return Product' : 'Returnless Refund'}</p>` : ''}
             </div>
           </div>
         </div>

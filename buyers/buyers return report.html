@@ -3907,11 +3907,19 @@
     const detailStatus = getRefundDisplayState(report);
     document.getElementById('detailsStatus').textContent = detailStatus.label.toUpperCase();
 
+    const sellerChoice = String(report.seller_return_choice || '').toLowerCase();
+    let sellerDecisionBadge = '';
+    if (sellerChoice === 'return_product') {
+      sellerDecisionBadge = 'RETURN REQUIRED';
+    } else if (sellerChoice === 'returnless') {
+      sellerDecisionBadge = 'NO RETURN REQUIRED';
+    }
+
     const decisionNote = report.marketmix_reason
       || (detailStatus.statusKey === 'approved' ? 'Approved by MarketMix.'
         : detailStatus.statusKey === 'denied' ? 'Denied by MarketMix.'
         : 'Awaiting MarketMix review.');
-    document.getElementById('detailsDecision').textContent = decisionNote;
+    document.getElementById('detailsDecision').textContent = sellerDecisionBadge || decisionNote;
 
     document.getElementById('detailsAmount').textContent = `₦${formatCurrency(report.total_amount || report.amount || report.refund_amount || 0)}`;
     document.getElementById('detailsReason').textContent = (report.reason || '').replace(/_/g, ' ').toUpperCase();

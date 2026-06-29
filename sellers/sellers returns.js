@@ -35,6 +35,14 @@ function getRefundStatusMeta(refundCase = {}) {
   const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
   const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
 
+  if (resolution === 'return_required') {
+    return { label: 'Return Required', statusClass: 'return_required', statusKey: 'return_required', isRejected: false };
+  }
+
+  if (resolution === 'refund_processing') {
+    return { label: 'Refund Processing', statusClass: 'refund_processing', statusKey: 'refund_processing', isRejected: false };
+  }
+
   if (decision === 'approved' || resolution === 'waiting_seller_return_decision') {
     return { label: 'Approved', statusClass: 'approved', statusKey: 'approved', isRejected: false };
   }
@@ -100,6 +108,8 @@ function mapRefundCaseFromSupabase(caseData) {
     marketmix_decision: caseData.marketmix_decision || null,
     marketmix_decided_at: caseData.marketmix_decided_at || null,
     marketmix_decided_by: caseData.marketmix_decided_by || null,
+    seller_return_choice: caseData.seller_return_choice || null,
+    seller_return_choice_at: caseData.seller_return_choice_at || null,
     seller_marked_resolved: caseData.seller_marked_resolved || false,
     buyer_confirmed_resolution: caseData.buyer_confirmed_resolution || false,
     escalated_to_marketmix: caseData.escalated_to_marketmix || false,
@@ -606,7 +616,15 @@ function renderTable(data = returnsData) {
     // waiting_buyer_confirmation → Show read-only message
     // resolved → Show "✓ Case Resolved" badge
     // escalated → Show "Escalated To MarketMix" badge
-    if (item.chat_started && item.resolution_status === 'pending') {
+    // approved + no seller choice → Show seller return decision buttons
+    if (item.marketmix_decision === 'approved' && !item.seller_return_choice) {
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmSellerReturnDecision('${item.id}', 'return_product')">Return Product</button>
+          <button class="btn-action" style="background: #f97316; color: white;" onclick="showConfirmSellerReturnDecision('${item.id}', 'returnless')">Returnless Refund</button>
+        </div>
+      `;
+    } else if (item.chat_started && item.resolution_status === 'pending') {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmMarkResolved('${item.id}')">Issue Resolved</button>
@@ -630,6 +648,14 @@ function renderTable(data = returnsData) {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <span style="padding: 0.5rem 1rem; background: #f8d7da; border-radius: 4px; color: #721c24; font-size: 0.9rem; font-weight: 600;">⛔ Escalated To MarketMix</span>
+        </div>
+      `;
+    } else if (item.seller_return_choice) {
+      const decisionLabel = item.seller_return_choice === 'return_product' ? 'Return Product' : 'Returnless Refund';
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; flex-direction: column; align-items: flex-start;">
+          <span style="padding: 0.5rem 1rem; background: #dbeafe; border-radius: 4px; color: #1d4ed8; font-size: 0.9rem; font-weight: 600;">Seller Decision Submitted</span>
+          <span style="padding: 0.5rem 1rem; background: #f3f4f6; border-radius: 4px; color: #374151; font-size: 0.9rem;">Decision: ${decisionLabel}</span>
         </div>
       `;
     }
@@ -809,6 +835,52 @@ function showConfirmEscalateSeller(refundId) {
 
   if (confirmed) {
     escalateRefund(refundId, 'seller');
+  }
+}
+
+function showConfirmSellerReturnDecision(refundId, decision) {
+  const refund = returnsData.find(r => r.id === refundId);
+  if (!refund) return;
+
+  const title = decision === 'return_product' ? 'Return Product' : 'Returnless Refund';
+  const message = decision === 'return_product'
+    ? 'The buyer will be instructed to return your product. The shipping reimbursement for the buyer will be deducted from your account according to MarketMix refund policy. Do you want to continue?'
+    : 'The buyer will keep the product. The refund will proceed without requiring a return. Do you want to continue?';
+
+  const confirmed = confirm(`${title}\n\n${message}`);
+  if (confirmed) {
+    submitSellerReturnDecision(refundId, decision);
+  }
+}
+
+async function submitSellerReturnDecision(refundId, decision) {
+  try {
+    const response = await fetch(`${API_BASE}/seller/refunds/${refundId}/seller-return-decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ decision })
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 409) {
+        alert(result.message || 'A seller decision has already been submitted for this refund.');
+      } else {
+        alert(result.message || 'Failed to submit seller decision');
+      }
+      return;
+    }
+
+    showNotification(decision === 'return_product' ? 'Return Product decision submitted.' : 'Returnless Refund decision submitted.', 'success');
+    await loadSellerRefundCases();
+    window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
+    renderTable();
+  } catch (err) {
+    console.error('Error submitting seller return decision:', err);
+    alert(err.message || 'Failed to submit seller return decision');
   }
 }
 
