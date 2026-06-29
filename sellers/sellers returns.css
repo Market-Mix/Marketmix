@@ -467,6 +467,56 @@
   line-height: 1.8;
 }
 
+.markettmix-confirm-form, .marketmix-confirm-form {
+  display: none;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.markettmix-form-row, .marketmix-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.markettmix-form-group, .marketmix-form-group {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.markettmix-form-input, .marketmix-form-input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.markettmix-form-input:focus, .marketmix-form-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.markettmix-form-note, .marketmix-form-note {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+.markettmix-form-error, .marketmix-form-error {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: #f8d7da;
+  color: #842029;
+  font-size: 0.92rem;
+}
+
 .markettmix-confirm-actions, .marketmix-confirm-actions {
   display: flex;
   gap: 0.75rem;

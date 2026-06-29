@@ -289,6 +289,46 @@
     </div>
     <div class="marketmix-confirm-body">
       <p id="marketmixConfirmMessage"></p>
+      <div id="marketmixConfirmForm" class="marketmix-confirm-form" style="display:none; margin-top:1rem;">
+        <div class="marketmix-form-row">
+          <div class="marketmix-form-group">
+            <label for="marketmixReturnAddress">Street Address</label>
+            <input type="text" id="marketmixReturnAddress" class="marketmix-form-input" placeholder="123 Main Street" />
+          </div>
+          <div class="marketmix-form-group">
+            <label for="marketmixReturnAddress2">Address Line 2</label>
+            <input type="text" id="marketmixReturnAddress2" class="marketmix-form-input" placeholder="Apartment, suite, unit, etc." />
+          </div>
+        </div>
+        <div class="marketmix-form-row">
+          <div class="marketmix-form-group">
+            <label for="marketmixReturnCity">City</label>
+            <input type="text" id="marketmixReturnCity" class="marketmix-form-input" placeholder="Lagos" />
+          </div>
+          <div class="marketmix-form-group">
+            <label for="marketmixReturnState">State</label>
+            <input type="text" id="marketmixReturnState" class="marketmix-form-input" placeholder="Lagos State" />
+          </div>
+        </div>
+        <div class="marketmix-form-row">
+          <div class="marketmix-form-group">
+            <label for="marketmixReturnPostalCode">Postal Code</label>
+            <input type="text" id="marketmixReturnPostalCode" class="marketmix-form-input" placeholder="100001" />
+          </div>
+          <div class="marketmix-form-group">
+            <label for="marketmixReturnCountry">Country</label>
+            <input type="text" id="marketmixReturnCountry" class="marketmix-form-input" placeholder="Nigeria" />
+          </div>
+        </div>
+        <div class="marketmix-form-row">
+          <div class="marketmix-form-group" style="flex:1 1 100%;">
+            <label for="marketmixReturnDeadline">Return deadline (days)</label>
+            <input type="number" id="marketmixReturnDeadline" class="marketmix-form-input" min="3" max="14" />
+            <small class="marketmix-form-note">The buyer must ship the product back within this timeframe.</small>
+          </div>
+        </div>
+        <div id="marketmixReturnFormError" class="marketmix-form-error" style="display:none;"></div>
+      </div>
     </div>
     <div class="marketmix-confirm-actions">
       <button id="marketmixCancelBtn" class="marketmix-btn marketmix-btn-secondary">Cancel</button>

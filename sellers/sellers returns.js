@@ -110,6 +110,13 @@ function mapRefundCaseFromSupabase(caseData) {
     marketmix_decided_by: caseData.marketmix_decided_by || null,
     seller_return_choice: caseData.seller_return_choice || null,
     seller_return_choice_at: caseData.seller_return_choice_at || null,
+    return_address_line1: caseData.return_address_line1 || null,
+    return_address_line2: caseData.return_address_line2 || null,
+    return_city: caseData.return_city || null,
+    return_state: caseData.return_state || null,
+    return_postal_code: caseData.return_postal_code || null,
+    return_country: caseData.return_country || null,
+    buyer_return_deadline: caseData.buyer_return_deadline || null,
     seller_marked_resolved: caseData.seller_marked_resolved || false,
     buyer_confirmed_resolution: caseData.buyer_confirmed_resolution || false,
     escalated_to_marketmix: caseData.escalated_to_marketmix || false,
@@ -357,12 +364,131 @@ async function loadProfile() {
     if (profile) {
       renderProfileImage(profile);
     }
+
+    const account = await apiFetch('/auth/me');
+    const user = account?.data?.user;
+    if (user) {
+      currentSellerReturnAddress = {
+        address: user.address || '',
+        address2: user.address2 || '',
+        city: user.city || '',
+        state: user.state || '',
+        postalCode: user.postalCode || '',
+        country: user.country || 'Nigeria'
+      };
+    }
   } catch (err) {
     console.error('Error loading profile:', err);
   }
 }
 
 let currentReturnId = null;
+let currentSellerReturnAddress = {
+  address: '',
+  address2: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: ''
+};
+
+function setReturnAddressFormVisibility(show) {
+  const form = document.getElementById('marketmixConfirmForm');
+  if (!form) return;
+  form.style.display = show ? 'block' : 'none';
+}
+
+function populateReturnAddressForm(defaultDeadline = 7) {
+  const addressEl = document.getElementById('marketmixReturnAddress');
+  const address2El = document.getElementById('marketmixReturnAddress2');
+  const cityEl = document.getElementById('marketmixReturnCity');
+  const stateEl = document.getElementById('marketmixReturnState');
+  const postalCodeEl = document.getElementById('marketmixReturnPostalCode');
+  const countryEl = document.getElementById('marketmixReturnCountry');
+  const deadlineEl = document.getElementById('marketmixReturnDeadline');
+
+  if (addressEl) addressEl.value = currentSellerReturnAddress.address || '';
+  if (address2El) address2El.value = currentSellerReturnAddress.address2 || '';
+  if (cityEl) cityEl.value = currentSellerReturnAddress.city || '';
+  if (stateEl) stateEl.value = currentSellerReturnAddress.state || '';
+  if (postalCodeEl) postalCodeEl.value = currentSellerReturnAddress.postalCode || '';
+  if (countryEl) countryEl.value = currentSellerReturnAddress.country || 'Nigeria';
+  if (deadlineEl) {
+    deadlineEl.value = defaultDeadline;
+    deadlineEl.min = 3;
+    deadlineEl.max = 14;
+  }
+
+  const errorEl = document.getElementById('marketmixReturnFormError');
+  if (errorEl) {
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+  }
+}
+
+function getReturnAddressFormData() {
+  return {
+    return_address: document.getElementById('marketmixReturnAddress')?.value.trim() || '',
+    return_address2: document.getElementById('marketmixReturnAddress2')?.value.trim() || '',
+    return_city: document.getElementById('marketmixReturnCity')?.value.trim() || '',
+    return_state: document.getElementById('marketmixReturnState')?.value.trim() || '',
+    return_postal_code: document.getElementById('marketmixReturnPostalCode')?.value.trim() || '',
+    return_country: document.getElementById('marketmixReturnCountry')?.value.trim() || '',
+    return_deadline: Number(document.getElementById('marketmixReturnDeadline')?.value || 0)
+  };
+}
+
+function validateReturnAddressForm() {
+  const data = getReturnAddressFormData();
+  const errorEl = document.getElementById('marketmixReturnFormError');
+  if (!data.return_address) {
+    if (errorEl) {
+      errorEl.textContent = 'Please enter the return street address.';
+      errorEl.style.display = 'block';
+    }
+    return false;
+  }
+  if (!data.return_city) {
+    if (errorEl) {
+      errorEl.textContent = 'Please enter the return city.';
+      errorEl.style.display = 'block';
+    }
+    return false;
+  }
+  if (!data.return_state) {
+    if (errorEl) {
+      errorEl.textContent = 'Please enter the return state.';
+      errorEl.style.display = 'block';
+    }
+    return false;
+  }
+  if (!data.return_postal_code) {
+    if (errorEl) {
+      errorEl.textContent = 'Please enter the return postal code.';
+      errorEl.style.display = 'block';
+    }
+    return false;
+  }
+  if (!data.return_country) {
+    if (errorEl) {
+      errorEl.textContent = 'Please enter the return country.';
+      errorEl.style.display = 'block';
+    }
+    return false;
+  }
+  if (!Number.isInteger(data.return_deadline) || data.return_deadline < 3 || data.return_deadline > 14) {
+    if (errorEl) {
+      errorEl.textContent = 'Return deadline must be between 3 and 14 days.';
+      errorEl.style.display = 'block';
+    }
+    return false;
+  }
+  if (errorEl) {
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+  }
+  return true;
+}
 
 // DOM Elements
 const searchInput = document.getElementById('searchInput');
@@ -861,6 +987,12 @@ function openMarketmixConfirmDialog(options) {
   dialog.dataset.confirmAction = options.action || '';
   dialog.dataset.refundId = options.refundId || '';
   dialog.dataset.decision = options.decision || '';
+  dialog.dataset.confirmStep = options.step || 'initial';
+
+  setReturnAddressFormVisibility(options.step === 'address');
+  if (options.step === 'address') {
+    populateReturnAddressForm();
+  }
 
   confirmBtn.textContent = options.confirmText || 'Confirm';
   cancelBtn.textContent = options.cancelText || 'Cancel';
@@ -876,6 +1008,8 @@ function closeMarketmixConfirmDialog() {
   dialog.dataset.confirmAction = '';
   dialog.dataset.refundId = '';
   dialog.dataset.decision = '';
+  dialog.dataset.confirmStep = '';
+  setReturnAddressFormVisibility(false);
   document.body.style.overflow = 'auto';
 }
 
@@ -885,6 +1019,18 @@ function confirmDialogAction() {
   const action = dialog.dataset.confirmAction;
   const refundId = dialog.dataset.refundId;
   const decision = dialog.dataset.decision;
+  const step = dialog.dataset.confirmStep || 'initial';
+
+  if (action === 'sellerReturnDecision' && decision === 'return_product' && step !== 'address') {
+    closeMarketmixConfirmDialog();
+    showSellerReturnAddressDialog(refundId, decision);
+    return;
+  }
+
+  if (action === 'sellerReturnDecision' && decision === 'return_product' && step === 'address') {
+    if (!validateReturnAddressForm()) return;
+  }
+
   closeMarketmixConfirmDialog();
 
   if (action === 'markResolved') {
@@ -894,6 +1040,24 @@ function confirmDialogAction() {
   } else if (action === 'sellerReturnDecision') {
     submitSellerReturnDecision(refundId, decision);
   }
+}
+
+function showSellerReturnAddressDialog(refundId, decision) {
+  const refund = returnsData.find(r => r.id === refundId);
+  if (!refund) return;
+
+  openMarketmixConfirmDialog({
+    title: 'Return Product — Confirm Return Address',
+    message: 'Please confirm the return address and deadline for the buyer. These details will be saved as part of the return request.',
+    confirmText: 'Submit Return Details',
+    cancelText: 'Cancel',
+    action: 'sellerReturnDecision',
+    refundId,
+    decision,
+    step: 'address'
+  });
+
+  populateReturnAddressForm(7);
 }
 
 function showConfirmMarkResolved(refundId) {
@@ -946,13 +1110,18 @@ function showConfirmSellerReturnDecision(refundId, decision) {
 
 async function submitSellerReturnDecision(refundId, decision) {
   try {
+    const payload = { decision };
+    if (decision === 'return_product') {
+      Object.assign(payload, getReturnAddressFormData());
+    }
+
     const response = await fetch(`${API_BASE}/seller/refunds/${refundId}/seller-return-decision`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${getToken()}`
       },
-      body: JSON.stringify({ decision })
+      body: JSON.stringify(payload)
     });
 
     const result = await response.json().catch(() => ({}));
