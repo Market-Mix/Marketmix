@@ -430,7 +430,8 @@
 
 .markettmix-confirm-card, .marketmix-confirm-card {
   position: relative;
-  width: min(480px, 100%);
+  width: min(520px, 100%);
+  max-height: 90vh;
   background: #ffffff;
   border-radius: 20px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
@@ -439,7 +440,7 @@
 }
 
 .markettmix-confirm-header, .marketmix-confirm-header {
-  padding: 1.5rem 1.5rem 0.75rem;
+  padding: 1.25rem 1.25rem 0.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -461,10 +462,12 @@
 }
 
 .markettmix-confirm-body, .marketmix-confirm-body {
-  padding: 0 1.5rem 1.25rem;
+  padding: 0 1.25rem 1rem;
   color: #4b5563;
   font-size: 0.95rem;
   line-height: 1.8;
+  overflow-y: auto;
+  max-height: calc(90vh - 138px);
 }
 
 .markettmix-confirm-form, .marketmix-confirm-form {
@@ -588,6 +591,49 @@
   .table-row {
     display: flex !important;
     flex-direction: column !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .marketmix-confirm-card, .markettmix-confirm-card {
+    width: min(100%, 100vw);
+    border-radius: 16px;
+    margin: 0 0.5rem;
+  }
+
+  .marketmix-confirm-body, .markettmix-confirm-body {
+    max-height: calc(85vh - 130px);
+    padding: 0 1rem 1rem;
+  }
+
+  .marketmix-form-row, .markettmix-form-row {
+    flex-direction: column;
+  }
+
+  .marketmix-form-group, .markettmix-form-group {
+    flex: 1 1 100%;
+  }
+
+  .marketmix-form-input, .markettmix-form-input {
+    min-height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .marketmix-confirm-actions, .markettmix-confirm-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0 1rem 1rem;
+  }
+
+  .marketmix-btn, .markettmix-btn {
+    width: 100%;
+  }
+
+  .marketmix-btn + .marketmix-btn, .markettmix-btn + .markettmix-btn {
+    margin-top: 0.75rem;
+  }
+}
+
     gap: 0.5rem;
     padding: 1rem;
     margin-bottom: 0.75rem;
