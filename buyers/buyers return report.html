@@ -1267,6 +1267,10 @@
     .details-close-btn:hover {
       background: #EA580C;
     }
+    
+    #shipmentModal {
+      z-index: 2900 !important;
+    }
   </style>
 </head>
 <body>
@@ -2736,7 +2740,9 @@
     // Select view and action buttons by data-action to avoid colliding with other .btn-action elements
     let viewBtn = targetRow.querySelector('.btn-action[data-action="view"]');
     if (!viewBtn) viewBtn = targetRow.querySelector('[onclick*="viewDetails"]') || targetRow.querySelector('[onclick*="showDetailsModal"]');
-    const chatBtnArea = targetRow.querySelector('.btn-chat');
+    
+    // Ship button has its own data-action="ship" to keep it separate
+    const shipBtn = targetRow.querySelector('.btn-action[data-action="ship"]');
     const actionBtn = targetRow.querySelector('.btn-action[data-action="action"]');
 
     if (viewBtn) {
@@ -2744,6 +2750,15 @@
         viewBtn.style.display = 'none';
       } else {
         viewBtn.style.display = '';
+      }
+    }
+    
+    // Keep ship button independent of other actions
+    if (shipBtn) {
+      if (['resolved', 'escalated', 'denied'].includes(caseInfo.resolution_status)) {
+        shipBtn.style.display = 'none';
+      } else {
+        shipBtn.style.display = '';
       }
     }
 
@@ -3027,6 +3042,19 @@
         openShipmentModal(currentShipmentCase.id);
       }
     });
+    
+    // Close modals when clicking outside modal content
+    document.getElementById('shipmentModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'shipmentModal') {
+        closeShipmentModal();
+      }
+    });
+    
+    document.getElementById('detailsModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'detailsModal') {
+        closeDetailsModal();
+      }
+    });
 
     // Account modal event listeners
     document.getElementById('saveAccountBtn').addEventListener('click', saveAccountDetails);
@@ -3169,9 +3197,9 @@
           </button>
         `;
       } else if (String(report.seller_return_choice || '').toLowerCase() === 'return_product' && !report.shipping_status && !report.courier_name && !report.tracking_number && !report.buyer_shipped_at) {
-        // Show Ship Product button as primary action but keep View button available
+        // Show Ship Product button as secondary action, View button stays independent
         actionBtnHtml = `
-          <button class="btn-action" data-action="action" style="background: #0ea5e9; color: white;" onclick="openShipmentModal('${report.id}')">
+          <button class="btn-action" data-action="ship" style="background: #0ea5e9; color: white;" onclick="openShipmentModal('${report.id}', event)">
             <i class="fas fa-truck"></i> Ship Product
           </button>
         `;
@@ -4104,7 +4132,12 @@
     document.getElementById('detailsModal').classList.add('active');
   }
 
-  function openShipmentModal(reportId) {
+  function openShipmentModal(reportId, event) {
+    // Prevent event bubbling if called from View modal
+    if (event) {
+      event.stopPropagation();
+    }
+    
     const report = currentReports.find(r => String(r.id) === String(reportId));
     if (!report) return;
 
@@ -4114,7 +4147,10 @@
     document.getElementById('shipmentTracking').value = report.tracking_number || '';
     document.getElementById('shipmentNotes').value = '';
     document.getElementById('shipmentReceiptInput').value = '';
-    document.getElementById('shipmentModal').classList.add('active');
+    
+    // Add active class to shipment modal
+    const shipmentModal = document.getElementById('shipmentModal');
+    shipmentModal.classList.add('active');
   }
 
   function closeShipmentModal() {
@@ -4123,6 +4159,7 @@
     document.getElementById('shipmentTracking').value = '';
     document.getElementById('shipmentNotes').value = '';
     document.getElementById('shipmentReceiptInput').value = '';
+    currentShipmentCase = null;
   }
 
   async function submitShipmentDetails() {
@@ -4185,6 +4222,7 @@
 
   function closeDetailsModal() {
     document.getElementById('detailsModal').classList.remove('active');
+    currentShipmentCase = null;
   }
 </script>
 
