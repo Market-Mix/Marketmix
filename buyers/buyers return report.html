@@ -2733,12 +2733,18 @@
     }
 
     // Update button visibility based on resolution status
-    const viewBtn = targetRow.querySelector('[onclick*="viewDetails"]') || targetRow.querySelector('[onclick*="showDetailsModal"]');
+    // Select view and action buttons by data-action to avoid colliding with other .btn-action elements
+    let viewBtn = targetRow.querySelector('.btn-action[data-action="view"]');
+    if (!viewBtn) viewBtn = targetRow.querySelector('[onclick*="viewDetails"]') || targetRow.querySelector('[onclick*="showDetailsModal"]');
     const chatBtnArea = targetRow.querySelector('.btn-chat');
-    const actionBtn = targetRow.querySelector('.btn-action');
+    const actionBtn = targetRow.querySelector('.btn-action[data-action="action"]');
 
-    if (viewBtn && ['resolved', 'escalated'].includes(caseInfo.resolution_status)) {
-      viewBtn.style.display = 'none';
+    if (viewBtn) {
+      if (['resolved', 'escalated'].includes(caseInfo.resolution_status)) {
+        viewBtn.style.display = 'none';
+      } else {
+        viewBtn.style.display = '';
+      }
     }
 
     if (actionBtn) {
@@ -2753,6 +2759,7 @@
         actionBtn.onclick = () => showConfirmEscalateBuyer(refundId);
         actionBtn.style.display = 'inline-block';
       } else {
+        // keep ship/view logic handled by renderReports; hide action if none set
         actionBtn.style.display = 'none';
       }
     }
@@ -3072,7 +3079,7 @@
       const unreadCount = getUnreadCount(caseId);
       let statusHtml = '';
       let viewBtnHtml = `
-        <button class="btn-action" style="background: #ccc; cursor: not-allowed;" disabled>
+        <button class="btn-action" data-action="view" style="background: #ccc; cursor: not-allowed;" disabled>
           <i class="fas fa-eye"></i> View
         </button>
       `;
@@ -3085,7 +3092,7 @@
         </span>
       `;
       viewBtnHtml = `
-        <button class="btn-action" onclick="viewDetails('${getInlineHandlerId(report.id)}')">
+        <button class="btn-action" data-action="view" onclick="viewDetails('${getInlineHandlerId(report.id)}')">
           <i class="fas fa-eye"></i> View
         </button>
       `;
@@ -3157,27 +3164,26 @@
       // Render action buttons based on resolution_status
       if (resolution === 'waiting_buyer_confirmation') {
         actionBtnHtml = `
-          <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmBuyerSatisfied('${report.id}')">
+          <button class="btn-action" data-action="action" style="background: #22c55e; color: white;" onclick="showConfirmBuyerSatisfied('${report.id}')">
             <i class="fas fa-check"></i> Satisfied
           </button>
         `;
       } else if (String(report.seller_return_choice || '').toLowerCase() === 'return_product' && !report.shipping_status && !report.courier_name && !report.tracking_number && !report.buyer_shipped_at) {
-        // Show Ship Product button only, hide View button
-        viewBtnHtml = '';
+        // Show Ship Product button as primary action but keep View button available
         actionBtnHtml = `
-          <button class="btn-action" style="background: #0ea5e9; color: white;" onclick="openShipmentModal('${report.id}')">
+          <button class="btn-action" data-action="action" style="background: #0ea5e9; color: white;" onclick="openShipmentModal('${report.id}')">
             <i class="fas fa-truck"></i> Ship Product
           </button>
         `;
       } else if (resolution === 'resolved') {
         actionBtnHtml = `
-          <span style="display: inline-block; padding: 0.5rem 0.75rem; background: #d4edda; color: #155724; border-radius: 5px; font-weight: 600; font-size: 0.75rem;">
+          <span class="btn-action" data-action="action" style="display: inline-block; padding: 0.5rem 0.75rem; background: #d4edda; color: #155724; border-radius: 5px; font-weight: 600; font-size: 0.75rem;">
             <i class="fas fa-check-circle"></i> Case Resolved
           </span>
         `;
       } else if (resolution === 'escalated') {
         actionBtnHtml = `
-          <span style="display: inline-block; padding: 0.5rem 0.75rem; background: #f8d7da; color: #721c24; border-radius: 5px; font-weight: 600; font-size: 0.75rem;">
+          <span class="btn-action" data-action="action" style="display: inline-block; padding: 0.5rem 0.75rem; background: #f8d7da; color: #721c24; border-radius: 5px; font-weight: 600; font-size: 0.75rem;">
             <i class="fas fa-exclamation-triangle"></i> Escalated
           </span>
         `;
