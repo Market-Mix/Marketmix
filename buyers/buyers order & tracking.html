@@ -247,13 +247,17 @@ async function loadOrders() {
     const container = document.getElementById('ordersContainer');
 
     console.log('Loaded order item specifications', orders.map(order => ({
-      orderId: order.id,
-      items: (order.items || []).map(item => ({
-        product_id: item.product_id || item.productId,
-        color: item.color,
-        size: item.size,
-      }))
-    })));
+  orderId: order.id,
+  sellerGroups: (order.seller_groups || []).map(sg => ({
+    sellerId: sg.sellerId,
+    status: sg.status,
+    items: (sg.items || []).map(item => ({
+      productId: item.productId,
+      color: item.color,
+      size: item.size,
+    }))
+  }))
+})));
 
     if (!orders.length) {
       container.innerHTML = '<p style="text-align:center;color:#64748b;padding:40px">No orders yet. <a href="buyers homepage.html">Start shopping!</a></p>';
