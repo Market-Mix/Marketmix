@@ -252,68 +252,60 @@ async function loadOrders() {
     }
 
     container.innerHTML = orders.map(order => {
-      const items = order.items || [];
-      const firstItem = items[0] || {};
-      const extraCount = items.length > 1 ? `+${items.length - 1} more` : '';
-      const date = new Date(order.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
-      const imgSrc = firstItem.image || firstItem.main_image_url || 'https://via.placeholder.com/80';
-      // Fallback to product_snapshot for specs
-      let ps = firstItem.product_snapshot || firstItem.productSnapshot || {};
-      if (typeof ps === 'string') {
-        try { ps = JSON.parse(ps); } catch(e) { ps = {}; }
-      }
-      const firstColor = firstItem.color || ps.color || null;
-      const firstSize = firstItem.size || ps.size || null;
-      const specMarkup = (firstColor || firstSize) ? `<div class="order-specs" style="margin-top:6px;color:#64748b;font-size:0.92rem">${firstColor ? `<p style="margin:2px 0">Color: ${firstColor}</p>` : ''}${firstSize ? `<p style="margin:2px 0">Size: ${firstSize}</p>` : ''}</div>` : '';
+  const sellerGroups = order.seller_groups || [];
+  const date = new Date(order.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
 
-      return `
-        <div class="order-card">
-          <div class="order-header">
-            <h2>Order #${String(order.id).substring(0,8).toUpperCase()}</h2>
-            <span class="order-status ${statusClass[order.status] || 'status-processing'}">${order.status}</span>
-            ${order.delivery_method === 'shipbubble' ? `<span style="font-size:0.8rem;color:#0ea5e9;margin-left:8px">🚚 Courier Delivery</span>` : ''}
+  const sellerBlocksHtml = sellerGroups.map(sg => {
+    const items = sg.items || [];
+    const firstItem = items[0] || {};
+    const extraCount = items.length > 1 ? `+${items.length - 1} more` : '';
+    const imgSrc = firstItem.image || 'https://via.placeholder.com/80';
+    const specMarkup = (firstItem.color || firstItem.size) ? `
+      <div class="order-specs" style="margin-top:4px;color:#64748b;font-size:0.85rem">
+        ${firstItem.color ? `Color: ${firstItem.color} ` : ''}${firstItem.size ? `· Size: ${firstItem.size}` : ''}
+      </div>` : '';
+
+    return `
+      <div class="seller-suborder" style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong style="color:#475569;font-size:0.9rem">🏬 ${sg.sellerName || 'Seller'}</strong>
+          <span class="order-status ${statusClass[sg.status] || 'status-processing'}">${sg.status}</span>
+        </div>
+        <div class="order-items" style="gap:12px">
+          <img src="${imgSrc}" alt="${firstItem.productName || 'Product'}"
+               style="width:60px;height:60px;object-fit:cover;border-radius:8px"
+               onerror="this.src='https://via.placeholder.com/80'">
+          <div class="order-details">
+            <h3 style="font-size:0.95rem">${firstItem.productName || 'Product'} ${extraCount ? `<small style="color:#94a3b8">(${extraCount})</small>` : ''}</h3>
+            ${specMarkup}
           </div>
-          <div class="order-items">
-            <img src="${imgSrc}" alt="${firstItem.product_name || 'Product'}" 
-              style="width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0"
-              onerror="this.src='https://via.placeholder.com/80'">
-            <div class="order-details">
-              <h3>${firstItem.product_name || 'Product'} ${extraCount ? `<small style="color:#94a3b8">(${extraCount})</small>` : ''}</h3>
-              ${specMarkup}
-              <p>Items: ${items.length} | Total: ₦${Number(order.total_amount).toLocaleString()}</p>
-              <p>Placed: ${date}</p>
-              ${order.shipping_address ? `<p style="font-size:0.85rem;color:#64748b">📍 ${order.shipping_address}</p>` : ''}
-            </div>
-          </div>
-          ${(order.courier_name || order.tracking_id) ? `
-  <div style="margin-top:12px;padding:10px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;font-size:0.9rem">
-    <strong>📦 Tracking Info</strong><br>
-    ${order.courier_name ? `Courier: <strong>${order.courier_name}</strong><br>` : ''}
-    ${order.tracking_id ? `Tracking ID: <code>${order.tracking_id}</code><br>` : ''}
-    ${order.tracking_link ? `<a href="${order.tracking_link}" target="_blank" style="color:#0ea5e9">Track Shipment →</a>` : ''}
-  </div>` : ''}
-          <div class="order-actions">
-            ${['shipped','processing','pending','confirmed'].includes(order.status) ? 
-              `<button class="btn btn-track" onclick="toggleTracking(this)">Track Order</button>` : ''}
-            <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
-            ${(order.status === 'awaiting_payment' || order.payment_status === 'unpaid') ?
-              `<button class="btn btn-track" style="background:#8b5cf6" onclick="retryPayment('${order.id}', this)">
-              💳 Resume Payment
-               </button>
-              <p style="font-size:0.8rem;color:#8b5cf6;margin:4px 0 0">Payment pending — click to complete your order</p>`
-            : ''}
-            ${order.status === 'delivered' && order.delivery_confirmed_at ? 
-              `<button class="btn" style="background:#94a3b8;color:#fff;cursor:not-allowed" disabled>Delivery Confirmed ✓</button>` : 
-              order.status === 'delivered' ? 
-              `<button class="btn btn-track" onclick="confirmDelivery('${order.id}', this)">Confirm Delivery</button>` : ''}
-            ${['pending','confirmed','processing'].includes(order.status) ?
-              `<button class="btn" style="background:#ef4444;color:#fff" onclick="cancelOrder('${order.id}', this)">Cancel</button>` : ''}
-          </div>
-          <div class="tracking-progress" data-order-id="${order.id}">
-            ${trackingSteps(order.status)}
-          </div>
-        </div>`;
-    }).join('');
+        </div>
+        ${(sg.courierName || sg.trackingCode) ? `
+          <div style="margin-top:10px;padding:8px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;font-size:0.85rem">
+            ${sg.courierName ? `Courier: <strong>${sg.courierName}</strong><br>` : ''}
+            ${sg.trackingCode ? `Tracking ID: <code>${sg.trackingCode}</code><br>` : ''}
+            ${sg.trackingLink ? `<a href="${sg.trackingLink}" target="_blank" style="color:#0ea5e9">Track Shipment →</a>` : ''}
+          </div>` : ''}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="order-card">
+      <div class="order-header">
+        <h2>Order #${String(order.id).substring(0,8).toUpperCase()}</h2>
+        <span style="color:#64748b;font-size:0.85rem">${sellerGroups.length} seller${sellerGroups.length === 1 ? '' : 's'} · ${date}</span>
+      </div>
+      ${sellerBlocksHtml}
+      <div class="order-actions">
+        <p style="margin:10px 0 0;font-weight:600">Total: ₦${Number(order.total_amount).toLocaleString()}</p>
+        <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
+        ${(order.status === 'awaiting_payment' || order.payment_status === 'unpaid') ?
+          `<button class="btn btn-track" style="background:#8b5cf6" onclick="retryPayment('${order.id}', this)">💳 Resume Payment</button>` : ''}
+        ${['pending','confirmed','processing'].includes(order.status) ?
+          `<button class="btn" style="background:#ef4444;color:#fff" onclick="cancelOrder('${order.id}', this)">Cancel</button>` : ''}
+      </div>
+    </div>`;
+}).join('');
   } catch (err) {
     document.getElementById('ordersContainer').innerHTML = 
       `<p style="color:#ef4444;text-align:center">Error loading orders: ${err.message}</p>`;
