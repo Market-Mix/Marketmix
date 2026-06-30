@@ -208,6 +208,15 @@ function getToken() {
   </footer>
   <script src="notification-manager.js"></script>
   <script>
+
+    function getBuyerId() {
+  try {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    return userData.id || null;
+  } catch (e) {
+    return null;
+  }
+}
     // Initialize notification system on page load
     document.addEventListener('DOMContentLoaded', async function() {
       const buyerId = getBuyerId();
