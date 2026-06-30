@@ -150,6 +150,7 @@ function normalizeRefundCase(refundCase) {
     trackingNumber: refundCase.tracking_number || '',
     shippedOn: refundCase.buyer_shipped_at ? new Date(refundCase.buyer_shipped_at).toLocaleDateString() : '',
     receiptUrl: refundCase.shipping_receipt_url || '',
+    shipmentNotes: refundCase.shipment_notes || refundCase.notes || '',
     rawStatus: refundCase.status || ''
   };
 }
@@ -1411,7 +1412,8 @@ function viewReturn(id) {
                   <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Courier:</span> ${returnRequest.courierName || '-'}</p>
                   <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Tracking Number:</span> ${returnRequest.trackingNumber || '-'}</p>
                   <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Shipped On:</span> ${returnRequest.shippedOn || '-'}</p>
-                  <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Receipt:</span> ${returnRequest.receiptUrl ? `<a href="${returnRequest.receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">View receipt</a>` : '-'}</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Receipt:</span> ${returnRequest.receiptUrl ? `<a href="${returnRequest.receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">View receipt</a>` : '-'}</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Notes:</span> ${returnRequest.shipmentNotes || '-'}</p>
                 </div>
               ` : ''}
             </div>

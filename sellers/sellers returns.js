@@ -128,6 +128,7 @@ function mapRefundCaseFromSupabase(caseData) {
     escalated_at: caseData.escalated_at || null,
     buyer_confirmed_at: caseData.buyer_confirmed_at || null,
     shipping_status: caseData.shipping_status || null,
+    shipment_notes: caseData.shipment_notes || caseData.notes || null,
     courier_name: caseData.courier_name || null,
     tracking_number: caseData.tracking_number || null,
     shipping_receipt_url: caseData.shipping_receipt_url || null,
@@ -853,6 +854,7 @@ function openModal(returnId) {
   const trackingEl = document.getElementById('modalTrackingNumber');
   const shippedOnEl = document.getElementById('modalShippedOn');
   const receiptLinkEl = document.getElementById('modalReceiptLink');
+  const shipmentNotesEl = document.getElementById('modalShipmentNotes');
 
   if (shipmentGroup && shippingStatusEl && courierEl && trackingEl && shippedOnEl && receiptLinkEl) {
     const hasShipmentInfo = Boolean(returnItem.courier_name || returnItem.tracking_number || returnItem.shipping_receipt_url || returnItem.shipping_status || returnItem.buyer_shipped_at);
@@ -866,6 +868,9 @@ function openModal(returnId) {
       receiptLinkEl.innerHTML = `<a href="${returnItem.shipping_receipt_url}" target="_blank" rel="noopener noreferrer">View receipt</a>`;
     } else {
       receiptLinkEl.textContent = '-';
+    }
+    if (shipmentNotesEl) {
+      shipmentNotesEl.textContent = returnItem.shipment_notes || '-';
     }
   }
 
