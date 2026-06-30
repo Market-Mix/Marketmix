@@ -283,10 +283,13 @@
       }
     }
 
-   if (state.currentStep === 2) {
-  const sellerIds = Object.keys(state.quotesBySeller || {}).filter(id => id !== 'marketmix');
-  if (sellerIds.some(id => !state.selectedDeliveryBySeller?.[id])) {
-    setInlineMessage(els.deliveryMessage, 'Choose a delivery method for every seller in your cart.', 'error');
+  // buyers/checkout.js — goNext(), step 2 check
+if (state.currentStep === 2) {
+  const cartSellerIds = [...new Set(state.items.map(i => i.seller_id || i.sellerId).filter(Boolean))];
+  const missing = cartSellerIds.filter(id => !state.selectedDeliveryBySeller?.[id]);
+  if (missing.length) {
+    const names = missing.map(id => state.sellerNames?.[id] || id).join(', ');
+    setInlineMessage(els.deliveryMessage, `No delivery option available for: ${names}. Please contact support.`, 'error');
     return;
   }
 }
