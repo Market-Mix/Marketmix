@@ -864,11 +864,26 @@ function openModal(returnId) {
     courierEl.textContent = returnItem.courier_name || '-';
     trackingEl.textContent = returnItem.tracking_number || '-';
     shippedOnEl.textContent = returnItem.buyer_shipped_at ? formatDate(returnItem.buyer_shipped_at) : '-';
+    
+    // Render receipt with image preview support
     if (returnItem.shipping_receipt_url) {
-      receiptLinkEl.innerHTML = `<a href="${returnItem.shipping_receipt_url}" target="_blank" rel="noopener noreferrer">View receipt</a>`;
+      const receiptUrl = returnItem.shipping_receipt_url;
+      const normalizedUrl = String(receiptUrl).split('?')[0].split('#')[0];
+      const lower = normalizedUrl.toLowerCase();
+      const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(lower);
+      const isVideo = /\.(mp4|webm|mov)$/i.test(lower);
+      
+      if (isImage) {
+        receiptLinkEl.innerHTML = `<a href="${receiptUrl}" target="_blank" rel="noopener noreferrer"><img src="${receiptUrl}" alt="Shipping receipt" style="max-width: 200px; max-height: 200px; border-radius: 6px; cursor: pointer;"></a>`;
+      } else if (isVideo) {
+        receiptLinkEl.innerHTML = `<video controls style="max-width: 200px; max-height: 200px; border-radius: 6px;"><source src="${receiptUrl}"></video>`;
+      } else {
+        receiptLinkEl.innerHTML = `<a href="${receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">View receipt</a>`;
+      }
     } else {
       receiptLinkEl.textContent = '-';
     }
+    
     if (shipmentNotesEl) {
       shipmentNotesEl.textContent = returnItem.shipment_notes || '-';
     }

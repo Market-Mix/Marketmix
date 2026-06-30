@@ -274,6 +274,27 @@ function renderRefundEvidence(refundRequest = {}) {
   return `<a href="${evidenceUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline">Open evidence in new tab</a>`;
 }
 
+function renderShippingReceipt(receiptUrl = '') {
+  if (!receiptUrl) {
+    return '-';
+  }
+
+  const normalizedUrl = String(receiptUrl).split('?')[0].split('#')[0];
+  const lower = normalizedUrl.toLowerCase();
+  const isImage = /\.(jpg|jpeg|png|webp|gif|svg|pdf)$/i.test(lower);
+  const isVideo = /\.(mp4|webm|mov|avi)$/i.test(lower);
+
+  if (isImage) {
+    return `<a href="${receiptUrl}" target="_blank" rel="noopener noreferrer"><img src="${receiptUrl}" alt="Shipping receipt" class="max-h-48 max-w-sm object-contain rounded cursor-pointer border border-gray-300 dark:border-gray-600"></a>`;
+  }
+
+  if (isVideo) {
+    return `<video controls class="max-w-sm rounded"><source src="${receiptUrl}"></video>`;
+  }
+
+  return `<a href="${receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline">View receipt</a>`;
+}
+
 function getRefundStatusBadgeMarkup(refundRequest = {}) {
   const displayState = getRefundDisplayState(refundRequest);
   const colorClasses = {
@@ -1412,7 +1433,7 @@ function viewReturn(id) {
                   <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Courier:</span> ${returnRequest.courierName || '-'}</p>
                   <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Tracking Number:</span> ${returnRequest.trackingNumber || '-'}</p>
                   <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Shipped On:</span> ${returnRequest.shippedOn || '-'}</p>
-                  <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Receipt:</span> ${returnRequest.receiptUrl ? `<a href="${returnRequest.receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">View receipt</a>` : '-'}</p>
+                  <p class="text-sm text-blue-800 dark:text-blue-300 mb-1"><span class="font-semibold">Receipt:</span> ${renderShippingReceipt(returnRequest.receiptUrl)}</p>
                   <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Notes:</span> ${returnRequest.shipmentNotes || '-'}</p>
                 </div>
               ` : ''}
