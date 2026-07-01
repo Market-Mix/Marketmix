@@ -567,7 +567,51 @@ function setupEventListeners(product) {
       if (v < (product.stock_quantity || 999)) el.value = v + 1;
     }
   });
+  setupShareButton(product);
 }
+
+function setupShareButton(product) {
+  const btn = document.getElementById('product-share-btn');
+  const menu = document.getElementById('share-menu');
+  if (!btn || !menu) return;
+
+  const url = window.location.href;
+  const text = `Check out ${product.name} on MarketMix!`;
+
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    // Use native share sheet on mobile if available
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.name, text, url });
+        return;
+      } catch (_) { /* user cancelled, fall through */ }
+    }
+    // Desktop fallback: show dropdown
+   const rect = btn.getBoundingClientRect();
+menu.style.position = 'fixed';
+menu.style.top = `${rect.bottom + 6}px`;
+menu.style.left = `${rect.left}px`;
+menu.style.display = menu.style.display === 'block' ? 'none' : 'block';  });
+
+  document.getElementById('share-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
+  document.getElementById('share-twitter').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  document.getElementById('share-facebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+
+  document.getElementById('share-instagram').addEventListener('click', () => copyLink(url, 'Link copied! Paste it in your Instagram story or bio.'));
+  document.getElementById('share-copy').addEventListener('click', () => copyLink(url, 'Link copied to clipboard!'));
+
+  document.addEventListener('click', (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) menu.style.display = 'none';
+  });
+}
+
+function copyLink(url, msg) {
+  navigator.clipboard.writeText(url).then(() => showToast(msg, 'success'))
+    .catch(() => showToast('Could not copy link', 'error'));
+  document.getElementById('share-menu').style.display = 'none';
+}
+
 
 // ── Add to Cart ───────────────────────────────────────────────
 // Sends X-Store-Id header + store_id in body to backend

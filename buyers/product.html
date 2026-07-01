@@ -123,6 +123,25 @@
             cursor:pointer;
             transition:all 0.2s ease
           ">❤️ Add to Wishlist</button>
+
+          <button id="product-share-btn" style="
+  width:100%; padding:12px; background:#fafafa; color:#334155;
+  border:2px solid #e2e8f0; border-radius:8px; font-size:14px;
+  font-weight:700; cursor:pointer; display:flex; align-items:center;
+  justify-content:center; gap:8px;
+">🔗 Share</button>
+
+<!-- Share menu (hidden by default) -->
+<div id="share-menu" style="
+  display:none; position:absolute; background:#fff; border:1px solid #e2e8f0;
+  border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:8px; z-index:100;
+">
+  <a id="share-whatsapp" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;text-decoration:none;color:#334155;font-size:14px"><i class="fab fa-whatsapp" style="color:#25D366"></i> WhatsApp</a>
+  <a id="share-twitter" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;text-decoration:none;color:#334155;font-size:14px"><i class="fab fa-twitter" style="color:#1DA1F2"></i> Twitter/X</a>
+  <a id="share-facebook" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;text-decoration:none;color:#334155;font-size:14px"><i class="fab fa-facebook" style="color:#1877F2"></i> Facebook</a>
+  <button id="share-instagram" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#334155;font-size:14px;cursor:pointer;width:100%;text-align:left"><i class="fab fa-instagram" style="color:#E4405F"></i> Instagram (copies link)</button>
+  <button id="share-copy" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#334155;font-size:14px;cursor:pointer;width:100%;text-align:left"><i class="fas fa-link"></i> Copy Link</button>
+</div>
           <button id="product-checkout" style="
             width:100%;
             padding:12px;
