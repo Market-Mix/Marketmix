@@ -668,7 +668,7 @@ function getToken() {
       showLoading(true);
 
       try {
-        const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+        const response = await fetch(`${window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api'}/notifications/${id}/read`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -703,7 +703,7 @@ function getToken() {
       showLoading(true);
 
       try {
-        const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+        const response = await fetch(`${window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api'}/notifications/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -736,7 +736,7 @@ function getToken() {
       showLoading(true);
 
       try {
-        const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+        const response = await fetch(`${window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api'}/notifications/read-all`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -828,11 +828,11 @@ setInterval(() => {
   <script>
     // Initialize notification system on page load
     document.addEventListener('DOMContentLoaded', async function() {
-      const buyerId = getBuyerId();
+      const buyerId = window.getBuyerId?.();
       if (buyerId) {
-        await NotificationManager.init(buyerId);
+        await window.NotificationManager?.init(buyerId);
         // Mark all notifications as read when opening notifications page
-        await NotificationManager.markAllAsRead(buyerId);
+        await window.NotificationManager?.markAllAsRead?.(buyerId);
       }
     });
   </script>

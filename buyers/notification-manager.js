@@ -2,6 +2,7 @@
 // This module provides a small notification manager for frontend pages.
 
 const API_BASE_URL = window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
+window.API_BASE_URL = API_BASE_URL;
 
 function getToken() {
   return sessionStorage.getItem('token')
@@ -141,6 +142,16 @@ async function markTypeAsRead(type) {
   return true;
 }
 
+async function markAllAsRead() {
+  const result = await apiCall('/notifications/read-all', { method: 'PUT' });
+  if (!result.ok) {
+    console.warn('notification-manager: markAllAsRead failed', result.error);
+    return false;
+  }
+  await NotificationManager.syncUnreadCounts();
+  return true;
+}
+
 async function createNotification(buyerId, payload = {}) {
   if (!buyerId || !payload) return null;
   const body = {
@@ -221,6 +232,7 @@ const NotificationManager = {
   createWishlistNotification,
   markNotificationsReadByType: markTypeAsRead,
   markTypeAsRead,
+  markAllAsRead,
   getToken,
   getBuyerId,
   apiCall,

@@ -1,7 +1,9 @@
 // wishlist-util.js
 // Reusable utility for wishlist operations
 
-const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
+function getApiBaseUrl() {
+  return window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
+}
 
 /**
  * Add product to wishlist
@@ -16,7 +18,7 @@ async function addToWishlist(productId) {
     // Check if user is authenticated
     if (token) {
       // Authenticated user
-      response = await fetch(`${API_BASE_URL}/wishlist/add`, {
+      response = await fetch(`${getApiBaseUrl()}/wishlist/add`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -28,7 +30,7 @@ async function addToWishlist(productId) {
       // Guest user
       let guestWishlistId = localStorage.getItem('guest_wishlist_id');
       
-      response = await fetch(`${API_BASE_URL}/wishlist/guest/add`, {
+      response = await fetch(`${getApiBaseUrl()}/wishlist/guest/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
