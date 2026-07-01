@@ -83,6 +83,30 @@ function updateNotificationBadge(count) {
   }
 }
 
+async function initializeBadgeUpdates(buyerId) {
+  if (typeof NotificationManager?.syncUnreadCounts === 'function') {
+    await NotificationManager.syncUnreadCounts();
+  } else {
+    const { unreadCount = 0 } = await fetchUnreadNotificationData();
+    NotificationManager.cache.unreadCounts.totalUnread = Number(unreadCount) || 0;
+  }
+
+  const count = Number(NotificationManager?.cache?.unreadCounts?.totalUnread || 0);
+  updateNotificationBadge(count);
+
+  const accountBadge = document.getElementById('accountNotificationBadge') || document.querySelector('[data-account-badge]');
+  if (accountBadge) {
+    accountBadge.textContent = count > 99 ? '99+' : String(count);
+    accountBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
+
+  if (typeof window.updateAccountNotification === 'function') {
+    window.updateAccountNotification(count);
+  }
+
+  return count;
+}
+
 async function fetchUnreadNotificationData() {
   const result = await apiCall('/notifications?unread=true');
   if (!result.ok) {
@@ -199,7 +223,8 @@ const NotificationManager = {
   markTypeAsRead,
   getToken,
   getBuyerId,
-  apiCall
+  apiCall,
+  initializeBadgeUpdates
 };
 
 if (typeof window !== 'undefined') {
@@ -207,4 +232,5 @@ if (typeof window !== 'undefined') {
     window.getBuyerId = getBuyerId;
   }
   window.NotificationManager = NotificationManager;
+  window.initializeBadgeUpdates = initializeBadgeUpdates;
 }
