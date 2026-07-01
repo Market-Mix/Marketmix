@@ -578,22 +578,20 @@ function setupShareButton(product) {
   const url = window.location.href;
   const text = `Check out ${product.name} on MarketMix!`;
 
-  btn.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    // Use native share sheet on mobile if available
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: product.name, text, url });
-        return;
-      } catch (_) { /* user cancelled, fall through */ }
-    }
-    // Desktop fallback: show dropdown
-   const rect = btn.getBoundingClientRect();
-menu.style.position = 'fixed';
-menu.style.top = `${rect.bottom + 6}px`;
-menu.style.left = `${rect.left}px`;
-menu.style.display = menu.style.display === 'block' ? 'none' : 'block';  });
-
+ btn.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: product.name, text, url });
+      return;
+    } catch (_) { /* user cancelled, fall through */ }
+  }
+  const rect = btn.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.top = `${rect.bottom + 6}px`;
+  menu.style.left = `${rect.left}px`;
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+});
   document.getElementById('share-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
   document.getElementById('share-twitter').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
   document.getElementById('share-facebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
