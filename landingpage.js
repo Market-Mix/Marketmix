@@ -1,6 +1,35 @@
 // ===== CONFIG =====
 const API = 'https://marketmix-backend.onrender.com/api';
 
+
+function initSmartCTAs() {
+
+
+  async function smartRedirect(e, expectedRole, dashboardUrl) {
+    e.preventDefault();
+    const fallbackUrl = e.currentTarget.getAttribute('href');
+    try {
+      const res = await fetch(`${API}/auth/silent-login`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        const { data } = await res.json();
+        if (data.user.role === expectedRole) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          return window.location.href = dashboardUrl;
+        }
+      }
+    } catch (_) {}
+    window.location.href = fallbackUrl;
+  }
+
+  document.querySelectorAll('.js-shop-cta').forEach(btn =>
+    btn.addEventListener('click', e => smartRedirect(e, 'buyer', './buyers/buyers homepage.html'))
+  );
+  document.querySelectorAll('.js-sell-cta').forEach(btn =>
+    btn.addEventListener('click', e => smartRedirect(e, 'seller', './sellers/sellers layout.html'))
+  );
+}
+
 // ===== HELPERS =====
 function esc(t) {
   if (!t) return '';
@@ -1074,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
   injectStyles();
   initNavbar();
   initHero();
+  initSmartCTAs();
   initClickDelegation();
   initSearch();
   initNewsletter();
