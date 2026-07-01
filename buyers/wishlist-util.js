@@ -2,7 +2,7 @@
 // Reusable utility for wishlist operations
 
 function getApiBaseUrl() {
-  return window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
+  return window.API_BASE_URL || window.CONFIG?.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
 }
 
 /**

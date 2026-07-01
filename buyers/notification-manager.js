@@ -1,8 +1,11 @@
 ﻿// Shared buyer/seller notification helper
 // This module provides a small notification manager for frontend pages.
 
-const API_BASE_URL = window.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
-window.API_BASE_URL = API_BASE_URL;
+const DEFAULT_API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
+const RESOLVED_API_BASE_URL = String(
+  window.API_BASE_URL || window.CONFIG?.API_BASE_URL || DEFAULT_API_BASE_URL || ''
+).replace(/\/$/, '');
+window.API_BASE_URL = RESOLVED_API_BASE_URL;
 
 function getToken() {
   return sessionStorage.getItem('token')
@@ -31,7 +34,8 @@ function getBuyerId() {
 }
 
 async function apiCall(path, options = {}) {
-  const url = path.startsWith('http') ? path : `${API_BASE_URL}${path.startsWith('/') ? path : '/' + path}`;
+  const baseUrl = RESOLVED_API_BASE_URL || DEFAULT_API_BASE_URL;
+  const url = path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? path : '/' + path}`;
   const token = getToken();
   const init = {
     method: options.method || 'GET',
@@ -74,6 +78,7 @@ async function apiCall(path, options = {}) {
 }
 
 function updateNotificationBadge(count) {
+  if (typeof document === 'undefined') return;
   const badge = document.querySelector('[data-notification-badge]');
   if (!badge) return;
   if (count > 0) {
@@ -86,15 +91,18 @@ function updateNotificationBadge(count) {
 
 async function initializeBadgeUpdates(buyerId) {
   if (typeof NotificationManager?.syncUnreadCounts === 'function') {
-    await NotificationManager.syncUnreadCounts();
+    await NotificationManager.syncUnreadCounts(buyerId);
   } else {
     const { unreadCount = 0 } = await fetchUnreadNotificationData();
-    NotificationManager.cache.unreadCounts.totalUnread = Number(unreadCount) || 0;
+    if (NotificationManager?.cache?.unreadCounts) {
+      NotificationManager.cache.unreadCounts.totalUnread = Number(unreadCount) || 0;
+    }
   }
 
   const count = Number(NotificationManager?.cache?.unreadCounts?.totalUnread || 0);
   updateNotificationBadge(count);
 
+  if (typeof document === 'undefined') return count;
   const accountBadge = document.getElementById('accountNotificationBadge') || document.querySelector('[data-account-badge]');
   if (accountBadge) {
     accountBadge.textContent = count > 99 ? '99+' : String(count);
@@ -131,14 +139,19 @@ async function markNotificationRead(notificationId) {
   return result.ok;
 }
 
-async function markTypeAsRead(type) {
+async function markTypeAsRead(typeOrBuyerId, maybeType) {
+  const type = maybeType || typeOrBuyerId;
   if (!type) return false;
   const result = await apiCall('/notifications?unread=true');
   if (!result.ok || !Array.isArray(result.data?.notifications)) return false;
 
   const notifications = result.data.notifications.filter(n => String(n.type) === String(type) && !n.isRead);
   await Promise.all(notifications.map(n => markNotificationRead(n.id)));
-  await NotificationManager.syncUnreadCounts();
+  try {
+    await NotificationManager?.syncUnreadCounts?.();
+  } catch (error) {
+    console.warn('notification-manager: markTypeAsRead sync failed', error);
+  }
   return true;
 }
 
@@ -148,7 +161,11 @@ async function markAllAsRead() {
     console.warn('notification-manager: markAllAsRead failed', result.error);
     return false;
   }
-  await NotificationManager.syncUnreadCounts();
+  try {
+    await NotificationManager?.syncUnreadCounts?.();
+  } catch (error) {
+    console.warn('notification-manager: markAllAsRead sync failed', error);
+  }
   return true;
 }
 
@@ -196,25 +213,29 @@ const NotificationManager = {
     isSyncing: false
   },
 
-  async init() {
-    const buyerId = getBuyerId();
-    if (!buyerId) return false;
+  async init(buyerId = getBuyerId()) {
+    const resolvedBuyerId = buyerId || getBuyerId();
+    if (!resolvedBuyerId) return false;
 
     if (NotificationManager.cache.timerId) {
       clearInterval(NotificationManager.cache.timerId);
       NotificationManager.cache.timerId = null;
     }
 
-    await NotificationManager.syncUnreadCounts();
+    try {
+      await NotificationManager.syncUnreadCounts(resolvedBuyerId);
+    } catch (error) {
+      console.warn('notification-manager: init failed', error);
+    }
 
     NotificationManager.cache.timerId = setInterval(() => {
-      NotificationManager.syncUnreadCounts().catch(() => {});
+      NotificationManager.syncUnreadCounts(resolvedBuyerId).catch(() => {});
     }, NotificationManager.cache.fetchInterval);
 
     return true;
   },
 
-  async syncUnreadCounts() {
+  async syncUnreadCounts(buyerId = getBuyerId()) {
     if (NotificationManager.cache.isSyncing) return;
     NotificationManager.cache.isSyncing = true;
     try {
@@ -223,6 +244,11 @@ const NotificationManager = {
       NotificationManager.cache.unreadCounts.totalUnread = normalized;
       NotificationManager.cache.unreadCounts.account = normalized;
       updateNotificationBadge(normalized);
+    } catch (error) {
+      console.warn('notification-manager: syncUnreadCounts failed', error);
+      NotificationManager.cache.unreadCounts.totalUnread = Number(NotificationManager.cache.unreadCounts.totalUnread || 0);
+      NotificationManager.cache.unreadCounts.account = Number(NotificationManager.cache.unreadCounts.account || 0);
+      updateNotificationBadge(Number(NotificationManager.cache.unreadCounts.totalUnread || 0));
     } finally {
       NotificationManager.cache.isSyncing = false;
     }

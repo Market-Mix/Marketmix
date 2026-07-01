@@ -33,7 +33,7 @@ function showNotification(message, type = 'success') {
 // Handle form submission with notification and redirect
 // Get API base
 function apiBase() {
-  return 'https://marketmix-backend.onrender.com/api';
+  return window.API_BASE_URL || window.CONFIG?.API_BASE_URL || 'https://marketmix-backend.onrender.com/api';
 }
 
 // Merge localStorage cart with server cart after login
