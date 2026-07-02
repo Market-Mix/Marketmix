@@ -85,8 +85,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Refresh when seller notification events are emitted
-  window.addEventListener('sellerNotificationsUpdated', async () => {
+  window.addEventListener('sellerNotificationsUpdated', async (evt) => {
     console.log('Seller notification refresh triggered');
+    // Try to read count from event detail or from persisted storage
+    // so badge updates are immediate while we reload dashboard data
+    try {
+      const last = (evt && evt.detail && typeof evt.detail.count === 'number') ? evt.detail.count : null;
+      const stored = Number(localStorage.getItem('sellerReturnsActiveCount') || 0) || 0;
+      const count = last !== null ? last : stored;
+      updateSellerBadges(count);
+    } catch (e) {
+      console.warn('Could not read seller notification event detail:', e);
+    }
     await loadDashboardData();
   });
 
@@ -142,14 +152,46 @@ async function updateNavbarNotificationBadge() {
     const json = await res.json();
     // support both shapes: { status,data:{unreadCount } } and { unreadCount }
     const unread = json?.data?.unreadCount ?? json?.unreadCount ?? 0;
+    // Also merge with seller returns active count (some alerts are refund chat based)
+    const sellerReturns = Number(localStorage.getItem('sellerReturnsActiveCount') || 0) || 0;
+    const displayCount = Math.max(unread || 0, sellerReturns || 0);
     document.querySelectorAll('.notification-badge').forEach(b => {
       try {
-        b.innerText = unread;
-        b.style.display = unread > 0 ? 'inline-block' : 'none';
+        b.innerText = displayCount;
+        b.style.display = displayCount > 0 ? 'inline-block' : 'none';
       } catch (e) { /* ignore */ }
     });
   } catch (e) {
     console.error('Failed to update notification badge:', e);
+  }
+}
+
+// Update seller-specific badges (refunds + navbar). count is open refunds count
+function updateSellerBadges(count = 0) {
+  try {
+    // update any returns/overview card that expects a badge
+    // find returns link badge in overview cards (sellers layout.html uses an overview card link to sellers returns)
+    const returnsOverview = Array.from(document.querySelectorAll('.overview-card')).find(c => {
+      const p = c.querySelector('p');
+      return p && p.textContent && p.textContent.trim().toLowerCase() === 'returns';
+    });
+    if (returnsOverview) {
+      const h3 = returnsOverview.querySelector('h3');
+      if (h3) h3.textContent = count > 0 ? String(count) : '—';
+    }
+
+    // update any dedicated returns page icon badge
+    document.querySelectorAll('.notification-badge').forEach(b => {
+      try {
+        // preserve numeric badges from updateNavbarNotificationBadge which may call this
+        const current = Number(b.innerText) || 0;
+        const merged = Math.max(current, count || 0);
+        b.innerText = merged > 0 ? String(merged) : '';
+        b.style.display = merged > 0 ? 'inline-block' : 'none';
+      } catch (e) { /* ignore */ }
+    });
+  } catch (e) {
+    console.warn('Failed to update seller badges:', e);
   }
 }
 

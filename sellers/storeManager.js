@@ -190,14 +190,16 @@ if (typeof window.updateNavbarNotificationBadge === 'undefined') {
         signal: AbortSignal.timeout(5000)
       });
       if (!res.ok) return;
-      const json = await res.json().catch(() => ({}));
-      const unread = json?.data?.unreadCount ?? json?.unreadCount ?? 0;
-      document.querySelectorAll('.notification-badge').forEach(b => {
-        try {
-          b.innerText = unread;
-          b.style.display = unread > 0 ? 'inline-block' : 'none';
-        } catch (e) { /* ignore */ }
-      });
+        const json = await res.json().catch(() => ({}));
+        const unread = Number(json?.data?.unreadCount ?? json?.unreadCount ?? 0) || 0;
+        const sellerReturns = Number(localStorage.getItem('sellerReturnsActiveCount') || 0) || 0;
+        const display = Math.max(unread, sellerReturns);
+        document.querySelectorAll('.notification-badge').forEach(b => {
+          try {
+            b.innerText = display > 0 ? String(display) : '';
+            b.style.display = display > 0 ? 'inline-block' : 'none';
+          } catch (e) { /* ignore */ }
+        });
     } catch (e) {
       console.error('Failed to update notification badge:', e);
     }

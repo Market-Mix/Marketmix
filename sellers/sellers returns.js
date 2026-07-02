@@ -213,6 +213,7 @@ function dispatchSellerNotificationsUpdated() {
   }
 
   try {
+    // include detail to allow listeners to update badges immediately
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated', { detail: { count } }));
   } catch (e) {
     console.warn('Could not dispatch sellerNotificationsUpdated event:', e);
