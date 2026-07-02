@@ -89,6 +89,35 @@ function updateNotificationBadge(count) {
   }
 }
 
+function updateWishlistBadge(count) {
+  if (typeof document === 'undefined') return;
+  const badge = document.querySelector('[data-wishlist-badge]');
+  if (!badge) return;
+  const normalized = Number(count) || 0;
+  badge.textContent = normalized > 0 ? String(normalized) : '';
+  badge.style.display = normalized > 0 ? 'inline-block' : 'none';
+}
+
+function updateTrackingBadge(count) {
+  if (typeof document === 'undefined') return;
+  const badge = document.querySelector('[data-tracking-badge]');
+  if (!badge) return;
+  const normalized = Number(count) || 0;
+  badge.textContent = normalized > 0 ? String(normalized) : '';
+  badge.style.display = normalized > 0 ? 'inline-block' : 'none';
+}
+
+function updateRefundBadge(count) {
+  if (typeof document === 'undefined') return;
+  // Some pages opt-out of NotificationManager refund updates
+  if (window.skipNotificationRefundBadge) return;
+  const badge = document.querySelector('[data-refund-badge]');
+  if (!badge) return;
+  const normalized = Number(count) || 0;
+  badge.textContent = normalized > 0 ? String(normalized) : '';
+  badge.style.display = normalized > 0 ? 'inline-block' : 'none';
+}
+
 async function initializeBadgeUpdates(buyerId) {
   if (typeof NotificationManager?.syncUnreadCounts === 'function') {
     await NotificationManager.syncUnreadCounts(buyerId);
@@ -244,8 +273,26 @@ const NotificationManager = {
       const { unreadCount } = await fetchUnreadNotificationData();
       const normalized = Number(unreadCount) || 0;
       NotificationManager.cache.unreadCounts.totalUnread = normalized;
-      NotificationManager.cache.unreadCounts.account = normalized;
-      updateNotificationBadge(normalized);
+          // Compute per-type unread counts from returned notifications when available
+          NotificationManager.cache.unreadCounts.account = normalized;
+          // Default all known buckets to zero before computing
+          const buckets = ['wishlist', 'refund', 'order', 'account'];
+          for (const b of buckets) NotificationManager.cache.unreadCounts[b] = 0;
+
+          // If the fetch returned notification objects compute counts per type
+          const payload = Array.isArray(result.data?.data?.notifications) ? result.data.data.notifications : (Array.isArray(result.data) ? result.data.notifications : []);
+          if (Array.isArray(payload)) {
+            for (const n of payload) {
+              const t = String(n.type || 'account');
+              NotificationManager.cache.unreadCounts[t] = (NotificationManager.cache.unreadCounts[t] || 0) + (n.isRead ? 0 : 1);
+            }
+          }
+
+          updateNotificationBadge(normalized);
+          // Update specific badges if present
+          try { updateWishlistBadge(NotificationManager.cache.unreadCounts.wishlist || 0); } catch(e){}
+          try { updateTrackingBadge(NotificationManager.cache.unreadCounts.order || 0); } catch(e){}
+          try { updateRefundBadge(NotificationManager.cache.unreadCounts.refund || 0); } catch(e){}
     } catch (error) {
       console.warn('notification-manager: syncUnreadCounts failed', error);
       NotificationManager.cache.unreadCounts.totalUnread = Number(NotificationManager.cache.unreadCounts.totalUnread || 0);
@@ -273,4 +320,7 @@ if (typeof window !== 'undefined') {
   }
   window.NotificationManager = NotificationManager;
   window.initializeBadgeUpdates = initializeBadgeUpdates;
+  window.updateWishlistBadge = updateWishlistBadge;
+  window.updateTrackingBadge = updateTrackingBadge;
+  window.updateRefundBadge = updateRefundBadge;
 }
