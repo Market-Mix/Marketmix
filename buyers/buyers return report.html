@@ -2187,13 +2187,23 @@
 
       const result = await response.json().catch(() => ({}));
       const orders = result.data?.orders || result.orders || [];
-      console.log('Fetched order data:', orders);
-      console.log('seller_id from fetched orders:', orders.map(order => order.seller_id));
+      // Normalize orders: some backend responses include `seller_groups` with per-seller `items` arrays.
+      // Convert that shape into a top-level `items` array expected by the refund page logic.
+      const normalizedOrders = (orders || []).map(order => {
+        if (!order) return order;
+        if (Array.isArray(order.items) && order.items.length) return order;
+        const groups = order.seller_groups || [];
+        const items = groups.flatMap(g => Array.isArray(g.items) ? g.items.map(it => ({ ...it, seller_id: g.sellerId || g.seller_id })) : []);
+        return { ...order, items };
+      });
+
+      console.log('Fetched order data:', normalizedOrders);
+      console.log('seller_id from fetched orders:', normalizedOrders.map(order => order.seller_id));
       if (!response.ok) {
         throw new Error(result.message || 'Failed to fetch buyer orders.');
       }
 
-      return orders;
+      return normalizedOrders;
     } catch (err) {
       console.error('Failed to load buyer orders for returns:', err);
       return [];
