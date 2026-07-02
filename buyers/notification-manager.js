@@ -152,8 +152,11 @@ async function fetchUnreadNotificationData() {
     return { unreadCount: 0, notifications: [] };
   }
 
-  // Backend responses are wrapped as: { status, message, data: { notifications, unreadCount } }
-  const payload = (result.data && result.data.data) ? result.data.data : (result.data || {});
+  // Backend responses may be wrapped as { status, message, data: {...} }
+  const responseBody = result.data || {};
+  const payload = (responseBody.data && typeof responseBody.data === 'object')
+    ? responseBody.data
+    : responseBody;
 
   return {
     unreadCount: Number(payload.unreadCount || 0),
@@ -170,10 +173,14 @@ async function markNotificationRead(notificationId) {
 async function markTypeAsRead(typeOrBuyerId, maybeType) {
   const type = maybeType || typeOrBuyerId;
   if (!type) return false;
+
   const result = await apiCall('/notifications?unread=true');
   if (!result.ok) return false;
 
-  const payload = (result.data && result.data.data) ? result.data.data : (result.data || {});
+  const responseBody = result.data || {};
+  const payload = (responseBody.data && typeof responseBody.data === 'object')
+    ? responseBody.data
+    : responseBody;
   if (!Array.isArray(payload.notifications)) return false;
 
   const notifications = payload.notifications.filter(n => String(n.type) === String(type) && !n.isRead);
@@ -270,29 +277,27 @@ const NotificationManager = {
     if (NotificationManager.cache.isSyncing) return;
     NotificationManager.cache.isSyncing = true;
     try {
-      const { unreadCount } = await fetchUnreadNotificationData();
+      const { unreadCount, notifications } = await fetchUnreadNotificationData();
       const normalized = Number(unreadCount) || 0;
       NotificationManager.cache.unreadCounts.totalUnread = normalized;
-          // Compute per-type unread counts from returned notifications when available
-          NotificationManager.cache.unreadCounts.account = normalized;
-          // Default all known buckets to zero before computing
-          const buckets = ['wishlist', 'refund', 'order', 'account'];
-          for (const b of buckets) NotificationManager.cache.unreadCounts[b] = 0;
+      NotificationManager.cache.unreadCounts.account = normalized;
 
-          // If the fetch returned notification objects compute counts per type
-          const payload = Array.isArray(result.data?.data?.notifications) ? result.data.data.notifications : (Array.isArray(result.data) ? result.data.notifications : []);
-          if (Array.isArray(payload)) {
-            for (const n of payload) {
-              const t = String(n.type || 'account');
-              NotificationManager.cache.unreadCounts[t] = (NotificationManager.cache.unreadCounts[t] || 0) + (n.isRead ? 0 : 1);
-            }
-          }
+      // Default all known buckets to zero before computing
+      const buckets = ['wishlist', 'refund', 'order', 'account'];
+      for (const b of buckets) NotificationManager.cache.unreadCounts[b] = 0;
 
-          updateNotificationBadge(normalized);
-          // Update specific badges if present
-          try { updateWishlistBadge(NotificationManager.cache.unreadCounts.wishlist || 0); } catch(e){}
-          try { updateTrackingBadge(NotificationManager.cache.unreadCounts.order || 0); } catch(e){}
-          try { updateRefundBadge(NotificationManager.cache.unreadCounts.refund || 0); } catch(e){}
+      if (Array.isArray(notifications)) {
+        for (const n of notifications) {
+          if (n.isRead) continue;
+          const t = String(n.type || 'account');
+          NotificationManager.cache.unreadCounts[t] = (NotificationManager.cache.unreadCounts[t] || 0) + 1;
+        }
+      }
+
+      updateNotificationBadge(normalized);
+      try { updateWishlistBadge(NotificationManager.cache.unreadCounts.wishlist || 0); } catch (e) {}
+      try { updateTrackingBadge(NotificationManager.cache.unreadCounts.order || 0); } catch (e) {}
+      try { updateRefundBadge(NotificationManager.cache.unreadCounts.refund || 0); } catch (e) {}
     } catch (error) {
       console.warn('notification-manager: syncUnreadCounts failed', error);
       NotificationManager.cache.unreadCounts.totalUnread = Number(NotificationManager.cache.unreadCounts.totalUnread || 0);

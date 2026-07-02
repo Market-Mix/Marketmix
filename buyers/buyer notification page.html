@@ -488,21 +488,22 @@ function getToken() {
         window.location.replace('login for buyers.html');
         return;
       }
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch notifications');
+      const errorData = await response.json().catch(() => null);
+      throw new Error((errorData && (errorData.message || errorData.error)) || 'Failed to fetch notifications');
     }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
+    const payload = (data && typeof data === 'object')
+      ? (data.data && typeof data.data === 'object' ? data.data : data)
+      : {};
 
-    // Changed from data.success to data.status === 'success'
-    if (data.status === 'success') {
-      notifications = data.data.notifications || [];
-      const unreadCount = data.data.unreadCount || 0;
-      
+    if (data.status === 'success' || data.status === 'ok') {
+      notifications = Array.isArray(payload.notifications) ? payload.notifications : [];
+      const unreadCount = Number(payload.unreadCount || 0);
       renderNotifications(notifications);
       updateUnreadBadge(unreadCount);
     } else {
-      throw new Error(data.message || 'Failed to load notifications');
+      throw new Error((data && data.message) || 'Failed to load notifications');
     }
 
   } catch (error) {
