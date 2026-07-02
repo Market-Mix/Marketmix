@@ -1708,7 +1708,7 @@
         order_id: caseData.order_id,
         order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || caseData.id || null,
         product_id: caseData.product_id || caseData.productId || caseData.item_id || null,
-        product_name: caseData.product_name || caseData.productName || caseData.name || 'Purchased item',
+        product_name: resolveProductName(caseData),
         complaint_text: caseData.complaint_text,
         evidence_url: caseData.evidence_url || null,
         status: 'pending'
@@ -2034,6 +2034,31 @@
     return 'Store';
   }
 
+  // Resolve product/display name from multiple possible shapes
+  function resolveProductName(source = {}, fallback = 'Purchased item') {
+    if (!source) return fallback;
+    if (source.product_name) return source.product_name;
+    if (source.productName) return source.productName;
+    if (source.name) return source.name;
+    if (source.title) return source.title;
+    if (source.product_title) return source.product_title;
+    if (source.display_name) return source.display_name;
+    if (source.product && typeof source.product === 'object') {
+      return source.product.name || source.product.title || fallback;
+    }
+    // Try parsing product_snapshot if present
+    let ps = source.product_snapshot;
+    if (ps && typeof ps === 'string') {
+      try {
+        ps = JSON.parse(ps);
+      } catch (e) { ps = null; }
+    }
+    if (ps && typeof ps === 'object') {
+      return ps.name || ps.title || ps.product_name || fallback;
+    }
+    return fallback;
+  }
+
   function getRefundDisplayState(refundCase = {}) {
     const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
     const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
@@ -2123,7 +2148,7 @@
       order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || null,
       id: caseData.id,
       order_id: caseData.order_id,
-      product_name: caseData.product_name || orderData.product_name || 'Purchased item',
+      product_name: resolveProductName(caseData) || resolveProductName(orderData),
       total_amount: caseData.total_amount || caseData.amount || caseData.refund_amount || orderData.total_amount || 0,
       status: caseData.resolution_status || caseData.status || 'pending',
       displayStatus: statusMeta.label,
@@ -2262,7 +2287,7 @@
         order_id: order.id,
         order_item_id: item.id,
         product_id: item.product_id || item.id,
-        product_name: item.product_name || item.name || 'Purchased item',
+        product_name: resolveProductName(item),
         total_amount: (item.price || 0) * (item.quantity || 1),
         status: 'purchased',
         reason: '',
@@ -2310,7 +2335,7 @@
             order_id: order.id,
             order_item_id: item.id,
             product_id: item.product_id || item.id,
-            product_name: item.product_name || item.name || 'Purchased item',
+            product_name: resolveProductName(item),
             total_amount: (item.price || 0) * (item.quantity || 1),
             status: order.status || 'purchased',
             reason: '',
@@ -3453,7 +3478,7 @@
       const sellerId = resolveRefundSellerId(currentChatData);
       const orderItemId = currentChatData.order_item_id || currentChatData.order_item || currentChatData.item_id || currentChatData.id || null;
       const productId = currentChatData.product_id || currentChatData.productId || currentChatData.item_id || null;
-      const productName = currentChatData.product_name || currentChatData.productName || currentChatData.name || 'Purchased item';
+      const productName = resolveProductName(currentChatData);
       const buyerName = currentChatData.buyer_name || currentChatData.buyerName || getCurrentBuyerName();
       const totalAmount = Number(currentChatData.total_amount ?? currentChatData.amount ?? currentChatData.total ?? 0);
 
