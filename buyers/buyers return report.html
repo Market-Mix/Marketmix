@@ -2191,10 +2191,31 @@
       // Convert that shape into a top-level `items` array expected by the refund page logic.
       const normalizedOrders = (orders || []).map(order => {
         if (!order) return order;
-        if (Array.isArray(order.items) && order.items.length) return order;
+
         const groups = order.seller_groups || [];
-        const items = groups.flatMap(g => Array.isArray(g.items) ? g.items.map(it => ({ ...it, seller_id: g.sellerId || g.seller_id })) : []);
-        return { ...order, items };
+
+        // Build an inferred seller/store name from common spots
+        const inferredSellerName = order.store_name || order.seller_name || order.shop_name || (groups[0] && (groups[0].seller_name || groups[0].shop_name || groups[0].name)) || null;
+
+        // Normalize items: if order already has items keep them but ensure seller fields are present
+        const items = (Array.isArray(order.items) && order.items.length)
+          ? order.items.map(it => ({
+              ...it,
+              seller_id: it.seller_id || it.sellerId || order.seller_id || (groups[0] && (groups[0].sellerId || groups[0].seller_id)) || null,
+              seller_name: it.seller_name || it.sellerName || inferredSellerName || null,
+              shop_name: it.shop_name || it.shopName || inferredSellerName || null
+            }))
+          : groups.flatMap(g => Array.isArray(g.items) ? g.items.map(it => ({
+              ...it,
+              seller_id: it.seller_id || it.sellerId || g.sellerId || g.seller_id || null,
+              seller_name: it.seller_name || it.sellerName || g.seller_name || g.sellerName || g.name || null,
+              shop_name: it.shop_name || it.shopName || g.shop_name || g.shopName || null
+            })) : []);
+
+        // Ensure order-level store/seller name fields exist for resolveStoreName()
+        const orderStoreName = order.store_name || order.seller_name || order.shop_name || inferredSellerName;
+
+        return { ...order, items, store_name: orderStoreName, seller_name: order.seller_name || orderStoreName };
       });
 
       console.log('Fetched order data:', normalizedOrders);
