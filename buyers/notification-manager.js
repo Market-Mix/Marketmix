@@ -123,14 +123,13 @@ async function fetchUnreadNotificationData() {
     return { unreadCount: 0, notifications: [] };
   }
 
-  if (result.data && typeof result.data.unreadCount !== 'undefined') {
-    return {
-      unreadCount: Number(result.data.unreadCount) || 0,
-      notifications: Array.isArray(result.data.notifications) ? result.data.notifications : []
-    };
-  }
+  // Backend responses are wrapped as: { status, message, data: { notifications, unreadCount } }
+  const payload = (result.data && result.data.data) ? result.data.data : (result.data || {});
 
-  return { unreadCount: 0, notifications: Array.isArray(result.data?.notifications) ? result.data.notifications : [] };
+  return {
+    unreadCount: Number(payload.unreadCount || 0),
+    notifications: Array.isArray(payload.notifications) ? payload.notifications : []
+  };
 }
 
 async function markNotificationRead(notificationId) {
@@ -143,9 +142,12 @@ async function markTypeAsRead(typeOrBuyerId, maybeType) {
   const type = maybeType || typeOrBuyerId;
   if (!type) return false;
   const result = await apiCall('/notifications?unread=true');
-  if (!result.ok || !Array.isArray(result.data?.notifications)) return false;
+  if (!result.ok) return false;
 
-  const notifications = result.data.notifications.filter(n => String(n.type) === String(type) && !n.isRead);
+  const payload = (result.data && result.data.data) ? result.data.data : (result.data || {});
+  if (!Array.isArray(payload.notifications)) return false;
+
+  const notifications = payload.notifications.filter(n => String(n.type) === String(type) && !n.isRead);
   await Promise.all(notifications.map(n => markNotificationRead(n.id)));
   try {
     await NotificationManager?.syncUnreadCounts?.();
