@@ -134,6 +134,11 @@ function getToken() {
           window.skipNotificationCartBadge = true;
           window.skipNotificationRefundBadge = true;
           await NotificationManager.init(buyerId);
+          await NotificationManager.syncUnreadCounts(buyerId);
+          if (NotificationManager.cache?.unreadCounts) {
+            updateWishlistBadge(NotificationManager.cache.unreadCounts.wishlist || 0);
+            updateTrackingBadge(NotificationManager.cache.unreadCounts.order || 0);
+          }
       }
     });
 
