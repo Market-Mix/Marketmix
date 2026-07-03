@@ -470,18 +470,23 @@ function validateReturnAddressForm() {
     }
     return false;
   }
-  // Make state and postal code optional to allow flexible addresses
-  // (address line 2 is already optional). Only enforce if provided.
-  if (data.return_state && typeof data.return_state !== 'string') {
+  if (!data.return_address2) {
     if (errorEl) {
-      errorEl.textContent = 'Return state must be a valid text value.';
+      errorEl.textContent = 'Please enter address line 2.';
       errorEl.style.display = 'block';
     }
     return false;
   }
-  if (data.return_postal_code && typeof data.return_postal_code !== 'string') {
+  if (!data.return_state) {
     if (errorEl) {
-      errorEl.textContent = 'Return postal code must be a valid text value.';
+      errorEl.textContent = 'Please enter the return state.';
+      errorEl.style.display = 'block';
+    }
+    return false;
+  }
+  if (!data.return_postal_code) {
+    if (errorEl) {
+      errorEl.textContent = 'Please enter the return postal code.';
       errorEl.style.display = 'block';
     }
     return false;
@@ -748,11 +753,19 @@ function renderTable(data = returnsData) {
         `;
       }
     } else {
-      chatBtnHtml = `
-        <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
-          <i class="fas fa-comments"></i> ${item.status}
-        </button>
-      `;
+      if (item.statusKey === 'awaiting_refund_release') {
+        chatBtnHtml = `
+          <button class="btn-chat" style="background: #f59e0b; color: #fff; cursor: not-allowed; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;" disabled>
+            Awaiting Refund Release
+          </button>
+        `;
+      } else {
+        chatBtnHtml = `
+          <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
+            <i class="fas fa-comments"></i> ${item.status}
+          </button>
+        `;
+      }
     }
 
     // Show workflow buttons based on resolution_status
@@ -1123,6 +1136,10 @@ function confirmDialogAction() {
 
   if (action === 'sellerReturnDecision' && decision === 'return_product' && step === 'address') {
     if (!validateReturnAddressForm()) return;
+    closeMarketmixConfirmDialog();
+    submitSellerReturnDecision(refundId, decision);
+    populateReturnAddressForm(7);
+    return;
   }
 
   closeMarketmixConfirmDialog();
@@ -1133,6 +1150,8 @@ function confirmDialogAction() {
     escalateRefund(refundId, 'seller');
   } else if (action === 'confirmReturnReceived') {
     confirmReturnReceived(refundId);
+  } else if (action === 'sellerReturnDecision') {
+    submitSellerReturnDecision(refundId, decision);
   }
 
   populateReturnAddressForm(7);
