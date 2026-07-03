@@ -2063,6 +2063,10 @@
     const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
     const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
 
+    if (resolution === 'awaiting_refund_release') {
+      return { label: 'Awaiting Refund Release', className: 'awaiting_refund_release', statusKey: 'awaiting_refund_release', isRejected: false };
+    }
+
     if (decision === 'approved' || resolution === 'waiting_seller_return_decision') {
       return { label: 'Approved', className: 'approved', statusKey: 'approved', isRejected: false };
     }
@@ -2392,6 +2396,7 @@
       'under_review',
       'active',
       'waiting_buyer_confirmation',
+      'awaiting_refund_release',
       'in_progress',
       'in_review'
     ]);
@@ -2735,6 +2740,7 @@
     const statusText = {
       pending: '⏳ Pending Resolution',
       waiting_buyer_confirmation: '⏸️ Awaiting Your Decision',
+      awaiting_refund_release: '⏳ Awaiting Refund Release',
       resolved: '✓ Case Resolved',
       escalated: '⛔ Escalated To MarketMix'
     }[status] || 'Unknown Status';
@@ -2811,7 +2817,7 @@
     
     // Keep ship button independent of other actions
     if (shipBtn) {
-      if (['resolved', 'escalated', 'denied'].includes(caseInfo.resolution_status)) {
+      if (['resolved', 'escalated', 'denied', 'awaiting_refund_release'].includes(caseInfo.resolution_status)) {
         shipBtn.style.display = 'none';
       } else {
         shipBtn.style.display = '';
@@ -3736,7 +3742,7 @@
 
   function applyChatLockState(caseInfo) {
     const detailStatus = getRefundDisplayState(caseInfo);
-    const readOnly = ['approved', 'denied', 'resolved', 'escalated'].includes(detailStatus.statusKey);
+    const readOnly = ['approved', 'denied', 'resolved', 'escalated', 'awaiting_refund_release'].includes(detailStatus.statusKey);
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendChatBtn');
     const fileInput = document.getElementById('chatFileInput');
@@ -3748,7 +3754,7 @@
 
     if (infoText) {
       infoText.textContent = readOnly
-        ? 'Chat is disabled for finalized refund cases.'
+        ? 'Chat is disabled for finalized refund cases or when the return has been confirmed and the refund is awaiting release.'
         : 'All conversations are monitored by MarketMix';
     }
 

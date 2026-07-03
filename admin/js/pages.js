@@ -97,6 +97,10 @@ function getRefundDisplayState(refundCase = {}) {
     return { label: 'Awaiting Buyer Confirmation', className: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation' };
   }
 
+  if (resolution === 'awaiting_refund_release') {
+    return { label: 'Awaiting Refund Release', className: 'awaiting_refund_release', statusKey: 'awaiting_refund_release' };
+  }
+
   if (resolution === 'return_in_transit') {
     return { label: 'Return In Transit', className: 'return_in_transit', statusKey: 'return_in_transit' };
   }

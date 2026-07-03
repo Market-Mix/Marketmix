@@ -43,6 +43,10 @@ function getRefundStatusMeta(refundCase = {}) {
     return { label: 'Refund Processing', statusClass: 'refund_processing', statusKey: 'refund_processing', isRejected: false };
   }
 
+  if (resolution === 'awaiting_refund_release') {
+    return { label: 'Awaiting Refund Release', statusClass: 'awaiting_refund_release', statusKey: 'awaiting_refund_release', isRejected: false };
+  }
+
   if (decision === 'approved' || resolution === 'waiting_seller_return_decision') {
     return { label: 'Approved', statusClass: 'approved', statusKey: 'approved', isRejected: false };
   }
@@ -629,6 +633,7 @@ function updateChatStatusDisplay(caseInfo) {
   const statusText = {
     pending: '⏳ Pending Resolution',
     waiting_buyer_confirmation: '⏸️ Awaiting Buyer Decision',
+    awaiting_refund_release: '⏳ Awaiting Refund Release',
     resolved: '✓ Case Resolved',
     escalated: '⛔ Escalated To MarketMix'
   }[status] || 'Unknown Status';
@@ -775,6 +780,12 @@ function renderTable(data = returnsData) {
           <span style="padding: 0.5rem 1rem; background: #e3e6eb; border-radius: 4px; color: #333; font-size: 0.9rem;">⏸️ Awaiting buyer confirmation...</span>
         </div>
       `;
+    } else if (item.resolution_status === 'awaiting_refund_release') {
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="padding: 0.5rem 1rem; background: #fff3bf; border-radius: 4px; color: #664d03; font-size: 0.9rem; font-weight: 600;">Awaiting Refund Release</span>
+        </div>
+      `;
     } else if (item.resolution_status === 'resolved') {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -788,13 +799,25 @@ function renderTable(data = returnsData) {
         </div>
       `;
     } else if (item.seller_return_choice) {
-      const decisionLabel = item.seller_return_choice === 'return_product' ? 'Return Product' : 'Returnless Refund';
-      workflowBtnHtml = `
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; flex-direction: column; align-items: flex-start;">
-          <span style="padding: 0.5rem 1rem; background: #dbeafe; border-radius: 4px; color: #1d4ed8; font-size: 0.9rem; font-weight: 600;">Seller Decision Submitted</span>
-          <span style="padding: 0.5rem 1rem; background: #f3f4f6; border-radius: 4px; color: #374151; font-size: 0.9rem;">Decision: ${decisionLabel}</span>
-        </div>
-      `;
+      if (item.seller_return_choice === 'return_product' && !item.return_received && (item.shipping_status || item.buyer_shipped_at || item.courier_name || item.tracking_number || item.shipping_receipt_url)) {
+        workflowBtnHtml = `
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-action" style="background: #2563eb; color: white;" onclick="showConfirmReturnReceived('${item.id}')">Confirm Return Received</button>
+          </div>
+        `;
+      } else {
+        const decisionLabel = item.seller_return_choice === 'return_product' ? 'Return Product' : 'Returnless Refund';
+        const receivedText = item.seller_return_choice === 'return_product' && item.return_received
+          ? '<span style="padding: 0.5rem 1rem; background: #d4edda; border-radius: 4px; color: #155724; font-size: 0.9rem; font-weight: 600;">Return Received</span>'
+          : '';
+        workflowBtnHtml = `
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; flex-direction: column; align-items: flex-start;">
+            <span style="padding: 0.5rem 1rem; background: #dbeafe; border-radius: 4px; color: #1d4ed8; font-size: 0.9rem; font-weight: 600;">Seller Decision Submitted</span>
+            <span style="padding: 0.5rem 1rem; background: #f3f4f6; border-radius: 4px; color: #374151; font-size: 0.9rem;">Decision: ${decisionLabel}</span>
+            ${receivedText}
+          </div>
+        `;
+      }
     }
 
     row.innerHTML = `
@@ -1106,16 +1129,8 @@ function confirmDialogAction() {
     markRefundResolved(refundId);
   } else if (action === 'escalateSeller') {
     escalateRefund(refundId, 'seller');
-  } else if (action === 'sellerReturnDecision') {
-    submitSellerReturnDecision(refundId, decision);
-  }
-}
-
-function showSellerReturnAddressDialog(refundId, decision) {
-  const refund = returnsData.find(r => r.id === refundId);
-  if (!refund) return;
-
-  openMarketmixConfirmDialog({
+  } else if (action === 'confirmReturnReceived') {
+    confirmReturnReceived(refundId);
     title: 'Return Product — Confirm Return Address',
     message: 'Please confirm the return address and deadline for the buyer. These details will be saved as part of the return request.',
     confirmText: 'Submit Return Details',
@@ -1139,6 +1154,20 @@ function showConfirmMarkResolved(refundId) {
     confirmText: 'Mark Resolved',
     cancelText: 'Cancel',
     action: 'markResolved',
+    refundId
+  });
+}
+
+function showConfirmReturnReceived(refundId) {
+  const refund = returnsData.find(r => r.id === refundId);
+  if (!refund) return;
+
+  openMarketmixConfirmDialog({
+    title: 'Confirm Return Received',
+    message: `Confirm that the returned product has been received from the buyer?\n\nBuyer: ${refund.buyerName}\nProduct: ${refund.productName}`,
+    confirmText: 'Confirm Received',
+    cancelText: 'Cancel',
+    action: 'confirmReturnReceived',
     refundId
   });
 }
@@ -1243,6 +1272,35 @@ async function markRefundResolved(refundId) {
   } catch (err) {
     console.error('❌ Error marking refund resolved:', err);
     renderMarketmixNotification(err.message || 'Error marking refund resolved.', 'error');
+  }
+}
+
+async function confirmReturnReceived(refundId) {
+  try {
+    console.log('📤 Confirming return received for refund:', refundId);
+    const response = await fetch(`${API_BASE}/seller/refunds/${refundId}/confirm-return-received`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('❌ Failed to confirm return received:', result);
+      renderMarketmixNotification(result.message || 'Failed to confirm return received', 'error');
+      return;
+    }
+
+    console.log('✅ Return receipt confirmed');
+    renderMarketmixNotification('Return receipt confirmed. Refund is now awaiting release.', 'success');
+    await loadSellerRefundCases();
+    window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
+    renderTable();
+  } catch (err) {
+    console.error('❌ Error confirming return received:', err);
+    renderMarketmixNotification(err.message || 'Error confirming return received.', 'error');
   }
 }
 
@@ -1428,7 +1486,7 @@ async function loadAndRenderChat(caseId) {
 
 function applyChatLockState(caseInfo) {
   const status = String(caseInfo.resolution_status || '').toLowerCase();
-  const readOnly = ['resolved', 'escalated'].includes(status);
+  const readOnly = ['resolved', 'escalated', 'awaiting_refund_release'].includes(status);
   if (chatInput) chatInput.disabled = readOnly;
   if (sendChatBtn) sendChatBtn.disabled = readOnly;
   if (chatFileInput) chatFileInput.disabled = readOnly;
@@ -1436,11 +1494,13 @@ function applyChatLockState(caseInfo) {
   const statusEl = document.getElementById('chatResolutionStatus');
   if (statusEl) {
     statusEl.className = 'resolution-status ' + status;
-    statusEl.textContent = readOnly ? (status === 'resolved' ? 'Case Resolved' : 'Escalated to MarketMix') : 'Pending Resolution';
+    statusEl.textContent = readOnly
+      ? (status === 'resolved' ? 'Case Resolved' : status === 'awaiting_refund_release' ? 'Awaiting Refund Release' : 'Escalated to MarketMix')
+      : 'Pending Resolution';
   }
 
   const infoEl = document.querySelector('.chat-info-text');
-  if (infoEl) infoEl.textContent = readOnly ? 'Chat is read-only for resolved or escalated cases.' : 'All conversations are monitored by MarketMix';
+  if (infoEl) infoEl.textContent = readOnly ? 'Chat is read-only once the return is confirmed and awaiting refund release.' : 'All conversations are monitored by MarketMix';
 }
 
 function renderChatMessages(messages) {
