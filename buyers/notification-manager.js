@@ -329,3 +329,13 @@ if (typeof window !== 'undefined') {
   window.updateTrackingBadge = updateTrackingBadge;
   window.updateRefundBadge = updateRefundBadge;
 }
+
+// Ensure refund and seller events trigger an immediate unread sync
+if (typeof window !== 'undefined') {
+  window.addEventListener('refundCasesUpdated', () => {
+    try { NotificationManager.syncUnreadCounts().catch(() => {}); } catch (e) {}
+  });
+  window.addEventListener('sellerNotificationsUpdated', () => {
+    try { NotificationManager.syncUnreadCounts().catch(() => {}); } catch (e) {}
+  });
+}
