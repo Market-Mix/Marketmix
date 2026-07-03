@@ -1131,15 +1131,7 @@ function confirmDialogAction() {
     escalateRefund(refundId, 'seller');
   } else if (action === 'confirmReturnReceived') {
     confirmReturnReceived(refundId);
-    title: 'Return Product — Confirm Return Address',
-    message: 'Please confirm the return address and deadline for the buyer. These details will be saved as part of the return request.',
-    confirmText: 'Submit Return Details',
-    cancelText: 'Cancel',
-    action: 'sellerReturnDecision',
-    refundId,
-    decision,
-    step: 'address'
-  });
+  }
 
   populateReturnAddressForm(7);
 }
