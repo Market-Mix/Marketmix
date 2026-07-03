@@ -82,6 +82,16 @@ function escapeHtml(text) {
 }
 
 function getRefundDisplayState(refundCase = {}) {
+  const buyerShipped = refundCase.buyer_shipped_at || refundCase.buyerShippedAt || refundCase.buyer_shipped || refundCase.buyerShipped || null;
+  const returnReceived = refundCase.return_received === true || refundCase.returnReceived === true || false;
+
+  if (returnReceived) {
+    return { label: 'Seller confirmed receipt\nWaiting for refund payment', className: 'seller_confirmed', statusKey: 'seller_confirmed' };
+  }
+
+  if (buyerShipped && !returnReceived) {
+    return { label: 'Buyer shipped\nWaiting for seller confirmation', className: 'buyer_shipped_waiting_seller', statusKey: 'buyer_shipped_waiting_seller' };
+  }
   const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
   const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
 
@@ -156,6 +166,15 @@ function normalizeRefundCase(refundCase) {
     receiptUrl: refundCase.shipping_receipt_url || '',
     shipmentNotes: refundCase.shipment_notes || refundCase.notes || '',
     rawStatus: refundCase.status || ''
+    ,
+    // Map seller return receipt fields
+    returnReceived: refundCase.return_received === true || refundCase.returnReceived === true || false,
+    returnReceivedAt: refundCase.return_received_at || refundCase.returnReceivedAt || null,
+    buyer_shipped_at: refundCase.buyer_shipped_at || refundCase.buyerShippedAt || null
+    ,
+    // Map seller return receipt fields
+    returnReceived: refundCase.return_received === true || refundCase.returnReceived === true || false,
+    returnReceivedAt: refundCase.return_received_at || refundCase.returnReceivedAt || null
   };
 }
 
@@ -306,6 +325,8 @@ function getRefundStatusBadgeMarkup(refundRequest = {}) {
     approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
     denied: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     waiting_buyer_confirmation: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    buyer_shipped_waiting_seller: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    seller_confirmed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
     resolved: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
     escalated: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
   };
@@ -1329,6 +1350,8 @@ function renderReturns() {
           <option value="approved">Approved</option>
           <option value="denied">Denied</option>
           <option value="waiting_buyer_confirmation">Awaiting Buyer Confirmation</option>
+          <option value="buyer_shipped_waiting_seller">Buyer shipped / Waiting for seller confirmation</option>
+          <option value="seller_confirmed">Seller confirmed receipt / Waiting for refund payment</option>
           <option value="resolved">Resolved</option>
           <option value="escalated">Escalated</option>
         </select>
@@ -1441,6 +1464,18 @@ function viewReturn(id) {
                   <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Notes:</span> ${returnRequest.shipmentNotes || '-'}</p>
                 </div>
               ` : ''}
+              
+              <!-- Seller Receipt Confirmation -->
+              <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-slate-800/60 p-3">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Seller Receipt Confirmation</p>
+                ${returnRequest.returnReceived ? `
+                  <p class="text-sm text-gray-700 dark:text-gray-300 mb-1">✔ Seller confirmed product received</p>
+                  <p class="text-sm text-gray-700 dark:text-gray-300">Confirmed At: ${returnRequest.returnReceivedAt ? new Date(returnRequest.returnReceivedAt).toLocaleString() : '—'}</p>
+                  <p class="text-sm text-gray-700 dark:text-gray-300 mt-2">MarketMix will now process the buyer's refund payment.</p>
+                ` : `
+                  <p class="text-sm text-gray-700 dark:text-gray-300">Waiting for seller to confirm receipt of the returned product.</p>
+                `}
+              </div>
             </div>
           </div>
         </div>
