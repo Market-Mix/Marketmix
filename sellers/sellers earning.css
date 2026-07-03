@@ -659,6 +659,44 @@ canvas {
   border-color: #60A5FA;
 }
 
+.bank-combo {
+  position: relative;
+}
+
+.bank-combo input {
+  width: 100%;
+}
+
+.bank-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  z-index: 1002;
+}
+
+.bank-list-item {
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+  color: #1f2937;
+}
+
+.bank-list-item:last-child {
+  border-bottom: none;
+}
+
+.bank-list-item:hover {
+  background: #eff6ff;
+}
+
 /* Toast */
 #toast {
   position: fixed;

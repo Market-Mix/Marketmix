@@ -49,20 +49,45 @@ function fmtNaira(n) {
 // sellers earning.js — new helpers
 let _resolvedBank = null;
 
-async function loadBankList() {
-  const select = document.getElementById('bank-select');
-  if (!select || select.dataset.loaded) return;
-  try {
-    const data = await apiFetch('/withdrawals/banks');
-    select.innerHTML = '<option value="">Select bank</option>' +
-      data.data.banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
-    select.dataset.loaded = 'true';
-  } catch (e) { select.innerHTML = '<option value="">Failed to load banks</option>'; }
+function toggleBankList(show) {
+  const list = document.getElementById('bank-list');
+  if (!list) return;
+  list.style.display = show ? 'block' : 'none';
 }
 
+function setBankValue(name, code) {
+  const search = document.getElementById('bank-search');
+  const hidden = document.getElementById('bank-code-value');
+  if (search) search.value = name;
+  if (hidden) hidden.value = code;
+  toggleBankList(false);
+}
+
+function filterBankList() {
+  const query = document.getElementById('bank-search')?.value.toLowerCase() || '';
+  document.querySelectorAll('#bank-list .bank-list-item').forEach(item => {
+    const text = item.textContent.toLowerCase();
+    item.style.display = text.includes(query) ? 'block' : 'none';
+  });
+}
+
+async function loadBankList() {
+  const list = document.getElementById('bank-list');
+  if (!list || list.dataset.loaded) return;
+  try {
+    const data = await apiFetch('/withdrawals/banks');
+    const banks = data.data.banks || [];
+    list.innerHTML = banks.map(b => `
+      <div class="bank-list-item" onclick="setBankValue('${b.name.replace(/'/g, "\\'")}', '${b.code}')">${b.name}</div>
+    `).join('');
+    list.dataset.loaded = 'true';
+  } catch (e) {
+    if (list) list.innerHTML = '<div class="bank-list-item">Failed to load banks</div>';
+  }
+}
 
 async function resolveBankAccount() {
-  const bank_code = document.getElementById('bank-select')?.value;
+  const bank_code = document.getElementById('bank-code-value')?.value;
   const account_number = document.getElementById('bank-acct-number')?.value;
   if (!bank_code || !account_number) return showToast('Select bank and enter account number', false);
 
@@ -73,7 +98,7 @@ async function resolveBankAccount() {
     _resolvedBank = {
       bank_account_name: data.data.account_name,
       bank_account_number: data.data.account_number,
-      bank_name: document.getElementById('bank-select').selectedOptions[0].textContent,
+      bank_name: document.getElementById('bank-search').value,
       bank_code
     };
     document.getElementById('resolved-account-name').textContent = `✓ ${_resolvedBank.bank_account_name}`;
@@ -81,6 +106,27 @@ async function resolveBankAccount() {
   } catch (e) {
     showToast(e.message || 'Could not verify account', false);
   }
+}
+
+async function requestPinReset() {
+  try {
+    await apiFetch('/withdrawals/forgot-pin', { method: 'POST' });
+    showToast('Reset code sent to your email');
+    const fields = document.getElementById('pin-reset-fields');
+    if (fields) fields.style.display = 'block';
+  } catch (e) { showToast(e.message || 'Could not send code', false); }
+}
+
+async function confirmPinReset() {
+  const otp = document.getElementById('pin-reset-otp')?.value;
+  const newPin = document.getElementById('pin-reset-newpin')?.value;
+  if (!otp || !newPin) return showToast('Enter code and new PIN', false);
+  try {
+    await apiFetch('/withdrawals/reset-pin', { method: 'POST', body: JSON.stringify({ otp, newPin }) });
+    showToast('PIN reset successfully!');
+    withdrawalState.withdrawal_pin_set = true;
+    showStep(withdrawalState.bank_account_number ? 'step-withdraw' : 'step-add-bank');
+  } catch (e) { showToast(e.message || 'Reset failed', false); }
 }
 
 async function submitBankAccount() {
@@ -557,10 +603,21 @@ async function openWithdrawModal() {
 }
 
 function showStep(stepId) {
-    ['step-set-pin','step-add-bank','step-withdraw'].forEach(id => {
+    ['step-set-pin','step-add-bank','step-withdraw','step-forgot-pin'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = id === stepId ? 'block' : 'none';
     });
+
+    const resetFields = document.getElementById('pin-reset-fields');
+    if (resetFields && stepId !== 'step-forgot-pin') {
+        resetFields.style.display = 'none';
+    }
+
+    if (stepId === 'step-add-bank') {
+        loadBankList();
+    } else {
+        toggleBankList(false);
+    }
 }
 
 async function submitSetPin() {
