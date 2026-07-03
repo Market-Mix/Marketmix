@@ -1246,7 +1246,7 @@ async function submitSellerReturnDecision(refundId, decision) {
 
     console.log('📤 Submitting seller return decision:', { refundId, decision, payload });
 
-    const response = await fetch(`${API_BASE}/seller/refunds/${refundId}/seller-return-decision`, {
+    const response = await fetch(`${API_BASE}/refunds/${refundId}/seller-return-decision`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
