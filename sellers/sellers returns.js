@@ -1123,6 +1123,10 @@ function confirmDialogAction() {
 
   if (action === 'sellerReturnDecision' && decision === 'return_product' && step === 'address') {
     if (!validateReturnAddressForm()) return;
+    closeMarketmixConfirmDialog();
+    submitSellerReturnDecision(refundId, decision);
+    populateReturnAddressForm(7);
+    return;
   }
 
   closeMarketmixConfirmDialog();
@@ -1133,6 +1137,8 @@ function confirmDialogAction() {
     escalateRefund(refundId, 'seller');
   } else if (action === 'confirmReturnReceived') {
     confirmReturnReceived(refundId);
+  } else if (action === 'sellerReturnDecision') {
+    submitSellerReturnDecision(refundId, decision);
   }
 
   populateReturnAddressForm(7);
