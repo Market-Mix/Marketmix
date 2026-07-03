@@ -4124,9 +4124,20 @@
     }
 
     const addressParts = [report.return_address_line1, report.return_address_line2, report.return_city, report.return_state, report.return_postal_code, report.return_country].filter(Boolean);
-    const deadline = Number(report.buyer_return_deadline || report.return_deadline || 0);
+    const rawDeadline = report.buyer_return_deadline || report.return_deadline || null;
+    let deadlineText = 'Not provided';
+    if (rawDeadline) {
+      let deadlineDate = typeof rawDeadline === 'string' ? new Date(rawDeadline) : new Date(Number(rawDeadline));
+      if (!Number.isNaN(deadlineDate.getTime())) {
+        const daysRemaining = Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        if (daysRemaining > 0) {
+          deadlineText = `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} (${formatDate(deadlineDate)})`;
+        } else {
+          deadlineText = `Expired on ${formatDate(deadlineDate)}`;
+        }
+      }
+    }
     const addressText = addressParts.join(', ') || 'Address will be shared by the seller once the refund is approved.';
-    const deadlineText = Number.isInteger(deadline) && deadline > 0 ? `${deadline} day${deadline === 1 ? '' : 's'}` : 'Not provided';
 
     instructionsEl.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:0.35rem;">
