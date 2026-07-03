@@ -753,6 +753,7 @@ function renderTable(data = returnsData) {
         `;
       }
     } else {
+<<<<<<< HEAD
       if (item.statusKey === 'awaiting_refund_release') {
         chatBtnHtml = `
           <button class="btn-chat" style="background: #f59e0b; color: #fff; cursor: not-allowed; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;" disabled>
@@ -766,6 +767,13 @@ function renderTable(data = returnsData) {
           </button>
         `;
       }
+=======
+      chatBtnHtml = `
+        <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
+          <i class="fas fa-comments"></i> ${item.status}
+        </button>
+      `;
+>>>>>>> parent of caf00f8 (Buyer refund detail with image receipt should show the image preview instead of just a link.)
     }
 
     // Show workflow buttons based on resolution_status
