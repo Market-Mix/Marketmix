@@ -230,6 +230,34 @@
         <label>Description</label>
         <textarea id="editDescription" rows="3"></textarea>
 
+        <label for="editDiscountPrice">Discount Price (₦) <small style="color:#aaa">(optional)</small></label>
+        <input type="text" id="editDiscountPrice" placeholder="0" inputmode="numeric">
+
+        <label for="editSku">SKU <small style="color:#aaa">(optional)</small></label>
+        <input type="text" id="editSku" placeholder="e.g. PROD-001">
+
+        <label for="editVendorLocation">Vendor Location</label>
+        <input type="text" id="editVendorLocation" placeholder="e.g. Lagos, Nigeria">
+
+        <div style="display:flex;gap:16px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="editDeliveryAvailable" style="width:auto"> Delivery Available
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="editReturnAccepted" style="width:auto"> Returns Accepted
+          </label>
+        </div>
+
+        <label>Product Video <small style="color:#aaa">(optional, max 50MB)</small></label>
+        <div class="image-upload-area" onclick="document.getElementById('editProductVideo').click()" style="background:#f0fdf4;border-color:#86efac">
+          <div id="videoPreviewEdit" style="margin-bottom:6px"></div>
+          <div class="upload-placeholder">
+            <i class="fas fa-video" style="font-size:1.5rem;color:#22c55e"></i>
+            <p style="color:#16a34a;font-size:0.85rem">Click to upload video (MP4, WebM)</p>
+          </div>
+          <input type="file" id="editProductVideo" accept="video/*" style="display:none">
+        </div>
+
         <label>Current Images</label>
         <div id="editCurrentImages" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
 

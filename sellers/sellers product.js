@@ -150,6 +150,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  document.getElementById('editProductVideo')?.addEventListener('change', function() {
+    const file = this.files[0];
+    const preview = document.getElementById('videoPreviewEdit');
+    if (file && preview) {
+      const url = URL.createObjectURL(file);
+      preview.innerHTML = `<video src="${url}" controls style="width:100%;max-height:120px;border-radius:6px"></video>`;
+    }
+  });
+
   const activeStore = await requireActiveStore();
   if (!activeStore) return;
 
@@ -555,6 +564,11 @@ async function openEditModal(id) {
   document.getElementById('editPrice').value        = parseFloat(product.price).toLocaleString('en-US');
   document.getElementById('editStock').value        = product.stock_quantity;
   document.getElementById('editDescription').value  = product.description || '';
+  document.getElementById('editDiscountPrice').value = product.discount_price || '';
+  document.getElementById('editSku').value               = product.sku || '';
+  document.getElementById('editVendorLocation').value    = product.vendor_location || '';
+  document.getElementById('editDeliveryAvailable').checked = product.delivery_available !== false;
+  document.getElementById('editReturnAccepted').checked    = product.return_accepted !== false;
 
   // Set category select — works even if categories loaded after products
   const editCat = document.getElementById('editCategory');
@@ -640,6 +654,21 @@ async function handleEditSubmit(e) {
 
     const editDynamic = collectDynamicFields('#editForm');
     if (editDynamic) formData.append('category_meta', JSON.stringify(editDynamic));
+
+    const editDiscount = document.getElementById('editDiscountPrice')?.value;
+    if (editDiscount) formData.append('discount_price', parsePriceInput(editDiscount));
+
+    const editSku = document.getElementById('editSku')?.value?.trim();
+    if (editSku) formData.append('sku', editSku);
+
+    const editVendorLoc = document.getElementById('editVendorLocation')?.value?.trim();
+    if (editVendorLoc) formData.append('vendor_location', editVendorLoc);
+
+    formData.append('delivery_available', document.getElementById('editDeliveryAvailable')?.checked ? 'true' : 'false');
+    formData.append('return_accepted', document.getElementById('editReturnAccepted')?.checked ? 'true' : 'false');
+
+    const editVideoFile = document.getElementById('editProductVideo')?.files[0];
+    if (editVideoFile) formData.append('images', editVideoFile);
 
     // Keep existing images from editingProductId's data
     const existing = allProducts.find(p => p.id === editingProductId);
