@@ -633,10 +633,39 @@
   .col-chat button,
   .btn-action,
   .btn-chat {
-    width: 100%;
-    justify-content: center;
-    padding: 0.65rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.4rem 0.75rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .btn-action {
+    background: #F97316;
+    color: white;
+  }
+
+  .btn-action:hover {
+    background: #EA580C;
+    transform: translateY(-2px);
+  }
+
+  .btn-chat {
+    background: #17a2b8;
+    color: white;
+    position: relative;
+    padding-right: 1.4rem;
+  }
+
+  .btn-chat:hover {
+    background: #138496;
+    transform: translateY(-2px);
   }
 
   /* Workflow row (Issue Resolved / Escalate) */
