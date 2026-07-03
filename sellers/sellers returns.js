@@ -755,7 +755,7 @@ function renderTable(data = returnsData) {
     } else {
       if (item.statusKey === 'awaiting_refund_release') {
         chatBtnHtml = `
-          <button class="btn-chat" style="background: #f59e0b; color: #fff; cursor: not-allowed; width:100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" disabled>
+          <button class="btn-chat" style="background: #f59e0b; color: #fff; cursor: not-allowed; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;" disabled>
             Awaiting Refund Release
           </button>
         `;
