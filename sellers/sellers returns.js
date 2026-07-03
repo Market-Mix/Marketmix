@@ -1198,6 +1198,24 @@ function showConfirmSellerReturnDecision(refundId, decision) {
   });
 }
 
+function showSellerReturnAddressDialog(refundId, decision) {
+  const refund = returnsData.find(r => r.id === refundId);
+  if (!refund) return;
+
+  openMarketmixConfirmDialog({
+    title: 'Return Product — Confirm Return Address',
+    message: 'Please confirm the return address and deadline for the buyer. These details will be saved as part of the return request.',
+    confirmText: 'Submit Return Details',
+    cancelText: 'Cancel',
+    action: 'sellerReturnDecision',
+    refundId,
+    decision,
+    step: 'address'
+  });
+
+  populateReturnAddressForm(7);
+}
+
 async function submitSellerReturnDecision(refundId, decision) {
   try {
     const payload = { decision };

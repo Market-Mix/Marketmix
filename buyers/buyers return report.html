@@ -1863,10 +1863,19 @@
       console.log('  - notification:', notification);
 
       // Update NotificationManager cache if available
-      if (typeof NotificationManager !== 'undefined' && NotificationManager.cache.unreadCounts.refund !== undefined) {
-        NotificationManager.cache.unreadCounts.refund++;
-        NotificationManager.cache.totalUnread++;
-        NotificationManager.cache.unreadCounts.account = NotificationManager.cache.totalUnread;
+      if (typeof NotificationManager !== 'undefined') {
+        const unreadCounts = NotificationManager.cache?.unreadCounts || {};
+        unreadCounts.refund = Number(unreadCounts.refund || 0) + 1;
+        unreadCounts.account = Number(unreadCounts.account || 0) + 1;
+        unreadCounts.totalUnread = Number(unreadCounts.totalUnread || 0) + 1;
+        NotificationManager.cache.unreadCounts = unreadCounts;
+        try {
+          window.updateReturnsNotification?.(unreadCounts.refund || 0);
+          window.updateRefundBadge?.(unreadCounts.refund || 0);
+          window.updateAccountNotification?.(unreadCounts.account || 0);
+        } catch (e) {
+          console.warn('Failed to update buyer badge UI after refund notification:', e);
+        }
         console.log('📊 Cache updated:', NotificationManager.cache.unreadCounts);
       }
 
@@ -3076,6 +3085,12 @@
 
     // Periodic refresh of chat badges every 15 seconds
     setInterval(refreshAllChatBadges, 15000);
+
+    // Periodic refresh of refund count badge every 10 seconds to catch new notifications
+    setInterval(async () => {
+      const updated = await loadReturnReportsForCurrentBuyer();
+      dispatchRefundCasesUpdated(updated);
+    }, 10000);
   });
 
   function setupEventListeners() {
