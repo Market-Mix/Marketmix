@@ -753,11 +753,19 @@ function renderTable(data = returnsData) {
         `;
       }
     } else {
-      chatBtnHtml = `
-        <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
-          <i class="fas fa-comments"></i> ${item.status}
-        </button>
-      `;
+      if (item.statusKey === 'awaiting_refund_release') {
+        chatBtnHtml = `
+          <button class="btn-chat" style="background: #f59e0b; color: #fff; cursor: not-allowed; width:100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" disabled>
+            Awaiting Refund Release
+          </button>
+        `;
+      } else {
+        chatBtnHtml = `
+          <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled>
+            <i class="fas fa-comments"></i> ${item.status}
+          </button>
+        `;
+      }
     }
 
     // Show workflow buttons based on resolution_status

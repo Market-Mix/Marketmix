@@ -3219,7 +3219,7 @@
           timeLeft = expiryTime - now;
         }
 
-        const chatAllowed = !['approved', 'denied', 'resolved', 'escalated'].includes(statusMeta.statusKey);
+        const chatAllowed = !['approved', 'denied', 'resolved', 'escalated', 'awaiting_refund_release'].includes(statusMeta.statusKey);
       if (timeLeft > 0 && chatAllowed) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -4157,8 +4157,20 @@
     if (report.courier_name) shippingParts.push(`Courier: ${report.courier_name}`);
     if (report.tracking_number) shippingParts.push(`Tracking: ${report.tracking_number}`);
     if (report.buyer_shipped_at) shippingParts.push(`Shipped on: ${formatDate(report.buyer_shipped_at)}`);
-    if (report.shipping_receipt_url) shippingParts.push(`Receipt: ${report.shipping_receipt_url}`);
-    summaryEl.innerHTML = shippingParts.length ? shippingParts.map(part => `<div>${part}</div>`).join('') : '<span>No shipment details submitted yet.</span>';
+    if (report.shipping_receipt_url) {
+      const receiptUrl = report.shipping_receipt_url;
+      const normalizedUrl = String(receiptUrl).split('?')[0].split('#')[0];
+      const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(normalizedUrl);
+      const isVideo = /\.(mp4|webm|mov)$/i.test(normalizedUrl);
+      if (isImage) {
+        shippingParts.push(`<div>Receipt: <a href="${receiptUrl}" target="_blank" rel="noopener noreferrer"><img src="${receiptUrl}" alt="Shipping receipt" style="max-width:220px; max-height:160px; border-radius:8px; border:1px solid #d1d5db; display:block; margin-top:0.35rem;"></a></div>`);
+      } else if (isVideo) {
+        shippingParts.push(`<div>Receipt: <video controls style="max-width:220px; max-height:160px; border-radius:8px; display:block; margin-top:0.35rem;"><source src="${receiptUrl}" type="video/mp4"></video></div>`);
+      } else {
+        shippingParts.push(`<div>Receipt: <a href="${receiptUrl}" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline;">View receipt</a></div>`);
+      }
+    }
+    summaryEl.innerHTML = shippingParts.length ? shippingParts.join('') : '<span>No shipment details submitted yet.</span>';
 
     const alreadyShipped = ['in_transit', 'delivered'].includes(normalizedStatus) || !!(report.courier_name || report.tracking_number || report.buyer_shipped_at);
     shipBtn.style.display = alreadyShipped ? 'none' : 'inline-flex';
