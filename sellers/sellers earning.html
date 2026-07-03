@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MarketMix Earnings</title>
   <link rel="stylesheet" href="sellers earning.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
  <script src="storeManager.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -110,6 +111,7 @@
   
   <section class="earnings-section">
     <h2>My Earnings</h2>
+    <div id="badge-stamp" class="badge-stamp">🥉 Bronze</div>
 
     <!-- Filters -->
     <div class="filters">
@@ -143,16 +145,17 @@
     </div>
 
     <!-- Step 2: No bank account -->
-    <div id="step-add-bank" style="display:none">
-      <p>Add your bank account to receive withdrawals.</p>
-      <label>Account Name:</label>
-      <input type="text" id="bank-acct-name" placeholder="John Doe"/>
-      <label>Account Number:</label>
-      <input type="text" id="bank-acct-number" maxlength="10" inputmode="numeric"/>
-      <label>Bank Name:</label>
-      <input type="text" id="bank-name-input" placeholder="First Bank"/>
-      <button class="btn-primary" onclick="submitBankAccount()">Save Bank Account</button>
-    </div>
+   
+<div id="step-add-bank" style="display:none">
+  <p>Add your bank account to receive withdrawals.</p>
+  <label>Bank:</label>
+  <select id="bank-select"><option value="">Loading banks...</option></select>
+  <label>Account Number:</label>
+  <input type="text" id="bank-acct-number" maxlength="10" inputmode="numeric"/>
+  <button type="button" class="btn-primary" onclick="resolveBankAccount()">Verify Account</button>
+  <p id="resolved-account-name" style="font-weight:600;color:#16a34a;margin-top:8px"></p>
+  <button class="btn-primary" id="saveBankBtn" onclick="submitBankAccount()" disabled>Save Bank Account</button>
+</div>
 
     <!-- Step 3: Normal withdrawal -->
     <div id="step-withdraw" style="display:none">
