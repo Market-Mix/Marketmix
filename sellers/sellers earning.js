@@ -40,15 +40,72 @@ const authHeaders = () => {
     };
 };
 
+// Format Naira helper
+function fmtNaira(n) {
+    return '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+
+// sellers earning.js — new helpers
+let _resolvedBank = null;
+
+async function loadBankList() {
+  const select = document.getElementById('bank-select');
+  if (!select || select.dataset.loaded) return;
+  try {
+    const data = await apiFetch('/withdrawals/banks');
+    select.innerHTML = '<option value="">Select bank</option>' +
+      data.data.banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+    select.dataset.loaded = 'true';
+  } catch (e) { select.innerHTML = '<option value="">Failed to load banks</option>'; }
+}
+
+
+async function resolveBankAccount() {
+  const bank_code = document.getElementById('bank-select')?.value;
+  const account_number = document.getElementById('bank-acct-number')?.value;
+  if (!bank_code || !account_number) return showToast('Select bank and enter account number', false);
+
+  try {
+    const data = await apiFetch('/withdrawals/resolve-account', {
+      method: 'POST', body: JSON.stringify({ account_number, bank_code })
+    });
+    _resolvedBank = {
+      bank_account_name: data.data.account_name,
+      bank_account_number: data.data.account_number,
+      bank_name: document.getElementById('bank-select').selectedOptions[0].textContent,
+      bank_code
+    };
+    document.getElementById('resolved-account-name').textContent = `✓ ${_resolvedBank.bank_account_name}`;
+    document.getElementById('saveBankBtn').disabled = false;
+  } catch (e) {
+    showToast(e.message || 'Could not verify account', false);
+  }
+}
+
+async function submitBankAccount() {
+  if (!_resolvedBank) return showToast('Verify your account first', false);
+  try {
+    await apiFetch('/withdrawals/bank-account', { method: 'POST', body: JSON.stringify(_resolvedBank) });
+    showToast('Bank account saved!');
+    withdrawalState = { ...withdrawalState, ..._resolvedBank };
+    showStep('step-withdraw');
+    document.getElementById('withdraw-bank-info').textContent =
+      `Withdrawing to: ${_resolvedBank.bank_name} — ${_resolvedBank.bank_account_number} (${_resolvedBank.bank_account_name})`;
+  } catch (err) {
+    showToast(err.message || 'Error saving bank', false); // now actually fires on failure
+  }
+}
+
 // API Fetch
+// sellers earning.js — replace apiFetch
 async function apiFetch(path, opts = {}) {
     opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
     const res = await fetch(`${API_BASE}${path}`, opts);
-    if (res.status === 401) {
-        handleLogout();
-        throw new Error('Unauthorized');
-    }
-    return res.json();
+    if (res.status === 401) { handleLogout(); throw new Error('Unauthorized'); }
+    const data = await res.json();
+    if (!res.ok || data.status === 'error') throw new Error(data.message || 'Request failed');
+    return data;
 }
 
 // Profile Image
@@ -130,6 +187,47 @@ document.addEventListener("DOMContentLoaded", async function () {
     loadProfile();
     fetchEarningsData();
     loadWithdrawalHistory();
+        // Export buttons
+        document.getElementById('export-csv')?.addEventListener('click', () => {
+            if (!window._lastEarningsData) return showToast('No data to export', false);
+            const { transactions } = window._lastEarningsData;
+            const rows = [['Date','Type','Product/Order','Status','Amount'],
+                ...transactions.map(t => [
+                    new Date(t.date).toLocaleDateString(),
+                    t.type, t.productName || t.orderId || '', t.status, t.amount
+                ])];
+            const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `marketmix-earnings-${Date.now()}.csv`;
+            a.click();
+        });
+
+        document.getElementById('export-pdf')?.addEventListener('click', () => {
+            if (!window._lastEarningsData) return showToast('No data to export', false);
+            const { jsPDF } = window.jspdf || {};
+            if (!jsPDF) return showToast('PDF export not available', false);
+            const doc = new jsPDF();
+            const { summary, transactions } = window._lastEarningsData;
+
+            doc.setFontSize(16); doc.text('MarketMix Earnings Report', 14, 16);
+            doc.setFontSize(10);
+            doc.text(`Total Earnings: ${fmtNaira(summary.totalEarnings)}`, 14, 26);
+            doc.text(`Available Balance: ${fmtNaira(summary.availableBalance)}`, 14, 32);
+            doc.text(`Pending: ${fmtNaira(summary.pendingEarnings)}`, 14, 38);
+
+            let y = 50;
+            doc.setFontSize(11); doc.text('Recent Transactions', 14, y); y += 6;
+            doc.setFontSize(9);
+            transactions.slice(0, 30).forEach(t => {
+                doc.text(`${new Date(t.date).toLocaleDateString()}  ${t.type}  ${fmtNaira(t.amount)}  [${t.status}]`, 14, y);
+                y += 6;
+                if (y > 280) { doc.addPage(); y = 20; }
+            });
+
+            doc.save(`marketmix-earnings-${Date.now()}.pdf`);
+        });
 });
 
 window.addEventListener('storeChanged', () => {
@@ -192,10 +290,10 @@ async function loadWithdrawalHistory() {
             div.innerHTML = `
                 <span>${new Date(w.created_at).toLocaleDateString()}</span>
                 <span>Withdrawal → ${w.bank_name || 'Bank'}</span>
-                <span class="amount negative" style="color:${statusColor}">
-                  – ₦${Number(w.amount).toFixed(2)}
-                  <small>[${(w.status || '').toUpperCase()}]</small>
-                </span>
+                                <span class="amount negative" style="color:${statusColor}">
+                                    – ${fmtNaira(Number(w.amount))}
+                                    <small>[${(w.status || '').toUpperCase()}]</small>
+                                </span>
             `;
             return div;
         });
@@ -207,6 +305,8 @@ async function loadWithdrawalHistory() {
 }
 
 function renderEarnings(data) {
+    // store for export features
+    window._lastEarningsData = data;
     const { summary, transactions, productEarnings } = data;
 
     // Compare with previous summary and create notifications for meaningful changes
@@ -217,8 +317,8 @@ function renderEarnings(data) {
                 const diff = Number(summary.totalEarnings) - Number(_prevEarningsSummary.totalEarnings);
                 const title = 'Total Earnings updated';
                 const message = diff > 0
-                    ? `Your total earnings increased by ₦${Math.abs(diff).toFixed(2)}`
-                    : `Your total earnings changed by ₦${Math.abs(diff).toFixed(2)}`;
+                    ? `Your total earnings increased by ${fmtNaira(Math.abs(diff))}`
+                    : `Your total earnings changed by ${fmtNaira(Math.abs(diff))}`;
                 createSellerNotification({ title, message, type: 'earnings', link: '/sellers/sellers%20earning.html' });
             }
 
@@ -227,8 +327,8 @@ function renderEarnings(data) {
                 const diff = Number(summary.availableBalance) - Number(_prevEarningsSummary.availableBalance);
                 const title = 'Available balance updated';
                 const message = diff > 0
-                    ? `Your available balance increased by ₦${Math.abs(diff).toFixed(2)}.`
-                    : `Your available balance changed by ₦${Math.abs(diff).toFixed(2)}.`;
+                    ? `Your available balance increased by ${fmtNaira(Math.abs(diff))}.`
+                    : `Your available balance changed by ${fmtNaira(Math.abs(diff))}.`;
                 createSellerNotification({ title, message, type: 'earnings', link: '/sellers/sellers%20earning.html' });
             }
 
@@ -237,8 +337,8 @@ function renderEarnings(data) {
                 const diff = Number(summary.pendingEarnings) - Number(_prevEarningsSummary.pendingEarnings);
                 const title = 'Pending earnings updated';
                 const message = diff > 0
-                    ? `Your pending earnings increased by ₦${Math.abs(diff).toFixed(2)}.`
-                    : `Your pending earnings changed by ₦${Math.abs(diff).toFixed(2)}.`;
+                    ? `Your pending earnings increased by ${fmtNaira(Math.abs(diff))}.`
+                    : `Your pending earnings changed by ${fmtNaira(Math.abs(diff))}.`;
                 createSellerNotification({ title, message, type: 'earnings', link: '/sellers/sellers%20earning.html' });
             }
         }
@@ -248,18 +348,22 @@ function renderEarnings(data) {
 
     // Update Summary Cards
     if (document.getElementById("total-earnings"))
-        document.getElementById("total-earnings").textContent = `₦${summary.totalEarnings.toFixed(2)}`;
+       document.getElementById("total-earnings").textContent = fmtNaira(summary.totalEarnings);
+    
     if (document.getElementById("available-balance"))
-        document.getElementById("available-balance").textContent = `₦${summary.availableBalance.toFixed(2)}`;
+        document.getElementById("available-balance").textContent = fmtNaira(summary.availableBalance);
     if (document.getElementById("pending"))
-        document.getElementById("pending").textContent = `₦${summary.pendingEarnings.toFixed(2)}`;
+        document.getElementById("pending").textContent = fmtNaira(summary.pendingEarnings);
     if (document.getElementById("withdrawals"))
-        document.getElementById("withdrawals").textContent = `₦${summary.totalWithdrawn.toFixed(2)}`;
+        document.getElementById("withdrawals").textContent = fmtNaira(summary.totalWithdrawn);
     
     // Update Projected (Placeholder or calculated)
     const projected = summary.totalEarnings + summary.pendingEarnings;
     if (document.getElementById("projected"))
-        document.getElementById("projected").textContent = `Projected earnings: ₦${projected.toFixed(2)}`;
+        document.getElementById("projected").textContent = `Projected earnings: ${fmtNaira(projected)}`;
+
+    // Badge stamp
+    try { renderBadgeStamp(summary.totalEarnings); } catch(e) { /* ignore */ }
 
     // Render Chart
     renderChart(transactions);
@@ -279,7 +383,7 @@ function renderEarnings(data) {
                 div.innerHTML = `
                     <span>${date}</span>
                     <span>${tx.type}: ${tx.productName || "Order #" + (tx.orderId ? tx.orderId.substring(0,8) : 'N/A')}</span>
-                    <span class="amount ${tx.amount < 0 ? "negative" : ""}">${tx.amount < 0 ? "–" : "+"} ₦${Math.abs(tx.amount).toFixed(2)}</span>
+                    <span class="amount ${tx.amount < 0 ? "negative" : ""}">${tx.amount < 0 ? "–" : "+"} ${fmtNaira(Math.abs(tx.amount))}</span>
                 `;
                 div.addEventListener("click", () => showTransactionModal(tx));
                 list.appendChild(div);
@@ -296,7 +400,7 @@ function renderEarnings(data) {
             tableBody.innerHTML = '<tr><td colspan="3">No product data available</td></tr>';
         } else {
             productEarnings.forEach(p => {
-                const row = `<tr><td>${p.name}</td><td>${p.qty}</td><td>₦${p.revenue.toFixed(2)}</td></tr>`;
+                const row = `<tr><td>${p.name}</td><td>${p.qty}</td><td>${fmtNaira(p.revenue)}</td></tr>`;
                 tableBody.innerHTML += row;
             });
         }
@@ -313,6 +417,17 @@ function renderEarnings(data) {
     } catch (e) {
         console.warn('Could not set prev earnings summary:', e);
     }
+}
+
+// badge helper
+function renderBadgeStamp(totalEarnings) {
+    const el = document.getElementById('badge-stamp');
+    if (!el) return;
+    let tier = 'New Seller', emoji = '🆕';
+    if (totalEarnings >= 200000)      { tier = 'Gold';   emoji = '🥇'; }
+    else if (totalEarnings >= 30000)  { tier = 'Silver'; emoji = '🥈'; }
+    else if (totalEarnings >= 1000)   { tier = 'Bronze'; emoji = '🥉'; }
+    el.textContent = `${emoji} ${tier}`;
 }
 
 function renderChart(transactions) {
@@ -385,7 +500,7 @@ function showTransactionModal(tx) {
         <p><strong>Product:</strong> ${tx.productName || "N/A"}</p>
         <p><strong>Order ID:</strong> ${tx.orderId || "N/A"}</p>
         <p><strong>Status:</strong> <span class="status-badge ${tx.status}">${tx.status}</span></p>
-        <p><strong>Amount:</strong> ₦${Math.abs(tx.amount).toFixed(2)}</p>
+        <p><strong>Amount:</strong> ${fmtNaira(Math.abs(tx.amount))}</p>
     `;
     modal.style.display = "flex";
 }
@@ -427,6 +542,7 @@ async function openWithdrawModal() {
             showStep('step-set-pin');
         } else if (!withdrawalState.bank_account_number) {
             showStep('step-add-bank');
+            loadBankList()
         } else {
             showStep('step-withdraw');
             const bankInfo = document.getElementById('withdraw-bank-info');
@@ -465,33 +581,7 @@ async function submitSetPin() {
     }
 }
 
-async function submitBankAccount() {
-    const body = {
-        bank_account_name: document.getElementById('bank-acct-name')?.value,
-        bank_account_number: document.getElementById('bank-acct-number')?.value,
-        bank_name: document.getElementById('bank-name-input')?.value,
-    };
 
-    if (!body.bank_account_name || !body.bank_account_number || !body.bank_name) {
-        return showToast('Fill all bank fields', false);
-    }
-
-    try {
-        await apiFetch('/withdrawals/bank-account', { method: 'POST', body: JSON.stringify(body) });
-        showToast('Bank account saved!');
-        withdrawalState = { ...withdrawalState, ...body };
-        showStep('step-withdraw');
-        const bankInfo = document.getElementById('withdraw-bank-info');
-        if (bankInfo) {
-            bankInfo.textContent =
-                `Withdrawing to: ${body.bank_name} — ${body.bank_account_number} (${body.bank_account_name})`;
-        }
-        // Notify seller that bank account was added
-        try { createSellerNotification({ title: 'Bank account added', message: `Bank account ${body.bank_account_number} (${body.bank_name}) saved for withdrawals.`, type: 'account', link: '/sellers/sellers earning.html' }); } catch (e) { console.warn('Bank account notification failed', e); }
-    } catch (err) {
-        showToast(err.message || 'Error saving bank', false);
-    }
-}
 
 async function submitWithdrawal() {
     const amount = parseFloat(document.getElementById('withdraw-amount')?.value || '0');
@@ -525,7 +615,7 @@ async function submitWithdrawal() {
             return showToast(data.message || `Error: ${res.status}`, false);
         }
 
-        showToast(`₦${amount.toFixed(2)} withdrawal submitted!`);
+        showToast(`${fmtNaira(amount)} withdrawal submitted!`);
         const withdrawModal = document.getElementById('withdrawModal');
         if (withdrawModal) withdrawModal.style.display = 'none';
 
@@ -536,7 +626,7 @@ async function submitWithdrawal() {
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-pin').value = '';
         // Notify seller of successful withdrawal submission
-        try { createSellerNotification({ title: 'Withdrawal submitted', message: `₦${amount.toFixed(2)} withdrawal submitted.`, type: 'withdrawal', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('Withdrawal success notification failed',e)}
+        try { createSellerNotification({ title: 'Withdrawal submitted', message: `${fmtNaira(amount)} withdrawal submitted.`, type: 'withdrawal', link: '/sellers/sellers earning.html' }); } catch(e){console.warn('Withdrawal success notification failed',e)}
     } catch (err) {
         console.error('Withdrawal error:', err);
         showToast(err.message || 'Withdrawal failed', false);

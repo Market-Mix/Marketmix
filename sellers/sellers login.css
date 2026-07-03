@@ -1,93 +1,174 @@
+:root {
+  --bg: #eef4ff;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #475569;
+  --accent: #1e40af;
+  --accent-soft: #dbeafe;
+  --border: #c7d2fe;
+  --shadow: 0 20px 48px rgba(30, 64, 175, 0.12);
+  --radius: 22px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  padding: 0;
-  font-family: "Poppins", sans-serif;
-  background: url('../images/your-image.jpg') no-repeat center/cover;
-  height: 100vh;
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  padding: 24px;
 }
 
 .login-container {
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  max-width: 520px;
 }
 
 .login-box {
   width: 100%;
-  max-width: 480px;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 2rem;
-  border-radius: 1rem;
-  backdrop-filter: blur(15px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  position: relative;
-  text-align: center;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 36px 34px;
 }
 
-h1 {
-  color: #ffffff;
-  margin-bottom: 10px;
+.login-box h1 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 1.95rem;
 }
 
 .subtitle {
-  color: #d0d0d0;
-  margin-bottom: 20px;
+  margin: 0 0 26px;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.6;
 }
 
 label {
   display: block;
-  text-align: left;
-  margin-top: 12px;
+  margin-top: 18px;
+  font-size: 0.91rem;
   font-weight: 600;
-  color: #e6e6e6;
+  color: #334155;
 }
 
 input {
   width: 100%;
-  padding: 12px;
-  margin-top: 6px;
-  border: none;
-  border-radius: 0.6rem;
-  background: rgba(255,255,255,0.06);
-  color: #fff;
+  padding: 14px 16px;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #111827;
   font-size: 1rem;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 input:focus {
-  box-shadow: 0 0 0 2px rgba(43,108,176,0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.08);
+}
+
+input::placeholder {
+  color: #94a3b8;
+}
+
+#password {
+  padding-right: 46px;
+}
+
+#error-email,
+#error-password {
+  margin-top: 8px;
+  display: none;
+  color: #dc2626;
+  font-size: 0.83rem;
+}
+
+.input-error {
+  border-color: #dc2626 !important;
 }
 
 button {
   width: 100%;
-  margin-top: 20px;
-  padding: 12px;
+  margin-top: 24px;
+  padding: 14px 18px;
   border: none;
-  border-radius: 0.6rem;
-  background: linear-gradient(135deg,#667eea,#764ba2);
-  color: white;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, background 0.3s;
+  transition: transform 0.2s, filter 0.2s;
 }
 
-button:hover { transform: translateY(-2px); }
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+#googleSigninBtn {
+  margin-top: 12px;
+  border: 1px solid #c7d2fe;
+  background: #ffffff;
+  color: #1e293b;
+}
+
+#googleSigninBtn:hover:not(:disabled) {
+  background: #f8fbff;
+}
 
 .note {
-  margin-top: 15px;
+  margin-top: 18px;
   font-size: 0.95rem;
-  color: #ccc;
+  color: var(--muted);
+  text-align: center;
 }
 
 .note a {
-  color: #667eea;
+  color: var(--accent);
   text-decoration: none;
+  font-weight: 600;
 }
 
-.note a:hover { text-decoration: underline; }
+.note a:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 600;
+  z-index: 9999;
+  animation: slideIn 0.3s ease;
+  max-width: 360px;
+}
+
+.toast.success { background: #16a34a; }
+.toast.error { background: #dc2626; }
+.toast.info { background: #1e40af; }
+
+@keyframes slideIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
