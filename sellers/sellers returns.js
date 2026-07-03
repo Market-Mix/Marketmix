@@ -470,16 +470,18 @@ function validateReturnAddressForm() {
     }
     return false;
   }
-  if (!data.return_state) {
+  // Make state and postal code optional to allow flexible addresses
+  // (address line 2 is already optional). Only enforce if provided.
+  if (data.return_state && typeof data.return_state !== 'string') {
     if (errorEl) {
-      errorEl.textContent = 'Please enter the return state.';
+      errorEl.textContent = 'Return state must be a valid text value.';
       errorEl.style.display = 'block';
     }
     return false;
   }
-  if (!data.return_postal_code) {
+  if (data.return_postal_code && typeof data.return_postal_code !== 'string') {
     if (errorEl) {
-      errorEl.textContent = 'Please enter the return postal code.';
+      errorEl.textContent = 'Return postal code must be a valid text value.';
       errorEl.style.display = 'block';
     }
     return false;
