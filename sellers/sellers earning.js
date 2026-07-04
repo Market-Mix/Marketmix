@@ -5,6 +5,8 @@
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
 let earningsChartInstance = null;
 let _prevEarningsSummary = null;
+let txPage = 1;
+let txLimit = 20;
 
 // Auth helpers
 function getToken() {
@@ -232,7 +234,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Load earnings data
     loadProfile();
     fetchEarningsData();
-    loadWithdrawalHistory();
+    loadTransactionHistory();
+
+    document.getElementById('load-more-tx')?.addEventListener('click', () => {
+        txPage++;
+        loadTransactionHistory(false);
+    });
+
         // Export buttons
         document.getElementById('export-csv')?.addEventListener('click', () => {
             if (!window._lastEarningsData) return showToast('No data to export', false);
@@ -316,37 +324,57 @@ async function fetchEarningsData() {
     }
 }
 
-async function loadWithdrawalHistory() {
+async function loadTransactionHistory(reset = true) {
+    if (reset) txPage = 1;
+
+    const params = new URLSearchParams(window.location.search);
+    const query = new URLSearchParams({
+        page: String(txPage),
+        limit: String(txLimit),
+        ...(params.get('type') ? { type: params.get('type') } : {}),
+        ...(params.get('status') ? { status: params.get('status') } : {}),
+        ...(params.get('from') ? { from: params.get('from') } : {}),
+        ...(params.get('to') ? { to: params.get('to') } : {})
+    }).toString();
+
     try {
-        const data = await apiFetch('/withdrawals');
-        const withdrawals = data?.data?.withdrawals || [];
+        const data = await apiFetch(`/earnings/transactions?${query}`);
+        const { transactions = [], total = 0 } = data?.data || {};
         const container = document.getElementById('transactions-list');
         if (!container) return;
 
-        container.querySelectorAll('.withdrawal-entry').forEach(el => el.remove());
+        if (reset) container.innerHTML = '';
 
-        const withdrawalItems = withdrawals.map(w => {
-            const statusColor = {
-                success: '#28a745', pending: '#ffc107',
-                processing: '#17a2b8', failed: '#dc3545'
-            }[w.status] || '#6c757d';
+        if (!transactions.length && reset) {
+            container.innerHTML = '<div class="transaction"><span>No transactions found</span></div>';
+            const loadMoreBtn = document.getElementById('load-more-tx');
+            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+            return;
+        }
 
+        const typeLabel = { sale: 'Sale', escrow: 'Escrow', withdrawal: 'Withdrawal' };
+        transactions.forEach(tx => {
             const div = document.createElement('div');
-            div.classList.add('transaction', 'withdrawal-entry');
+            div.classList.add('transaction');
+            const negative = Number(tx.amount) < 0;
+            const description = tx.description || tx.productName || tx.orderId || '';
             div.innerHTML = `
-                <span>${new Date(w.created_at).toLocaleDateString()}</span>
-                <span>Withdrawal → ${w.bank_name || 'Bank'}</span>
-                                <span class="amount negative" style="color:${statusColor}">
-                                    – ${fmtNaira(Number(w.amount))}
-                                    <small>[${(w.status || '').toUpperCase()}]</small>
-                                </span>
-            `;
-            return div;
+                <span>${new Date(tx.date).toLocaleDateString()}</span>
+                <span>${typeLabel[tx.type] || tx.type}: ${description}</span>
+                <span class="amount ${negative ? 'negative' : ''}">
+                    ${negative ? '–' : '+'} ${fmtNaira(Math.abs(tx.amount))}
+                    <small>[${(tx.status || '').toUpperCase()}]</small>
+                </span>`;
+            container.appendChild(div);
         });
 
-        withdrawalItems.forEach(el => container.prepend(el));
+        const loadMoreBtn = document.getElementById('load-more-tx');
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = txPage * txLimit < total ? 'block' : 'none';
+        }
     } catch (err) {
-        console.error('Error loading withdrawal history:', err);
+        console.error('Error loading transaction history:', err);
+        showToast('Unable to load transaction history', false);
     }
 }
 
@@ -413,29 +441,6 @@ function renderEarnings(data) {
 
     // Render Chart
     renderChart(transactions);
-
-    // Render Transactions
-    const list = document.getElementById("transactions-list");
-    if (list) {
-        list.innerHTML = '';
-        
-        if (transactions.length === 0) {
-            list.innerHTML = '<div class="transaction"><span>No transactions found</span></div>';
-        } else {
-            transactions.forEach(tx => {
-                const date = new Date(tx.date).toLocaleDateString();
-                const div = document.createElement("div");
-                div.classList.add("transaction");
-                div.innerHTML = `
-                    <span>${date}</span>
-                    <span>${tx.type}: ${tx.productName || "Order #" + (tx.orderId ? tx.orderId.substring(0,8) : 'N/A')}</span>
-                    <span class="amount ${tx.amount < 0 ? "negative" : ""}">${tx.amount < 0 ? "–" : "+"} ${fmtNaira(Math.abs(tx.amount))}</span>
-                `;
-                div.addEventListener("click", () => showTransactionModal(tx));
-                list.appendChild(div);
-            });
-        }
-    }
 
     // Render Product Table
     const tableBody = document.getElementById("product-table-body");
