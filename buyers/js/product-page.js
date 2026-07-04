@@ -578,19 +578,21 @@ function setupShareButton(product) {
   const copyBtn = document.getElementById('share-copy');
   if (!whatsappBtn || !twitterBtn || !facebookBtn || !instagramBtn || !copyBtn) return;
 
-  const url = window.location.href;
+  const slug = encodeURIComponent(product.name.trim().replace(/\s+/g, '-').toLowerCase());
+  const url = `${window.location.origin}${window.location.pathname}?id=${product.id}&name=${slug}`;
+  const shareUrl = `https://marketmix-backend.onrender.com/api/products/share/${product.id}`;
   const text = `Check out ${product.name} on MarketMix!`;
 
   whatsappBtn.addEventListener('click', () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + shareUrl)}`, '_blank');
   });
 
   twitterBtn.addEventListener('click', () => {
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
   });
 
   facebookBtn.addEventListener('click', () => {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
   });
 
   instagramBtn.addEventListener('click', async () => {
@@ -603,12 +605,12 @@ function setupShareButton(product) {
       }
     }
 
-    navigator.clipboard.writeText(url).then(() => showToast('Link copied! Paste it in Instagram story or bio.', 'success'))
+    navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied! Paste it in Instagram story or bio.', 'success'))
       .catch(() => showToast('Could not copy link', 'error'));
   });
 
   copyBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard!', 'success'))
+    navigator.clipboard.writeText(shareUrl).then(() => showToast('Link copied to clipboard!', 'success'))
       .catch(() => showToast('Could not copy link', 'error'));
   });
 }
