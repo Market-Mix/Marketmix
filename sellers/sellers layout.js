@@ -245,8 +245,21 @@ function getOpenRefundCount(refunds = []) {
   }, 0);
 }
 
+// ─── In-flight guard to prevent concurrent dashboard loads ───────────────────
+let _dashboardLoading = false;
+
 // ─── Central data loader ──────────────────────────────────────────────────────
 async function loadDashboardData() {
+  if (_dashboardLoading) return;
+  _dashboardLoading = true;
+  try {
+    return await _loadDashboardDataImpl();
+  } finally {
+    _dashboardLoading = false;
+  }
+}
+
+async function _loadDashboardDataImpl() {
   let store = StoreManager.getActiveStore();
   if (!store) return;
 
@@ -322,6 +335,7 @@ async function loadDashboardData() {
   // Mark initial load complete — subsequent refreshes won't show loading placeholders
   if (!window._dashboardLoaded) window._dashboardLoaded = true;
 }
+
 
 // ─── Nav Toggle ───────────────────────────────────────────────────────────────
 function initNavToggle() {
