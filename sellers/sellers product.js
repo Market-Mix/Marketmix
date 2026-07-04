@@ -228,7 +228,7 @@ async function loadCategories() {
         const hint = document.getElementById(`${id}_hint`) || document.createElement('small');
         hint.id = `${id}_hint`;
         hint.style.cssText = 'display:block;color:#94a3b8;font-size:11px;margin-top:3px;';
-        hint.innerHTML = `🔒 Locked to store category. <a href="sellers setting.html" style="color:#2563eb;">Change in Settings</a>`;
+        hint.innerHTML = `<i class="fas fa-lock"></i> Locked to store category. <a href="sellers setting.html" style="color:#2563eb;">Change in Settings</a>`;
         if (!document.getElementById(`${id}_hint`)) {
           select.parentNode.insertBefore(hint, select.nextSibling);
         }

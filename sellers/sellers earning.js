@@ -103,7 +103,7 @@ async function resolveBankAccount() {
       bank_name: document.getElementById('bank-search').value,
       bank_code
     };
-    document.getElementById('resolved-account-name').textContent = `✓ ${_resolvedBank.bank_account_name}`;
+    document.getElementById('resolved-account-name').innerHTML = `<i class="fas fa-check"></i> ${_resolvedBank.bank_account_name}`;
     document.getElementById('saveBankBtn').disabled = false;
   } catch (e) {
     showToast(e.message || 'Could not verify account', false);

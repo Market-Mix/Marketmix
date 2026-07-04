@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(data => {
    const { kycStatus } = data.data || {};
           if (kycStatus === 'approved') {
-        showBanner('Your identity is already verified ✅', 'success');
+        showBanner('Your identity is already verified <i class="fas fa-check-circle"></i>', 'success');
         disableForm();
       } else if (kycStatus === 'pending') {
         showBanner("Your KYC is under review. We'll notify you once it's approved.", 'info');
@@ -257,7 +257,7 @@ function showToast(msg, type = 'info') {
   if (existing) existing.remove();
   const toast = document.createElement('div');
   toast.className   = 'toast-msg';
-  toast.textContent = msg;
+  toast.innerHTML = msg;
   Object.assign(toast.style, {
     position:   'fixed',
     top:        '20px',
@@ -282,7 +282,7 @@ function showBanner(msg, type = 'info') {
     color: #333; padding: 1rem 1.4rem; margin: 1rem 0;
     border-radius: 6px; font-weight: 500;
   `;
-  banner.textContent = msg;
+  banner.innerHTML = msg;
   const card = document.querySelector('.card');
   if (card) card.insertBefore(banner, card.querySelector('form'));
 }

@@ -173,7 +173,7 @@ const confirmNo      = document.getElementById('confirmNo');
 /* ── toast ───────────────────────────────────────────────── */
 
 function showToast(msg, isError = false) {
-  toast.textContent = msg;
+  toast.innerHTML = msg;
   toast.style.background = isError ? '#c0392b' : '#2d3436';
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3500);
@@ -401,7 +401,7 @@ function buildActionButton(order) {
   const status = (order.status || '').toLowerCase();
 
   if (order.deliveryMethod === 'shipbubble' && ['confirmed','processing','shipped'].includes(status)) {
-    return `<span class="status-courier" style="color:#0ea5e9;font-size:0.85em">📦 Courier handled</span>`;
+    return `<span class="status-courier" style="color:#0ea5e9;font-size:0.85em"><i class="fas fa-box"></i> Courier handled</span>`;
   }
 
   if (status === 'pending') {
@@ -526,7 +526,7 @@ async function updateOrderStatus(orderId, newStatus) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
 
-    showToast(`Order updated to "${capitalize(newStatus)}" ✓`);
+    showToast(`Order updated to "${capitalize(newStatus)}" <i class="fas fa-check"></i>`);
 
     try {
       await createOrderNotification(orderId, newStatus);
@@ -648,7 +648,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     try {
       if (typeof NotificationManager !== 'undefined' && NotificationManager.init) {
         await NotificationManager.init(userId);
-        console.log('✓ Notifications initialized for order page');
+        console.log('<i class="fas fa-check"></i> Notifications initialized for order page');
       }
     } catch (e) {
       console.warn('Notification initialization failed:', e);

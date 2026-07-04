@@ -463,17 +463,17 @@ function renderProfileVerifiedBadge(profile, accountCompleted = false) {
     }
 
     if (accountCompleted) {
-      badge.textContent = '✓';
+      badge.innerHTML = '<i class="fas fa-check-circle"></i>';
       badge.style.background = '#2563eb';
       badge.title = 'Seller account setup complete';
       badge.style.display = 'flex';
     } else if (isRejected) {
-      badge.textContent = '!';
+      badge.innerHTML = '<i class="fas fa-times-circle"></i>';
       badge.style.background = '#dc2626';
       badge.title = 'KYC failed';
       badge.style.display = 'flex';
     } else if (isVerified) {
-      badge.textContent = '✓';
+      badge.innerHTML = '<i class="fas fa-check-circle"></i>';
       badge.style.background = '#16a34a';
       badge.title = 'Verified seller';
       badge.style.display = 'flex';
@@ -684,7 +684,7 @@ function renderProgressTracker(profile, store, user, fetchStatus = {}) {
     badgeText = 'KYC Failed';
     badgeClass = 'red';
   } else if (isVerifiedFlag) {
-    badgeText = 'Verified ✓';
+    badgeText = '<i class="fas fa-check-circle"></i> Verified';
     badgeClass = 'green';
   }
 
@@ -694,7 +694,7 @@ function renderProgressTracker(profile, store, user, fetchStatus = {}) {
     if (isVerifiedFlag) {
       color = '#3b82f6';
       html = `Everything complete!`;
-      badgeText = 'Fully Verified ✓';
+      badgeText = '<i class="fas fa-check-circle"></i> Fully Verified';
       badgeClass = 'blue';
     } else if (isKycPendingFlag) {
       color = '#f59e0b';
@@ -782,7 +782,7 @@ function renderProgressTracker(profile, store, user, fetchStatus = {}) {
   }
 
   if (badgeText) {
-    badge.textContent = badgeText;
+    badge.innerHTML = badgeText;
     badge.className = `progress-badge ${badgeClass}`;
     badge.hidden = false;
   } else {
@@ -864,20 +864,20 @@ function updateKYCNotificationBanner(profile) {
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 const ACTIVITY_META = {
-  product_added:        { icon: "📦", label: "Product added"        },
-  product_updated:      { icon: "✏️",  label: "Product updated"      },
-  product_deleted:      { icon: "🗑️",  label: "Product deleted"      },
-  order_confirmed:      { icon: "✅",  label: "Order confirmed"      },
-  order_processing:     { icon: "⚙️",  label: "Order processing"     },
-  order_shipped:        { icon: "🚚",  label: "Order shipped"        },
-  order_delivered:      { icon: "📬",  label: "Order delivered"      },
-  order_cancelled:      { icon: "❌",  label: "Order cancelled"      },
-  order_updated:        { icon: "🔄",  label: "Order updated"        },
-  withdrawal_requested: { icon: "💰",  label: "Withdrawal requested" },
+  product_added:        { icon: '<i class="fas fa-box"></i>', label: "Product added"        },
+  product_updated:      { icon: '<i class="fas fa-edit"></i>',  label: "Product updated"      },
+  product_deleted:      { icon: '<i class="fas fa-trash"></i>',  label: "Product deleted"      },
+  order_confirmed:      { icon: '<i class="fas fa-check-circle"></i>',  label: "Order confirmed"      },
+  order_processing:     { icon: '<i class="fas fa-cogs"></i>',  label: "Order processing"     },
+  order_shipped:        { icon: '<i class="fas fa-truck"></i>',  label: "Order shipped"        },
+  order_delivered:      { icon: '<i class="fas fa-envelope"></i>',  label: "Order delivered"      },
+  order_cancelled:      { icon: '<i class="fas fa-times-circle"></i>',  label: "Order cancelled"      },
+  order_updated:        { icon: '<i class="fas fa-sync-alt"></i>',  label: "Order updated"        },
+  withdrawal_requested: { icon: '<i class="fas fa-money-bill-wave"></i>', label: "Withdrawal requested" },
 };
 
 function activityMeta(type) {
-  return ACTIVITY_META[type] || { icon: "🔔", label: type.replace(/_/g, " ") };
+  return ACTIVITY_META[type] || { icon: '<i class="fas fa-bell"></i>', label: type.replace(/_/g, " ") };
 }
 
 function formatRelativeTime(dateStr) {

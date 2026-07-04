@@ -32,12 +32,12 @@
     // ===== LOAD SELLER PROFILE DATA =====
     async function loadSellerProfile() {
       try {
-        console.log("🔍 Loading seller profile...");
+        console.log("<i class=\"fas fa-search\"></i> Loading seller profile...");
         
         // Get token from localStorage
         const token = localStorage.getItem('seller_token') || localStorage.getItem('token');
         if (!token) {
-          console.warn("⚠️ No auth token found");
+          console.warn("<i class=\"fas fa-exclamation-triangle\"></i> No auth token found");
           return;
         }
 
@@ -56,19 +56,19 @@
         });
 
         if (!response.ok) {
-          console.error(`❌ Failed to fetch seller profile: ${response.status}`);
+          console.error(`<i class=\"fas fa-times-circle\"></i> Failed to fetch seller profile: ${response.status}`);
           return;
         }
 
         const data = await response.json();
-        console.log("✓ Seller profile fetched:", data);
+        console.log("<i class=\"fas fa-check\"></i> Seller profile fetched:", data);
 
         // Extract seller data
         const seller = data?.data?.seller;
         const profile = seller?.profile;
 
         if (!seller || !profile) {
-          console.error("❌ Invalid seller data structure");
+          console.error("<i class=\"fas fa-times-circle\"></i> Invalid seller data structure");
           return;
         }
 
@@ -110,17 +110,17 @@
           const profileImg = document.getElementById('sellerProfileImage');
           profileImg.src = profile.storeLogo;
           profileImg.onload = () => {
-            console.log("✓ Profile image loaded successfully");
+            console.log("<i class=\"fas fa-check\"></i> Profile image loaded successfully");
           };
           profileImg.onerror = () => {
-            console.warn("⚠️ Profile image failed to load, keeping default");
+            console.warn("<i class=\"fas fa-exclamation-triangle\"></i> Profile image failed to load, keeping default");
           };
         }
 
-        console.log("✓ Seller profile updated successfully");
+        console.log("<i class=\"fas fa-check\"></i> Seller profile updated successfully");
 
       } catch (error) {
-        console.error("❌ Error loading seller profile:", error);
+        console.error("<i class=\"fas fa-times-circle\"></i> Error loading seller profile:", error);
       }
     }
 

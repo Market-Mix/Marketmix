@@ -11,7 +11,7 @@ let supabaseClient = null;
 function getSupabaseClient() {
   if (supabaseClient) return supabaseClient;
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-    console.error('❌ Supabase client not loaded.');
+    console.error('<i class="fas fa-times-circle"></i> Supabase client not loaded.');
     return null;
   }
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -560,7 +560,7 @@ async function pollRefundCaseStatus(refundId) {
     });
 
     if (!response.ok) {
-      console.warn(`⚠️ Failed to poll refund ${refundId}:`, response.status);
+      console.warn(`<i class="fas fa-exclamation-triangle"></i> Failed to poll refund ${refundId}:`, response.status);
       return null;
     }
 
@@ -600,7 +600,7 @@ async function pollRefundCaseStatus(refundId) {
 
     return caseInfo;
   } catch (err) {
-    console.error(`⚠️ Polling error for refund ${refundId}:`, err.message);
+    console.error(`<i class="fas fa-exclamation-triangle"></i> Polling error for refund ${refundId}:`, err.message);
     return null;
   }
 }
@@ -619,7 +619,7 @@ function startPolling(refundId) {
   // Poll immediately on start
   pollRefundCaseStatus(refundId);
 
-  console.log(`🔄 Polling started for refund ${refundId}`);
+  console.log(`<i class="fas fa-sync-alt"></i> Polling started for refund ${refundId}`);
 }
 
 function stopPolling(refundId) {
@@ -638,11 +638,11 @@ function updateChatStatusDisplay(caseInfo) {
   statusEl.className = 'resolution-status ' + status;
 
   const statusText = {
-    pending: '⏳ Pending Resolution',
-    waiting_buyer_confirmation: '⏸️ Awaiting Buyer Decision',
-    awaiting_refund_release: '⏳ Awaiting Refund Release',
-    resolved: '✓ Case Resolved',
-    escalated: '⛔ Escalated To MarketMix'
+    pending: '<i class="fas fa-hourglass-half"></i> Pending Resolution',
+    waiting_buyer_confirmation: '<i class="fas fa-pause-circle"></i> Awaiting Buyer Decision',
+    awaiting_refund_release: '<i class="fas fa-hourglass-half"></i> Awaiting Refund Release',
+    resolved: '<i class="fas fa-check"></i> Case Resolved',
+    escalated: '<i class="fas fa-ban"></i> Escalated To MarketMix'
   }[status] || 'Unknown Status';
 
   statusEl.textContent = statusText;
@@ -771,7 +771,7 @@ function renderTable(data = returnsData) {
     // Show workflow buttons based on resolution_status
     // pending + chat_started → Show "Issue Resolved" and "Escalate" buttons
     // waiting_buyer_confirmation → Show read-only message
-    // resolved → Show "✓ Case Resolved" badge
+    // resolved → Show "<i class=\"fas fa-check\"></i> Case Resolved" badge
     // escalated → Show "Escalated To MarketMix" badge
     // approved + no seller choice → Show seller return decision buttons
     if (item.marketmix_decision === 'approved' && !item.seller_return_choice) {
@@ -792,7 +792,7 @@ function renderTable(data = returnsData) {
       // Seller has marked resolved, waiting for buyer to confirm
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <span style="padding: 0.5rem 1rem; background: #e3e6eb; border-radius: 4px; color: #333; font-size: 0.9rem;">⏸️ Awaiting buyer confirmation...</span>
+          <span style="padding: 0.5rem 1rem; background: #e3e6eb; border-radius: 4px; color: #333; font-size: 0.9rem;"><i class="fas fa-pause-circle"></i> Awaiting buyer confirmation...</span>
         </div>
       `;
     } else if (item.resolution_status === 'awaiting_refund_release') {
@@ -804,13 +804,13 @@ function renderTable(data = returnsData) {
     } else if (item.resolution_status === 'resolved') {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <span style="padding: 0.5rem 1rem; background: #d4edda; border-radius: 4px; color: #155724; font-size: 0.9rem; font-weight: 600;">✓ Case Resolved</span>
+          <span style="padding: 0.5rem 1rem; background: #d4edda; border-radius: 4px; color: #155724; font-size: 0.9rem; font-weight: 600;"><i class="fas fa-check"></i> Case Resolved</span>
         </div>
       `;
     } else if (item.resolution_status === 'escalated') {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <span style="padding: 0.5rem 1rem; background: #f8d7da; border-radius: 4px; color: #721c24; font-size: 0.9rem; font-weight: 600;">⛔ Escalated To MarketMix</span>
+          <span style="padding: 0.5rem 1rem; background: #f8d7da; border-radius: 4px; color: #721c24; font-size: 0.9rem; font-weight: 600;"><i class="fas fa-ban"></i> Escalated To MarketMix</span>
         </div>
       `;
     } else if (item.seller_return_choice) {
@@ -1244,7 +1244,7 @@ async function submitSellerReturnDecision(refundId, decision) {
       Object.assign(payload, getReturnAddressFormData());
     }
 
-    console.log('📤 Submitting seller return decision:', { refundId, decision, payload });
+    console.log('<i class="fas fa-paper-plane"></i> Submitting seller return decision:', { refundId, decision, payload });
 
     const response = await fetch(`${API_BASE}/seller/refunds/${refundId}/seller-return-decision`, {
       method: 'POST',
@@ -1256,16 +1256,16 @@ async function submitSellerReturnDecision(refundId, decision) {
     });
 
     const result = await response.json().catch(() => ({}));
-    console.log('📥 Backend response:', { status: response.status, result });
+    console.log('<i class="fas fa-download"></i> Backend response:', { status: response.status, result });
     
     if (!response.ok) {
       const message = result.message || result.details || 'Failed to submit seller decision.';
-      console.error('❌ Error message:', message);
+      console.error('<i class="fas fa-times-circle"></i> Error message:', message);
       renderMarketmixNotification(message, 'error');
       return;
     }
 
-    console.log('✅ Decision submitted successfully');
+    console.log('<i class="fas fa-check-circle"></i> Decision submitted successfully');
     renderMarketmixNotification(decision === 'return_product' ? 'Return Product decision submitted.' : 'Returnless Refund decision submitted.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
@@ -1278,7 +1278,7 @@ async function submitSellerReturnDecision(refundId, decision) {
 
 async function markRefundResolved(refundId) {
   try {
-    console.log('📤 Marking refund as resolved:', refundId);
+    console.log('<i class="fas fa-paper-plane"></i> Marking refund as resolved:', refundId);
     const response = await fetch(`${API_BASE}/refunds/mark-resolved`, {
       method: 'POST',
       headers: {
@@ -1290,25 +1290,25 @@ async function markRefundResolved(refundId) {
 
     const result = await response.json();
     if (!response.ok) {
-      console.error('❌ Failed to mark refund resolved:', result);
+      console.error('<i class="fas fa-times-circle"></i> Failed to mark refund resolved:', result);
       renderMarketmixNotification(result.message || 'Failed to mark resolved', 'error');
       return;
     }
 
-    console.log('✅ Refund marked as resolved');
+    console.log('<i class="fas fa-check-circle"></i> Refund marked as resolved');
     renderMarketmixNotification('Refund marked as resolved. Buyer will confirm.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
-    console.error('❌ Error marking refund resolved:', err);
+    console.error('<i class="fas fa-times-circle"></i> Error marking refund resolved:', err);
     renderMarketmixNotification(err.message || 'Error marking refund resolved.', 'error');
   }
 }
 
 async function confirmReturnReceived(refundId) {
   try {
-    console.log('📤 Confirming return received for refund:', refundId);
+    console.log('<i class="fas fa-paper-plane"></i> Confirming return received for refund:', refundId);
     const response = await fetch(`${API_BASE}/seller/refunds/${refundId}/confirm-return-received`, {
       method: 'POST',
       headers: {
@@ -1319,25 +1319,25 @@ async function confirmReturnReceived(refundId) {
 
     const result = await response.json();
     if (!response.ok) {
-      console.error('❌ Failed to confirm return received:', result);
+      console.error('<i class="fas fa-times-circle"></i> Failed to confirm return received:', result);
       renderMarketmixNotification(result.message || 'Failed to confirm return received', 'error');
       return;
     }
 
-    console.log('✅ Return receipt confirmed');
+    console.log('<i class="fas fa-check-circle"></i> Return receipt confirmed');
     renderMarketmixNotification('Return receipt confirmed. Refund is now awaiting release.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
-    console.error('❌ Error confirming return received:', err);
+    console.error('<i class="fas fa-times-circle"></i> Error confirming return received:', err);
     renderMarketmixNotification(err.message || 'Error confirming return received.', 'error');
   }
 }
 
 async function escalateRefund(refundId, escalatedBy) {
   try {
-    console.log('📤 Escalating refund to MarketMix:', refundId);
+    console.log('<i class="fas fa-paper-plane"></i> Escalating refund to MarketMix:', refundId);
     const response = await fetch(`${API_BASE}/refunds/escalate`, {
       method: 'POST',
       headers: {
@@ -1349,18 +1349,18 @@ async function escalateRefund(refundId, escalatedBy) {
 
     const result = await response.json();
     if (!response.ok) {
-      console.error('❌ Failed to escalate refund:', result);
+      console.error('<i class="fas fa-times-circle"></i> Failed to escalate refund:', result);
       renderMarketmixNotification(result.message || 'Failed to escalate', 'error');
       return;
     }
 
-    console.log('✅ Refund escalated to MarketMix');
+    console.log('<i class="fas fa-check-circle"></i> Refund escalated to MarketMix');
     renderMarketmixNotification('Refund escalated to MarketMix support.', 'success');
     await loadSellerRefundCases();
     window.dispatchEvent(new CustomEvent('sellerNotificationsUpdated'));
     renderTable();
   } catch (err) {
-    console.error('❌ Error escalating refund:', err);
+    console.error('<i class="fas fa-times-circle"></i> Error escalating refund:', err);
     renderMarketmixNotification(err.message || 'Error escalating refund.', 'error');
   }
 }
@@ -1464,7 +1464,7 @@ function openChat(returnId) {
     setUnreadCount(returnId, 0);
     updateNotificationBadges();
     refreshChatBadge(returnId);
-    console.log(`✅ Notifications marked as read for refund ${returnId}`);
+    console.log(`<i class="fas fa-check-circle"></i> Notifications marked as read for refund ${returnId}`);
   }).catch(err => {
     console.warn('Failed to mark notifications as read:', err.message);
   });
@@ -1551,7 +1551,7 @@ function renderChatMessages(messages) {
       } else if (isVid) {
         mediaHtml = `<div class="message-media"><video controls class="message-video"><source src="${mediaUrl}"></video></div>`;
       } else {
-        mediaHtml = `<a href="${mediaUrl}" class="message-file" target="_blank" rel="noopener noreferrer">📎 Attachment</a>`;
+        mediaHtml = `<a href="${mediaUrl}" class="message-file" target="_blank" rel="noopener noreferrer"><i class="fas fa-paperclip"></i> Attachment</a>`;
       }
     }
 
@@ -1661,7 +1661,7 @@ async function sendChatMessage() {
     });
     
     if (msgResponse.ok) {
-      console.log('📨 Seller message sent successfully for refund:', currentChatId);
+      console.log('<i class="fas fa-envelope"></i> Seller message sent successfully for refund:', currentChatId);
       
       // Mark chat as started after first message
       try {
@@ -1675,12 +1675,12 @@ async function sendChatMessage() {
         });
         
         const chatStartedResult = await chatStartedResponse.json();
-        console.log(`✅ Chat-started marked for refund ${currentChatId}:`, {
+        console.log(`<i class="fas fa-check-circle"></i> Chat-started marked for refund ${currentChatId}:`, {
           success: chatStartedResponse.ok,
           response: chatStartedResult
         });
       } catch (err) {
-        console.error(`⚠️ Failed to mark chat started for refund ${currentChatId}:`, err);
+        console.error(`<i class="fas fa-exclamation-triangle"></i> Failed to mark chat started for refund ${currentChatId}:`, err);
       }
     }
     

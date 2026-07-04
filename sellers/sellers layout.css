@@ -776,21 +776,23 @@ body {
 }
 
 #tickerList li::before {
-  content: "✓";
+  content: "\f00c";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
    left: 4px;
   top: 50%;
   transform: translateY(-50%);
   color: #122e31;
-  font-weight: bold;
   font-size: 1.1rem;
 }
 .full-log li::before{
-    content: "✓";
+    content: "\f00c";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
    left: 4px;
   top: 50%;
   transform: translateY(-50%);
   color: #122e31;
-  font-weight: bold;
   font-size: 1.1rem;
 }
 

@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (existing) existing.remove();
     const t = document.createElement('div');
     t.className = 'toast-msg';
-    t.textContent = msg;
+    t.innerHTML = msg;
     Object.assign(t.style, {
       position:'fixed', top:'20px', right:'20px', padding:'1rem 1.5rem',
       borderRadius:'8px', color:'#fff', fontWeight:'600', zIndex:'9999',
@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return showFieldError('email', 'Enter a valid email address.');
     }
-    if (otpVerified) return showToast('Email already verified ✅', 'success');
+    if (otpVerified) return showToast('Email already verified <i class="fas fa-check-circle"></i>', 'success');
 
     verifyEmailBtn.disabled = true;
     verifyEmailBtn.textContent = 'Sending...';
@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       markEmailVerified();
-      showToast('Email verified successfully! ✅', 'success');
+      showToast('Email verified successfully! <i class="fas fa-check-circle"></i>', 'success');
 
     } catch (err) {
       otpMsg.textContent = 'Network error. Please try again.';
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function markEmailVerified() {
     otpVerified = true;
     otpSection.style.display = 'none';
-    verifyEmailBtn.textContent = 'Verified ✅';
+    verifyEmailBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
     verifyEmailBtn.disabled = true;
     verifyEmailBtn.style.background = '#4CAF50';
     clearFieldError('email');
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     galleryFiles.forEach((src, idx) => {
       const item = document.createElement('div');
       item.className = 'gallery-item';
-      item.innerHTML = `<img src="${src}" alt="showcase ${idx+1}"><button type="button" class="remove-gallery" data-i="${idx}">✕</button>`;
+      item.innerHTML = `<img src="${src}" alt="showcase ${idx+1}"><button type="button" class="remove-gallery" data-i="${idx}"><i class="fas fa-times"></i></button>`;
       galleryGrid.appendChild(item);
       const pImg = document.createElement('img');
       pImg.src = src;
@@ -601,7 +601,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       })();
 
-      showToast('Store setup completed! 🎉 Redirecting to KYC verification...', 'success');
+      showToast('Store setup completed! <i class="fas fa-party-horn"></i> Redirecting to KYC verification...', 'success');
       localStorage.removeItem('signupDetails'); // clean up
       setTimeout(() => { window.location.href = 'kyc-verification.html'; }, 2000);
 
