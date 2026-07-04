@@ -250,7 +250,7 @@ let _dashboardLoading = false;
 
 // ─── Central data loader ──────────────────────────────────────────────────────
 async function loadDashboardData() {
-  if (_dashboardLoading) return;
+  if (_dashboardLoading) { console.log('Skipped duplicate call'); return; }
   _dashboardLoading = true;
   try {
     return await _loadDashboardDataImpl();
