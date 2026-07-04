@@ -571,43 +571,46 @@ function setupEventListeners(product) {
 }
 
 function setupShareButton(product) {
-  const btn = document.getElementById('product-share-btn');
-  const menu = document.getElementById('share-menu');
-  if (!btn || !menu) return;
+  const whatsappBtn = document.getElementById('share-whatsapp');
+  const twitterBtn = document.getElementById('share-twitter');
+  const facebookBtn = document.getElementById('share-facebook');
+  const instagramBtn = document.getElementById('share-instagram');
+  const copyBtn = document.getElementById('share-copy');
+  if (!whatsappBtn || !twitterBtn || !facebookBtn || !instagramBtn || !copyBtn) return;
 
   const url = window.location.href;
   const text = `Check out ${product.name} on MarketMix!`;
 
- btn.addEventListener('click', async (e) => {
-  e.stopPropagation();
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: product.name, text, url });
-      return;
-    } catch (_) { /* user cancelled, fall through */ }
-  }
-  const rect = btn.getBoundingClientRect();
-  menu.style.position = 'fixed';
-  menu.style.top = `${rect.bottom + 6}px`;
-  menu.style.left = `${rect.left}px`;
-  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-});
-  document.getElementById('share-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
-  document.getElementById('share-twitter').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-  document.getElementById('share-facebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-
-  document.getElementById('share-instagram').addEventListener('click', () => copyLink(url, 'Link copied! Paste it in your Instagram story or bio.'));
-  document.getElementById('share-copy').addEventListener('click', () => copyLink(url, 'Link copied to clipboard!'));
-
-  document.addEventListener('click', (e) => {
-    if (!menu.contains(e.target) && e.target !== btn) menu.style.display = 'none';
+  whatsappBtn.addEventListener('click', () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
   });
-}
 
-function copyLink(url, msg) {
-  navigator.clipboard.writeText(url).then(() => showToast(msg, 'success'))
-    .catch(() => showToast('Could not copy link', 'error'));
-  document.getElementById('share-menu').style.display = 'none';
+  twitterBtn.addEventListener('click', () => {
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+  });
+
+  facebookBtn.addEventListener('click', () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+  });
+
+  instagramBtn.addEventListener('click', async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.name, text, url });
+        return;
+      } catch (_) {
+        // user cancelled or not supported
+      }
+    }
+
+    navigator.clipboard.writeText(url).then(() => showToast('Link copied! Paste it in Instagram story or bio.', 'success'))
+      .catch(() => showToast('Could not copy link', 'error'));
+  });
+
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard!', 'success'))
+      .catch(() => showToast('Could not copy link', 'error'));
+  });
 }
 
 
