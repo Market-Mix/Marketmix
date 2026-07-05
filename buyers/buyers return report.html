@@ -2072,6 +2072,10 @@
     const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
     const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
 
+    if (resolution === 'refund_processing') {
+      return { label: 'Refund Processing', className: 'refund_processing', statusKey: 'refund_processing', isRejected: false };
+    }
+
     if (resolution === 'awaiting_refund_release') {
       return { label: 'Awaiting Refund Release', className: 'awaiting_refund_release', statusKey: 'awaiting_refund_release', isRejected: false };
     }
@@ -2749,6 +2753,7 @@
     const statusText = {
       pending: '⏳ Pending Resolution',
       waiting_buyer_confirmation: '⏸️ Awaiting Your Decision',
+      refund_processing: '💸 Refund Processing',
       awaiting_refund_release: '⏳ Awaiting Refund Release',
       resolved: '✓ Case Resolved',
       escalated: '⛔ Escalated To MarketMix'
@@ -3219,7 +3224,7 @@
           timeLeft = expiryTime - now;
         }
 
-        const chatAllowed = !['approved', 'denied', 'resolved', 'escalated', 'awaiting_refund_release'].includes(statusMeta.statusKey);
+        const chatAllowed = !['approved', 'denied', 'resolved', 'escalated', 'refund_processing', 'awaiting_refund_release'].includes(statusMeta.statusKey);
       if (timeLeft > 0 && chatAllowed) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -3255,6 +3260,12 @@
           chatBtnHtml = `
             <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat disabled for escalated cases">
               <i class="fas fa-comments"></i> Escalated
+            </button>
+          `;
+        } else if (statusMeta.statusKey === 'refund_processing') {
+          chatBtnHtml = `
+            <button class="btn-chat" style="background: #0ea5e9; color: white; cursor: not-allowed; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" disabled title="Refund processing">
+              Refund Processing
             </button>
           `;
         } else if (statusMeta.statusKey === 'awaiting_refund_release') {

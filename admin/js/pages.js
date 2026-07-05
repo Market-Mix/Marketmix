@@ -86,7 +86,7 @@ function getRefundDisplayState(refundCase = {}) {
   const returnReceived = refundCase.return_received === true || refundCase.returnReceived === true || false;
 
   if (returnReceived) {
-    return { label: 'Seller confirmed receipt\nWaiting for refund payment', className: 'seller_confirmed', statusKey: 'seller_confirmed' };
+    return { label: 'Seller confirmed receipt\nRefund Processing', className: 'seller_confirmed', statusKey: 'seller_confirmed' };
   }
 
   if (buyerShipped && !returnReceived) {
@@ -105,6 +105,10 @@ function getRefundDisplayState(refundCase = {}) {
 
   if (resolution === 'waiting_buyer_confirmation') {
     return { label: 'Awaiting Buyer Confirmation', className: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation' };
+  }
+
+  if (resolution === 'refund_processing') {
+    return { label: 'Refund Processing', className: 'refund_processing', statusKey: 'refund_processing' };
   }
 
   if (resolution === 'awaiting_refund_release') {
@@ -1351,7 +1355,7 @@ function renderReturns() {
           <option value="denied">Denied</option>
           <option value="waiting_buyer_confirmation">Awaiting Buyer Confirmation</option>
           <option value="buyer_shipped_waiting_seller">Buyer shipped / Waiting for seller confirmation</option>
-          <option value="seller_confirmed">Seller confirmed receipt / Waiting for refund payment</option>
+          <option value="seller_confirmed">Seller confirmed receipt / Refund Processing</option>
           <option value="resolved">Resolved</option>
           <option value="escalated">Escalated</option>
         </select>
