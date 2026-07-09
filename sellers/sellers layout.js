@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Auto-refresh every 5 seconds
-setInterval(loadDashboardData, 5 * 60_000); // 5 min
+setInterval(loadDashboardData, 15 * 60_000); // 15 min
 
 
   let lastVisible = Date.now();
@@ -135,7 +135,7 @@ setInterval(loadDashboardData, 5 * 60_000); // 5 min
   // Update navbar notification badge right away and poll every 30s
   try {
     updateNavbarNotificationBadge();
-    setInterval(updateNavbarNotificationBadge, 2 * 60_000);
+    setInterval(updateNavbarNotificationBadge, 5 * 60_000);
   } catch (e) { console.warn('Notification badge updater init failed', e); }
 });
 
