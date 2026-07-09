@@ -108,8 +108,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (e) { console.warn('Failed to reload dashboard on seller-dashboard-updated', e); }
   });
 
-  // Auto-refresh every 30 seconds
-  setInterval(loadDashboardData, 30_000);
+  // Auto-refresh every 5 seconds
+setInterval(loadDashboardData, 5 * 60_000); // 5 min
+
 
   let lastVisible = Date.now();
 
@@ -134,7 +135,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Update navbar notification badge right away and poll every 30s
   try {
     updateNavbarNotificationBadge();
-    setInterval(updateNavbarNotificationBadge, 30_000);
+    setInterval(updateNavbarNotificationBadge, 2 * 60_000);
   } catch (e) { console.warn('Notification badge updater init failed', e); }
 });
 
@@ -265,7 +266,7 @@ async function _loadDashboardDataImpl() {
 
   // Refresh active store data so dashboard progress stays in sync after setup/KYC flow.
   try {
-    const freshStores = await StoreManager.loadStores(true);
+    const freshStores = await StoreManager.loadStores(); 
     const freshStore = Array.isArray(freshStores) ? freshStores.find(s => s?.id === store?.id) : null;
     if (freshStore) {
       StoreManager.setActiveStore(freshStore);

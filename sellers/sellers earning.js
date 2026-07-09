@@ -7,6 +7,7 @@ let earningsChartInstance = null;
 let _prevEarningsSummary = null;
 let txPage = 1;
 let txLimit = 20;
+let earningsRefreshTimer = null;
 
 // Auth helpers
 function getToken() {
@@ -235,6 +236,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     loadProfile();
     fetchEarningsData();
     loadTransactionHistory();
+
+    if (earningsRefreshTimer) clearInterval(earningsRefreshTimer);
+    earningsRefreshTimer = window.setInterval(() => {
+        fetchEarningsData();
+        loadTransactionHistory(true);
+    }, 5 * 60 * 1000);
+
+    window.addEventListener('beforeunload', () => {
+        if (earningsRefreshTimer) {
+            clearInterval(earningsRefreshTimer);
+            earningsRefreshTimer = null;
+        }
+    });
 
     document.getElementById('load-more-tx')?.addEventListener('click', () => {
         txPage++;
