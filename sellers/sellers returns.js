@@ -640,6 +640,7 @@ function updateChatStatusDisplay(caseInfo) {
   const statusText = {
     pending: '<i class="fas fa-hourglass-half"></i> Pending Resolution',
     waiting_buyer_confirmation: '<i class="fas fa-pause-circle"></i> Awaiting Buyer Decision',
+    refund_processing: '<i class="fas fa-money-bill-wave"></i> Refund Processing',
     awaiting_refund_release: '<i class="fas fa-hourglass-half"></i> Awaiting Refund Release',
     resolved: '<i class="fas fa-check"></i> Case Resolved',
     escalated: '<i class="fas fa-ban"></i> Escalated To MarketMix'
@@ -753,7 +754,13 @@ function renderTable(data = returnsData) {
         `;
       }
     } else {
-      if (item.statusKey === 'awaiting_refund_release') {
+      if (item.statusKey === 'refund_processing') {
+        chatBtnHtml = `
+          <button class="btn-chat" style="background: #0ea5e9; color: #fff; cursor: not-allowed; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;" disabled>
+            Refund Processing
+          </button>
+        `;
+      } else if (item.statusKey === 'awaiting_refund_release') {
         chatBtnHtml = `
           <button class="btn-chat" style="background: #f59e0b; color: #fff; cursor: not-allowed; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;" disabled>
             Awaiting Refund Release
@@ -793,6 +800,12 @@ function renderTable(data = returnsData) {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <span style="padding: 0.5rem 1rem; background: #e3e6eb; border-radius: 4px; color: #333; font-size: 0.9rem;"><i class="fas fa-pause-circle"></i> Awaiting buyer confirmation...</span>
+        </div>
+      `;
+    } else if (item.resolution_status === 'refund_processing') {
+      workflowBtnHtml = `
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="padding: 0.5rem 1rem; background: #dbeafe; border-radius: 4px; color: #1d4ed8; font-size: 0.9rem; font-weight: 600;"><i class="fas fa-money-bill-wave"></i> Refund Processing</span>
         </div>
       `;
     } else if (item.resolution_status === 'awaiting_refund_release') {
@@ -1517,7 +1530,7 @@ async function loadAndRenderChat(caseId) {
 
 function applyChatLockState(caseInfo) {
   const status = String(caseInfo.resolution_status || '').toLowerCase();
-  const readOnly = ['resolved', 'escalated', 'awaiting_refund_release'].includes(status);
+  const readOnly = ['resolved', 'escalated', 'refund_processing', 'awaiting_refund_release'].includes(status);
   if (chatInput) chatInput.disabled = readOnly;
   if (sendChatBtn) sendChatBtn.disabled = readOnly;
   if (chatFileInput) chatFileInput.disabled = readOnly;
@@ -1526,7 +1539,7 @@ function applyChatLockState(caseInfo) {
   if (statusEl) {
     statusEl.className = 'resolution-status ' + status;
     statusEl.textContent = readOnly
-      ? (status === 'resolved' ? 'Case Resolved' : status === 'awaiting_refund_release' ? 'Awaiting Refund Release' : 'Escalated to MarketMix')
+      ? (status === 'resolved' ? 'Case Resolved' : status === 'refund_processing' ? 'Refund Processing' : status === 'awaiting_refund_release' ? 'Awaiting Refund Release' : 'Escalated to MarketMix')
       : 'Pending Resolution';
   }
 

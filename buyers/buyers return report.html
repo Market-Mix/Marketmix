@@ -2072,6 +2072,10 @@
     const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
     const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
 
+    if (resolution === 'refund_processing') {
+      return { label: 'Refund Processing', className: 'refund_processing', statusKey: 'refund_processing', isRejected: false };
+    }
+
     if (resolution === 'awaiting_refund_release') {
       return { label: 'Awaiting Refund Release', className: 'awaiting_refund_release', statusKey: 'awaiting_refund_release', isRejected: false };
     }
@@ -2749,6 +2753,7 @@
     const statusText = {
       pending: '⏳ Pending Resolution',
       waiting_buyer_confirmation: '⏸️ Awaiting Your Decision',
+      refund_processing: '💸 Refund Processing',
       awaiting_refund_release: '⏳ Awaiting Refund Release',
       resolved: '✓ Case Resolved',
       escalated: '⛔ Escalated To MarketMix'
@@ -3219,7 +3224,7 @@
           timeLeft = expiryTime - now;
         }
 
-        const chatAllowed = !['approved', 'denied', 'resolved', 'escalated', 'awaiting_refund_release'].includes(statusMeta.statusKey);
+        const chatAllowed = !['approved', 'denied', 'resolved', 'escalated', 'refund_processing', 'awaiting_refund_release'].includes(statusMeta.statusKey);
       if (timeLeft > 0 && chatAllowed) {
           const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
           const hoursLeft = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -3255,6 +3260,12 @@
           chatBtnHtml = `
             <button class="btn-chat" style="background: #ccc; cursor: not-allowed;" disabled title="Chat disabled for escalated cases">
               <i class="fas fa-comments"></i> Escalated
+            </button>
+          `;
+        } else if (statusMeta.statusKey === 'refund_processing') {
+          chatBtnHtml = `
+            <button class="btn-chat" style="background: #0ea5e9; color: white; cursor: not-allowed; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" disabled title="Refund processing">
+              Refund Processing
             </button>
           `;
         } else if (statusMeta.statusKey === 'awaiting_refund_release') {
@@ -3552,18 +3563,21 @@
         evidence_url: evidenceData.url
       });
 
-      if (!refundCase) {
+      if (!refundCase || !refundCase.id) {
+        console.error('❌ Refund case creation returned invalid data:', refundCase);
         showNotification('Failed to submit evidence. Please try again.', 'error');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
         return;
       }
 
-      console.log('✅ Refund case created successfully by backend. Notifications sent.');
+      console.log('✅ Refund case created successfully by backend with ID:', refundCase.id);
 
-      // Update local data for UI consistency
+      // Update local data for UI consistency - use the REAL refund case ID from backend
+      const realRefundCaseId = refundCase.id;
+      currentChatData.id = realRefundCaseId;
+      currentChatData.supabase_case_id = realRefundCaseId;
       currentChatData.evidence_submitted_at = new Date().toISOString();
-      currentChatData.supabase_case_id = refundCase.id;
       currentChatData.status = 'pending';
       currentChatData.reason = 'complaint';
       // Ensure store name is preserved from existing data or backend response
@@ -3617,15 +3631,16 @@
     try {
       currentChatData = report;
       const caseId = report.supabase_case_id || report.id;
+      const isCompositeId = String(caseId).startsWith('order-') && String(caseId).includes('-item-');
 
       // Immediately clear unread badge for this case when buyer opens the chat
       setUnreadCount(caseId, 0);
       updateNotificationBadges();
       refreshChatBadge(caseId);
 
-      // Mark refund_chat notifications as read for this case
+      // Mark refund_chat notifications as read for this case (only if we have a real refund case ID)
       const token = getAuthToken();
-      if (token && !String(caseId).startsWith('order-')) {
+      if (token && !isCompositeId) {
         fetch(`${API_BASE_URL}/refund-chat/${caseId}/mark-notifications-read`, {
           method: 'PUT',
           headers: {
@@ -3670,8 +3685,8 @@
       loadChatMessages(report);
       startChatPolling(report);
 
-      // Start real-time case status polling
-      if (!String(caseId).startsWith('order-')) {
+      // Start real-time case status polling (only if we have a real refund case ID)
+      if (!isCompositeId) {
         startPolling(caseId);
       }
 
@@ -3687,6 +3702,11 @@
     window._buyerChatPoll = setInterval(async () => {
       if (!currentChatData) return;
       const caseId = currentChatData.supabase_case_id || currentChatData.id;
+      
+      // Skip polling if still using composite ID (refund case not created yet)
+      const isCompositeId = String(caseId).startsWith('order-') && String(caseId).includes('-item-');
+      if (isCompositeId) return;
+      
       const res = await fetchRefundMessages(caseId);
       const msgs = res.messages || [];
       const caseInfo = res.caseInfo || null;
@@ -3705,7 +3725,12 @@
   async function loadChatMessages(report) {
     const caseId = report.supabase_case_id || report.id;
 
-    if (String(caseId).startsWith('order-')) {
+    // If this is still a composite ID (order-*-item-*), it means no refund case was created yet
+    // Only load backend messages if we have a real UUID case ID
+    const isCompositeId = String(caseId).startsWith('order-') && String(caseId).includes('-item-');
+    
+    if (isCompositeId) {
+      console.warn('⚠️ Skipping backend message fetch - refund case not yet created. Case ID is composite:', caseId);
       renderLocalMessages(report);
       return;
     }

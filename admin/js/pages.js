@@ -86,7 +86,7 @@ function getRefundDisplayState(refundCase = {}) {
   const returnReceived = refundCase.return_received === true || refundCase.returnReceived === true || false;
 
   if (returnReceived) {
-    return { label: 'Seller confirmed receipt\nWaiting for refund payment', className: 'seller_confirmed', statusKey: 'seller_confirmed' };
+    return { label: 'Seller confirmed receipt\nRefund Processing', className: 'seller_confirmed', statusKey: 'seller_confirmed' };
   }
 
   if (buyerShipped && !returnReceived) {
@@ -105,6 +105,10 @@ function getRefundDisplayState(refundCase = {}) {
 
   if (resolution === 'waiting_buyer_confirmation') {
     return { label: 'Awaiting Buyer Confirmation', className: 'waiting_buyer_confirmation', statusKey: 'waiting_buyer_confirmation' };
+  }
+
+  if (resolution === 'refund_processing') {
+    return { label: 'Refund Processing', className: 'refund_processing', statusKey: 'refund_processing' };
   }
 
   if (resolution === 'awaiting_refund_release') {
@@ -167,6 +171,7 @@ function normalizeRefundCase(refundCase) {
     shipmentNotes: refundCase.shipment_notes || refundCase.notes || '',
     rawStatus: refundCase.status || ''
     ,
+    paymentSummary: refundCase.paymentSummary || refundCase.payment_summary || null,
     // Map seller return receipt fields
     returnReceived: refundCase.return_received === true || refundCase.returnReceived === true || false,
     returnReceivedAt: refundCase.return_received_at || refundCase.returnReceivedAt || null,
@@ -316,6 +321,33 @@ function renderShippingReceipt(receiptUrl = '') {
   }
 
   return `<a href="${receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline">View receipt</a>`;
+}
+
+function getRefundSummaryMarkup(refundRequest = {}) {
+  const paymentSummary = refundRequest.paymentSummary || refundRequest.payment_summary || null;
+  if (!paymentSummary) {
+    return '<p class="text-sm text-gray-600 dark:text-gray-400">No refund accounting summary is available yet.</p>';
+  }
+
+  const rows = [
+    ['Refund Amount', formatRefundAmount(paymentSummary.refundAmount ?? paymentSummary.refund_amount ?? 0)],
+    ['Shipping Refund', formatRefundAmount(paymentSummary.shippingAmount ?? paymentSummary.shipping_amount ?? 0)],
+    ['Escrow Used', formatRefundAmount(paymentSummary.amountFromEscrow ?? paymentSummary.amount_from_escrow ?? 0)],
+    ['Seller Balance Used', formatRefundAmount(paymentSummary.amountFromBalance ?? paymentSummary.amount_from_balance ?? 0)],
+    ['Remaining Uncovered', formatRefundAmount(paymentSummary.remainingUncovered ?? paymentSummary.remaining_uncovered ?? 0)],
+    ['Payment Status', String(paymentSummary.paymentStatus || paymentSummary.payment_status || 'Processing')]
+  ];
+
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      ${rows.map(([label, value]) => `
+        <div class="bg-white/70 dark:bg-slate-800/60 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+          <p class="text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold">${label}</p>
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mt-1">${value}</p>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 function getRefundStatusBadgeMarkup(refundRequest = {}) {
@@ -1351,7 +1383,7 @@ function renderReturns() {
           <option value="denied">Denied</option>
           <option value="waiting_buyer_confirmation">Awaiting Buyer Confirmation</option>
           <option value="buyer_shipped_waiting_seller">Buyer shipped / Waiting for seller confirmation</option>
-          <option value="seller_confirmed">Seller confirmed receipt / Waiting for refund payment</option>
+          <option value="seller_confirmed">Seller confirmed receipt / Refund Processing</option>
           <option value="resolved">Resolved</option>
           <option value="escalated">Escalated</option>
         </select>
@@ -1465,6 +1497,11 @@ function viewReturn(id) {
                 </div>
               ` : ''}
               
+              <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-slate-800/60 p-3">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Refund Summary</p>
+                ${getRefundSummaryMarkup(returnRequest)}
+              </div>
+
               <!-- Seller Receipt Confirmation -->
               <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-slate-800/60 p-3">
                 <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Seller Receipt Confirmation</p>
