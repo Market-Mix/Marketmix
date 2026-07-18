@@ -100,6 +100,10 @@ const PAGE_LIMIT  = 20;
 let resolvedStoreId = params.get('store') || null;
 let resolvedSellerId = params.get('seller') || null;
 
+function followKey() {
+  return resolvedStoreId || storeData?.storeId || storeData?.store_id || resolvedSellerId || storeData?.sellerId || storeData?.seller_id || '';
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   if (!STORE_ID) return;
@@ -538,16 +542,15 @@ function viewProduct(productId) {
 async function syncFollowState() {
   if (!authToken || !STORE_ID) return;
   try {
-    // Follow is keyed by sellerId, not storeId — wait for storeData
     let attempts = 0;
     while (!storeData && attempts < 30) {
       await new Promise(r => setTimeout(r, 100));
       attempts++;
     }
-    const sellerId = storeData?.sellerId || storeData?.seller_id;
-    if (!sellerId) return;
+    const key = followKey();
+    if (!key) return;
 
-    const res  = await fetch(`${API}/shops/following/${sellerId}/status`, {
+    const res  = await fetch(`${API}/shops/following/${encodeURIComponent(key)}/status`, {
       headers: authHeaders()
     });
     const data = await res.json();
@@ -558,15 +561,15 @@ async function syncFollowState() {
 async function toggleFollow() {
   if (!authToken) { window.location.href = 'login for buyers.html'; return; }
 
-  const sellerId = storeData?.sellerId || storeData?.seller_id;
-  if (!sellerId) return;
+  const key = followKey();
+  if (!key) return;
 
   const btn        = document.getElementById('followBtn');
   const isFollowing = btn?.classList.contains('following');
   if (btn) btn.disabled = true;
 
   try {
-    const res  = await fetch(`${API}/shops/following/${sellerId}`, {
+    const res  = await fetch(`${API}/shops/following/${encodeURIComponent(key)}`, {
       method: isFollowing ? 'DELETE' : 'POST',
       headers: authHeaders()
     });
