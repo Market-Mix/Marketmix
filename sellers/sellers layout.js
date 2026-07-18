@@ -135,7 +135,7 @@ setInterval(loadDashboardData, 15 * 60_000); // 15 min
   // Update navbar notification badge right away and poll every 30s
   try {
     updateNavbarNotificationBadge();
-    setInterval(updateNavbarNotificationBadge, 5 * 60_000);
+    setInterval(updateNavbarNotificationBadge, 5  * 60_000);
   } catch (e) { console.warn('Notification badge updater init failed', e); }
 });
 
