@@ -151,18 +151,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     previewPhone.textContent   = signupDetails.phone     || '—';
     previewAddress.textContent = signupDetails.address   || '—';
 
-    // Match category from signup to dropdown
+    // Match category from signup to dropdown by id, with name fallback
     if (signupDetails.productCategory && storeCategory) {
-      // Try matching by name (case-insensitive)
-      const opts = Array.from(storeCategory.options);
-      const match = opts.find(o => 
-        o.text.toLowerCase().includes(signupDetails.productCategory.toLowerCase())
-      );
-      if (match) {
-        storeCategory.value = match.value;
-        selectedCategoryId  = match.value;
-        updatePreviewCategories();
+      selectedCategoryId = signupDetails.productCategory;
+      storeCategory.value = selectedCategoryId;
+      if (!storeCategory.value && signupDetails.productCategoryName) {
+        const match = Array.from(storeCategory.options)
+          .find(o => o.text.toLowerCase() === signupDetails.productCategoryName.toLowerCase());
+        if (match) {
+          storeCategory.value = match.value;
+          selectedCategoryId = match.value;
+        }
       }
+      updatePreviewCategories();
     }
   }
     try {
