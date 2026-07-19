@@ -120,7 +120,7 @@ function followKey() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!STORE_ID) return;
+  if (!STORE_ID && !(acctSlug && storeSlug)) return;
   await loadStoreProfile();
   loadProducts();
   loadReviews();
