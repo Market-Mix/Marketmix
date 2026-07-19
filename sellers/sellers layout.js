@@ -515,10 +515,11 @@ function renderStoreShareLink(store) {
   }
 
   const baseUrl  = 'https://marketmix.vercel.app';
-  const storeUrl = `${baseUrl}/${acctSlug}/${storeSlug}`;
+  const prettyStoreUrl = `${baseUrl}/${acctSlug}/${storeSlug}`;
+  const previewUrl = `${baseUrl}/buyers/store-id.html?store=${encodeURIComponent(store.id)}`;
 
-  input.value = storeUrl;
-  if (openBtn) openBtn.href = storeUrl;
+  input.value = prettyStoreUrl;
+  if (openBtn) openBtn.href = previewUrl;
 }
 
 window.copyStoreLink = function () {

@@ -1272,7 +1272,7 @@ if (!token && window.self === window.top) {
     let currentSearchQuery = '';
     let searchDebounce = null;
 
-    document.getElementById('productSearch').addEventListener('input', e => {
+    document.getElementById('productSearch')?.addEventListener('input', e => {
       clearTimeout(searchDebounce);
       searchDebounce = setTimeout(() => {
         currentSearchQuery = e.target.value.trim();
