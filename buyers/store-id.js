@@ -4,8 +4,18 @@ const authToken = localStorage.getItem('token');
 // ─── Get store id from URL ────────────────────────────────────────────────────
 // Supports ?store=, ?seller=, ?id= for backwards compatibility
 const params  = new URLSearchParams(window.location.search);
-const acctSlug = params.get('acct');
-const storeSlug = params.get('store');
+let acctSlug  = params.get('acct');
+let storeSlug = params.get('store');
+
+// Vercel rewrites don't expose destination query params to client JS —
+// fall back to parsing them straight from the URL path.
+if (!acctSlug && !storeSlug) {
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  if (segments.length === 2 && !['buyers', 'sellers'].includes(segments[0])) {
+    [acctSlug, storeSlug] = segments;
+  }
+}
+
 const STORE_ID = params.get('seller') || params.get('id') || (acctSlug ? null : storeSlug);
 
 if (!STORE_ID && !storeSlug) {
