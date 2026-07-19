@@ -500,10 +500,13 @@ function renderProfileVerifiedBadge(profile, accountCompleted = false) {
 
 // ─── Store Share Link — uses store.id not seller user id ─────────────────────
 function renderStoreShareLink(store) {
-  if (!store?.id) return;
+  if (!store?.slug) return;
 
-  const baseUrl  = window.location.origin;
-  const storeUrl = `${baseUrl}/buyers/store-id.html?store=${store.id}`;
+  const acctSlug = store.accountSlug || StoreManager.getSellerAccountSlug?.();
+  if (!acctSlug) return;
+
+  const baseUrl  = 'https://marketmix.vercel.app';
+  const storeUrl = `${baseUrl}/${acctSlug}/${store.slug}`;
 
   const input   = document.getElementById('storeLinkInput');
   const openBtn = document.getElementById('openStoreBtn');

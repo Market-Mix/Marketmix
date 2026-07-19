@@ -4,9 +4,11 @@ const authToken = localStorage.getItem('token');
 // ─── Get store id from URL ────────────────────────────────────────────────────
 // Supports ?store=, ?seller=, ?id= for backwards compatibility
 const params  = new URLSearchParams(window.location.search);
-const STORE_ID = params.get('store') || params.get('seller') || params.get('id');
+const acctSlug = params.get('acct');
+const storeSlug = params.get('store');
+const STORE_ID = params.get('seller') || params.get('id') || (acctSlug ? null : storeSlug);
 
-if (!STORE_ID) {
+if (!STORE_ID && !storeSlug) {
   document.body.innerHTML = `<div style="padding:60px;text-align:center;font-family:sans-serif">
     <h2>Store not found</h2><p>No store ID was provided in the URL.</p>
   </div>`;
@@ -117,15 +119,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ─── Load Store Profile ───────────────────────────────────────────────────────
 async function loadStoreProfile() {
   try {
-    const profileUrls = params.has('seller')
-      ? [
-          `${API}/seller/public/${STORE_ID}`,
-          `${API}/seller/stores/public/${STORE_ID}`,
-        ]
-      : [
-          `${API}/seller/stores/public/${STORE_ID}`,
-          `${API}/seller/public/${STORE_ID}`,
-        ];
+    const slugUrl = acctSlug && storeSlug
+      ? `${API}/seller/stores/public-by-slug/${encodeURIComponent(acctSlug)}/${encodeURIComponent(storeSlug)}`
+      : null;
+
+    const profileUrls = [];
+    if (slugUrl) {
+      profileUrls.push(slugUrl);
+    }
+    if (params.has('seller')) {
+      profileUrls.push(`${API}/seller/public/${STORE_ID}`);
+      profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
+    } else {
+      profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
+      profileUrls.push(`${API}/seller/public/${STORE_ID}`);
+    }
 
     let res = null;
     let data = null;
