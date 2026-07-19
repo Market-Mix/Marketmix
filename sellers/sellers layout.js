@@ -500,18 +500,24 @@ function renderProfileVerifiedBadge(profile, accountCompleted = false) {
 
 // ─── Store Share Link — uses store.id not seller user id ─────────────────────
 function renderStoreShareLink(store) {
-  if (!store?.slug) return;
-
-  const acctSlug = store.accountSlug || StoreManager.getSellerAccountSlug?.();
-  if (!acctSlug) return;
-
-  const baseUrl  = 'https://marketmix.vercel.app';
-  const storeUrl = `${baseUrl}/${acctSlug}/${store.slug}`;
-
   const input   = document.getElementById('storeLinkInput');
   const openBtn = document.getElementById('openStoreBtn');
+  if (!input) return;
 
-  if (input)   input.value = storeUrl;
+  const acctSlug = store?.accountSlug;
+  const storeSlug = store?.slug;
+
+  if (!acctSlug || !storeSlug) {
+    input.value = 'Link unavailable — please re-save your store settings';
+    if (openBtn) openBtn.removeAttribute('href');
+    console.warn('renderStoreShareLink: missing slug data', { acctSlug, storeSlug, store });
+    return;
+  }
+
+  const baseUrl  = 'https://marketmix.vercel.app';
+  const storeUrl = `${baseUrl}/${acctSlug}/${storeSlug}`;
+
+  input.value = storeUrl;
   if (openBtn) openBtn.href = storeUrl;
 }
 
