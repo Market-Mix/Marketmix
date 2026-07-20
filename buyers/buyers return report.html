@@ -1701,13 +1701,23 @@
   async function createRefundCase(caseData) {
     try {
       console.log('📝 Creating refund case for order:', caseData.order_id);
-      
+
+      const buyerId = caseData.buyer_id || getCurrentBuyerId();
+      if (!buyerId) {
+        throw new Error('Unable to determine buyer_id for refund case. Please sign in and try again.');
+      }
+
+      const isSyntheticOrderItemId = id => typeof id === 'string' && id.startsWith('order-') && id.includes('-item-');
+      const orderItemId = caseData.order_item_id || caseData.order_item || caseData.item_id || (!isSyntheticOrderItemId(caseData.id) ? caseData.id : null) || null;
+      const productId = caseData.product_id || caseData.productId || null;
+      const sellerId = caseData.seller_id || caseData.sellerId || caseData.seller?.id || null;
+
       const refundCasePayload = {
-        buyer_id: caseData.buyer_id,
-        seller_id: caseData.seller_id || caseData.sellerId || null,
+        buyer_id: buyerId,
+        seller_id: sellerId,
         order_id: caseData.order_id,
-        order_item_id: caseData.order_item_id || caseData.order_item || caseData.item_id || caseData.id || null,
-        product_id: caseData.product_id || caseData.productId || caseData.item_id || null,
+        order_item_id: orderItemId,
+        product_id: productId,
         product_name: resolveProductName(caseData),
         complaint_text: caseData.complaint_text,
         evidence_url: caseData.evidence_url || null,
@@ -1728,7 +1738,8 @@
       
       if (!response.ok) {
         console.error('❌ Backend API error creating refund case:', response.status);
-        console.error('Error details:', result || 'No response body');
+        console.error('Payload:', JSON.stringify(refundCasePayload, null, 2));
+        console.error('Error details:', result ? JSON.stringify(result, null, 2) : 'No response body');
         if (result?.missing) {
           console.error('❌ Missing fields from payload:', result.missing);
         }
