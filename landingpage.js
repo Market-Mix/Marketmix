@@ -9,7 +9,9 @@ function initSmartCTAs() {
     e.preventDefault();
     const fallbackUrl = e.currentTarget.getAttribute('href');
     try {
-      const res = await fetch(`${API}/auth/silent-login`, { method: 'POST', credentials: 'include' });
+      // Cookie credentials disabled for silent login.
+      // const res = await fetch(`${API}/auth/silent-login`, { method: 'POST', credentials: 'include' });
+      const res = await fetch(`${API}/auth/silent-login`, { method: 'POST' });
       if (res.ok) {
         const { data } = await res.json();
         if (data.user.role === expectedRole) {
