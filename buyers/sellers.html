@@ -6,7 +6,7 @@
   <title>Browse Sellers - MarketMix</title>
   <link rel="stylesheet" href="buyers homepage.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="shortcut icon" href="marketplace.png" type="image/x-icon">
+  <link rel="shortcut icon" href="../images/marketmixfavicon.png" type="image/x-icon">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
@@ -517,6 +517,10 @@
       return seller.storeId || seller.store_id || seller.store?.id || seller.store?.storeId || seller.store?.store_id || '';
     }
 
+    function followKeyOf(seller) {
+      return storeIdOf(seller) || sellerIdOf(seller);
+    }
+
     function nameOf(seller) {
       return seller.businessName || seller.business_name || seller.storeName || seller.store_name || seller.store?.businessName || seller.store?.business_name || 'MarketMix Store';
     }
@@ -738,7 +742,7 @@
     }
 
     function sellerCard(seller) {
-      const sellerId = String(sellerIdOf(seller));
+      const sellerId = String(followKeyOf(seller));
       const name = nameOf(seller);
       const category = categoryOf(seller);
       const rating = ratingOf(seller);
@@ -853,7 +857,7 @@
         if (!res.ok) throw new Error(data.message || 'Failed to load followed shops');
 
         const shops = data?.data?.shops || [];
-        followedSellerIds = new Set(shops.map(shop => String(shop.seller_id || shop.sellerId || shop.id || '')).filter(Boolean));
+        followedSellerIds = new Set(shops.map(shop => String(shop.store_id || shop.storeId || shop.seller_id || shop.sellerId || shop.id || '')).filter(Boolean));
         saveFollowedIds();
         renderSellers();
       } catch (error) {

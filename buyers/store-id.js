@@ -4,12 +4,26 @@ const authToken = localStorage.getItem('token');
 // ─── Get store id from URL ────────────────────────────────────────────────────
 // Supports ?store=, ?seller=, ?id= for backwards compatibility
 const params  = new URLSearchParams(window.location.search);
-const STORE_ID = params.get('store') || params.get('seller') || params.get('id');
+let acctSlug  = params.get('acct');
+let storeSlug = params.get('store');
 
-if (!STORE_ID) {
-  document.body.innerHTML = `<div style="padding:60px;text-align:center;font-family:sans-serif">
-    <h2>Store not found</h2><p>No store ID was provided in the URL.</p>
-  </div>`;
+// Vercel rewrites don't expose destination query params to client JS —
+// fall back to parsing them straight from the URL path.
+if (!acctSlug && !storeSlug) {
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  if (segments.length === 2 && !['buyers', 'sellers'].includes(segments[0])) {
+    [acctSlug, storeSlug] = segments;
+  }
+}
+
+const STORE_ID = params.get('seller') || params.get('id') || (acctSlug ? null : storeSlug);
+
+if (!STORE_ID && !storeSlug) {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.innerHTML = `<div style="padding:60px;text-align:center;font-family:sans-serif">
+      <h2>Store not found</h2><p>No store ID was provided in the URL.</p>
+    </div>`;
+  });
 }
 
 function authHeaders(extra = {}) {
@@ -100,9 +114,13 @@ const PAGE_LIMIT  = 20;
 let resolvedStoreId = params.get('store') || null;
 let resolvedSellerId = params.get('seller') || null;
 
+function followKey() {
+  return resolvedStoreId || storeData?.storeId || storeData?.store_id || resolvedSellerId || storeData?.sellerId || storeData?.seller_id || '';
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!STORE_ID) return;
+  if (!STORE_ID && !(acctSlug && storeSlug)) return;
   await loadStoreProfile();
   loadProducts();
   loadReviews();
@@ -113,15 +131,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ─── Load Store Profile ───────────────────────────────────────────────────────
 async function loadStoreProfile() {
   try {
-    const profileUrls = params.has('seller')
-      ? [
-          `${API}/seller/public/${STORE_ID}`,
-          `${API}/seller/stores/public/${STORE_ID}`,
-        ]
-      : [
-          `${API}/seller/stores/public/${STORE_ID}`,
-          `${API}/seller/public/${STORE_ID}`,
-        ];
+    const slugUrl = acctSlug && storeSlug
+      ? `${API}/seller/stores/public-by-slug/${encodeURIComponent(acctSlug)}/${encodeURIComponent(storeSlug)}`
+      : null;
+
+    const profileUrls = [];
+    if (slugUrl) {
+      profileUrls.push(slugUrl);
+    }
+    if (params.has('seller')) {
+      profileUrls.push(`${API}/seller/public/${STORE_ID}`);
+      profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
+    } else {
+      profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
+      profileUrls.push(`${API}/seller/public/${STORE_ID}`);
+    }
 
     let res = null;
     let data = null;
@@ -495,7 +519,12 @@ function renderReviews(reviews, summary) {
 
 // ─── Add to Cart ──────────────────────────────────────────────────────────────
 async function addToCart(productId, productName) {
-  if (!authToken) { window.location.href = 'login for buyers.html'; return; }
+  if (!authToken) {
+    const hasKnownUser = !!(localStorage.getItem('user') || localStorage.getItem('buyer_email'));
+    localStorage.setItem('post_auth_return_context', JSON.stringify({ productId, productName, intent: 'pending' }));
+    window.location.href = hasKnownUser ? 'login for buyers.html' : 'signup for buyers.html';
+    return;
+  }
 
   try {
     const res  = await fetch(`${API}/cart/add`, {
@@ -505,9 +534,57 @@ async function addToCart(productId, productName) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
-    showToast(`${productName} added to cart 🛒`);
+    showCartModal(productName);
   } catch (err) {
     showToast(err.message || 'Could not add to cart');
+  }
+}
+
+function showCartModal(productName) {
+  let modal = document.getElementById('cartActionModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'cartActionModal';
+    modal.style.cssText = `
+      position:fixed;bottom:24px;right:24px;background:#fff;
+      border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.18);
+      padding:18px 20px;z-index:99999;max-width:300px;
+      font-family:'DM Sans',sans-serif;border:1px solid #e7e5e4;
+      animation:slideUpFade .25s ease;
+    `;
+    document.body.appendChild(modal);
+
+    if (!document.getElementById('cartModalKeyframes')) {
+      const style = document.createElement('style');
+      style.id = 'cartModalKeyframes';
+      style.textContent = `@keyframes slideUpFade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`;
+      document.head.appendChild(style);
+    }
+  }
+
+  modal.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <strong style="font-size:0.92rem;color:#0c0a09">Added to cart</strong>
+      <button id="cartModalClose" style="background:none;border:none;cursor:pointer;color:#a8a29e;font-size:1.1rem;line-height:1">&times;</button>
+    </div>
+    <p style="font-size:0.85rem;color:#57534e;margin-bottom:14px">${escapeHtml(productName)} is in your cart.</p>
+    <div style="display:flex;gap:8px">
+      <button id="cartModalCheckout" style="flex:1;padding:10px;border:none;border-radius:8px;background:#FF7A00;color:#fff;font-weight:600;font-size:0.85rem;cursor:pointer">Checkout</button>
+      <button id="cartModalContinue" style="flex:1;padding:10px;border:1px solid #e7e5e4;border-radius:8px;background:#fff;color:#292524;font-weight:500;font-size:0.85rem;cursor:pointer">Continue Browsing</button>
+    </div>
+  `;
+  modal.style.display = 'block';
+
+  document.getElementById('cartModalClose').onclick = () => { modal.style.display = 'none'; };
+  document.getElementById('cartModalCheckout').onclick = () => handleCartModalAction('checkout');
+  document.getElementById('cartModalContinue').onclick = () => handleCartModalAction('browse');
+}
+
+function handleCartModalAction(intent) {
+  if (intent === 'checkout') {
+    window.location.href = '../buyers/checkout.html';
+  } else {
+    window.location.href = '../buyers/buyers%20homepage.html';
   }
 }
 
@@ -538,16 +615,15 @@ function viewProduct(productId) {
 async function syncFollowState() {
   if (!authToken || !STORE_ID) return;
   try {
-    // Follow is keyed by sellerId, not storeId — wait for storeData
     let attempts = 0;
     while (!storeData && attempts < 30) {
       await new Promise(r => setTimeout(r, 100));
       attempts++;
     }
-    const sellerId = storeData?.sellerId || storeData?.seller_id;
-    if (!sellerId) return;
+    const key = followKey();
+    if (!key) return;
 
-    const res  = await fetch(`${API}/shops/following/${sellerId}/status`, {
+    const res  = await fetch(`${API}/shops/following/${encodeURIComponent(key)}/status`, {
       headers: authHeaders()
     });
     const data = await res.json();
@@ -558,15 +634,15 @@ async function syncFollowState() {
 async function toggleFollow() {
   if (!authToken) { window.location.href = 'login for buyers.html'; return; }
 
-  const sellerId = storeData?.sellerId || storeData?.seller_id;
-  if (!sellerId) return;
+  const key = followKey();
+  if (!key) return;
 
   const btn        = document.getElementById('followBtn');
   const isFollowing = btn?.classList.contains('following');
   if (btn) btn.disabled = true;
 
   try {
-    const res  = await fetch(`${API}/shops/following/${sellerId}`, {
+    const res  = await fetch(`${API}/shops/following/${encodeURIComponent(key)}`, {
       method: isFollowing ? 'DELETE' : 'POST',
       headers: authHeaders()
     });

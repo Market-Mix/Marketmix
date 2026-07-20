@@ -995,8 +995,8 @@ if (!token && window.self === window.top) {
 
   <div id="toast"></div>
 
-  <script src="notification-manager.js"></script>
-  <script src="store-id.js"></script>
+  <script src="/buyers/notification-manager.js"></script>
+  <script src="/buyers/store-id.js"></script>
   <script>
     // Initialize notification system on page load
     document.addEventListener('DOMContentLoaded', async function() {
@@ -1272,7 +1272,7 @@ if (!token && window.self === window.top) {
     let currentSearchQuery = '';
     let searchDebounce = null;
 
-    document.getElementById('productSearch').addEventListener('input', e => {
+    document.getElementById('productSearch')?.addEventListener('input', e => {
       clearTimeout(searchDebounce);
       searchDebounce = setTimeout(() => {
         currentSearchQuery = e.target.value.trim();

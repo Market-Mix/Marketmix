@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/buyers/:path*", "destination": "/buyers/:path*" },
+    { "source": "/sellers/:path*", "destination": "/sellers/:path*" },
+    { "source": "/:acct/:store", "destination": "/buyers/store-id.html?acct=:acct&store=:store" }
+  ]
+}

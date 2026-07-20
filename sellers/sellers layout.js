@@ -108,8 +108,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (e) { console.warn('Failed to reload dashboard on seller-dashboard-updated', e); }
   });
 
-  // Auto-refresh every 30 seconds
-  setInterval(loadDashboardData, 30_000);
+  // Auto-refresh every 5 seconds
+setInterval(loadDashboardData, 15 * 60_000); // 15 min
+
 
   let lastVisible = Date.now();
 
@@ -134,7 +135,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Update navbar notification badge right away and poll every 30s
   try {
     updateNavbarNotificationBadge();
-    setInterval(updateNavbarNotificationBadge, 30_000);
+    setInterval(updateNavbarNotificationBadge, 5  * 60_000);
   } catch (e) { console.warn('Notification badge updater init failed', e); }
 });
 
@@ -265,7 +266,7 @@ async function _loadDashboardDataImpl() {
 
   // Refresh active store data so dashboard progress stays in sync after setup/KYC flow.
   try {
-    const freshStores = await StoreManager.loadStores(true);
+    const freshStores = await StoreManager.loadStores(); 
     const freshStore = Array.isArray(freshStores) ? freshStores.find(s => s?.id === store?.id) : null;
     if (freshStore) {
       StoreManager.setActiveStore(freshStore);
@@ -499,16 +500,26 @@ function renderProfileVerifiedBadge(profile, accountCompleted = false) {
 
 // ─── Store Share Link — uses store.id not seller user id ─────────────────────
 function renderStoreShareLink(store) {
-  if (!store?.id) return;
-
-  const baseUrl  = window.location.origin;
-  const storeUrl = `${baseUrl}/buyers/store-id.html?store=${store.id}`;
-
   const input   = document.getElementById('storeLinkInput');
   const openBtn = document.getElementById('openStoreBtn');
+  if (!input) return;
 
-  if (input)   input.value = storeUrl;
-  if (openBtn) openBtn.href = storeUrl;
+  const acctSlug = store?.accountSlug;
+  const storeSlug = store?.slug;
+
+  if (!acctSlug || !storeSlug) {
+    input.value = 'Link unavailable — please re-save your store settings';
+    if (openBtn) openBtn.removeAttribute('href');
+    console.warn('renderStoreShareLink: missing slug data', { acctSlug, storeSlug, store });
+    return;
+  }
+
+  const baseUrl  = 'https://marketmix.vercel.app';
+  const prettyStoreUrl = `${baseUrl}/${acctSlug}/${storeSlug}`;
+  const previewUrl = `${baseUrl}/buyers/store-id.html?store=${encodeURIComponent(store.id)}`;
+
+  input.value = prettyStoreUrl;
+  if (openBtn) openBtn.href = previewUrl;
 }
 
 window.copyStoreLink = function () {

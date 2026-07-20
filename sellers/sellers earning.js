@@ -7,6 +7,7 @@ let earningsChartInstance = null;
 let _prevEarningsSummary = null;
 let txPage = 1;
 let txLimit = 20;
+let earningsRefreshTimer = null;
 
 // Auth helpers
 function getToken() {
@@ -235,6 +236,22 @@ document.addEventListener("DOMContentLoaded", async function () {
     loadProfile();
     fetchEarningsData();
     loadTransactionHistory();
+    loadWithdrawalHistory();
+    updateWithdrawStoreBadge();
+
+    if (earningsRefreshTimer) clearInterval(earningsRefreshTimer);
+    earningsRefreshTimer = window.setInterval(() => {
+        fetchEarningsData();
+        loadTransactionHistory(true);
+        loadWithdrawalHistory();
+    }, 5 * 60 * 1000);
+
+    window.addEventListener('beforeunload', () => {
+        if (earningsRefreshTimer) {
+            clearInterval(earningsRefreshTimer);
+            earningsRefreshTimer = null;
+        }
+    });
 
     document.getElementById('load-more-tx')?.addEventListener('click', () => {
         txPage++;
@@ -286,7 +303,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 window.addEventListener('storeChanged', () => {
     fetchEarningsData();
+    loadWithdrawalHistory();
+    updateWithdrawStoreBadge();
 });
+
+document.addEventListener('DOMContentLoaded', updateWithdrawStoreBadge);
 
 async function loadProfile() {
     try {
@@ -375,6 +396,39 @@ async function loadTransactionHistory(reset = true) {
     } catch (err) {
         console.error('Error loading transaction history:', err);
         showToast('Unable to load transaction history', false);
+    }
+}
+
+async function loadWithdrawalHistory() {
+    try {
+        const data = await apiFetch('/withdrawals');
+        const withdrawals = data?.data?.withdrawals || [];
+        const container = document.getElementById('withdrawal-history-list');
+        if (!container) return;
+
+        if (!withdrawals.length) {
+            container.innerHTML = '<div class="transaction"><span>No withdrawals for this store yet</span></div>';
+            return;
+        }
+
+        container.innerHTML = withdrawals.map(w => `
+            <div class="transaction">
+                <span>${new Date(w.created_at).toLocaleDateString()}</span>
+                <span>${w.bank_name} — ****${String(w.bank_account_number || '').slice(-4)}</span>
+                <span class="amount">${fmtNaira(w.amount)} <small>[${w.status.toUpperCase()}]</small></span>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('loadWithdrawalHistory error:', err);
+    }
+}
+
+function updateWithdrawStoreBadge() {
+    const badge = document.getElementById('withdrawHistoryStoreBadge');
+    const store = window.StoreManager?.getActiveStore?.();
+    if (badge) {
+        if (store) badge.textContent = `— ${store.business_name}`;
+        else badge.textContent = '';
     }
 }
 

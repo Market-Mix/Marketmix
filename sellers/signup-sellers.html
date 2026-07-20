@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seller Signup</title>
+  <link rel="shortcut icon" href="../images/marketmixfavicon.png" type="image/x-icon">
   <link rel="stylesheet" href="../shared/notifications.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
@@ -313,7 +314,7 @@
           <input type="text" id="storeName" placeholder="Store Name" required>
           <div class="error" id="error-storeName"></div>
         </div>
-        <div class="input-group">
+        <!-- <div class="input-group">
           <select id="businessType" required>
             <option value="">Select Business Type</option>
             <option value="retail">Retail</option>
@@ -321,14 +322,10 @@
             <option value="service">Service</option>
           </select>
           <div class="error" id="error-businessType"></div>
-        </div>
+        </div> -->
         <div class="input-group">
           <select id="productCategory" required>
-            <option value="">Select Product Category</option>
-            <option value="fashion">Fashion</option>
-            <option value="electronics">Electronics</option>
-            <option value="home">Home & Living</option>
-            <option value="other">Other</option>
+            <option value="">Select Store Category</option>
           </select>
           <div class="error" id="error-productCategory"></div>
         </div>
@@ -491,6 +488,7 @@ prevBtns.forEach((btn) => {
       const storeName      = document.getElementById('storeName').value.trim();
       const businessType   = document.getElementById('businessType').value;
       const productCategory = document.getElementById('productCategory').value;
+      const productCategoryName = document.getElementById('productCategory').selectedOptions[0]?.text || '';
       const address        = document.getElementById('address').value.trim();
       const password       = document.getElementById('password').value;
 
@@ -538,10 +536,11 @@ prevBtns.forEach((btn) => {
           email,
           phone,
           storeName,
-           businessType,
-           productCategory,
-           address
-           }));
+          businessType,
+          productCategory,
+          productCategoryName,
+          address
+        }));
         localStorage.setItem('user', JSON.stringify(registerData.data?.user || {}));
 
         // ── Step 2: Save seller store profile ──────────────────────────────
@@ -591,7 +590,20 @@ prevBtns.forEach((btn) => {
       showToast('Google signup coming soon!', 'info');
       // TODO: implement Google OAuth → POST /api/auth/google-register with role:'seller'
     }
-
+    // ─── Load real categories from backend ─────────────────────────────────────
+    async function loadProductCategories() {
+      const select = document.getElementById('productCategory');
+      if (!select) return;
+      try {
+        const res = await fetch(`${API_BASE}/categories`);
+        const data = await res.json();
+        const cats = data?.data || [];
+        select.innerHTML = '<option value="">Select Product Category</option>' +
+          cats.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}</option>`).join('');
+      } catch (err) {
+        console.warn('Could not load categories:', err);
+      }
+    }
     // ─── Password helpers ──────────────────────────────────────────────────────
     function togglePassword(fieldId, el) {
       const input = document.getElementById(fieldId);
@@ -622,6 +634,7 @@ prevBtns.forEach((btn) => {
     });
 
     // ─── Init ──────────────────────────────────────────────────────────────────
+    loadProductCategories();
     showStep(currentStep);
   </script>
 </body>

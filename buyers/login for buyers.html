@@ -143,10 +143,19 @@ function getToken() {
                     }
 
                     // Redirect after 1 second to post-login target if set (support legacy key)
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || 'buyers homepage.html';
                         try { localStorage.removeItem('after_login_redirect'); } catch (e) {}
                         try { localStorage.removeItem('post_login_redirect'); } catch (e) {}
+                        try {
+                            const ctx = JSON.parse(localStorage.getItem('post_auth_return_context') || 'null');
+                            localStorage.removeItem('post_auth_return_context');
+                            if (ctx?.productId) {
+                                await resumeCartFlow(data.data?.token || localStorage.getItem('token'), ctx.productId);
+                            }
+                        } catch (e) {
+                            console.warn('resumeCartFlow failed:', e);
+                        }
                         window.location.href = target;
                     }, 1000);
                 } else {
@@ -245,6 +254,15 @@ function getToken() {
                         const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || 'buyers homepage.html';
                         try { localStorage.removeItem('after_login_redirect'); } catch (e) {}
                         try { localStorage.removeItem('post_login_redirect'); } catch (e) {}
+                        try {
+                            const ctx = JSON.parse(localStorage.getItem('post_auth_return_context') || 'null');
+                            localStorage.removeItem('post_auth_return_context');
+                            if (ctx?.productId) {
+                                await resumeCartFlow(data.data?.token || localStorage.getItem('token'), ctx.productId);
+                            }
+                        } catch (e) {
+                            console.warn('resumeCartFlow failed:', e);
+                        }
                         window.location.href = target;
                     }, 1000);
                 } else {
@@ -365,6 +383,19 @@ function getToken() {
             } catch (error) {
                 console.error('❌ Failed to store auth data:', error);
                 return false;
+            }
+        }
+
+        async function resumeCartFlow(token, productId) {
+            if (!token || !productId) return;
+            try {
+                await fetch(`${API_BASE_URL}/cart/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ product_id: productId, quantity: 1 })
+                });
+            } catch (error) {
+                console.warn('resumeCartFlow failed:', error);
             }
         }
 
