@@ -2170,6 +2170,32 @@
       size: size,
       orderData
     });
+
+    let calculatedTotal = null;
+    if (caseData.total_amount != null) {
+      calculatedTotal = caseData.total_amount;
+    } else if (caseData.amount != null) {
+      calculatedTotal = caseData.amount;
+    } else if (caseData.refund_amount != null) {
+      calculatedTotal = caseData.refund_amount;
+    }
+
+    if (calculatedTotal == null && Array.isArray(orderData.items) && orderData.items.length > 0) {
+      const matchedItem = orderData.items.find(it =>
+        String(it.id) === String(caseData.order_item_id) ||
+        String(it.product_id) === String(caseData.product_id)
+      );
+      const itemToUse = matchedItem || (orderData.items.length === 1 ? orderData.items[0] : null);
+      if (itemToUse) {
+        const itemPrice = Number(itemToUse.price ?? itemToUse.price_at_purchase ?? itemToUse.amount ?? 0) || 0;
+        const itemQuantity = Number(itemToUse.quantity ?? 1) || 1;
+        calculatedTotal = itemPrice * itemQuantity;
+      }
+    }
+
+    if (calculatedTotal == null) {
+      calculatedTotal = orderData.total_amount ?? 0;
+    }
     
     return {
       // Ensure we expose the original order item id so open-order items can be excluded
@@ -2177,7 +2203,7 @@
       id: caseData.id,
       order_id: caseData.order_id,
       product_name: resolveProductName(caseData) || resolveProductName(orderData),
-      total_amount: caseData.total_amount || caseData.amount || caseData.refund_amount || orderData.total_amount || 0,
+      total_amount: calculatedTotal,
       status: caseData.resolution_status || caseData.status || 'pending',
       displayStatus: statusMeta.label,
       statusClass: statusMeta.className,
