@@ -250,7 +250,7 @@ function getToken() {
                     } catch (e) {
                         console.warn('Wishlist merge failed:', e);
                     }
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || 'buyers homepage.html';
                         try { localStorage.removeItem('after_login_redirect'); } catch (e) {}
                         try { localStorage.removeItem('post_login_redirect'); } catch (e) {}
