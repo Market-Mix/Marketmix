@@ -137,6 +137,7 @@ function mapRefundCaseFromSupabase(caseData) {
     tracking_number: caseData.tracking_number || null,
     shipping_receipt_url: caseData.shipping_receipt_url || null,
     buyer_shipped_at: caseData.buyer_shipped_at || null,
+    return_received: caseData.return_received || false,
     color: color,
     size: size,
     product_snapshot: ps
