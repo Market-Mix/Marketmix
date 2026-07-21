@@ -827,7 +827,7 @@ function renderTable(data = returnsData) {
         </div>
       `;
     } else if (item.seller_return_choice) {
-      if (item.seller_return_choice === 'return_product' && !item.return_received && (item.shipping_status || item.buyer_shipped_at || item.courier_name || item.tracking_number || item.shipping_receipt_url)) {
+      if (item.seller_return_choice === 'return_product' && !item.return_received && (item.resolution_status === 'return_in_transit' || item.shipping_status || item.buyer_shipped_at || item.courier_name || item.tracking_number || item.shipping_receipt_url)) {
         workflowBtnHtml = `
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <button class="btn-action" style="background: #2563eb; color: white;" onclick="showConfirmReturnReceived('${item.id}')">Confirm Return Received</button>
