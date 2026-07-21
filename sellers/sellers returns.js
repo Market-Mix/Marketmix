@@ -781,7 +781,7 @@ function renderTable(data = returnsData) {
     // resolved → Show "<i class=\"fas fa-check\"></i> Case Resolved" badge
     // escalated → Show "Escalated To MarketMix" badge
     // approved + no seller choice → Show seller return decision buttons
-    if (item.marketmix_decision === 'approved' && !item.seller_return_choice) {
+    if ((item.marketmix_decision === 'approved' || item.resolution_status === 'waiting_seller_return_decision') && !item.seller_return_choice) {
       workflowBtnHtml = `
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn-action" style="background: #22c55e; color: white;" onclick="showConfirmSellerReturnDecision('${item.id}', 'return_product')">Return Product</button>
