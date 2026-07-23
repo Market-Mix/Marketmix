@@ -84,6 +84,13 @@ function escapeHtml(text) {
 function getRefundDisplayState(refundCase = {}) {
   const buyerShipped = refundCase.buyer_shipped_at || refundCase.buyerShippedAt || refundCase.buyer_shipped || refundCase.buyerShipped || null;
   const returnReceived = refundCase.return_received === true || refundCase.returnReceived === true || false;
+  const paymentStatus = String(refundCase?.refund_payment_status || refundCase?.payment_status || refundCase?.paymentStatus || '').toLowerCase();
+  const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
+  const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
+
+  if (paymentStatus === 'paid' || resolution === 'resolved' || refundCase?.refund_paid_at) {
+    return { label: 'Refund Completed', className: 'resolved', statusKey: 'resolved' };
+  }
 
   if (returnReceived) {
     return { label: 'Seller confirmed receipt\nRefund Processing', className: 'seller_confirmed', statusKey: 'seller_confirmed' };
@@ -92,8 +99,6 @@ function getRefundDisplayState(refundCase = {}) {
   if (buyerShipped && !returnReceived) {
     return { label: 'Buyer shipped\nWaiting for seller confirmation', className: 'buyer_shipped_waiting_seller', statusKey: 'buyer_shipped_waiting_seller' };
   }
-  const decision = String(refundCase?.marketmix_decision || '').toLowerCase();
-  const resolution = String(refundCase?.resolution_status || refundCase?.status || 'pending').toLowerCase();
 
   if (decision === 'approved' || resolution === 'approved' || resolution === 'waiting_seller_return_decision') {
     return { label: 'Approved', className: 'approved', statusKey: 'approved' };
@@ -135,6 +140,8 @@ function normalizeRefundCase(refundCase) {
   const backendAmountValue = Number(refundCase.total_amount ?? refundCase.amount ?? refundCase.refund_amount ?? 0);
   const createdAt = refundCase.created_at || refundCase.createdAt || refundCase.date || null;
   const createdDate = createdAt ? new Date(createdAt).toLocaleDateString() : '';
+  const refundPaymentStatus = String(refundCase.refund_payment_status || refundCase.payment_status || refundCase.paymentStatus || '').toLowerCase();
+  const refundPaidAt = refundCase.refund_paid_at || refundCase.refundPaidAt || null;
 
   return {
     id: String(refundCase.id || refundCase.refund_id || refundCase.case_id || ''),
@@ -172,14 +179,15 @@ function normalizeRefundCase(refundCase) {
     rawStatus: refundCase.status || ''
     ,
     paymentSummary: refundCase.paymentSummary || refundCase.payment_summary || null,
+    refund_payment_status: refundCase.refund_payment_status || refundCase.payment_status || refundCase.paymentStatus || '',
+    payment_status: refundCase.refund_payment_status || refundCase.payment_status || refundCase.paymentStatus || '',
+    paymentStatus: refundCase.refund_payment_status || refundCase.payment_status || refundCase.paymentStatus || '',
+    refund_paid_at: refundPaidAt,
     // Map seller return receipt fields
     returnReceived: refundCase.return_received === true || refundCase.returnReceived === true || false,
     returnReceivedAt: refundCase.return_received_at || refundCase.returnReceivedAt || null,
-    buyer_shipped_at: refundCase.buyer_shipped_at || refundCase.buyerShippedAt || null
-    ,
-    // Map seller return receipt fields
-    returnReceived: refundCase.return_received === true || refundCase.returnReceived === true || false,
-    returnReceivedAt: refundCase.return_received_at || refundCase.returnReceivedAt || null
+    buyer_shipped_at: refundCase.buyer_shipped_at || refundCase.buyerShippedAt || null,
+    paymentState: refundPaymentStatus
   };
 }
 
@@ -325,8 +333,28 @@ function renderShippingReceipt(receiptUrl = '') {
 
 function getRefundSummaryMarkup(refundRequest = {}) {
   const paymentSummary = refundRequest.paymentSummary || refundRequest.payment_summary || null;
+  const paymentStatus = String(
+    paymentSummary?.paymentStatus ||
+    paymentSummary?.payment_status ||
+    refundRequest?.refund_payment_status ||
+    refundRequest?.payment_status ||
+    refundRequest?.paymentStatus ||
+    'Processing'
+  );
+
   if (!paymentSummary) {
-    return '<p class="text-sm text-gray-600 dark:text-gray-400">No refund accounting summary is available yet.</p>';
+    return `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="bg-white/70 dark:bg-slate-800/60 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+          <p class="text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold">Refund Amount</p>
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mt-1">${formatRefundAmount(refundRequest.backendAmount ?? refundRequest.amount ?? 0)}</p>
+        </div>
+        <div class="bg-white/70 dark:bg-slate-800/60 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+          <p class="text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold">Payment Status</p>
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mt-1">${paymentStatus === 'paid' ? 'Paid' : paymentStatus}</p>
+        </div>
+      </div>
+    `;
   }
 
   const rows = [
@@ -335,7 +363,7 @@ function getRefundSummaryMarkup(refundRequest = {}) {
     ['Escrow Used', formatRefundAmount(paymentSummary.amountFromEscrow ?? paymentSummary.amount_from_escrow ?? 0)],
     ['Seller Balance Used', formatRefundAmount(paymentSummary.amountFromBalance ?? paymentSummary.amount_from_balance ?? 0)],
     ['Remaining Uncovered', formatRefundAmount(paymentSummary.remainingUncovered ?? paymentSummary.remaining_uncovered ?? 0)],
-    ['Payment Status', String(paymentSummary.paymentStatus || paymentSummary.payment_status || 'Processing')]
+    ['Payment Status', paymentStatus === 'paid' ? 'Paid' : paymentStatus]
   ];
 
   return `
