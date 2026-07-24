@@ -2881,7 +2881,12 @@
         actionBtn.onclick = () => showConfirmBuyerSatisfied(refundId);
         actionBtn.style.display = 'inline-block';
       } else if (caseInfo.resolution_status === 'resolved' || caseInfo.resolution_status === 'escalated') {
-        actionBtn.style.display = 'none';
+        // Keep resolved/escalated status chips visible if they were rendered as labels.
+        if (actionBtn.tagName === 'SPAN') {
+          actionBtn.style.display = 'inline-block';
+        } else {
+          actionBtn.style.display = 'none';
+        }
       } else if (caseInfo.resolution_status === 'pending' && caseInfo.chat_started) {
         actionBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Escalate';
         actionBtn.onclick = () => showConfirmEscalateBuyer(refundId);
