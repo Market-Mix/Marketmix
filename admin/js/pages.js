@@ -33,6 +33,79 @@ function formatRefundAmount(value) {
   return `₦${amount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
 }
 
+function renderAdjustmentDashboard(container, adjustments = []) {
+  if (!container) return;
+
+  if (!Array.isArray(adjustments) || !adjustments.length) {
+    container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No adjustment activity to review.</p>';
+    return;
+  }
+
+  const rows = adjustments.map((adjustment) => {
+    const recoveryHistory = Array.isArray(adjustment.recovery_history) && adjustment.recovery_history.length
+      ? adjustment.recovery_history.map((entry) => `
+          <li class="text-xs text-gray-600 dark:text-gray-400">
+            ${new Date(entry.created_at).toLocaleDateString()} — ${formatRefundAmount(entry.recovered_amount)} recovered, ${formatRefundAmount(entry.remaining_debt)} remaining
+          </li>`).join('')
+      : '<li class="text-xs text-gray-600 dark:text-gray-400">No recovery activity yet.</li>';
+
+    return `
+      <tr class="border-b border-gray-200 dark:border-gray-700">
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(adjustment.seller_name || 'Unknown Seller')}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(adjustment.original_amount || 0)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(adjustment.remaining_amount || 0)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(adjustment.recovered_amount || 0)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(adjustment.status || 'active')}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(adjustment.refund_case_id || '—')}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${adjustment.created_at ? new Date(adjustment.created_at).toLocaleDateString() : '—'}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">
+          <ul class="space-y-1">${recoveryHistory}</ul>
+        </td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(adjustment.seller_notice || '—')}</td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-left">
+        <thead>
+          <tr class="border-b border-gray-200 dark:border-gray-700">
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Seller</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Original Adjustment</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Remaining Adjustment</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Recovered</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Status</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Refund Case</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Created</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Recovery History</th>
+            <th class="px-3 py-2 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">Seller Notice</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function loadAdjustmentDashboard(refundCaseId = null) {
+  const container = document.getElementById('adjustmentDashboard');
+  if (!container) return;
+
+  container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Loading adjustment review...</p>';
+
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/admin/seller-adjustments${refundCaseId ? `?refundCaseId=${encodeURIComponent(refundCaseId)}` : ''}`, { headers: getAdminAuthHeaders() });
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(body?.message || 'Unable to load adjustment review');
+    }
+
+    renderAdjustmentDashboard(container, body?.data?.adjustments || []);
+  } catch (err) {
+    container.innerHTML = `<p class="text-sm text-red-600 dark:text-red-400">${escapeHtml(err.message || 'Unable to load adjustment review')}</p>`;
+  }
+}
+
 function parseRefundProductSpecs(refund = {}) {
   let color = refund.color || null;
   let size = refund.size || null;
@@ -1418,6 +1491,16 @@ function renderReturns() {
         <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
       </div>
 
+      <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Adjustment Review</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Admin-only view for seller adjustments linked to refund cases.</p>
+          </div>
+        </div>
+        <div id="adjustmentDashboard"></div>
+      </div>
+
       <div id="returnTableContainer">
         ${renderTable(['ID', 'Buyer', 'Seller', 'Amount', 'Status', 'Date'], [], [
           { label: 'View', callback: 'viewReturn' }
@@ -1435,10 +1518,11 @@ function renderReturns() {
     applyReturnFilters();
   });
 
+  loadAdjustmentDashboard();
   fetchAdminRefundCases();
 }
 
-function viewReturn(id) {
+async function viewReturn(id) {
   const returnRequest = adminRefundCases.find(r => r.id === id);
   if (!returnRequest) {
     showToast('Return request not found. Please refresh the list.', 'error');
@@ -1530,6 +1614,11 @@ function viewReturn(id) {
                 ${getRefundSummaryMarkup(returnRequest)}
               </div>
 
+              <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-slate-800/60 p-3">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Adjustment Review</p>
+                <div id="adjustmentDetailPanel"></div>
+              </div>
+
               <!-- Seller Receipt Confirmation -->
               <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-slate-800/60 p-3">
                 <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Seller Receipt Confirmation</p>
@@ -1564,4 +1653,22 @@ function viewReturn(id) {
     </div>
   `;
   document.getElementById('content').innerHTML = html;
+
+  try {
+    const detailContainer = document.getElementById('adjustmentDetailPanel');
+    if (detailContainer) {
+      const response = await fetch(`${ADMIN_API_BASE}/admin/seller-adjustments?refundCaseId=${encodeURIComponent(returnRequest.id)}`, { headers: getAdminAuthHeaders() });
+      const body = await response.json().catch(() => null);
+      if (response.ok) {
+        renderAdjustmentDashboard(detailContainer, body?.data?.adjustments || []);
+      } else {
+        detailContainer.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Unable to load adjustment review.</p>';
+      }
+    }
+  } catch (err) {
+    const detailContainer = document.getElementById('adjustmentDetailPanel');
+    if (detailContainer) {
+      detailContainer.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Unable to load adjustment review.</p>';
+    }
+  }
 }

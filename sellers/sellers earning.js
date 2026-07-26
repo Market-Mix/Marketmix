@@ -484,6 +484,8 @@ function renderEarnings(data) {
         document.getElementById("pending").textContent = fmtNaira(summary.pendingEarnings);
     if (document.getElementById("withdrawals"))
         document.getElementById("withdrawals").textContent = fmtNaira(summary.totalWithdrawn);
+    if (document.getElementById("outstanding-adjustment"))
+        document.getElementById("outstanding-adjustment").textContent = fmtNaira(summary.outstandingAdjustment || 0);
     
     // Update Projected (Placeholder or calculated)
     const projected = summary.totalEarnings + summary.pendingEarnings;
