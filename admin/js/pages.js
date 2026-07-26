@@ -36,12 +36,18 @@ function formatRefundAmount(value) {
 function renderAdjustmentDashboard(container, adjustments = []) {
   if (!container) return;
 
-  if (!Array.isArray(adjustments) || !adjustments.length) {
+  const normalizedAdjustments = Array.isArray(adjustments)
+    ? adjustments
+    : Array.isArray(adjustments?.adjustments)
+      ? adjustments.adjustments
+      : [];
+
+  if (!normalizedAdjustments.length) {
     container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No adjustment activity to review.</p>';
     return;
   }
 
-  const rows = adjustments.map((adjustment) => {
+  const rows = normalizedAdjustments.map((adjustment) => {
     const recoveryHistory = Array.isArray(adjustment.recovery_history) && adjustment.recovery_history.length
       ? adjustment.recovery_history.map((entry) => `
           <li class="text-xs text-gray-600 dark:text-gray-400">
@@ -49,15 +55,22 @@ function renderAdjustmentDashboard(container, adjustments = []) {
           </li>`).join('')
       : '<li class="text-xs text-gray-600 dark:text-gray-400">No recovery activity yet.</li>';
 
+    const sellerName = adjustment.seller_name || adjustment.seller || 'Unknown Seller';
+    const refundCaseId = adjustment.refund_case_id || adjustment.refund_case || '—';
+    const originalDebt = adjustment.original_debt ?? adjustment.original_amount ?? 0;
+    const remainingDebt = adjustment.remaining_debt ?? adjustment.remaining_amount ?? 0;
+    const recoveredAmount = adjustment.recovered_amount ?? 0;
+    const createdAt = adjustment.created_at || adjustment.created_date || null;
+
     return `
       <tr class="border-b border-gray-200 dark:border-gray-700">
-        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(adjustment.seller_name || 'Unknown Seller')}</td>
-        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(adjustment.original_amount || 0)}</td>
-        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(adjustment.remaining_amount || 0)}</td>
-        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(adjustment.recovered_amount || 0)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(sellerName)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(originalDebt)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(remainingDebt)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${formatRefundAmount(recoveredAmount)}</td>
         <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(adjustment.status || 'active')}</td>
-        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(adjustment.refund_case_id || '—')}</td>
-        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${adjustment.created_at ? new Date(adjustment.created_at).toLocaleDateString() : '—'}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${escapeHtml(refundCaseId)}</td>
+        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">${createdAt ? new Date(createdAt).toLocaleDateString() : '—'}</td>
         <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">
           <ul class="space-y-1">${recoveryHistory}</ul>
         </td>
@@ -100,7 +113,8 @@ async function loadAdjustmentDashboard(refundCaseId = null) {
       throw new Error(body?.message || 'Unable to load adjustment review');
     }
 
-    renderAdjustmentDashboard(container, body?.data?.adjustments || []);
+    const adjustments = Array.isArray(body) ? body : body?.data?.adjustments || body?.adjustments || [];
+    renderAdjustmentDashboard(container, adjustments);
   } catch (err) {
     container.innerHTML = `<p class="text-sm text-red-600 dark:text-red-400">${escapeHtml(err.message || 'Unable to load adjustment review')}</p>`;
   }
@@ -1660,7 +1674,8 @@ async function viewReturn(id) {
       const response = await fetch(`${ADMIN_API_BASE}/admin/seller-adjustments?refundCaseId=${encodeURIComponent(returnRequest.id)}`, { headers: getAdminAuthHeaders() });
       const body = await response.json().catch(() => null);
       if (response.ok) {
-        renderAdjustmentDashboard(detailContainer, body?.data?.adjustments || []);
+        const adjustments = Array.isArray(body) ? body : body?.data?.adjustments || body?.adjustments || [];
+        renderAdjustmentDashboard(detailContainer, adjustments);
       } else {
         detailContainer.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Unable to load adjustment review.</p>';
       }
