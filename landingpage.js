@@ -1,85 +1,6 @@
 // ===== CONFIG =====
 const API = 'https://marketmix-backend.onrender.com/api';
 
-
-function initSmartCTAs() {
-
-
-  async function smartRedirect(e, expectedRole, dashboardUrl) {
-    e.preventDefault();
-    const fallbackUrl = e.currentTarget.getAttribute('href');
-    try {
-      // Cookie credentials disabled for silent login.
-      // const res = await fetch(`${API}/auth/silent-login`, { method: 'POST', credentials: 'include' });
-      const res = await fetch(`${API}/auth/silent-login`, { method: 'POST' });
-      if (res.ok) {
-        const { data } = await res.json();
-        if (data.user.role === expectedRole) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          return window.location.href = dashboardUrl;
-        }
-      }
-    } catch (_) {}
-    window.location.href = fallbackUrl;
-  }
-
-  document.querySelectorAll('.js-shop-cta').forEach(btn =>
-    btn.addEventListener('click', e => smartRedirect(e, 'buyer', './buyers/buyers homepage.html'))
-  );
-  document.querySelectorAll('.js-sell-cta').forEach(btn =>
-    btn.addEventListener('click', e => smartRedirect(e, 'seller', './sellers/sellers layout.html'))
-  );
-}
-
-const COOKIE_CONSENT_KEY = 'mm_cookie_consent';
-
-function isConsentAccepted() {
-  return localStorage.getItem(COOKIE_CONSENT_KEY) === 'accepted';
-}
-
-function createCookieConsentBanner() {
-  if (localStorage.getItem(COOKIE_CONSENT_KEY)) return;
-  const banner = document.createElement('div');
-  banner.id = 'cookieConsent';
-  banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111;color:#fff;padding:16px;z-index:9999;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;font-family:Inter,system-ui,sans-serif;box-shadow:0 -6px 30px rgba(0,0,0,.35);';
-  banner.innerHTML = `
-    <span style="flex:1 1 240px;min-width:220px;">We use cookies to keep you logged in and improve your experience.</span>
-    <button id="cookieAccept" style="background:#FF7A00;border:none;padding:8px 16px;border-radius:6px;color:#fff;cursor:pointer;font-weight:600;">Accept</button>
-    <button id="cookieDecline" style="background:transparent;border:1px solid #fff;padding:8px 16px;border-radius:6px;color:#fff;cursor:pointer;">Decline</button>
-  `;
-  document.body.appendChild(banner);
-
-  document.getElementById('cookieAccept').addEventListener('click', async () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted');
-    banner.remove();
-    await trySilentLogin();
-  });
-
-  document.getElementById('cookieDecline').addEventListener('click', () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'declined');
-    banner.remove();
-  });
-}
-
-async function trySilentLogin() {
-  if (!isConsentAccepted()) return;
-  if (localStorage.getItem('token')) return;
-  try {
-    const res = await fetch(`${API}/auth/silent-login`, {
-      method: 'POST',
-      credentials: 'include'
-    });
-    if (res.ok) {
-      const { data } = await res.json();
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      syncCartCount();
-      // optional: refresh UI state or account badge here
-    }
-  } catch (_) {}
-}
-
 // ===== HELPERS =====
 function esc(t) {
   if (!t) return '';
@@ -1153,7 +1074,6 @@ document.addEventListener('DOMContentLoaded', () => {
   injectStyles();
   initNavbar();
   initHero();
-  initSmartCTAs();
   initClickDelegation();
   initSearch();
   initNewsletter();
@@ -1163,9 +1083,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initFAQ();
   initRevealOnScroll();
   syncCartCount();
-
-  createCookieConsentBanner();
-  if (isConsentAccepted()) trySilentLogin();
 
   // Load data in parallel — trust stats updates targets then fires counters
   Promise.allSettled([
