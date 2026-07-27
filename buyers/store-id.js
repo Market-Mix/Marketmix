@@ -530,7 +530,7 @@ async function addToCart(productId, productName) {
   if (!authToken) {
     const hasKnownUser = !!(localStorage.getItem('user') || localStorage.getItem('buyer_email'));
     localStorage.setItem('post_auth_return_context', JSON.stringify({ productId, productName, intent: 'pending' }));
-    window.location.href = hasKnownUser ? 'login for buyers.html' : 'signup for buyers.html';
+    window.location.href = hasKnownUser ? '/buyers/login%20for%20buyers.html' : '/buyers/signup%20for%20buyers.html';
     return;
   }
 
@@ -590,9 +590,9 @@ function showCartModal(productName) {
 
 function handleCartModalAction(intent) {
   if (intent === 'checkout') {
-    window.location.href = '../buyers/checkout.html';
+    window.location.href = '/buyers/checkout.html';
   } else {
-    window.location.href = '../buyers/buyers%20homepage.html';
+    window.location.href = '/buyers/buyers%20homepage.html';
   }
 }
 
@@ -624,7 +624,7 @@ function viewProduct(productId) {
       ? `seller=${encodeURIComponent(sellerId)}`
       : '';
   const suffix = param ? `&${param}` : '';
-  window.location.href = `product.html?id=${encodeURIComponent(productId)}${suffix}`;
+  window.location.href = `/buyers/product.html?id=${encodeURIComponent(productId)}${suffix}`;
 }
 
 // ─── Follow Store ─────────────────────────────────────────────────────────────
@@ -648,7 +648,7 @@ async function syncFollowState() {
 }
 
 async function toggleFollow() {
-  if (!authToken) { window.location.href = 'login for buyers.html'; return; }
+  if (!authToken) { window.location.href = '/buyers/login%20for%20buyers.html'; return; }
 
   const key = followKey();
   if (!key) return;
