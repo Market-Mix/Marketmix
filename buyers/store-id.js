@@ -11,7 +11,10 @@ let storeSlug = params.get('store');
 // fall back to parsing them straight from the URL path.
 if (!acctSlug && !storeSlug) {
   const segments = window.location.pathname.split('/').filter(Boolean);
-  if (segments.length === 2 && !['buyers', 'sellers'].includes(segments[0])) {
+  const isValidSlugPath = segments.length === 2 &&
+    !['buyers', 'sellers'].includes(segments[0]) &&
+    !segments.some(seg => seg.includes('.') || seg.toLowerCase().endsWith('.html'));
+  if (isValidSlugPath) {
     [acctSlug, storeSlug] = segments;
   }
 }
