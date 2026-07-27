@@ -608,7 +608,15 @@ async function preAddToCart(productId, productName) {
 
 // ─── View Product — keeps store context in URL ────────────────────────────────
 function viewProduct(productId) {
-  window.location.href = `product.html?id=${encodeURIComponent(productId)}&store=${encodeURIComponent(STORE_ID)}`;
+  const storeId = resolvedStoreId || storeData?.storeId || storeData?.store_id || STORE_ID;
+  const sellerId = resolvedSellerId || storeData?.sellerId || storeData?.seller_id || '';
+  const param = storeId
+    ? `store=${encodeURIComponent(storeId)}`
+    : sellerId
+      ? `seller=${encodeURIComponent(sellerId)}`
+      : '';
+  const suffix = param ? `&${param}` : '';
+  window.location.href = `product.html?id=${encodeURIComponent(productId)}${suffix}`;
 }
 
 // ─── Follow Store ─────────────────────────────────────────────────────────────
