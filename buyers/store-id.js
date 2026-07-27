@@ -139,12 +139,14 @@ async function loadStoreProfile() {
     if (slugUrl) {
       profileUrls.push(slugUrl);
     }
-    if (params.has('seller')) {
-      profileUrls.push(`${API}/seller/public/${STORE_ID}`);
-      profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
-    } else {
-      profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
-      profileUrls.push(`${API}/seller/public/${STORE_ID}`);
+    if (STORE_ID) {
+      if (params.has('seller')) {
+        profileUrls.push(`${API}/seller/public/${STORE_ID}`);
+        profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
+      } else {
+        profileUrls.push(`${API}/seller/stores/public/${STORE_ID}`);
+        profileUrls.push(`${API}/seller/public/${STORE_ID}`);
+      }
     }
 
     let res = null;
@@ -321,9 +323,12 @@ async function fetchProductsForStore(queryString) {
 
   if (storeId) urls.push(`${API}/seller/stores/public/${storeId}/products?${queryString}`);
   if (sellerId) urls.push(`${API}/products?seller_id=${sellerId}&${queryString}`);
-  if (!urls.length) urls.push(`${API}/seller/stores/public/${STORE_ID}/products?${queryString}`);
-  if (!urls.some(url => url.includes(`seller_id=${STORE_ID}`))) {
+  if (!urls.length && STORE_ID) urls.push(`${API}/seller/stores/public/${STORE_ID}/products?${queryString}`);
+  if (!urls.some(url => url.includes(`seller_id=${STORE_ID}`)) && STORE_ID) {
     urls.push(`${API}/products?seller_id=${STORE_ID}&${queryString}`);
+  }
+  if (!urls.length) {
+    throw new Error('No valid store or seller ID resolved for products');
   }
 
   let lastData = null;
