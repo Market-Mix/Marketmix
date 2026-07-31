@@ -1243,8 +1243,7 @@ if (!token && window.self === window.top) {
           </div>
           <div class="card-actions">
             <button class="btn-view-sm" onclick="viewProduct('${p.id}')">View</button>
-            <button class="btn-cart-sm" onclick="preAddToCart('${p.id}', ${productNameArg})"
-              ${!inStock ? 'disabled' : ''}>
+            <button class="btn-cart-sm" data-add-cart="${p.id}" data-name="${esc(name)}" type="button" ${!inStock ? 'disabled' : ''}>
               <i class="fa-solid fa-cart-plus"></i> Add to cart
             </button>
           </div>

@@ -129,6 +129,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadReviews();
   initTabs();
   syncFollowState();
+
+  // Delegated listener for Add to Cart buttons using data attributes
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-add-cart]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    preAddToCart(btn.dataset.addCart, btn.dataset.name);
+  });
 });
 
 // ─── Load Store Profile ───────────────────────────────────────────────────────
@@ -432,8 +441,7 @@ function buildProductCard(p) {
       </div>
       <div class="product-actions">
         <button class="btn-view" onclick="viewProduct('${p.id}')">View</button>
-        <button class="btn-cart" onclick="preAddToCart('${p.id}', '${escapeHtml(p.name)}')"
-          ${!inStock ? 'disabled' : ''}>
+        <button class="btn-cart" data-add-cart="${p.id}" data-name="${escapeHtml(p.name)}" type="button" ${!inStock ? 'disabled' : ''}>
           <i class="fa-solid fa-cart-plus"></i> Add to Cart
         </button>
       </div>
@@ -530,6 +538,8 @@ async function addToCart(productId, productName) {
   if (!authToken) {
     const hasKnownUser = !!(localStorage.getItem('user') || localStorage.getItem('buyer_email'));
     localStorage.setItem('post_auth_return_context', JSON.stringify({ productId, productName, intent: 'pending' }));
+    // Preserve current page (including slug/query) so we can return after auth
+    try { localStorage.setItem('post_login_redirect', window.location.pathname + window.location.search); } catch (_) {}
     window.location.href = hasKnownUser ? '/buyers/login%20for%20buyers.html' : '/buyers/signup%20for%20buyers.html';
     return;
   }

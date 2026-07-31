@@ -144,7 +144,7 @@ function getToken() {
 
                     // Redirect after 1 second to post-login target if set (support legacy key)
                     setTimeout(async () => {
-                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || 'buyers homepage.html';
+                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || '/buyers/buyers%20homepage.html';
                         try { localStorage.removeItem('after_login_redirect'); } catch (e) {}
                         try { localStorage.removeItem('post_login_redirect'); } catch (e) {}
                         try {
@@ -251,7 +251,7 @@ function getToken() {
                         console.warn('Wishlist merge failed:', e);
                     }
                     setTimeout(async () => {
-                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || 'buyers homepage.html';
+                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || '/buyers/buyers%20homepage.html';
                         try { localStorage.removeItem('after_login_redirect'); } catch (e) {}
                         try { localStorage.removeItem('post_login_redirect'); } catch (e) {}
                         try {
