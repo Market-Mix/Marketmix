@@ -1,6 +1,16 @@
 const API = 'https://marketmix-backend.onrender.com/api';
 const authToken = localStorage.getItem('token');
 
+// Global delegated Add-to-Cart listener (capture phase). Register unconditionally so
+// clicks are intercepted even if the DOMContentLoaded init gate returns early.
+document.addEventListener('click', (e) => {
+  const btn = e.target && e.target.closest && e.target.closest('[data-add-cart]');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  preAddToCart(btn.dataset.addCart, btn.dataset.name);
+}, true);
+
 // ─── Get store id from URL ────────────────────────────────────────────────────
 // Supports ?store=, ?seller=, ?id= for backwards compatibility
 const params  = new URLSearchParams(window.location.search);
@@ -130,14 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTabs();
   syncFollowState();
 
-  // Delegated listener for Add to Cart buttons using data attributes
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-add-cart]');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    preAddToCart(btn.dataset.addCart, btn.dataset.name);
-  });
+  
 });
 
 // ─── Load Store Profile ───────────────────────────────────────────────────────
