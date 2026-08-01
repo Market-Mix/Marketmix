@@ -366,7 +366,7 @@ function getToken() {
                     } catch(e) { console.warn('merge failed', e); }
 
                     setTimeout(async () => {
-                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || 'buyers homepage.html';
+                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || '/buyers/buyers%20homepage.html';
                         try { localStorage.removeItem('after_login_redirect'); } catch (e) {}
                         try { localStorage.removeItem('post_login_redirect'); } catch (e) {}
                         try {
@@ -746,7 +746,7 @@ initGoogleSignIn();
                         })();
                     } catch(e) { console.warn('merge failed', e); }
                     setTimeout(async () => {
-                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || 'buyers homepage.html';
+                        const target = localStorage.getItem('after_login_redirect') || localStorage.getItem('post_login_redirect') || '/buyers/buyers%20homepage.html';
                         try { localStorage.removeItem('after_login_redirect'); } catch (e) {}
                         try { localStorage.removeItem('post_login_redirect'); } catch (e) {}
                         try {

@@ -573,7 +573,7 @@ async function addToCart(productId, productName) {
     localStorage.setItem('post_auth_return_context', JSON.stringify({ productId, productName, intent: 'pending' }));
     // Preserve current page (including slug/query) so we can return after auth
     try { localStorage.setItem('post_login_redirect', window.location.pathname + window.location.search); } catch (_) {}
-    window.location.href = hasKnownUser ? '/buyers/login%20for%20buyers.html' : '/buyers/signup%20for%20buyers.html';
+    window.location.href = hasKnownUser ? '/buyers/login%20for%20buyers.html' : '/buyers/signup-buyers.html';
     return;
   }
 
