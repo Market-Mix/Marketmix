@@ -836,17 +836,7 @@
       .policy-item { padding: 14px 16px; gap: 12px; }
     }
   </style>
-  <script>
-function getToken() {
-  return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
-}
-const token = getToken();
-// Only redirect if NOT in an iframe
-if (!token && window.self === window.top) {
-  window.location.replace("login for buyers.html");
-}
-    </script>
-</head>
+  </head>
 <body>
 
   <!-- Hero Banner -->
