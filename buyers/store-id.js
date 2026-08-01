@@ -1,5 +1,26 @@
 const API = 'https://marketmix-backend.onrender.com/api';
-const authToken = localStorage.getItem('token');
+
+function getStoredToken() {
+  return (localStorage.getItem('token') || '').trim();
+}
+
+function clearAuthToken() {
+  try { localStorage.removeItem('token'); } catch (_) {}
+}
+
+function isTokenValid() {
+  const token = getStoredToken();
+  if (!token) return false;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return false;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const exp = Number(payload.exp);
+    return Number.isFinite(exp) && exp * 1000 > Date.now();
+  } catch (_) {
+    return false;
+  }
+}
 
 // Global delegated Add-to-Cart listener (capture phase). Register unconditionally so
 // clicks are intercepted even if the DOMContentLoaded init gate returns early.
@@ -40,9 +61,18 @@ if (!STORE_ID && !storeSlug) {
 }
 
 function authHeaders(extra = {}) {
+  const token = getStoredToken();
+  if (!isTokenValid()) {
+    clearAuthToken();
+    return {
+      'Content-Type': 'application/json',
+      ...extra,
+    };
+  }
+
   return {
     'Content-Type': 'application/json',
-    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extra,
   };
 }
@@ -139,8 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadReviews();
   initTabs();
   syncFollowState();
-
-  
+  resumePendingCartIntent();
 });
 
 // ─── Load Store Profile ───────────────────────────────────────────────────────
@@ -538,7 +567,8 @@ function renderReviews(reviews, summary) {
 
 // ─── Add to Cart ──────────────────────────────────────────────────────────────
 async function addToCart(productId, productName) {
-  if (!authToken) {
+  if (!isTokenValid()) {
+    clearAuthToken();
     const hasKnownUser = !!(localStorage.getItem('user') || localStorage.getItem('buyer_email'));
     localStorage.setItem('post_auth_return_context', JSON.stringify({ productId, productName, intent: 'pending' }));
     // Preserve current page (including slug/query) so we can return after auth
@@ -547,17 +577,22 @@ async function addToCart(productId, productName) {
     return;
   }
 
+  showCartModal(productName);
+
   try {
     const res  = await fetch(`${API}/cart/add`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ product_id: productId, quantity: 1 })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
-    showCartModal(productName);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      document.getElementById('cartActionModal')?.remove();
+      showToast(data.message || 'Could not add to cart');
+    }
   } catch (err) {
-    showToast(err.message || 'Could not add to cart');
+    document.getElementById('cartActionModal')?.remove();
+    showToast('Could not add to cart');
   }
 }
 
@@ -603,6 +638,12 @@ function showCartModal(productName) {
 
 function handleCartModalAction(intent) {
   if (intent === 'checkout') {
+    if (!isTokenValid()) {
+      clearAuthToken();
+      try { localStorage.setItem('post_login_redirect', '/buyers/checkout.html'); } catch (_) {}
+      window.location.href = '/buyers/login%20for%20buyers.html';
+      return;
+    }
     window.location.href = '/buyers/checkout.html';
   } else {
     window.location.href = '/buyers/buyers%20homepage.html';
@@ -640,9 +681,23 @@ function viewProduct(productId) {
   window.location.href = `/buyers/product.html?id=${encodeURIComponent(productId)}${suffix}`;
 }
 
+async function resumePendingCartIntent() {
+  const raw = localStorage.getItem('post_auth_return_context');
+  if (!raw) return;
+  localStorage.removeItem('post_auth_return_context');
+  if (!isTokenValid()) return;
+
+  try {
+    const ctx = JSON.parse(raw);
+    if (ctx.intent === 'pending' && ctx.productId) {
+      await addToCart(ctx.productId, ctx.productName);
+    }
+  } catch (_) {}
+}
+
 // ─── Follow Store ─────────────────────────────────────────────────────────────
 async function syncFollowState() {
-  if (!authToken || !STORE_ID) return;
+  if (!isTokenValid() || !STORE_ID) return;
   try {
     let attempts = 0;
     while (!storeData && attempts < 30) {
@@ -661,7 +716,11 @@ async function syncFollowState() {
 }
 
 async function toggleFollow() {
-  if (!authToken) { window.location.href = '/buyers/login%20for%20buyers.html'; return; }
+  if (!isTokenValid()) {
+    clearAuthToken();
+    window.location.href = '/buyers/login%20for%20buyers.html';
+    return;
+  }
 
   const key = followKey();
   if (!key) return;
