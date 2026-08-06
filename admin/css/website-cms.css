@@ -1,0 +1,30 @@
+/* Website CMS specific styles to match admin look-and-feel */
+.metric-card { display: flex; flex-direction: column; justify-content: space-between; gap: 0.5rem; }
+.metric-card .fa-solid { font-size: 1.05rem; }
+.metric-card p { margin: 0; }
+
+/* Sidebar overview / activity cards */
+.overview-card, .activity-card { border-radius: 1rem; background: #fff; border: 1px solid #e6eef6; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+.overview-card h4, .activity-card h4 { margin: 0; }
+.activity-item { padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; }
+.activity-item:last-child { border-bottom: none; }
+
+/* Drawer base styles (reused by other pages) */
+.drawer { position: fixed; right: 0; top: 0; height: 100vh; width: 44rem; max-width: 100%; z-index: 60; display: flex; pointer-events: auto; }
+.drawer .drawer-backdrop { position: absolute; inset: 0; background: rgba(2,6,23,0.4); opacity: 0; transition: opacity 0.18s ease; }
+.drawer .drawer-panel { margin-left: auto; width: 44rem; max-width: 100%; background: #fff; height: 100%; box-shadow: -8px 0 30px rgba(2,6,23,0.08); border-left: 1px solid #eef2f7; display: flex; flex-direction: column; transform: translateX(0); }
+
+/* Hidden/active states — consistent with other page styles */
+.drawer.hidden { transform: translateX(100%); pointer-events: none; }
+.drawer.hidden .drawer-backdrop { opacity: 0; pointer-events: none; }
+.drawer:not(.hidden) { transform: translateX(0%); pointer-events: auto; }
+.drawer:not(.hidden) .drawer-backdrop { opacity: 1; pointer-events: auto; }
+
+/* Small helpers */
+.drawer .drawer-panel .drawer-header { display: flex; align-items: start; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
+.drawer .drawer-panel .drawer-body { padding: 1rem 1.25rem; overflow-y: auto; }
+
+@media (max-width: 768px) {
+  .drawer { width: 100%; }
+  .drawer .drawer-panel { width: 100%; }
+}

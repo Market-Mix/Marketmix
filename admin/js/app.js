@@ -1,11 +1,12 @@
-// Global state and utility functions
+﻿// Global state and utility functions
 let currentPage = 'dashboard';
 let currentAction = null;
 let sidebarOpen = false;
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
-  loadPage('dashboard');
+  const initialPage = (window.location.hash || '').replace('#', '').trim() || 'dashboard';
+  loadPage(initialPage);
   setupEventListeners();
   setupMobileSidebar();
 });
@@ -75,40 +76,408 @@ function handleLogout() {
   }, 500);
 }
 
-function loadPage(page) {
-  currentPage = page;
-  
-  // Update active nav link
+function setActiveNavLink(page) {
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.remove('bg-blue-50', 'dark:bg-gray-700', 'border-blue-600', 'text-blue-600', 'dark:text-blue-400');
     link.classList.add('text-gray-700', 'dark:text-gray-200');
   });
-  
-  // Find and highlight the active link
-  const activeLink = Array.from(document.querySelectorAll('.nav-link')).find(link => 
-    link.textContent.toLowerCase().includes(page.replace('-', ' '))
-  );
+
+  const normalize = (value) => value.toLowerCase().replace(/&/g, '').replace(/\s+/g, ' ').trim();
+  const target = normalize(page.replace(/-/g, ' '));
+
+  const activeLink = Array.from(document.querySelectorAll('.nav-link')).find(link => normalize(link.textContent) === target || normalize(link.textContent).includes(target));
   if (activeLink) {
     activeLink.classList.add('bg-blue-50', 'dark:bg-gray-700', 'border-blue-600', 'text-blue-600', 'dark:text-blue-400');
   }
-  
-  // Load page content
+}
+
+function setPageTitle(page) {
+  const titles = {
+    dashboard: 'Dashboard',
+    buyers: 'Buyers',
+    sellers: 'Sellers',
+    products: 'Products',
+    orders: 'Orders',
+    categories: 'Categories',
+    payments: 'Payments',
+    withdrawals: 'Withdrawals',
+    reviews: 'Reviews',
+    'support-center': 'Support Center',
+    returns: 'Returns & Refunds',
+    reports: 'Reports',
+    'admin-users': 'Admin Users',
+    settings: 'Settings',
+    'analytics-dashboard': 'Analytics Dashboard',
+    profile: 'Profile'
+  };
+
+  document.title = titles[page] ? `MarketMix Admin Panel - ${titles[page]}` : 'MarketMix Admin Panel';
+}
+
+function updateBrowserRoute(page) {
+  const url = new URL(window.location.href);
+  url.hash = page === 'dashboard' ? '' : page;
+  history.replaceState({}, '', url.toString());
+}
+
+function ensureStylesheet(href) {
+  if (document.querySelector(`link[href="${href}"]`)) {
+    return;
+  }
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
+function ensureScript(src, callback) {
+  const existingScript = document.querySelector(`script[src="${src}"]`);
+  if (existingScript) {
+    if (existingScript.dataset.loaded === 'true') {
+      callback();
+    } else {
+      existingScript.addEventListener('load', callback, { once: true });
+    }
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = src;
+  script.onload = () => {
+    script.dataset.loaded = 'true';
+    callback();
+  };
+  document.body.appendChild(script);
+}
+
+function appendPageFragments(doc, content, mainContent) {
+  const fragments = Array.from(doc.querySelectorAll('.modal, .drawer'));
+  fragments.forEach((fragment) => {
+    if (mainContent.contains(fragment)) {
+      return;
+    }
+    const fragmentClone = fragment.cloneNode(true);
+    if (fragmentClone.id && document.getElementById(fragmentClone.id)) {
+      document.getElementById(fragmentClone.id).remove();
+    }
+    content.appendChild(fragmentClone);
+  });
+}
+
+function loadHtmlFile(url) {
+  return fetch(url)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+      return response.text();
+    })
+    .catch((fetchError) => {
+      if (window.location.protocol === 'file:') {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', url);
+          xhr.onload = () => {
+            if (xhr.status === 200 || xhr.status === 0) {
+              resolve(xhr.responseText);
+            } else {
+              reject(new Error(`XHR ${xhr.status} ${xhr.statusText || ''}`));
+            }
+          };
+          xhr.onerror = () => reject(fetchError);
+          xhr.send();
+        });
+      }
+      throw fetchError;
+    });
+}
+
+function renderPayments() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading payments module...</div>';
+
+  ensureStylesheet(new URL('css/payments.css', window.location.href).href);
+  ensureScript(new URL('js/payments.js', window.location.href).href, () => {
+    const paymentsUrl = new URL('payments.html', window.location.href).href;
+
+    loadHtmlFile(paymentsUrl)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializePaymentsPage) {
+            window.initializePaymentsPage();
+          }
+          return;
+        }
+
+        console.error('Payments page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load payments content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load payments.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load payments content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load payments content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderReviews() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading reviews module...</div>';
+
+  ensureStylesheet(new URL('css/reviews.css', window.location.href).href);
+  ensureScript(new URL('js/reviews.js', window.location.href).href, () => {
+    const reviewsUrl = new URL('reviews.html', window.location.href).href;
+
+    loadHtmlFile(reviewsUrl)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeReviewsPage) {
+            window.initializeReviewsPage();
+          }
+          return;
+        }
+
+        console.error('Reviews page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load reviews content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load reviews.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load reviews content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load reviews content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderWithdrawals() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading withdrawals module...</div>';
+
+  ensureStylesheet(new URL('css/withdrawals.css', window.location.href).href);
+  ensureScript(new URL('js/withdrawals.js', window.location.href).href, () => {
+    const withdrawalsUrl = new URL('withdrawals.html', window.location.href).href;
+
+    loadHtmlFile(withdrawalsUrl)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeWithdrawalsPage) {
+            window.initializeWithdrawalsPage();
+          }
+          return;
+        }
+
+        console.error('Withdrawals page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load withdrawals content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load withdrawals.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load withdrawals content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load withdrawals content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderSupportCenter() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading support center module...</div>';
+
+  ensureStylesheet(new URL('css/support-center.css', window.location.href).href);
+  ensureScript(new URL('js/support-center.js', window.location.href).href, () => {
+    const supportCenterUrl = new URL('support-center.html', window.location.href).href;
+
+    loadHtmlFile(supportCenterUrl)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          if (window.initializeSupportCenterPage) {
+            window.initializeSupportCenterPage();
+          }
+          return;
+        }
+
+        console.error('Support Center page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load support center content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load support-center.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load support center content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load support center content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderNotifications() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading notifications module...</div>';
+
+  ensureStylesheet(new URL('css/notifications-center.css', window.location.href).href);
+  ensureScript(new URL('js/notifications-center.js', window.location.href).href, () => {
+    const notificationsUrl = new URL('notifications-center.html', window.location.href).href;
+
+    loadHtmlFile(notificationsUrl)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeNotificationsPage) {
+            try { window.initializeNotificationsPage(); } catch (e) { console.error('initializeNotificationsPage error', e); }
+          }
+          return;
+        }
+
+        console.error('Notifications page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load notifications content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load notifications-center.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load notifications content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load notifications content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderWebsiteCMS() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading Website CMS...</div>';
+
+  ensureStylesheet(new URL('css/website-cms.css', window.location.href).href);
+  ensureScript(new URL('js/website-cms.js', window.location.href).href, () => {
+    const url = new URL('website-cms.html', window.location.href).href;
+    loadHtmlFile(url)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeWebsiteCMSPage) {
+            try { window.initializeWebsiteCMSPage(); } catch (e) { console.error('initializeWebsiteCMSPage error', e); }
+          }
+          return;
+        }
+
+        console.error('Website CMS page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load Website CMS content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load website-cms.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load Website CMS content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load Website CMS content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderAnalyticsDashboard() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading Analytics Dashboard...</div>';
+
+  ensureStylesheet(new URL('css/analytics-dashboard.css', window.location.href).href);
+  ensureScript(new URL('js/analytics-dashboard.js', window.location.href).href, () => {
+    const url = new URL('analytics-dashboard.html', window.location.href).href;
+    loadHtmlFile(url)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeAnalyticsDashboardPage) {
+            try { window.initializeAnalyticsDashboardPage(); } catch (e) { console.error('initializeAnalyticsDashboardPage error', e); }
+          }
+          return;
+        }
+
+        console.error('Analytics Dashboard page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load Analytics Dashboard content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load analytics-dashboard.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load Analytics Dashboard content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load Analytics Dashboard content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function loadPage(page) {
+  currentPage = page;
+  setActiveNavLink(page);
+  setPageTitle(page);
+
   const pages = {
-    'dashboard': renderDashboard,
-    'buyers': renderBuyers,
-    'sellers': renderSellers,
-    'products': renderProducts,
-    'orders': renderOrders,
-    'categories': renderCategories,
-    'reports': renderReports,
-    'transactions': renderTransactions,
-    'returns': renderReturns,
+    dashboard: renderDashboard,
+    buyers: renderBuyers,
+    sellers: renderSellers,
+    products: renderProducts,
+    orders: renderOrders,
+    categories: renderCategories,
+    payments: renderPayments,
+    withdrawals: renderWithdrawals,
+    reviews: renderReviews,
+    'support-center': renderSupportCenter,
+    'notifications': renderNotifications,
+    'notifications-center': renderNotifications,
+    'website-cms': renderWebsiteCMS,
+    'analytics-dashboard': renderAnalyticsDashboard,
+    reports: renderReports,
+    returns: renderReturns,
     'admin-users': renderAdminUsers,
-    'settings': renderSettings,
-    'profile': renderProfile
+    settings: renderSettings,
+    profile: renderProfile
   };
   
   if (pages[page]) {
+    updateBrowserRoute(page);
     pages[page]();
   } else {
     console.error('Page not found:', page);
@@ -121,6 +490,13 @@ function setupEventListeners() {
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.relative')) {
       document.getElementById('profileDropdown').classList.add('hidden');
+    }
+  });
+
+  window.addEventListener('popstate', () => {
+    const pageFromUrl = (window.location.hash || '').replace('#', '').trim() || 'dashboard';
+    if (pageFromUrl !== currentPage) {
+      loadPage(pageFromUrl);
     }
   });
 }

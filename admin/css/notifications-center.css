@@ -1,0 +1,4 @@
+/* Placeholder notifications CSS so the notifications page can load without a MIME error. */
+.notifications-center {
+  box-sizing: border-box;
+}

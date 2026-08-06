@@ -500,20 +500,47 @@ function attachEvents() {
     document.getElementById('sidebarOverlay').classList.toggle('active');
   });
 
-  document.getElementById('sidebarOverlay').addEventListener('click', () => {
+  document.getElementById('sidebarOverlay')?.addEventListener('click', () => {
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebarOverlay').classList.remove('active');
   });
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  renderSkeletons();
-  setTimeout(() => {
-    renderSummaryCards();
-    renderPayments();
-    renderGatewayCards();
-    renderFinanceSummary();
-    renderActivityTimeline();
-    attachEvents();
-  }, 900);
-});
+function initializePaymentsPage() {
+  const requiredElements = ['summaryCards', 'paymentsTableBody', 'gatewayCards', 'financeSummary', 'activityTimeline'];
+  const hasRequiredElements = requiredElements.every((id) => document.getElementById(id));
+
+  if (!hasRequiredElements) {
+    setTimeout(initializePaymentsPage, 120);
+    return;
+  }
+
+  if (!window.__paymentsInitialized) {
+    window.__paymentsInitialized = true;
+    renderSkeletons();
+    setTimeout(() => {
+      renderSummaryCards();
+      renderPayments();
+      renderGatewayCards();
+      renderFinanceSummary();
+      renderActivityTimeline();
+      attachEvents();
+    }, 900);
+    return;
+  }
+
+  renderSummaryCards();
+  renderPayments();
+  renderGatewayCards();
+  renderFinanceSummary();
+  renderActivityTimeline();
+  attachEvents();
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initializePaymentsPage);
+} else {
+  initializePaymentsPage();
+}
+
+window.initializePaymentsPage = initializePaymentsPage;

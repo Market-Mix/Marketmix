@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Website CMS | MarketMix Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="css/website-cms.css" />
+</head>
+<body class="bg-gray-50 text-slate-800">
+  <main class="ml-64 mt-16 p-4 md:p-6 lg:p-8">
+    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Website CMS</p>
+        <h1 class="text-3xl font-semibold text-slate-900">Website CMS</h1>
+        <p class="mt-2 text-sm text-slate-500">Manage all website content, homepage sections, banners, policies and public pages from one place.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="refreshCmsBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm">Refresh</button>
+        <button id="previewSiteBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm">Preview Website</button>
+        <button id="createPageBtn" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm text-white">Create New Page</button>
+        <button id="publishChangesBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm">Publish Changes</button>
+      </div>
+    </div>
+
+    <section id="summaryCards" class="mb-6 grid gap-4 xl:grid-cols-3 lg:grid-cols-2 md:grid-cols-2"></section>
+
+    <div class="grid gap-6 xl:grid-cols-[1.7fr_0.9fr]">
+      <div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-6">
+          <h2 class="text-lg font-semibold text-slate-900">Content Pages</h2>
+          <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Page Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Category</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Last Updated</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Updated By</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Visibility</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="pagesTableBody" class="divide-y divide-slate-200 bg-white text-sm text-slate-600"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="homepageSections" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-6">
+          <h3 class="text-lg font-semibold">Homepage Sections</h3>
+          <div id="sectionsList" class="mt-4 space-y-3"></div>
+        </div>
+
+        <div id="bannerManagement" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 class="text-lg font-semibold">Banner Management</h3>
+          <div id="bannersList" class="mt-4 space-y-3"></div>
+        </div>
+      </div>
+
+      <aside class="space-y-6">
+        <div class="overview-card p-4">
+          <h4 class="text-sm font-semibold text-slate-900">Website Overview</h4>
+          <div class="mt-3 text-sm text-slate-700">
+            <div>Total Pages: <strong id="overviewTotalPages">0</strong></div>
+            <div>Published Today: <strong id="overviewPublishedToday">0</strong></div>
+            <div>Scheduled Updates: <strong id="overviewScheduled">0</strong></div>
+            <div>Homepage Version: <strong id="overviewHomepageVersion">1.2.0</strong></div>
+            <div>Active Promotions: <strong id="overviewPromos">3</strong></div>
+            <div>SEO Health Score: <strong id="overviewSeo">88%</strong></div>
+          </div>
+        </div>
+
+        <div class="activity-card p-4">
+          <h4 class="text-sm font-semibold text-slate-900">Activity Timeline</h4>
+          <div id="cmsActivity" class="mt-3 text-sm text-slate-700"></div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Editor Modal placeholder -->
+    <div id="cmsEditorDrawer" class="drawer hidden">
+      <div class="drawer-backdrop" data-close-drawer="true"></div>
+      <div class="drawer-panel">
+        <div class="flex items-start justify-between border-b px-6 py-5">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Editor</p>
+            <h3 id="editorTitle" class="mt-1 text-2xl font-semibold text-slate-900">Edit Page</h3>
+          </div>
+          <button class="rounded-full p-2 text-slate-500" data-close-drawer="true"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="max-h-[calc(100vh-140px)] overflow-y-auto px-6 py-5">
+          <form id="cmsEditorForm" class="space-y-4">
+            <input id="pageTitleInput" class="w-full rounded-xl border px-3 py-2" placeholder="Page Title" />
+            <input id="pageSlugInput" class="w-full rounded-xl border px-3 py-2" placeholder="URL Slug" />
+            <input id="metaTitleInput" class="w-full rounded-xl border px-3 py-2" placeholder="Meta Title" />
+            <textarea id="metaDescriptionInput" rows="3" class="w-full rounded-xl border px-3 py-2" placeholder="Meta Description"></textarea>
+            <input id="keywordsInput" class="w-full rounded-xl border px-3 py-2" placeholder="Keywords (comma separated)" />
+            <div class="grid gap-3 lg:grid-cols-2">
+              <input id="featuredImageInput" type="file" accept="image/*" class="rounded-xl border px-3 py-2" />
+              <select id="pageStatusSelect" class="rounded-xl border px-3 py-2"><option>Draft</option><option>Published</option><option>Scheduled</option><option>Hidden</option></select>
+            </div>
+            <textarea id="richContent" rows="10" class="w-full rounded-xl border px-3 py-2" placeholder="Rich text content (UI-only)"></textarea>
+            <div class="flex justify-end gap-3">
+              <button id="saveDraftCms" type="button" class="rounded-xl border px-4 py-2">Save Draft</button>
+              <button id="previewCms" type="button" class="rounded-xl border px-4 py-2">Preview</button>
+              <button id="publishCms" type="button" class="rounded-xl bg-blue-600 px-4 py-2 text-white">Publish</button>
+            </div>
+          </form>
+        </div>
+      </div>
+        <!-- Preview Drawer -->
+        <div id="cmsPreviewDrawer" class="drawer hidden">
+          <div class="drawer-backdrop" data-close-preview="true"></div>
+          <div class="drawer-panel">
+            <div class="drawer-header">
+              <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Preview</p>
+                <h3 id="previewTitle" class="mt-1 text-2xl font-semibold text-slate-900">Preview</h3>
+              </div>
+              <button class="rounded-full p-2 text-slate-500" data-close-preview="true"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="cmsPreviewContent" class="drawer-body"></div>
+          </div>
+        </div>
+    </div>
+
+  </main>
+  <script src="js/website-cms.js"></script>
+</body>
+</html>

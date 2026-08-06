@@ -1,0 +1,248 @@
+<main class="space-y-6 p-4 md:p-6 lg:p-8">
+  <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Reviews</p>
+      <h1 class="text-3xl font-semibold text-slate-900">Reviews Moderation</h1>
+      <p class="mt-2 text-sm text-slate-500">Monitor, moderate and manage all customer reviews across the marketplace.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="refreshDataBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">
+        <i class="fas fa-rotate-right mr-2"></i>Refresh
+      </button>
+      <div class="relative">
+        <button id="exportToggle" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
+          <i class="fas fa-download mr-2"></i>Export
+        </button>
+        <div id="exportMenu" class="hidden absolute right-0 z-20 mt-2 w-40 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+          <button class="export-option w-full rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50" data-format="csv">CSV</button>
+          <button class="export-option w-full rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50" data-format="excel">Excel</button>
+          <button class="export-option w-full rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50" data-format="pdf">PDF</button>
+          <button class="export-option w-full rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50" data-format="print">Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="summaryCards" class="mb-6 grid gap-4 xl:grid-cols-6 lg:grid-cols-3 md:grid-cols-2"></section>
+
+  <section class="grid gap-6 xl:grid-cols-[1.7fr_0.9fr]">
+    <div class="space-y-6">
+      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Moderation Filters</h2>
+            <p class="text-sm text-slate-500">Refine the review queue with layered filters.</p>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <label class="flex min-w-[220px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 shadow-sm">
+              <i class="fas fa-search text-slate-400"></i>
+              <input id="searchInput" type="text" placeholder="Search reviews" class="w-full border-none bg-transparent outline-none" />
+            </label>
+            <select id="statusFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All</option>
+              <option value="Pending">Pending</option>
+              <option value="Published">Published</option>
+              <option value="Reported">Reported</option>
+              <option value="Hidden">Hidden</option>
+              <option value="Removed">Removed</option>
+            </select>
+            <select id="ratingFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All Ratings</option>
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Star</option>
+            </select>
+            <select id="categoryFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All Categories</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Fashion">Fashion</option>
+              <option value="Home">Home</option>
+              <option value="Gaming">Gaming</option>
+              <option value="Phones">Phones</option>
+              <option value="Computers">Computers</option>
+              <option value="Beauty">Beauty</option>
+              <option value="Sports">Sports</option>
+            </select>
+            <input id="dateRangeInput" type="date" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none" />
+            <select id="sellerFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All Sellers</option>
+            </select>
+            <select id="buyerFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All Buyers</option>
+            </select>
+            <button id="resetFiltersBtn" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+              Reset Filters
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <input id="selectAllCheckbox" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+              Select all
+            </label>
+            <span id="selectionCount" class="text-sm text-slate-500">0 selected</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button class="bulk-action rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="approve">Approve Selected</button>
+            <button class="bulk-action rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="hide">Hide Selected</button>
+            <button class="bulk-action rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="delete">Delete Selected</button>
+            <button class="bulk-action rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="export">Export Selected</button>
+            <button class="bulk-action rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="reviewed">Mark as Reviewed</button>
+          </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-slate-200">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-3 py-3 text-left"></th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Review ID</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Product</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Buyer</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Seller</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rating</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Review</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Reports</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Created</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reviewsTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="space-y-6">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Analytics Panel</h2>
+            <p class="text-sm text-slate-500">Performance snapshot for moderation.</p>
+          </div>
+        </div>
+        <div id="analyticsPanel" class="space-y-3"></div>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4">
+          <h2 class="text-lg font-semibold text-slate-900">Moderation Pulse</h2>
+          <p class="text-sm text-slate-500">Live queue signals to keep the team ahead of risk.</p>
+        </div>
+        <div id="pulseCards" class="space-y-3"></div>
+      </div>
+    </aside>
+  </section>
+</main>
+
+<div id="reviewModal" class="modal hidden">
+  <div class="modal-backdrop" data-close-modal="true"></div>
+  <div class="modal-card rounded-3xl border border-slate-200 bg-white shadow-2xl" role="dialog" aria-modal="true">
+    <div class="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Review Details</p>
+        <h3 id="modalTitle" class="mt-1 text-xl font-semibold text-slate-900"></h3>
+      </div>
+      <button data-close-modal="true" class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="max-h-[80vh] overflow-y-auto px-6 py-5">
+      <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div class="space-y-5">
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div class="flex gap-3">
+                <img id="modalProductImage" src="" alt="Product" class="h-16 w-16 rounded-2xl object-cover" />
+                <div>
+                  <h4 id="modalProductName" class="text-lg font-semibold text-slate-900"></h4>
+                  <p id="modalCategory" class="text-sm text-slate-500"></p>
+                  <div class="mt-2 flex items-center gap-2">
+                    <span id="modalVerified" class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600"></span>
+                    <span id="modalRating" class="text-sm text-slate-600"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                <div class="flex items-center gap-2"><i class="fas fa-receipt text-slate-400"></i> Order ID <span id="modalOrderId" class="font-semibold text-slate-900"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid gap-4 lg:grid-cols-2">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Buyer & Seller</h4>
+              <div id="modalParties" class="mt-4 space-y-3 text-sm"></div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Review Summary</h4>
+              <div id="modalSummary" class="mt-4 space-y-3 text-sm"></div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Full Review</h4>
+              <span id="modalStatusBadge" class="status-pill"></span>
+            </div>
+            <p id="modalReviewText" class="text-sm leading-7 text-slate-700"></p>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Evidence</h4>
+              <span class="text-sm text-slate-500">Preview-ready assets</span>
+            </div>
+            <div id="modalEvidence" class="grid gap-3 lg:grid-cols-2"></div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Report History</h4>
+            <div id="modalReportHistory" class="mt-4 space-y-3"></div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Moderation Timeline</h4>
+            <div id="modalTimeline" class="mt-4 space-y-3"></div>
+          </div>
+        </div>
+
+        <div class="space-y-5">
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Moderation Panel</h4>
+            <div class="mt-4 grid gap-2">
+              <button class="moderation-btn rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700" data-action="approve">Approve Review</button>
+              <button class="moderation-btn rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="hide">Hide Review</button>
+              <button class="moderation-btn rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="remove">Remove Review</button>
+              <button class="moderation-btn rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="flag">Flag Review</button>
+              <button class="moderation-btn rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="restore">Restore Review</button>
+              <button class="moderation-btn rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="warn-seller">Warn Seller</button>
+              <button class="moderation-btn rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50" data-action="warn-buyer">Warn Buyer</button>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Admin Notes</h4>
+            <textarea id="adminNotesInput" rows="6" class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-blue-500"></textarea>
+            <button id="saveNotesBtn" class="mt-3 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700">
+              <i class="fas fa-save mr-2"></i>Save Notes
+            </button>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Review History</h4>
+            <div id="modalHistory" class="mt-4 space-y-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
