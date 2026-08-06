@@ -222,7 +222,7 @@ async function loadOrder() {
 }
 
 function render(o) {
-  const items = o.items || [];
+  const items = Array.isArray(o.items) ? o.items : [];
   console.log('Loaded order item specifications', {
     orderId: o.id,
     items: items.map(item => ({

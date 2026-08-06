@@ -370,24 +370,45 @@ function openSellerProductDetailsModal(orderId) {
   const order = loadedOrders.find(o => String(o.orderId) === String(orderId));
   if (!order) return;
 
-  const item = order.items?.[0] || {};
-  let ps = item.product_snapshot || item.productSnapshot || {};
+  const items = Array.isArray(order.items) ? order.items : [];
+  const firstItem = items[0] || {};
+  let ps = firstItem.product_snapshot || firstItem.productSnapshot || {};
   if (typeof ps === 'string') {
     try { ps = JSON.parse(ps); } catch (e) { ps = {}; }
   }
 
-  document.getElementById('sellerPdName').textContent = item.productName || item.product_name || item.name || 'Product Details';
-  document.getElementById('sellerPdOrderId').textContent = `#${order.orderId.slice(0, 8).toUpperCase()}`;
+  document.getElementById('sellerPdName').textContent = firstItem.productName || firstItem.product_name || firstItem.name || 'Order Details';
+  document.getElementById('sellerPdOrderId').textContent = `#${String(order.orderId || '').slice(0, 8).toUpperCase()}`;
   document.getElementById('sellerPdDate').textContent = formatDate(order.createdAt);
   document.getElementById('sellerPdBuyer').textContent = order.buyer?.name || '—';
   document.getElementById('sellerPdStatus').textContent = capitalize(order.status || '—');
-  document.getElementById('sellerPdProduct').textContent = item.productName || item.product_name || item.name || '—';
-  document.getElementById('sellerPdQty').textContent = item.quantity || item.qty || 1;
-  document.getElementById('sellerPdColor').textContent = item.color || ps.color || '—';
-  document.getElementById('sellerPdSize').textContent = item.size || ps.size || '—';
   document.getElementById('sellerPdTotal').textContent = formatCurrency(order.totalAmount || order.total_amount || order.total_price || 0);
 
-  const imageUrl = getOrderItemImage(item) || 'https://via.placeholder.com/300x300?text=Product';
+  const listEl = document.getElementById('sellerPdItemsList');
+  listEl.innerHTML = items.length
+    ? items.map(item => {
+        let itemPs = item.product_snapshot || item.productSnapshot || {};
+        if (typeof itemPs === 'string') {
+          try { itemPs = JSON.parse(itemPs); } catch (e) { itemPs = {}; }
+        }
+        const img = getOrderItemImage(item) || 'https://via.placeholder.com/60';
+        const color = item.color || itemPs.color || null;
+        const size = item.size || itemPs.size || null;
+        return `
+          <div class="seller-product-row" style="align-items:flex-start;gap:10px">
+            <img src="${img}" width="48" height="48" style="border-radius:8px;object-fit:cover" onerror="this.src='https://via.placeholder.com/48'">
+            <div style="flex:1">
+              <div><strong>${item.productName || item.product_name || item.name || 'Item'}</strong></div>
+              <div style="font-size:0.85em;color:#64748b">
+                Qty: ${item.quantity || item.qty || 1}${color ? ` · Color: ${color}` : ''}${size ? ` · Size: ${size}` : ''}
+              </div>
+            </div>
+            <div>${formatCurrency(item.lineTotal || item.line_total || (item.priceAtPurchase * item.quantity) || 0)}</div>
+          </div>`;
+      }).join('')
+    : '<div class="seller-product-row"><span>No items found</span></div>';
+
+  const imageUrl = getOrderItemImage(firstItem) || 'https://via.placeholder.com/300x300?text=Product';
   document.getElementById('sellerPdImage').src = imageUrl;
 
   document.getElementById('sellerProductDetailsModal').classList.add('show');
