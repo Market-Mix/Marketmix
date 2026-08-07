@@ -318,6 +318,7 @@ async function confirmDelivery(id, btn, attempt = 1) {
     const d = await res.json();
     if (!res.ok) throw new Error(d.message || 'Failed to confirm delivery');
     showToast('Delivery confirmed! Thank you.');
+    await loadOrder();
     btn.textContent = 'Delivery Confirmed';
     btn.style.background = '#94a3b8';
     btn.style.cursor = 'not-allowed';
