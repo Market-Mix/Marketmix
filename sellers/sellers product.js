@@ -75,6 +75,10 @@ let allProducts = [];
 let allCategories = [];
 let editingProductId = null;
 
+// ─── Accumulated image files across multiple picker opens ─────────────────
+let addImageFiles = [];
+let editImageFiles = [];
+
 // ─── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   // Navbar toggler
@@ -271,26 +275,59 @@ function populateCategorySelects() {
 }
 
 // ─── Image preview ─────────────────────────────────────────────────────────────
+function renderImageThumbs(files, previewId, placeholderId) {
+  const preview = document.getElementById(previewId);
+  if (!preview) return;
+  preview.innerHTML = '';
+
+  files.forEach((file, idx) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;display:inline-block';
+      wrap.innerHTML = `
+        <img src="${e.target.result}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0">
+        <button type="button" data-idx="${idx}" data-target="${previewId}" class="remove-new-img"
+          style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px">×</button>`;
+      preview.appendChild(wrap);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  if (files.length < 5) {
+    const plus = document.createElement('div');
+    plus.textContent = '+';
+    plus.title = 'Add more images';
+    plus.style.cssText = 'width:60px;height:60px;display:flex;align-items:center;justify-content:center;border:2px dashed #cbd5e1;border-radius:6px;color:#94a3b8;font-size:22px;cursor:pointer;';
+    preview.appendChild(plus);
+  }
+
+  const placeholder = placeholderId ? document.getElementById(placeholderId) : null;
+  if (placeholder) placeholder.style.display = files.length ? 'none' : 'block';
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.remove-new-img');
+  if (!btn) return;
+  e.stopPropagation();
+  const idx = parseInt(btn.dataset.idx, 10);
+  if (btn.dataset.target === 'addImagesPreview') {
+    addImageFiles.splice(idx, 1);
+    renderImageThumbs(addImageFiles, 'addImagesPreview', 'addUploadPlaceholder');
+  } else {
+    editImageFiles.splice(idx, 1);
+    renderImageThumbs(editImageFiles, 'editImagesPreview');
+  }
+});
+
 function setupMultiImagePreview(inputId, previewId, placeholderId) {
   const input = document.getElementById(inputId);
   if (!input) return;
   input.addEventListener('change', () => {
-    const preview = document.getElementById(previewId);
-    const placeholder = placeholderId ? document.getElementById(placeholderId) : null;
-    if (!preview) return;
-    preview.innerHTML = '';
-    const files = Array.from(input.files).slice(0, 5);
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0';
-        preview.appendChild(img);
-      };
-      reader.readAsDataURL(file);
-    });
-    if (placeholder) placeholder.style.display = files.length ? 'none' : 'block';
+    const store = inputId === 'newProductImages' ? addImageFiles : editImageFiles;
+    Array.from(input.files).forEach(f => { if (store.length < 5) store.push(f); });
+    input.value = '';
+    renderImageThumbs(store, previewId, placeholderId);
   });
 }
 
@@ -412,8 +449,11 @@ function openAddModal() {
 function closeAddModal() {
   document.getElementById('addProductModal').style.display = 'none';
   document.getElementById('addProductForm').reset();
+  addImageFiles = [];
   const preview = document.getElementById('addImagesPreview');
   if (preview) preview.innerHTML = '';
+  const placeholder = document.getElementById('addUploadPlaceholder');
+  if (placeholder) placeholder.style.display = 'block';
 }
 
 async function addProduct() {
@@ -467,7 +507,7 @@ async function addProduct() {
     formData.append('delivery_available', document.getElementById('newDeliveryAvailable')?.checked ? 'true' : 'false');
     formData.append('return_accepted', document.getElementById('newReturnAccepted')?.checked ? 'true' : 'false');
 
-    const imageFiles = Array.from(document.getElementById('newProductImages').files).slice(0, 5);
+    const imageFiles = addImageFiles.slice(0, 5);
     const compressedFiles = await Promise.all(
       imageFiles.map(f => compressImage(f, 800, 0.75))
     );
@@ -558,6 +598,7 @@ async function openEditModal(id) {
   if (!product) return;
 
   editingProductId = id;
+  editImageFiles = [];
 
   document.getElementById('editId').value          = id;
   document.getElementById('editName').value         = product.name;
@@ -674,8 +715,7 @@ async function handleEditSubmit(e) {
     const existing = allProducts.find(p => p.id === editingProductId);
     if (existing?.images?.length) formData.append('existing_images', JSON.stringify(existing.images));
 
-    const imageInput = document.getElementById('editProductImages');
-    const imageFiles = imageInput ? Array.from(imageInput.files).slice(0, 5) : [];
+    const imageFiles = editImageFiles.slice(0, 5);
     const compressedFiles = await Promise.all(
       imageFiles.map(f => compressImage(f, 800, 0.75))
     );
