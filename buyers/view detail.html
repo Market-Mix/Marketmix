@@ -222,6 +222,7 @@ async function loadOrder() {
 }
 
 function render(o) {
+  window.__currentOrder = o;
   const items = Array.isArray(o.items) ? o.items : [];
   console.log('Loaded order item specifications', {
     orderId: o.id,
@@ -284,9 +285,10 @@ function render(o) {
     </div>` : ''}
 
     <div class="actions">
-      ${o.status === 'shipped' ? `<button class="track-btn" onclick="alert('Tracking: Your package is on its way!')"><i class="fas fa-truck"></i> Track Package</button>` : ''}
+      ${o.status === 'shipped' ? `<button class="track-btn" onclick="openTrackingModal()"><i class="fas fa-truck"></i> Track Order</button>` : ''}
       ${['pending','confirmed','processing'].includes(o.status) ? `<button style="background:#ef4444;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="cancelOrder('${o.id}')">Cancel Order</button>` : ''}
-      ${o.status === 'delivered' ? `<button style="background:#22c55e;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="confirmDelivery('${o.id}')">Confirm Receipt</button>` : ''}
+      ${o.status === 'delivered' && !o.delivery_confirmed_at ? `<button id="confirmDeliveryBtn" style="background:#22c55e;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="confirmDelivery('${o.id}', this)">Confirm Receipt</button>` : ''}
+      ${o.status === 'delivered' && o.delivery_confirmed_at ? `<button disabled style="background:#94a3b8;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:not-allowed">Delivery Confirmed</button>` : ''}
       <button class="support-btn" onclick="alert('Support: support@marketmix.com')"><i class="fas fa-headset"></i> Contact Support</button>
     </div>
   `;
@@ -304,12 +306,67 @@ async function cancelOrder(id) {
   alert('Order cancelled.'); loadOrder();
 }
 
-async function confirmDelivery(id) {
-  if (!confirm('Confirm you received this order?')) return;
-  const res = await fetch(`${API_BASE}/orders/${id}/confirm-delivery`, { method:'POST', headers:{ Authorization:`Bearer ${token}` } });
-  const d = await res.json();
-  if (!res.ok) { alert(d.message); return; }
-  alert('Delivery confirmed!'); loadOrder();
+async function confirmDelivery(id, btn) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = 'Confirming...';
+  try {
+    const res = await fetch(`${API_BASE}/orders/${id}/confirm-delivery`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.message || 'Failed to confirm delivery');
+    showToast('Delivery confirmed! Thank you.');
+    btn.textContent = 'Delivery Confirmed';
+    btn.style.background = '#94a3b8';
+    btn.style.cursor = 'not-allowed';
+  } catch (err) {
+    showToast(err.message, true);
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+function showToast(msg, isError = false) {
+  let t = document.getElementById('mmToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'mmToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;max-width:90%;text-align:center';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = isError ? '#dc2626' : '#1e293b';
+  t.style.opacity = '1';
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.style.opacity = '0', 3000);
+}
+
+function openTrackingModal() {
+  const groups = window.__currentOrder?.seller_groups || [];
+  const withTracking = groups.filter(g => g.courierName || g.trackingCode || g.trackingLink);
+  const body = withTracking.length ? withTracking.map(g => `
+    <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e2e8f0">
+      <strong>${g.sellerName || 'Seller'}</strong>
+      ${g.courierName ? `<p>Courier: ${g.courierName}</p>` : ''}
+      ${g.trackingCode ? `<p>Tracking #: ${g.trackingCode}</p>` : ''}
+      ${g.trackingLink ? `<p><a href="${g.trackingLink}" target="_blank">Track shipment →</a></p>` : ''}
+    </div>`).join('') : '<p>No tracking details provided yet by the seller.</p>';
+
+  let m = document.getElementById('trackModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'trackModal';
+    m.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:9998';
+    m.innerHTML = `<div style="background:#fff;padding:24px;border-radius:12px;max-width:400px;width:90%">
+      <h3 style="margin-bottom:14px">Shipping Details</h3>
+      <div id="trackModalBody"></div>
+      <button onclick="document.getElementById('trackModal').remove()" style="margin-top:14px;background:#F97316;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer">Close</button>
+    </div>`;
+    document.body.appendChild(m);
+  }
+  document.getElementById('trackModalBody').innerHTML = body;
 }
 
 loadOrder();

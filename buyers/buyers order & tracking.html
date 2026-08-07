@@ -309,6 +309,11 @@ async function loadOrders() {
         <span style="color:#64748b;font-size:0.85rem">${sellerGroups.length} seller${sellerGroups.length === 1 ? '' : 's'} · ${date}</span>
       </div>
       ${sellerBlocksHtml}
+      ${(order.status === 'delivered' && !order.delivery_confirmed_at) ? `
+        <div style="margin-top:10px;padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:0.85rem;color:#c2410c">
+          <i class="fas fa-info-circle"></i> Please confirm you received this order.
+          <a href="view%20detail.html?id=${order.id}" style="color:#ea580c;font-weight:600">Confirm now →</a>
+        </div>` : ''}
       <div class="order-actions">
         <p style="margin:10px 0 0;font-weight:600">Total: ₦${Number(order.total_amount).toLocaleString()}</p>
         <button class="btn btn-view" onclick="viewOrder('${order.id}')">View Details</button>
