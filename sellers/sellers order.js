@@ -529,18 +529,14 @@ async function createOrderNotification(orderId, newStatus) {
   }
 }
 
-async function updateOrderStatus(orderId, newStatus) {
+async function updateOrderStatus(orderId, newStatus, trackingData = {}) {
   try {
     const res = await fetch(`${API_BASE}/seller/orders/${orderId}/status`, {
       method: 'PUT',
       headers: authHeaders(),
       body: JSON.stringify({
         status: newStatus,
-        ...(newStatus === 'shipped' ? {
-          courierName: document.getElementById('trackingCourier').value || null,
-          trackingId:  document.getElementById('trackingIdInput').value || null,
-          trackingLink: document.getElementById('trackingLinkInput').value || null,
-        } : {})
+        ...(newStatus === 'shipped' ? trackingData : {})
       }),
     });
 
@@ -578,8 +574,13 @@ confirmYes.addEventListener('click', async () => {
   if (!pendingOrderId || !pendingNewStatus) return closeModal();
   const id     = pendingOrderId;
   const status = pendingNewStatus;
+  const trackingData = status === 'shipped' ? {
+    courierName:  document.getElementById('trackingCourier').value || null,
+    trackingId:   document.getElementById('trackingIdInput').value || null,
+    trackingLink: document.getElementById('trackingLinkInput').value || null,
+  } : {};
   closeModal();
-  await updateOrderStatus(id, status);
+  await updateOrderStatus(id, status, trackingData);
 });
 
 confirmNo.addEventListener('click', closeModal);

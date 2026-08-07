@@ -223,14 +223,13 @@ async function loadOrder() {
 
 function render(o) {
   window.__currentOrder = o;
-  // Flatten items from all seller_groups (order.items does not exist in this API response)
-  const items = (o.seller_groups || []).flatMap(g => g.items || []);
+  const items = Array.isArray(o.items) ? o.items : [];
   console.log('Loaded order item specifications', {
     orderId: o.id,
     items: items.map(item => ({
-      product_id: item.productId,
-      color: item.color,
-      size: item.size,
+      product_id: item.product_id || item.productId,
+      color: item.color || (item.product_snapshot && (typeof item.product_snapshot === 'string' ? (()=>{try{return JSON.parse(item.product_snapshot).color}catch(e){return null}})() : item.product_snapshot.color)),
+      size: item.size || (item.product_snapshot && (typeof item.product_snapshot === 'string' ? (()=>{try{return JSON.parse(item.product_snapshot).size}catch(e){return null}})() : item.product_snapshot.size)),
     }))
   });
   const currentStep = STATUS_STEPS.indexOf(o.status);
@@ -249,13 +248,17 @@ function render(o) {
 
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
       ${items.map(item => {
-        const color = item.color || null;
-        const size = item.size || null;
+        // product_snapshot may be string or object
+        let ps = item.product_snapshot || item.productSnapshot || {};
+        if (typeof ps === 'string') {
+          try { ps = JSON.parse(ps); } catch(e) { ps = {}; }
+        }
+        const color = item.color || ps.color || null;
+        const size = item.size || ps.size || null;
         return `
         <div class="product">
-          <img src="${item.image || 'https://via.placeholder.com/90'}" alt="${item.productName || 'Product'}">
           <div class="product-details">
-            <h4>${item.productName || 'Product'}</h4>
+            <h4>${item.product_name || 'Product'}</h4>
             ${color || size ? `<p style="margin:6px 0 0;color:#64748b;font-size:0.95rem">${color ? `Color: ${color}` : ''}${color && size ? ' · ' : ''}${size ? `Size: ${size}` : ''}</p>` : ''}
             <p>Qty: ${item.quantity}</p>
             <p>Price: ₦${Number(item.price).toLocaleString()}</p>
@@ -303,11 +306,11 @@ async function cancelOrder(id) {
   alert('Order cancelled.'); loadOrder();
 }
 
-async function confirmDelivery(id, btn) {
+async function confirmDelivery(id, btn, attempt = 1) {
   if (btn.disabled) return;
   btn.disabled = true;
   const original = btn.textContent;
-  btn.textContent = 'Confirming...';
+  btn.textContent = attempt === 1 ? 'Confirming...' : 'Waking up server…';
   try {
     const res = await fetch(`${API_BASE}/orders/${id}/confirm-delivery`, {
       method: 'POST', headers: { Authorization: `Bearer ${token}` }
@@ -319,6 +322,10 @@ async function confirmDelivery(id, btn) {
     btn.style.background = '#94a3b8';
     btn.style.cursor = 'not-allowed';
   } catch (err) {
+    if (attempt < 2) {
+      setTimeout(() => confirmDelivery(id, btn, attempt + 1), 2500);
+      return;
+    }
     showToast(err.message, true);
     btn.disabled = false;
     btn.textContent = original;
