@@ -371,6 +371,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   logoInput.addEventListener('change', e => { if (e.target.files[0]) handleLogoFile(e.target.files[0]); });
 
+  async function uploadLogoToServer(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/seller/logo/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Logo upload failed');
+    return data.data.url;
+  }
+
   function handleLogoFile(file) {
     if (!file.type.startsWith('image/')) return alert('Please upload an image file.');
     const reader = new FileReader();
@@ -384,6 +397,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorLogo.textContent = '';
     };
     reader.readAsDataURL(file);
+
+    uploadLogoToServer(file)
+      .then(url => { logoInput.dataset.uploadedUrl = url; })
+      .catch(err => {
+        errorLogo.textContent = err.message;
+        errorLogo.style.display = 'block';
+      });
   }
 
   removeLogoBtn.addEventListener('click', () => {
@@ -537,7 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           website:          websiteInput.value.trim(),
           category_id:      storeCategory?.value || null,
           category:         storeCategory?.selectedOptions?.[0]?.text || null,
-          storeLogoUrl:     logoPreview.src || null,
+          storeLogoUrl:     logoInput.dataset.uploadedUrl || (logoPreview.src && !logoPreview.src.startsWith('data:') ? logoPreview.src : null),
           facebook:  document.getElementById('social-facebook').value.trim(),
           twitter:   document.getElementById('social-x').value.trim(),
           tiktok:    document.getElementById('social-tiktok').value.trim(),
