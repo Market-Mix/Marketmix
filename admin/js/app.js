@@ -108,6 +108,8 @@ function setPageTitle(page) {
     'admin-users': 'Admin Users',
     settings: 'Settings',
     'analytics-dashboard': 'Analytics Dashboard',
+    'audit-logs': 'Audit Logs',
+    'roles-permissions': 'Roles & Permissions',
     profile: 'Profile'
   };
 
@@ -449,6 +451,114 @@ function renderAnalyticsDashboard() {
   });
 }
 
+function renderCouponsPromotions() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading Coupons & Promotions...</div>';
+
+  ensureStylesheet(new URL('css/coupons-promotions.css', window.location.href).href);
+  ensureScript(new URL('js/coupons-promotions.js', window.location.href).href, () => {
+    const url = new URL('coupons-promotions.html', window.location.href).href;
+    loadHtmlFile(url)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeCouponsPromotionsPage) {
+            try { window.initializeCouponsPromotionsPage(); } catch (e) { console.error('initializeCouponsPromotionsPage error', e); }
+          }
+          return;
+        }
+
+        console.error('Coupons & Promotions page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load Coupons & Promotions content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load coupons-promotions.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load Coupons & Promotions content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load Coupons & Promotions content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-slate-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderAuditLogs() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading Audit Logs...</div>';
+
+  ensureStylesheet(new URL('css/audit-logs.css', window.location.href).href);
+  ensureScript(new URL('js/audit-logs.js', window.location.href).href, () => {
+    const url = new URL('audit-logs.html', window.location.href).href;
+    loadHtmlFile(url)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeAuditLogsPage) {
+            try { window.initializeAuditLogsPage(); } catch (e) { console.error('initializeAuditLogsPage error', e); }
+          }
+          return;
+        }
+
+        console.error('Audit Logs page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load Audit Logs content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load audit-logs.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load Audit Logs content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load Audit Logs content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-slate-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
+function renderRolesPermissions() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Loading Roles & Permissions...</div>';
+
+  ensureStylesheet(new URL('css/roles-permissions.css', window.location.href).href);
+  ensureScript(new URL('js/roles-permissions.js', window.location.href).href, () => {
+    const url = new URL('roles-permissions.html', window.location.href).href;
+    loadHtmlFile(url)
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const mainContent = doc.querySelector('main');
+
+        if (mainContent) {
+          content.innerHTML = '';
+          content.appendChild(mainContent);
+          appendPageFragments(doc, content, mainContent);
+          if (window.initializeRolesPermissionsPage) {
+            try { window.initializeRolesPermissionsPage(); } catch (e) { console.error('initializeRolesPermissionsPage error', e); }
+          }
+          return;
+        }
+
+        console.error('Roles & Permissions page parsed but <main> element was not found.');
+        content.innerHTML = '<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">Unable to load Roles & Permissions content.</div>';
+      })
+      .catch(error => {
+        console.error('Failed to load roles-permissions.html:', error);
+        const message = window.location.protocol === 'file:'
+          ? 'Unable to load Roles & Permissions content. Serve the admin panel through a local web server instead of opening index.html directly from the file system.'
+          : 'Unable to load Roles & Permissions content.';
+        content.innerHTML = `<div class="rounded-lg border border-gray-200 bg-white p-6 text-sm text-slate-600 shadow-sm">${message}</div>`;
+      });
+  });
+}
+
 function loadPage(page) {
   currentPage = page;
   setActiveNavLink(page);
@@ -469,6 +579,9 @@ function loadPage(page) {
     'notifications-center': renderNotifications,
     'website-cms': renderWebsiteCMS,
     'analytics-dashboard': renderAnalyticsDashboard,
+    'coupons-promotions': renderCouponsPromotions,
+    'audit-logs': renderAuditLogs,
+    'roles-permissions': renderRolesPermissions,
     reports: renderReports,
     returns: renderReturns,
     'admin-users': renderAdminUsers,

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coupons & Promotions | MarketMix Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="css/coupons-promotions.css" />
+</head>
+<body class="bg-gray-50 text-slate-800">
+  <main class="ml-64 mt-16 p-4 md:p-6 lg:p-8">
+    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Coupons & Promotions</p>
+        <h1 class="text-3xl font-semibold text-slate-900">Coupons & Promotions</h1>
+        <p class="mt-2 text-sm text-slate-500">Create, manage and monitor discount campaigns, promotional offers and marketplace incentives.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="createCouponBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:-translate-y-0.5 hover:bg-slate-50 transition"><i class="fas fa-tag mr-2"></i>Create Coupon</button>
+        <button id="createCampaignBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:-translate-y-0.5 hover:bg-slate-50 transition"><i class="fas fa-bullhorn mr-2"></i>Create Campaign</button>
+        <button id="exportCouponsBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:-translate-y-0.5 hover:bg-slate-50 transition"><i class="fas fa-file-export mr-2"></i>Export</button>
+        <button id="refreshCouponsBtn" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:-translate-y-0.5 hover:bg-blue-700 transition"><i class="fas fa-rotate-right mr-2"></i>Refresh</button>
+      </div>
+    </div>
+
+    <section id="summaryCards" class="mb-6 grid gap-4 xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-2"></section>
+
+    <div class="grid gap-6 xl:grid-cols-[1.9fr_0.9fr]">
+      <div class="space-y-6">
+        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900">Filters</h2>
+              <p class="text-sm text-slate-500">Refine coupons and campaigns with search and filter controls.</p>
+            </div>
+            <button id="resetCouponFilters" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100 transition">Reset Filters</button>
+          </div>
+          <div class="grid gap-4 xl:grid-cols-4 lg:grid-cols-3">
+            <label class="flex min-w-[220px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 shadow-sm">
+              <i class="fas fa-search text-slate-400"></i>
+              <input id="couponSearch" type="text" placeholder="Search coupons" class="w-full border-none bg-transparent outline-none" />
+            </label>
+            <input id="couponCodeFilter" type="text" placeholder="Coupon Code" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none" />
+            <input id="campaignFilter" type="text" placeholder="Campaign" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none" />
+            <select id="couponTypeFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All Coupon Types</option>
+              <option value="Percentage">Percentage</option>
+              <option value="Fixed Amount">Fixed Amount</option>
+              <option value="Free Shipping">Free Shipping</option>
+            </select>
+            <select id="statusFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Draft">Draft</option>
+              <option value="Expired">Expired</option>
+              <option value="Disabled">Disabled</option>
+            </select>
+            <select id="sellerFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
+              <option value="all">All Sellers</option>
+              <option value="MarketStyle">MarketStyle</option>
+              <option value="UrbanCart">UrbanCart</option>
+              <option value="HomeGoods">HomeGoods</option>
+              <option value="GamerZone">GamerZone</option>
+            </select>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <input id="dateStartFilter" type="date" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none" />
+              <input id="dateEndFilter" type="date" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none" />
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900">Coupons</h2>
+              <p class="text-sm text-slate-500">Track coupon usage, expiry and campaign alignment.</p>
+            </div>
+            <span id="couponTableCount" class="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">0 coupons</span>
+          </div>
+          <div class="overflow-hidden rounded-2xl border border-slate-200">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200 text-sm text-slate-600">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th class="px-4 py-3">Coupon Code</th>
+                    <th class="px-4 py-3">Campaign Name</th>
+                    <th class="px-4 py-3">Discount Type</th>
+                    <th class="px-4 py-3">Discount Value</th>
+                    <th class="px-4 py-3">Usage</th>
+                    <th class="px-4 py-3">Start Date</th>
+                    <th class="px-4 py-3">End Date</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="couponsTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="couponPagination" class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600"></div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900">Promotions</h2>
+              <p class="text-sm text-slate-500">Measure campaign reach, budget and channel performance.</p>
+            </div>
+            <span id="promotionTableCount" class="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">0 promotions</span>
+          </div>
+          <div class="overflow-hidden rounded-2xl border border-slate-200">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200 text-sm text-slate-600">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th class="px-4 py-3">Promotion</th>
+                    <th class="px-4 py-3">Target Audience</th>
+                    <th class="px-4 py-3">Start</th>
+                    <th class="px-4 py-3">End</th>
+                    <th class="px-4 py-3">Budget</th>
+                    <th class="px-4 py-3">Performance</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="promotionsTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="space-y-6">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Active Promotions</h3>
+          <p class="mt-2 text-sm text-slate-500">Live campaigns currently driving traffic.</p>
+          <div id="activePromotionsList" class="mt-5 space-y-3"></div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Ending Soon</h3>
+          <p class="mt-2 text-sm text-slate-500">Promotions wrapping up soon.</p>
+          <div id="endingSoonList" class="mt-5 space-y-3"></div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Best Coupon</h3>
+          <p class="mt-2 text-sm text-slate-500">Highest performance discount.</p>
+          <div id="bestCouponCard" class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4"></div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Highest Redemption</h3>
+          <p class="mt-2 text-sm text-slate-500">Campaign with the strongest redemption.</p>
+          <div id="highestRedemptionCard" class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4"></div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Total Savings Given</h3>
+          <p class="mt-2 text-sm text-slate-500">Aggregate customer savings delivered.</p>
+          <p id="totalSavingsValue" class="mt-5 text-2xl font-semibold text-slate-900">$0</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Upcoming Campaigns</h3>
+          <p class="mt-2 text-sm text-slate-500">Planned promotions ready to launch.</p>
+          <div id="upcomingCampaignsList" class="mt-5 space-y-3"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="js/coupons-promotions.js"></script>
+</body>
+</html>

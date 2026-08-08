@@ -1,0 +1,114 @@
+.action-btn {
+  border-radius: 9999px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.permission-toggle {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 1rem;
+  color: #475569;
+  cursor: pointer;
+  display: inline-flex;
+  height: 2.5rem;
+  justify-content: center;
+  width: 2.5rem;
+  transition: all 0.2s ease;
+}
+
+.permission-toggle:hover {
+  transform: translateY(-1px);
+  border-color: #94a3b8;
+}
+
+.permission-state-allowed {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.permission-state-restricted {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #92400e;
+}
+
+.permission-state-inherited {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.permission-state-none {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.role-template-btn {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  text-align: left;
+}
+
+.role-template-btn:hover {
+  transform: translateY(-1px);
+}
+
+#roleModal, #adminModal, #permissionsConfirmModal {
+  z-index: 1000;
+}
+
+.permission-summary-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.5rem;
+  padding: 1.25rem;
+}
+
+#roleModal > div {
+  width: min(100%, 92rem);
+  max-width: 92rem;
+  max-height: min(100vh, 92vh);
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+#roleModal > div > .grid {
+  min-width: 0;
+}
+
+#roleModal {
+  padding: 1.25rem;
+}
+
+@media (max-width: 1279px) {
+  #roleModal > div {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 1023px) {
+  main {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .action-btn {
+    width: 100%;
+  }
+
+  .permission-toggle {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}

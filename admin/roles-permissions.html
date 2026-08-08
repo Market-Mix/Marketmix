@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roles & Permissions | MarketMix Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="css/roles-permissions.css" />
+</head>
+<body class="bg-gray-50 text-slate-800">
+  <main class="mt-16 p-4 md:p-6 lg:p-8">
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Roles & Permissions</p>
+        <h1 class="mt-2 text-3xl font-semibold text-slate-900">Roles & Permissions</h1>
+        <p class="mt-2 max-w-2xl text-sm text-slate-500">Manage administrator roles, access levels and permissions across the MarketMix platform.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="createRoleBtn" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition"><i class="fas fa-plus mr-2"></i>Create Role</button>
+        <button id="inviteAdminBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"><i class="fas fa-user-plus mr-2"></i>Invite Administrator</button>
+        <button id="refreshRolesBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"><i class="fas fa-rotate-right mr-2"></i>Refresh</button>
+      </div>
+    </div>
+
+    <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+        <div class="flex items-center justify-between gap-3">
+          <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><i class="fas fa-users text-lg"></i></div>
+          <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Stable</span>
+        </div>
+        <p class="mt-6 text-sm text-slate-500">Total Administrators</p>
+        <p class="mt-3 text-3xl font-semibold text-slate-900">18</p>
+      </div>
+      <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+        <div class="flex items-center justify-between gap-3">
+          <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><i class="fas fa-user-check text-lg"></i></div>
+          <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Active</span>
+        </div>
+        <p class="mt-6 text-sm text-slate-500">Active Administrators</p>
+        <p class="mt-3 text-3xl font-semibold text-slate-900">16</p>
+      </div>
+      <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+        <div class="flex items-center justify-between gap-3">
+          <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><i class="fas fa-envelope-open-text text-lg"></i></div>
+          <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Pending</span>
+        </div>
+        <p class="mt-6 text-sm text-slate-500">Pending Invitations</p>
+        <p class="mt-3 text-3xl font-semibold text-slate-900">3</p>
+      </div>
+      <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+        <div class="flex items-center justify-between gap-3">
+          <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700"><i class="fas fa-user-shield text-lg"></i></div>
+          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-700">Mapped</span>
+        </div>
+        <p class="mt-6 text-sm text-slate-500">Total Roles</p>
+        <p class="mt-3 text-3xl font-semibold text-slate-900">7</p>
+      </div>
+      <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+        <div class="flex items-center justify-between gap-3">
+          <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-600"><i class="fas fa-cogs text-lg"></i></div>
+          <span class="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Custom</span>
+        </div>
+        <p class="mt-6 text-sm text-slate-500">Custom Roles</p>
+        <p class="mt-3 text-3xl font-semibold text-slate-900">4</p>
+      </div>
+      <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+        <div class="flex items-center justify-between gap-3">
+          <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600"><i class="fas fa-user-slash text-lg"></i></div>
+          <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-700">Limited</span>
+        </div>
+        <p class="mt-6 text-sm text-slate-500">Suspended Administrators</p>
+        <p class="mt-3 text-3xl font-semibold text-slate-900">2</p>
+      </div>
+    </section>
+
+    <section class="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 class="text-xl font-semibold text-slate-900">Administrators</h2>
+          <p class="mt-2 text-sm text-slate-500">Review administrative access and manage credentials for platform staff.</p>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm text-slate-600">
+          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">Administrator</th>
+              <th class="px-4 py-3">Email</th>
+              <th class="px-4 py-3">Role</th>
+              <th class="px-4 py-3">Department</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3">Last Login</th>
+              <th class="px-4 py-3">Created</th>
+              <th class="px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rolesAdminsTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-8 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+      <div class="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-semibold text-slate-900">Roles</h2>
+            <p class="mt-2 text-sm text-slate-500">Track available roles, assigned administrators, and their permission scope.</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm text-slate-600">
+            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="px-4 py-3">Role</th>
+                <th class="px-4 py-3">Description</th>
+                <th class="px-4 py-3">Administrators</th>
+                <th class="px-4 py-3">Permissions</th>
+                <th class="px-4 py-3">Created</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rolesTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="space-y-6">
+        <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Role Summary</h3>
+          <p class="mt-2 text-sm text-slate-500">Quick access to the largest administrative roles and their access level.</p>
+          <div id="roleSummaryCards" class="mt-6 grid gap-4"></div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Security Notice</h3>
+          <p class="mt-3 text-sm text-slate-600">Permission changes affect administrator access across the MarketMix platform.</p>
+          <ul class="mt-4 space-y-3 text-sm text-slate-600">
+            <li class="flex gap-3"><span class="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-slate-900"></span>Avoid giving unnecessary permissions.</li>
+            <li class="flex gap-3"><span class="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-slate-900"></span>Review administrator access regularly.</li>
+            <li class="flex gap-3"><span class="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-slate-900"></span>High-risk permissions should only be assigned to trusted administrators.</li>
+            <li class="flex gap-3"><span class="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-slate-900"></span>Permission changes should be recorded in Audit Logs.</li>
+          </ul>
+        </div>
+
+        <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Role Templates</h3>
+          <p class="mt-2 text-sm text-slate-500">Load a predefined permission profile for a new or existing role.</p>
+          <div class="mt-5 grid gap-3">
+            <button data-template="Super Admin" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Super Admin</button>
+            <button data-template="Platform Administrator" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Platform Admin</button>
+            <button data-template="Operations Manager" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Operations Manager</button>
+            <button data-template="Finance Manager" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Finance Manager</button>
+            <button data-template="Support Manager" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Support Manager</button>
+            <button data-template="Content Manager" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Content Manager</button>
+            <button data-template="Moderator" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Moderator</button>
+            <button data-template="Analytics Viewer" class="role-template-btn rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-100">Analytics Viewer</button>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 class="text-lg font-semibold text-slate-900">Permission Change History</h3>
+          <p class="mt-2 text-sm text-slate-500">Recent role and permission updates.</p>
+          <div id="permissionHistoryList" class="mt-5 space-y-4"></div>
+        </div>
+      </aside>
+    </section>
+
+    <div id="roleModal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/70 p-4">
+      <div class="w-full max-w-6xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+        <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+          <div>
+            <p id="roleModalMode" class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Create Role</p>
+            <h2 id="roleModalTitle" class="mt-2 text-2xl font-semibold text-slate-900">New role details</h2>
+          </div>
+          <button type="button" onclick="closeRoleModal()" class="text-slate-500 hover:text-slate-900"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="grid gap-6 p-6 lg:grid-cols-[1.6fr_1fr]">
+          <div class="space-y-6">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700">Role Name</label>
+                <input id="roleNameField" type="text" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900" placeholder="e.g. Sales Manager">
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700">Status</label>
+                <select id="roleStatusField" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900">
+                  <option>Active</option>
+                  <option>Pending</option>
+                  <option>Suspended</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">Description</label>
+              <textarea id="roleDescriptionField" rows="3" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900" placeholder="Describe what this role can do"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">Access Level</label>
+              <select id="roleAccessField" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900">
+                <option>Full Access</option>
+                <option>High Access</option>
+                <option>Moderate Access</option>
+                <option>Limited Access</option>
+                <option>Read Only</option>
+              </select>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <div class="flex flex-col gap-3">
+                <div>
+                  <p class="text-sm font-semibold text-slate-900">Permission search</p>
+                  <p class="text-sm text-slate-500">Filter modules, permission types, roles, access levels and status.</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                  <input id="permissionSearch" type="text" placeholder="Search permissions" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800" />
+                  <select id="permissionModuleFilter" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800">
+                    <option value="">All modules</option>
+                  </select>
+                  <select id="permissionTypeFilter" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800">
+                    <option value="">All types</option>
+                  </select>
+                  <select id="permissionRoleFilter" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800">
+                    <option value="">All roles</option>
+                  </select>
+                  <select id="permissionStatusFilter" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800">
+                    <option value="">All statuses</option>
+                    <option value="allowed">Allowed</option>
+                    <option value="restricted">Restricted</option>
+                    <option value="inherited">Inherited</option>
+                    <option value="none">Not allowed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3 text-sm text-slate-700">
+                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Allowed
+                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-slate-300"></span>Not Allowed
+                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-300"></span>Restricted
+                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-blue-100"></span>Inherited
+              </div>
+              <div class="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <table class="w-full min-w-[960px] text-left text-sm text-slate-600">
+                  <thead class="bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-500">
+                    <tr>
+                      <th class="px-4 py-3">Module</th>
+                      <th class="px-4 py-3">View</th>
+                      <th class="px-4 py-3">Create</th>
+                      <th class="px-4 py-3">Edit</th>
+                      <th class="px-4 py-3">Delete</th>
+                      <th class="px-4 py-3">Approve</th>
+                      <th class="px-4 py-3">Reject</th>
+                      <th class="px-4 py-3">Export</th>
+                      <th class="px-4 py-3">Manage</th>
+                    </tr>
+                  </thead>
+                  <tbody id="permissionsMatrixBody" class="bg-white"></tbody>
+                </table>
+              </div>
+            </div>
+            <div id="dangerPermissionWarning" class="hidden rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <div class="flex items-start gap-3">
+                <span class="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-red-100 text-red-700"><i class="fas fa-exclamation-triangle"></i></span>
+                <div>
+                  <p class="font-semibold">High-risk permission</p>
+                  <p class="mt-1 text-sm text-red-700">Sensitive permissions should only be granted to trusted administrators.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-6 rounded-3xl border border-slate-200 bg-slate-50 p-6">
+            <div>
+              <h3 class="text-lg font-semibold text-slate-900">Permission summary</h3>
+              <p class="mt-2 text-sm text-slate-500">Review the current role access and any pending changes.</p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="rounded-3xl bg-white p-4 shadow-sm">
+                <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Total permissions</p>
+                <p id="summaryTotalPermissions" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+              </div>
+              <div class="rounded-3xl bg-white p-4 shadow-sm">
+                <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Allowed</p>
+                <p id="summaryAllowedPermissions" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+              </div>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="rounded-3xl bg-white p-4 shadow-sm">
+                <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Restricted</p>
+                <p id="summaryRestrictedPermissions" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+              </div>
+              <div class="rounded-3xl bg-white p-4 shadow-sm">
+                <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Inherited</p>
+                <p id="summaryInheritedPermissions" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+              </div>
+            </div>
+            <div class="rounded-3xl bg-white p-4 shadow-sm">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">High-risk permissions</p>
+              <p id="summaryHighRiskPermissions" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            </div>
+            <div class="rounded-3xl bg-white p-4 shadow-sm">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Last modified</p>
+              <p id="summaryLastModified" class="mt-3 text-lg font-semibold text-slate-900">Apr 22, 2024</p>
+              <p id="summaryModifiedBy" class="mt-1 text-sm text-slate-500">Amina Johnson</p>
+            </div>
+            <div class="rounded-3xl bg-white p-4 shadow-sm">
+              <h4 class="text-sm font-semibold text-slate-900">Change preview</h4>
+              <div class="mt-4 space-y-3 text-sm text-slate-600">
+                <div class="flex items-center justify-between"><span>Added</span><span id="previewAddedCount" class="font-semibold text-slate-900">0</span></div>
+                <div class="flex items-center justify-between"><span>Removed</span><span id="previewRemovedCount" class="font-semibold text-slate-900">0</span></div>
+                <div class="flex items-center justify-between"><span>Modified</span><span id="previewModifiedCount" class="font-semibold text-slate-900">0</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+          <button type="button" onclick="closeRoleModal()" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">Cancel</button>
+          <button type="button" id="saveRoleDraftBtn" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">Save Draft</button>
+          <button type="button" id="saveRoleBtn" class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Save Role</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="adminModal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/70 p-4">
+      <div class="w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+        <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Administrator access</p>
+            <h2 id="adminModalTitle" class="mt-2 text-2xl font-semibold text-slate-900">View administrator access</h2>
+          </div>
+          <button type="button" onclick="closeAdminModal()" class="text-slate-500 hover:text-slate-900"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="grid gap-6 p-6">
+          <div class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p class="text-sm font-semibold text-slate-500">Administrator Name</p>
+                <p id="adminNameField" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-500">Email</p>
+                <p id="adminEmailField" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-500">Current Role</p>
+                <p id="adminRoleField" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-500">Department</p>
+                <p id="adminDepartmentField" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+              </div>
+            </div>
+            <div class="mt-6 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p class="text-sm font-semibold text-slate-500">Status</p>
+                <p id="adminStatusField" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-500">Last Login</p>
+                <p id="adminLastLoginField" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+              </div>
+            </div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Assigned Permissions</p>
+              <p id="adminAssignedPermissions" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Inherited Permissions</p>
+              <p id="adminInheritedPermissions" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            </div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Custom Permissions</p>
+              <div id="adminCustomPermissions" class="mt-3 flex flex-wrap gap-2"></div>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Security Level</p>
+              <p id="adminSecurityLevel" class="mt-3 text-3xl font-semibold text-slate-900">Moderate</p>
+            </div>
+          </div>
+          <div class="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+            <p class="font-semibold">High-risk permissions active</p>
+            <p class="mt-2">Review this administrator's assigned permissions carefully before making changes.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 justify-end">
+            <button type="button" onclick="handleAdminChangeRole()" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">Change Role</button>
+            <button type="button" onclick="handleAdminEditPermissions()" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">Edit Permissions</button>
+            <button type="button" onclick="handleAdminSuspendAccount()" class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800 hover:bg-amber-100">Suspend Account</button>
+            <button type="button" onclick="handleAdminResetPermissions()" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">Reset Permissions</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="permissionsConfirmModal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/70 p-4">
+      <div class="w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+        <div class="border-b border-slate-200 px-6 py-5">
+          <h2 class="text-2xl font-semibold text-slate-900">Confirm permission changes</h2>
+          <p class="mt-2 text-sm text-slate-500">Are you sure you want to modify administrator permissions?</p>
+        </div>
+        <div class="p-6">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Administrator</p>
+              <p id="confirmAdminName" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+            </div>
+            <div>
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Role</p>
+              <p id="confirmRoleName" class="mt-2 text-lg font-semibold text-slate-900">—</p>
+            </div>
+          </div>
+          <div class="mt-6 grid gap-4 lg:grid-cols-3">
+            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Permissions added</p>
+              <p id="confirmAddedCount" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Permissions removed</p>
+              <p id="confirmRemovedCount" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Permissions modified</p>
+              <p id="confirmModifiedCount" class="mt-3 text-3xl font-semibold text-slate-900">0</p>
+            </div>
+          </div>
+          <div class="mt-6 space-y-4 text-sm text-slate-600" id="confirmChangeDetails"></div>
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+          <button type="button" onclick="closePermissionsConfirmModal()" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">Cancel</button>
+          <button type="button" onclick="confirmPermissionChanges()" class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Confirm Changes</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/roles-permissions.js"></script>
+</body>
+</html>
