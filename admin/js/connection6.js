@@ -35,7 +35,10 @@
   async function load() {
     try {
       const base = window.ADMIN_API_BASE || (window.location.protocol === 'file:' ? 'http://localhost:5000/api' : 'https://marketmix-backend.onrender.com/api');
-      const res = await fetch(`${base}/admin/refund-debt-summary`, { headers: (window.getAdminAuthHeaders && getAdminAuthHeaders()) || {} });
+      const token = localStorage.getItem('adminToken') || (window.adminToken || null);
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`${base}/admin/refund-debt-summary`, { headers, credentials: 'include' });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         log('API request failed:', body?.message || res.statusText);

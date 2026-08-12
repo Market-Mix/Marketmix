@@ -69,3 +69,22 @@ function toggleNotificationBell() {
 
   dropdown.classList.toggle('hidden');
 }
+
+// Profile dropdown toggle
+function toggleProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  if (!dropdown) return;
+  dropdown.classList.toggle('hidden');
+
+  // close when clicking outside
+  if (!window._profileDropdownListenerAdded) {
+    window._profileDropdownListenerAdded = true;
+    document.addEventListener('click', (e) => {
+      const open = document.getElementById('profileDropdown');
+      if (!open || open.classList.contains('hidden')) return;
+      if (e.target.closest && !e.target.closest('#profileDropdown') && !e.target.closest('button[onclick="toggleProfileDropdown()"]')) {
+        open.classList.add('hidden');
+      }
+    });
+  }
+}
