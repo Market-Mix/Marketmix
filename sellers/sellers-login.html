@@ -164,12 +164,23 @@ localStorage.removeItem("mm_stores_cache");
       localStorage.setItem('userRole', 'seller');
     }
 
-    // ─── Redirect after login ─────────────────────────────────────────────────
-    function redirectToDashboard() {
+    // ─── Redirect after login (checks whether a store exists first) ────────────
+    async function redirectToDashboard(token) {
       showToast('Login successful! Redirecting...', 'success');
-      setTimeout(() => {
-        window.location.href = 'sellers layout.html';
-      }, 1500);
+      try {
+        const storesRes = await fetch(`${API_BASE}/seller/stores`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        const storesData = await storesRes.json().catch(() => ({}));
+        const hasStore = Array.isArray(storesData?.data?.stores) && storesData.data.stores.length > 0;
+
+        setTimeout(() => {
+          window.location.href = hasStore ? 'sellers layout.html' : 'setup-store.html';
+        }, 1500);
+      } catch (err) {
+        // Fallback to dashboard if the stores check fails
+        setTimeout(() => { window.location.href = 'sellers layout.html'; }, 1500);
+      }
     }
 
     // ─── Email/Password login ─────────────────────────────────────────────────
@@ -236,7 +247,7 @@ localStorage.removeItem("mm_stores_cache");
         }
 
         saveSession(token, user);
-        redirectToDashboard();
+        await redirectToDashboard(token);
 
       } catch (err) {
         console.error('Login error:', err);
@@ -313,7 +324,7 @@ localStorage.removeItem("mm_stores_cache");
         }
 
         saveSession(token, user);
-        redirectToDashboard();
+        await redirectToDashboard(token);
 
       } catch (err) {
         console.error('Google login error:', err);

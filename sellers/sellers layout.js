@@ -67,6 +67,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   const store = await StoreManager.requireActiveStore();
   if (!store) return; // redirected
 
+  // Extra guard: ensure there are stores on the account. If the API reports
+  // zero stores, redirect to setup so users can't reach dashboard by accident.
+  try {
+    const stores = await StoreManager.loadStores(true);
+    if (!Array.isArray(stores) || stores.length === 0) {
+      window.location.href = 'setup-store.html';
+      return;
+    }
+  } catch (e) {
+    console.warn('Could not verify seller stores before showing dashboard:', e);
+  }
+
   // Render store switcher badge in navbar
   await StoreManager.renderStoreSwitcher('storeSwitcher');
 

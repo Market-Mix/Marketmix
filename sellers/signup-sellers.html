@@ -636,6 +636,16 @@ prevBtns.forEach((btn) => {
     // ─── Init ──────────────────────────────────────────────────────────────────
     loadProductCategories();
     showStep(currentStep);
+
+    // If the signup page was opened to resume an interrupted store setup,
+    // show a clear message so the user knows to log in instead of seeing
+    // a confusing error or dead-end.
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      if (params.has('resumeSetup')) {
+        showToast('Log in to continue your setup', 'info');
+      }
+    } catch (e) { /* ignore */ }
   </script>
 </body>
 </html>
