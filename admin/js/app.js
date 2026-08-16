@@ -584,6 +584,7 @@ function loadPage(page) {
     'roles-permissions': renderRolesPermissions,
     reports: renderReports,
     returns: renderReturns,
+    'debt-adjustments': renderDebtAdjustments,
     'admin-users': renderAdminUsers,
     settings: renderSettings,
     profile: renderProfile
