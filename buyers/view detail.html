@@ -201,16 +201,16 @@ function getToken() {
   <script>
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
 const token = localStorage.getItem('token');
-const orderId = new URLSearchParams(location.search).get('id');
+const vendorOrderId = new URLSearchParams(location.search).get('vendorOrderId') || new URLSearchParams(location.search).get('id');
 
 const STATUS_STEPS = ['pending','confirmed','processing','shipped','delivered'];
 const STATUS_ICONS = ['fas fa-file-alt','fas fa-check','fas fa-box','fas fa-truck','fas fa-check-circle'];
 const STATUS_LABELS = ['Order Placed','Confirmed','Processing','Shipped','Delivered'];
 
 async function loadOrder() {
-  if (!orderId) { document.getElementById('orderMain').innerHTML = '<p style="text-align:center;color:#ef4444">No order ID provided.</p>'; return; }
+  if (!vendorOrderId) { document.getElementById('orderMain').innerHTML = '<p style="text-align:center;color:#ef4444">No order ID provided.</p>'; return; }
   try {
-    const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+    const res = await fetch(`${API_BASE}/orders/vendor/${vendorOrderId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
@@ -224,31 +224,22 @@ async function loadOrder() {
 function render(o) {
   window.__currentOrder = o;
   const items = Array.isArray(o.items) ? o.items : [];
-  console.log('Loaded order item specifications', {
-    orderId: o.id,
-    items: items.map(item => ({
-      product_id: item.product_id || item.productId,
-      color: item.color || (item.product_snapshot && (typeof item.product_snapshot === 'string' ? (()=>{try{return JSON.parse(item.product_snapshot).color}catch(e){return null}})() : item.product_snapshot.color)),
-      size: item.size || (item.product_snapshot && (typeof item.product_snapshot === 'string' ? (()=>{try{return JSON.parse(item.product_snapshot).size}catch(e){return null}})() : item.product_snapshot.size)),
-    }))
-  });
   const currentStep = STATUS_STEPS.indexOf(o.status);
   const date = new Date(o.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
 
   const h2 = document.querySelector('h2');
-  if (h2) h2.textContent = `Order #${String(o.id).substring(0,8).toUpperCase()}`;
+  if (h2) h2.textContent = `Order #${String(o.vendor_order_id || o.id).substring(0,8).toUpperCase()}`;
 
   document.getElementById('orderMain').innerHTML = `
     <div class="order-info">
       <p><strong>Order Date:</strong> ${date}</p>
       <p><strong>Status:</strong> <span class="status" style="background:${statusColor(o.status)}">${o.status}</span></p>
-      <p><strong>Total:</strong> ₦${Number(o.total_amount).toLocaleString()}</p>
+      <p><strong>Total:</strong> ₦${Number(o.total_amount || o.subtotal + (o.shipping_fee || 0)).toLocaleString()}</p>
       ${o.payment_method ? `<p><strong>Payment:</strong> ${o.payment_method.toUpperCase()}</p>` : ''}
     </div>
 
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
       ${items.map(item => {
-        // product_snapshot may be string or object
         let ps = item.product_snapshot || item.productSnapshot || {};
         if (typeof ps === 'string') {
           try { ps = JSON.parse(ps); } catch(e) { ps = {}; }
@@ -258,7 +249,7 @@ function render(o) {
         return `
         <div class="product">
           <div class="product-details">
-            <h4>${item.product_name || 'Product'}</h4>
+            <h4>${item.product_name || item.productName || 'Product'}</h4>
             ${color || size ? `<p style="margin:6px 0 0;color:#64748b;font-size:0.95rem">${color ? `Color: ${color}` : ''}${color && size ? ' · ' : ''}${size ? `Size: ${size}` : ''}</p>` : ''}
             <p>Qty: ${item.quantity}</p>
             <p>Price: ₦${Number(item.price).toLocaleString()}</p>
@@ -286,8 +277,8 @@ function render(o) {
 
     <div class="actions">
       ${o.status === 'shipped' ? `<button class="track-btn" onclick="openTrackingModal()"><i class="fas fa-truck"></i> Track Order</button>` : ''}
-      ${['pending','confirmed','processing'].includes(o.status) ? `<button style="background:#ef4444;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="cancelOrder('${o.id}')">Cancel Order</button>` : ''}
-      ${o.status === 'delivered' && !o.delivery_confirmed_at ? `<button id="confirmDeliveryBtn" style="background:#22c55e;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="confirmDelivery('${o.id}', this)">Confirm Receipt</button>` : ''}
+      ${['pending','confirmed','processing'].includes(o.status) ? `<button style="background:#ef4444;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="cancelOrder('${o.vendor_order_id}')">Cancel Order</button>` : ''}
+      ${o.status === 'delivered' && !o.delivery_confirmed_at ? `<button id="confirmDeliveryBtn" style="background:#22c55e;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer" onclick="confirmDelivery('${o.vendor_order_id}', this)">Confirm Receipt</button>` : ''}
       ${o.status === 'delivered' && o.delivery_confirmed_at ? `<button disabled style="background:#94a3b8;color:#fff;flex:1;padding:12px;border:none;border-radius:8px;font-weight:bold;cursor:not-allowed">Delivery Confirmed</button>` : ''}
       <button class="support-btn" onclick="alert('Support: support@marketmix.com')"><i class="fas fa-headset"></i> Contact Support</button>
     </div>
@@ -298,21 +289,21 @@ function statusColor(s) {
   return {delivered:'#22c55e',shipped:'#0ea5e9',cancelled:'#ef4444',processing:'#f97316',confirmed:'#8b5cf6',pending:'#94a3b8'}[s] || '#64748b';
 }
 
-async function cancelOrder(id) {
+async function cancelOrder(vendorOrderId) {
   if (!confirm('Cancel this order?')) return;
-  const res = await fetch(`${API_BASE}/orders/${id}/cancel`, { method:'PUT', headers:{ Authorization:`Bearer ${token}` } });
+  const res = await fetch(`${API_BASE}/orders/vendor/${vendorOrderId}/cancel`, { method:'PUT', headers:{ Authorization:`Bearer ${token}` } });
   const d = await res.json();
   if (!res.ok) { alert(d.message); return; }
   alert('Order cancelled.'); loadOrder();
 }
 
-async function confirmDelivery(id, btn, attempt = 1) {
+async function confirmDelivery(vendorOrderId, btn, attempt = 1) {
   if (btn.disabled) return;
   btn.disabled = true;
   const original = btn.textContent;
   btn.textContent = attempt === 1 ? 'Confirming...' : 'Waking up server…';
   try {
-    const res = await fetch(`${API_BASE}/orders/${id}/confirm-delivery`, {
+    const res = await fetch(`${API_BASE}/orders/vendor/${vendorOrderId}/confirm-delivery`, {
       method: 'POST', headers: { Authorization: `Bearer ${token}` }
     });
     const d = await res.json();
@@ -324,7 +315,7 @@ async function confirmDelivery(id, btn, attempt = 1) {
     btn.style.cursor = 'not-allowed';
   } catch (err) {
     if (attempt < 2) {
-      setTimeout(() => confirmDelivery(id, btn, attempt + 1), 2500);
+      setTimeout(() => confirmDelivery(vendorOrderId, btn, attempt + 1), 2500);
       return;
     }
     showToast(err.message, true);
