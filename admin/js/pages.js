@@ -1283,116 +1283,342 @@ function viewBuyer(id) {
 
 // Sellers Management
 function renderSellers() {
+  const sellerData = Array.isArray(dummyData && dummyData.sellers) ? dummyData.sellers : [];
+  const statusOptions = ['All', ...Array.from(new Set(sellerData.map(s => s && s.status).filter(Boolean)))];
+  const columns = ['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'Status', 'Join Date'];
+  const actions = [{ label: 'View', callback: 'viewSeller' }];
+
+  const statusCounts = {
+    total: sellerData.length,
+    pending: sellerData.filter(s => String(s?.kyc_status || s?.status || '').toLowerCase() === 'pending').length,
+    approved: sellerData.filter(s => String(s?.kyc_status || s?.status || '').toLowerCase() === 'approved').length,
+    suspended: sellerData.filter(s => String(s?.kyc_status || s?.status || '').toLowerCase() === 'suspended').length
+  };
+
+  const statCards = [
+    { label: 'Total Sellers', value: statusCounts.total, tone: 'blue', icon: 'fa-users' },
+    { label: 'Pending', value: statusCounts.pending, tone: 'amber', icon: 'fa-clock' },
+    { label: 'Approved', value: statusCounts.approved, tone: 'green', icon: 'fa-check-circle' },
+    { label: 'Suspended', value: statusCounts.suspended, tone: 'red', icon: 'fa-ban' }
+  ];
+
+  const renderSellerTable = (rows) => {
+    if (!rows.length) {
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
+          <p class="text-gray-600 dark:text-gray-300">No sellers found.</p>
+        </div>
+      `;
+    }
+
+    return renderTable(columns, rows, actions);
+  };
+
   const html = `
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Sellers Management</h1>
-      
-      <div class="mb-6 flex gap-4">
+
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
         <input type="text" id="sellerSearch" placeholder="Search sellers..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="sellerStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          ${statusOptions.map(status => `<option value="${status}">${status}</option>`).join('')}
+        </select>
         <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
       </div>
 
-      ${renderTable(['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'Status', 'Join Date'], dummyData.sellers, [
-        { label: 'View', callback: 'viewSeller' }
-      ])}
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Seller Statistics</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          ${statCards.map(card => `
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${card.label}</span>
+                <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg ${card.tone === 'blue' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' : card.tone === 'amber' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300' : card.tone === 'green' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300'}">
+                  <i class="fas ${card.icon}"></i>
+                </span>
+              </div>
+              <div class="text-3xl font-bold text-gray-900 dark:text-white">${card.value}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-4">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Seller Directory</h2>
+        </div>
+        <div id="sellerTableContainer" class="p-4">
+          ${renderSellerTable(sellerData)}
+        </div>
+      </div>
     </div>
   `;
   document.getElementById('content').innerHTML = html;
-  
-  document.getElementById('sellerSearch').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    const filtered = dummyData.sellers.filter(s => 
-      s.shopName.toLowerCase().includes(query) || s.sellerName.toLowerCase().includes(query)
-    );
-    const tableHtml = renderTable(['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'Status', 'Join Date'], filtered, [
-      { label: 'View', callback: 'viewSeller' }
-    ]);
-    document.querySelector('.overflow-x-auto').outerHTML = tableHtml;
-  });
+
+  const searchInput = document.getElementById('sellerSearch');
+  const statusFilter = document.getElementById('sellerStatusFilter');
+  const tableContainer = document.getElementById('sellerTableContainer');
+
+  const applySellerFilters = () => {
+    const query = (searchInput?.value || '').trim().toLowerCase();
+    const selectedStatus = statusFilter?.value || 'All';
+
+    const filtered = sellerData.filter(seller => {
+      const matchesQuery = !query || [seller.id, seller.shopName, seller.sellerName, seller.email, seller.phone]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+
+      const matchesStatus = selectedStatus === 'All' || seller.status === selectedStatus;
+      return matchesQuery && matchesStatus;
+    });
+
+    tableContainer.innerHTML = renderSellerTable(filtered);
+  };
+
+  if (searchInput) {
+    searchInput.addEventListener('input', applySellerFilters);
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener('change', applySellerFilters);
+  }
+}
+
+function getSellerStatusBadgeClasses(status) {
+  const normalizedStatus = String(status || '').trim();
+  const value = normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1).toLowerCase();
+  if (value === 'Approved') return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+  if (value === 'Pending') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+  if (value === 'Suspended' || value === 'Rejected') return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+  return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+}
+
+function getSellerStatusValue(seller) {
+  const realStatus = seller && typeof getSellerKycRealStatus === 'function' ? getSellerKycRealStatus(seller.id) : null;
+  const raw = realStatus?.kyc_status ?? 'not_submitted';
+  const value = String(raw).trim();
+  return value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : 'Not Submitted';
+}
+
+function renderSellerDocumentPreview(documentUrl, label) {
+  if (!documentUrl || !String(documentUrl).trim()) {
+    return `
+      <div class="h-80 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/60 flex flex-col items-center justify-center text-center p-4">
+        <i class="fas fa-file-alt text-3xl text-gray-400 mb-2"></i>
+        <p class="text-sm text-gray-600 dark:text-gray-300">Document unavailable</p>
+      </div>
+    `;
+  }
+
+  const safeUrl = String(documentUrl).trim();
+  const lowerUrl = safeUrl.toLowerCase();
+  const isPdf = lowerUrl.endsWith('.pdf') || lowerUrl.includes('pdf');
+  const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].some(ext => lowerUrl.endsWith(ext));
+
+  if (isPdf) {
+    return `
+      <div class="h-80 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/60 flex flex-col items-center justify-center text-center p-4">
+        <i class="fas fa-file-pdf text-4xl text-red-500 mb-3"></i>
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">${label}</p>
+        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-3 py-2 text-xs font-semibold rounded bg-blue-600 text-white hover:bg-blue-700">Open PDF</a>
+      </div>
+    `;
+  }
+
+  if (isImage) {
+    return `
+      <div class="h-80 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/60 overflow-hidden p-3 flex items-center justify-center">
+        <img src="${safeUrl}" alt="${label}" class="max-h-full max-w-full object-contain rounded-lg shadow-sm cursor-pointer hover:opacity-90" loading="lazy" onclick="window.open('${safeUrl}', '_blank'); return false;" />
+      </div>
+    `;
+  }
+
+  return `
+    <div class="h-80 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/60 flex flex-col items-center justify-center text-center p-4">
+      <i class="fas fa-file-alt text-3xl text-gray-400 mb-2"></i>
+      <p class="text-sm text-gray-600 dark:text-gray-300">Document unavailable</p>
+    </div>
+  `;
 }
 
 function viewSeller(id) {
   const seller = dummyData.sellers.find(s => s.id === id);
+  if (!seller) {
+    document.getElementById('content').innerHTML = `
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <p class="text-gray-700 dark:text-gray-200">Seller not found.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const realStatus = typeof getSellerKycRealStatus === 'function' ? getSellerKycRealStatus(id) : null;
+  const sellerDisplay = realStatus ? {
+    ...seller,
+    kyc_status: realStatus.kyc_status,
+    is_verified: realStatus.is_verified,
+    status: realStatus.kyc_status
+  } : seller;
+
+  const sellerStatusValue = getSellerStatusValue(sellerDisplay);
+  const overview = [
+    { label: 'Seller ID', value: sellerDisplay.id || 'N/A' },
+    { label: 'Shop Name', value: sellerDisplay.shopName || 'N/A' },
+    { label: 'Seller Name', value: sellerDisplay.fullName || sellerDisplay.sellerName || 'N/A' },
+    { label: 'Email', value: sellerDisplay.email || 'N/A' },
+    { label: 'Phone', value: sellerDisplay.phone || 'N/A' },
+    { label: 'Account Status', value: sellerDisplay.status || 'Not Available', badge: true },
+    { label: 'KYC Status', value: sellerStatusValue, badge: true },
+    { label: 'Join Date', value: sellerDisplay.joinDate || 'N/A' },
+    { label: 'Last Active', value: 'Unavailable', muted: true }
+  ];
+
+  const performanceMetrics = [
+    { label: 'Products', value: 'Loading…', tone: 'gray' },
+    { label: 'Orders', value: 'Loading…', tone: 'gray' },
+    { label: 'Sales', value: 'Loading…', tone: 'gray' },
+    { label: 'Earnings', value: 'Loading…', tone: 'gray' },
+    { label: 'Refunds', value: 'Loading…', tone: 'gray' },
+    { label: 'Debt', value: 'Loading…', tone: 'gray' },
+    { label: 'Withdrawals', value: 'Loading…', tone: 'gray' }
+  ];
+
+  const financialSummary = [
+    { label: 'Available Balance', value: 'Unavailable', tone: 'gray' },
+    { label: 'Pending Earnings', value: 'Unavailable', tone: 'gray' },
+    { label: 'Total Withdrawn', value: 'Unavailable', tone: 'gray' },
+    { label: 'Outstanding Debt', value: 'Unavailable', tone: 'gray' }
+  ];
+
   const html = `
     <div>
       <button onclick="loadPage('sellers')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Sellers</button>
-      
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Seller KYC Verification - ${seller.shopName}</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">Submitted KYC Information Review</p>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <!-- KYC Information Display (Read-Only) -->
-          <div class="space-y-4">
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Full Name</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.fullName || seller.sellerName}</p>
+
+      <div class="space-y-6">
+        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Seller Overview</p>
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${sellerDisplay.shopName || 'Seller'} </h2>
             </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Date of Birth</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.dateOfBirth || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Country</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.country || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Type</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.idType || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Number</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.idNumber || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Residential Address</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.residentialAddress || 'Not provided'}</p>
+            <div class="flex flex-wrap gap-2">
+              ${['pending', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="approve" data-seller-id="${sellerDisplay.id}" onclick="approveSeller('${sellerDisplay.id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"><i class="fas fa-check mr-2"></i>Approve Seller</button>` : ''}
+              ${['pending', 'approved', 'rejected', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" data-seller-id="${sellerDisplay.id}" onclick="rejectSeller('${sellerDisplay.id}')" class="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject Seller</button>` : ''}
             </div>
           </div>
-          
-          <!-- Document Previews Section -->
-          <div class="space-y-4">
-            <div>
-              <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">ID Document</label>
-              <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700 h-80 flex items-center justify-center overflow-hidden">
-                ${seller.idDocumentUrl ? `<img src="${seller.idDocumentUrl}" alt="ID Document" class="max-h-full max-w-full object-contain">` : `<div class="text-center"><i class="fas fa-image text-4xl text-gray-400 mb-2"></i><p class="text-gray-600 dark:text-gray-400 text-sm">No document uploaded</p></div>`}
+
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            ${overview.map(item => `
+              <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">${item.label}</p>
+                ${item.badge ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getSellerStatusBadgeClasses(item.value)}">${item.value}</span>` : `<p class="text-base font-semibold text-gray-900 dark:text-white ${item.muted ? 'text-gray-500 dark:text-gray-400' : ''}">${item.value}</p>`}
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <div class="mb-4">
+            <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Seller Performance</p>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Performance Overview</h3>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4">
+            ${performanceMetrics.map(metric => `
+              <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-4">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">${metric.label}</p>
+                <p class="text-lg font-semibold ${metric.tone === 'gray' ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}">${metric.value}</p>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <div class="mb-6">
+            <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">KYC Verification</p>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Submitted KYC Information</h3>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div class="space-y-4">
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Full Name</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.fullName || sellerDisplay.sellerName || 'N/A'}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Date of Birth</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.dateOfBirth || 'N/A'}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Country</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.country || 'N/A'}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Type</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.idType || 'N/A'}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Number</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.idNumber || 'N/A'}</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Residential Address</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words whitespace-normal overflow-wrap-anywhere">${sellerDisplay.residentialAddress || 'N/A'}</p>
               </div>
             </div>
-            
-            <div>
-              <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">Proof of Address</label>
-              <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700 h-80 flex items-center justify-center overflow-hidden">
-                ${seller.proofOfAddressUrl ? `<img src="${seller.proofOfAddressUrl}" alt="Proof of Address" class="max-h-full max-w-full object-contain">` : `<div class="text-center"><i class="fas fa-image text-4xl text-gray-400 mb-2"></i><p class="text-gray-600 dark:text-gray-400 text-sm">No document uploaded</p></div>`}
+
+            <div class="space-y-4">
+              <div>
+                <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">ID Document</label>
+                ${renderSellerDocumentPreview(sellerDisplay.idDocumentUrl, 'ID Document')}
+              </div>
+              <div>
+                <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">Proof of Address</label>
+                ${renderSellerDocumentPreview(sellerDisplay.proofOfAddressUrl, 'Proof of Address')}
               </div>
             </div>
-            
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p class="text-sm text-blue-900 dark:text-blue-200 font-semibold mb-3">Seller Information</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Status:</span> ${seller.status}</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Email:</span> ${seller.email}</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Phone:</span> ${seller.phone}</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Joined:</span> ${seller.joinDate || 'N/A'}</p>
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <div class="mb-4">
+            <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Financial Summary</p>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Wallet & Settlement</h3>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            ${financialSummary.map(item => `
+              <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-4">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">${item.label}</p>
+                <p class="text-lg font-semibold text-gray-500 dark:text-gray-400">${item.value}</p>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <div class="mb-4">
+            <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Recent Activity</p>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Activity Timeline</h3>
+          </div>
+          <div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 p-8 text-center">
+            <p class="text-gray-500 dark:text-gray-400">No recent activity available.</p>
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Seller Actions</p>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Valid Actions</h3>
             </div>
           </div>
-        </div>
-        
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <div class="flex gap-3 flex-wrap">
-            ${seller.status === 'Pending' ? `<button onclick="approveSeller('${seller.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold flex items-center gap-2"><i class="fas fa-check"></i> Approve Seller</button>` : ''}
-            <button onclick="toggleSellerStatus('${seller.id}')" class="px-6 py-2 ${seller.status === 'Approved' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg font-semibold flex items-center gap-2">
-              <i class="fas ${seller.status === 'Approved' ? 'fa-ban' : 'fa-check-circle'}"></i>
-              ${seller.status === 'Approved' ? 'Suspend' : 'Activate'} Seller
-            </button>
-            <button onclick="openModal('Delete Seller', 'Are you sure? This will delete all associated data.', () => { deleteSeller('${seller.id}'); })" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold flex items-center gap-2">
-              <i class="fas fa-trash"></i> Delete Seller
-            </button>
+          <div class="flex flex-wrap gap-3">
+            ${['pending', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="approve" data-seller-id="${sellerDisplay.id}" onclick="approveSeller('${sellerDisplay.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"><i class="fas fa-check mr-2"></i>Approve Seller</button>` : ''}
+            ${['pending', 'approved', 'rejected', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" data-seller-id="${sellerDisplay.id}" onclick="rejectSeller('${sellerDisplay.id}')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject Seller</button>` : ''}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   `;
