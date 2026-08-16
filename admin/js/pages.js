@@ -221,6 +221,209 @@ async function loadDashboardActivity() {
   }
 }
 
+async function loadRecentAdminActivity() {
+  const container = document.getElementById('recentAdminActivityList');
+  if (!container) return;
+
+  container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Loading recent admin activity...</p>';
+
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/admin/activity?limit=5`, { headers: getAdminAuthHeaders() });
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(body?.message || 'Unable to load recent admin activity');
+    }
+
+    const activities = Array.isArray(body?.data?.activities) ? body.data.activities : [];
+    if (!activities.length) {
+      container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No recent admin activity found.</p>';
+      return;
+    }
+
+    const iconClassByAction = (action = '') => {
+      const text = String(action).toLowerCase();
+      if (text.includes('approve') || text.includes('complete') || text.includes('resolved') || text.includes('verified')) return 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400';
+      if (text.includes('create') || text.includes('login') || text.includes('payment')) return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
+      if (text.includes('reject') || text.includes('delete') || text.includes('cancel')) return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+      if (text.includes('withdraw') || text.includes('refund')) return 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400';
+      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400';
+    };
+
+    const iconNameByAction = (action = '') => {
+      const text = String(action).toLowerCase();
+      if (text.includes('approve') || text.includes('complete') || text.includes('resolved')) return 'fa-check-circle';
+      if (text.includes('create') || text.includes('login')) return 'fa-user-plus';
+      if (text.includes('delete') || text.includes('reject') || text.includes('cancel')) return 'fa-exclamation-circle';
+      if (text.includes('withdraw') || text.includes('refund')) return 'fa-money-bill-wave';
+      return 'fa-clipboard-list';
+    };
+
+    container.innerHTML = activities.map((item) => {
+      const timestamp = item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently';
+      const actionLabel = String(item.action || 'ADMIN_ACTIVITY').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      const description = item.description || `${item.actor_name || 'Admin'} performed ${actionLabel}`;
+      return `
+        <div class="flex items-start gap-3 pb-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 last:pb-0">
+          <div class="${iconClassByAction(item.action)} rounded-full p-2 mt-0.5">
+            <i class="fas ${iconNameByAction(item.action)} text-sm"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(actionLabel)}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(description)} • ${escapeHtml(timestamp)}</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('[Connection 7A]', err.message || err);
+    container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Unable to load recent admin activity.</p>';
+  }
+}
+
+async function loadMarketplaceHealth() {
+  const container = document.getElementById('marketplaceHealthList');
+  if (!container) return;
+
+  const healthItems = [
+    { key: 'paymentSystem', label: 'Payment System', icon: 'fa-credit-card' },
+    { key: 'shippingAPI', label: 'Shipping API', icon: 'fa-truck' },
+    { key: 'refundSystem', label: 'Refund System', icon: 'fa-undo' },
+    { key: 'notifications', label: 'Notifications', icon: 'fa-bell' },
+    { key: 'database', label: 'Database', icon: 'fa-database' }
+  ];
+
+  const fallbackState = (status = 'operational') => {
+    const normalized = String(status || 'operational').toLowerCase();
+    if (normalized === 'offline') {
+      return { badgeClass: 'bg-red-500', textClass: 'text-red-600 dark:text-red-400', label: 'Offline' };
+    }
+    if (normalized === 'degraded') {
+      return { badgeClass: 'bg-yellow-500', textClass: 'text-yellow-600 dark:text-yellow-400', label: 'Degraded' };
+    }
+    return { badgeClass: 'bg-green-500', textClass: 'text-green-600 dark:text-green-400', label: 'Operational' };
+  };
+
+  container.innerHTML = healthItems.map((item) => {
+    const defaultState = fallbackState('operational');
+    return `
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-3">
+          <i class="fas ${item.icon} ${defaultState.textClass} text-lg"></i>
+          <span class="font-semibold text-sm text-gray-900 dark:text-white">${escapeHtml(item.label)}</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="inline-block w-2.5 h-2.5 ${defaultState.badgeClass} rounded-full"></span>
+          <span class="text-xs font-medium ${defaultState.textClass}">${defaultState.label}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/admin/marketplace-health`, {
+      headers: getAdminAuthHeaders()
+    });
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(body?.message || 'Marketplace health request failed');
+    }
+
+    const metrics = body?.data || {};
+    container.innerHTML = healthItems.map((item) => {
+      const status = String(metrics[item.key] || 'operational').toLowerCase();
+      const state = fallbackState(status);
+      return `
+        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center gap-3">
+            <i class="fas ${item.icon} ${state.textClass} text-lg"></i>
+            <span class="font-semibold text-sm text-gray-900 dark:text-white">${escapeHtml(item.label)}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="inline-block w-2.5 h-2.5 ${state.badgeClass} rounded-full"></span>
+            <span class="text-xs font-medium ${state.textClass}">${state.label}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('[Connection 7B]', err.message || err);
+    container.innerHTML = healthItems.map((item) => {
+      const state = fallbackState('operational');
+      return `
+        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center gap-3">
+            <i class="fas ${item.icon} ${state.textClass} text-lg"></i>
+            <span class="font-semibold text-sm text-gray-900 dark:text-white">${escapeHtml(item.label)}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="inline-block w-2.5 h-2.5 ${state.badgeClass} rounded-full"></span>
+            <span class="text-xs font-medium ${state.textClass}">${state.label}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+// Connection 6A: fetch refunds summary for admin dashboard
+async function loadRefundSummary() {
+  const ids = ['openCases','awaitingSeller','awaitingBuyer','awaitingDecision','refundProcessing','completedToday'];
+  const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  ids.forEach(id => setText(id, '...'));
+
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/admin/refund-summary`, { headers: getAdminAuthHeaders() });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      console.error('Refund summary request failed:', body?.message || response.statusText);
+      ids.forEach(id => setText(id, '0'));
+      return;
+    }
+
+    const d = body?.data || {};
+    setText('openCases', String(d.openCases ?? 0));
+    setText('awaitingSeller', String(d.awaitingSellerResponse ?? 0));
+    setText('awaitingBuyer', String(d.awaitingBuyerResponse ?? 0));
+    setText('awaitingDecision', String(d.awaitingDecision ?? 0));
+    setText('refundProcessing', String(d.refundProcessing ?? 0));
+    setText('completedToday', String(d.completedToday ?? 0));
+  } catch (err) {
+    console.error('Error loading refund summary:', err);
+    ids.forEach(id => setText(id, '0'));
+  }
+}
+
+// Connection 6B: fetch seller debt summary for admin dashboard
+async function loadDebtSummary() {
+  const moneyIds = ['outstandingDebt','recoveredThisMonth','unrecoveredDebt'];
+  const countIds = ['sellersWithDebt'];
+  const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  moneyIds.concat(countIds).forEach(id => setText(id, '...'));
+
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/admin/debt-summary`, { headers: getAdminAuthHeaders() });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      console.error('[Connection 6B] Debt summary request failed:', body?.message || response.statusText);
+      moneyIds.forEach(id => setText(id, '₦0'));
+      countIds.forEach(id => setText(id, '0'));
+      return;
+    }
+
+    const d = body?.data || {};
+    setText('outstandingDebt', formatCurrency(d.outstandingDebt ?? 0));
+    setText('sellersWithDebt', String(d.sellersWithDebt ?? 0));
+    setText('recoveredThisMonth', formatCurrency(d.recoveredThisMonth ?? 0));
+    setText('unrecoveredDebt', formatCurrency(d.unrecoveredDebt ?? 0));
+  } catch (err) {
+    console.error('[Connection 6B] Error loading debt summary:', err.message || err);
+    moneyIds.forEach(id => setText(id, '₦0'));
+    countIds.forEach(id => setText(id, '0'));
+  }
+}
+
 function renderAdjustmentDashboard(container, adjustments = []) {
   if (!container) return;
 
@@ -803,7 +1006,7 @@ function renderDashboard() {
                 <p class="font-semibold text-gray-900 dark:text-white text-sm">Escalated Cases</p>
                 <p class="text-xs text-gray-600 dark:text-gray-300"><span id="escalatedCasesCount">0</span> escalated disputes</p>
               </div>
-              <button onclick="loadPage('support')" class="px-3 py-1 text-xs font-semibold bg-purple-600 text-white rounded hover:bg-purple-700">Review</button>
+              <button onclick="loadPage('support-center'); return false;" class="px-3 py-1 text-xs font-semibold bg-purple-600 text-white rounded hover:bg-purple-700">Review</button>
             </div>
           </div>
         </div>
@@ -873,37 +1076,37 @@ function renderDashboard() {
         </div>
       </div>
 
-      <!-- Returns & Refunds Summary -->
+      <!-- Returns & Refunds Summary (Connection 6A) -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Returns & Refunds</h2>
-            <button class="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700">View Returns & Refunds</button>
+            <button onclick="loadPage('returns'); return false;" class="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700">View Returns & Refunds</button>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
               <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Open Cases</p>
-              <p class="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">24</p>
+              <p id="openCases" class="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">—</p>
             </div>
             <div class="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-3 border border-yellow-200 dark:border-yellow-800">
               <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Awaiting Seller Response</p>
-              <p class="text-2xl font-bold text-yellow-700 dark:text-yellow-400 mt-1">8</p>
+              <p id="awaitingSeller" class="text-2xl font-bold text-yellow-700 dark:text-yellow-400 mt-1">—</p>
             </div>
             <div class="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
               <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Awaiting Buyer Response</p>
-              <p class="text-2xl font-bold text-orange-700 dark:text-orange-400 mt-1">5</p>
+              <p id="awaitingBuyer" class="text-2xl font-bold text-orange-700 dark:text-orange-400 mt-1">—</p>
             </div>
             <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
               <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Awaiting Decision</p>
-              <p class="text-2xl font-bold text-purple-700 dark:text-purple-400 mt-1">3</p>
+              <p id="awaitingDecision" class="text-2xl font-bold text-purple-700 dark:text-purple-400 mt-1">—</p>
             </div>
             <div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
               <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Refund Processing</p>
-              <p class="text-2xl font-bold text-green-700 dark:text-green-400 mt-1">12</p>
+              <p id="refundProcessing" class="text-2xl font-bold text-green-700 dark:text-green-400 mt-1">—</p>
             </div>
             <div class="bg-teal-50 dark:bg-teal-900/30 rounded-lg p-3 border border-teal-200 dark:border-teal-800">
               <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Completed Today</p>
-              <p class="text-2xl font-bold text-teal-700 dark:text-teal-400 mt-1">4</p>
+              <p id="completedToday" class="text-2xl font-bold text-teal-700 dark:text-teal-400 mt-1">—</p>
             </div>
           </div>
         </div>
@@ -912,25 +1115,25 @@ function renderDashboard() {
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Seller Debt</h2>
-            <button class="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700">View Debt / Adjustments</button>
+            <button onclick="loadPage('debt-adjustments'); return false;" class="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700">View Debt / Adjustments</button>
           </div>
           <div class="grid grid-cols-2 gap-3">
-            <div class="bg-red-50 dark:bg-red-900/30 rounded-lg p-3 border border-red-200 dark:border-red-800">
-              <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Outstanding Debt</p>
-              <p class="text-2xl font-bold text-red-700 dark:text-red-400 mt-1">₦45,230</p>
-            </div>
-            <div class="bg-rose-50 dark:bg-rose-900/30 rounded-lg p-3 border border-rose-200 dark:border-rose-800">
-              <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Sellers With Debt</p>
-              <p class="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">12</p>
-            </div>
-            <div class="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
-              <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Recovered This Month</p>
-              <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1">₦12,500</p>
-            </div>
-            <div class="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
-              <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Unrecovered Debt</p>
-              <p class="text-2xl font-bold text-orange-700 dark:text-orange-400 mt-1">₦32,730</p>
-            </div>
+              <div class="bg-red-50 dark:bg-red-900/30 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Outstanding Debt</p>
+                <p id="outstandingDebt" class="text-2xl font-bold text-red-700 dark:text-red-400 mt-1">—</p>
+              </div>
+              <div class="bg-rose-50 dark:bg-rose-900/30 rounded-lg p-3 border border-rose-200 dark:border-rose-800">
+                <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Sellers With Debt</p>
+                <p id="sellersWithDebt" class="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">—</p>
+              </div>
+              <div class="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
+                <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Recovered This Month</p>
+                <p id="recoveredThisMonth" class="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1">—</p>
+              </div>
+              <div class="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+                <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Unrecovered Debt</p>
+                <p id="unrecoveredDebt" class="text-2xl font-bold text-orange-700 dark:text-orange-400 mt-1">—</p>
+              </div>
           </div>
         </div>
       </div>
@@ -940,118 +1143,16 @@ function renderDashboard() {
         <!-- Recent Admin Activity -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Admin Activity</h2>
-          <div class="space-y-3">
-            <div class="flex items-start gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-              <div class="bg-green-100 dark:bg-green-900/30 rounded-full p-2 mt-0.5">
-                <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-sm"></i>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Seller approved</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Shop123 by Admin - Just now</p>
-              </div>
-            </div>
-            <div class="flex items-start gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-              <div class="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2 mt-0.5">
-                <i class="fas fa-box text-blue-600 dark:text-blue-400 text-sm"></i>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Product approved</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Gaming Laptop by Admin - 5 mins ago</p>
-              </div>
-            </div>
-            <div class="flex items-start gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-              <div class="bg-orange-100 dark:bg-orange-900/30 rounded-full p-2 mt-0.5">
-                <i class="fas fa-undo text-orange-600 dark:text-orange-400 text-sm"></i>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Refund case opened</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Order #4521 - 15 mins ago</p>
-              </div>
-            </div>
-            <div class="flex items-start gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-              <div class="bg-emerald-100 dark:bg-emerald-900/30 rounded-full p-2 mt-0.5">
-                <i class="fas fa-handshake text-emerald-600 dark:text-emerald-400 text-sm"></i>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Refund resolved</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Order #4520 - 45 mins ago</p>
-              </div>
-            </div>
-            <div class="flex items-start gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-              <div class="bg-purple-100 dark:bg-purple-900/30 rounded-full p-2 mt-0.5">
-                <i class="fas fa-money-bill-wave text-purple-600 dark:text-purple-400 text-sm"></i>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Withdrawal reviewed</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">₦850,000 - 1 hour ago</p>
-              </div>
-            </div>
-            <div class="flex items-start gap-3">
-              <div class="bg-red-100 dark:bg-red-900/30 rounded-full p-2 mt-0.5">
-                <i class="fas fa-exclamation-circle text-red-600 dark:text-red-400 text-sm"></i>
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Seller debt recovered</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">₦5,000 from Seller42 - 2 hours ago</p>
-              </div>
-            </div>
+          <div id="recentAdminActivityList" class="space-y-3">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Loading recent admin activity...</p>
           </div>
         </div>
 
         <!-- Marketplace Health -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Marketplace Health</h2>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div class="flex items-center gap-3">
-                <i class="fas fa-credit-card text-green-600 dark:text-green-400 text-lg"></i>
-                <span class="font-semibold text-sm text-gray-900 dark:text-white">Payment System</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-                <span class="text-xs font-medium text-green-600 dark:text-green-400">Operational</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div class="flex items-center gap-3">
-                <i class="fas fa-truck text-green-600 dark:text-green-400 text-lg"></i>
-                <span class="font-semibold text-sm text-gray-900 dark:text-white">Shipping API</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-                <span class="text-xs font-medium text-green-600 dark:text-green-400">Operational</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div class="flex items-center gap-3">
-                <i class="fas fa-undo text-green-600 dark:text-green-400 text-lg"></i>
-                <span class="font-semibold text-sm text-gray-900 dark:text-white">Refund System</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-                <span class="text-xs font-medium text-green-600 dark:text-green-400">Operational</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div class="flex items-center gap-3">
-                <i class="fas fa-bell text-green-600 dark:text-green-400 text-lg"></i>
-                <span class="font-semibold text-sm text-gray-900 dark:text-white">Notifications</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-                <span class="text-xs font-medium text-green-600 dark:text-green-400">Operational</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div class="flex items-center gap-3">
-                <i class="fas fa-database text-green-600 dark:text-green-400 text-lg"></i>
-                <span class="font-semibold text-sm text-gray-900 dark:text-white">Database</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-                <span class="text-xs font-medium text-green-600 dark:text-green-400">Operational</span>
-              </div>
-            </div>
+          <div id="marketplaceHealthList" class="space-y-3">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Loading marketplace health...</p>
           </div>
         </div>
       </div>
@@ -1060,25 +1161,25 @@ function renderDashboard() {
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <button class="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm">
+          <button onclick="loadPage('products'); return false;" class="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm">
             <i class="fas fa-plus mr-2"></i>Add Product
           </button>
-          <button class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm">
+          <button onclick="loadPage('sellers'); return false;" class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm">
             <i class="fas fa-check-circle mr-2"></i>Review Sellers
           </button>
-          <button class="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold text-sm">
+          <button onclick="loadPage('products'); return false;" class="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold text-sm">
             <i class="fas fa-box-check mr-2"></i>Review Products
           </button>
-          <button class="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold text-sm">
+          <button onclick="loadPage('orders'); return false;" class="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold text-sm">
             <i class="fas fa-receipt mr-2"></i>View Orders
           </button>
-          <button class="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm">
+          <button onclick="loadPage('withdrawals'); return false;" class="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold text-sm">
             <i class="fas fa-money-bill-wave mr-2"></i>View Withdrawals
           </button>
-          <button class="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm">
+          <button onclick="loadPage('returns'); return false;" class="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm">
             <i class="fas fa-undo mr-2"></i>View Refunds
           </button>
-          <button class="px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-semibold text-sm">
+          <button onclick="loadPage('reports'); return false;" class="px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-semibold text-sm">
             <i class="fas fa-chart-bar mr-2"></i>View Reports
           </button>
         </div>
@@ -1090,6 +1191,8 @@ function renderDashboard() {
   loadDashboardCounts();
   loadPendingActionCounts();
   loadDashboardActivity();
+  loadRecentAdminActivity();
+  loadMarketplaceHealth();
   
   // Load initial marketplace performance data for today
   setTimeout(() => {
@@ -1100,6 +1203,14 @@ function renderDashboard() {
   setTimeout(() => {
     generateRevenueChart();
   }, 50);
+  // Populate refunds summary (Connection 6A)
+  setTimeout(() => {
+    try { loadRefundSummary(); } catch (e) { console.error('loadRefundSummary failed', e); }
+  }, 150);
+  // Populate debt summary (Connection 6B)
+  setTimeout(() => {
+    try { loadDebtSummary(); } catch (e) { console.error('[Connection 6B] loadDebtSummary failed', e); }
+  }, 200);
 }
 
 // Buyers Management
@@ -2034,6 +2145,62 @@ function renderSettings() {
     </div>
   `;
   document.getElementById('content').innerHTML = html;
+}
+
+function renderDebtAdjustments() {
+  const html = `
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Seller Debt & Adjustments</h1>
+      <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Current Seller Debt</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Read-only admin view based on the existing seller debt and recovery records.</p>
+          </div>
+          <button onclick="loadPage('dashboard'); return false;" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Back to Dashboard</button>
+        </div>
+        <div id="debtAdjustmentsContainer">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Loading seller debt adjustments...</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('content').innerHTML = html;
+
+  const container = document.getElementById('debtAdjustmentsContainer');
+  if (!container) return;
+
+  (async () => {
+    try {
+      const response = await fetch(`${ADMIN_API_BASE}/admin/seller-adjustments`, { headers: getAdminAuthHeaders() });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(body?.message || 'Unable to load seller adjustments');
+      }
+
+      const adjustments = Array.isArray(body) ? body : body?.data?.adjustments || body?.adjustments || [];
+      if (!adjustments.length) {
+        container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No current seller debt adjustments found.</p>';
+        return;
+      }
+
+      container.innerHTML = renderTable(['Seller', 'Store', 'Original Debt', 'Remaining Debt', 'Recovered', 'Status', 'Refund Case'], adjustments.map((item) => ({
+        seller: item.seller_name || item.seller || 'Unknown Seller',
+        store: item.store_name || '—',
+        original_debt: formatCurrency(item.original_debt ?? item.original_amount ?? 0),
+        remaining_debt: formatCurrency(item.remaining_debt ?? item.remaining_amount ?? 0),
+        recovered: formatCurrency(item.recovered_amount ?? 0),
+        status: item.status || 'active',
+        refund_case: item.refund_case_id || item.refund_case || '—'
+      })), [
+        { label: 'View', callback: 'viewReturn' }
+      ]);
+    } catch (err) {
+      console.error('[Connection 6B] Error loading debt adjustments:', err.message || err);
+      container.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Unable to load seller debt adjustments.</p>';
+    }
+  })();
 }
 
 // Returns & Refunds Management
