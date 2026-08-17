@@ -1339,6 +1339,11 @@ async function viewAdminSeller(id) {
 
         <aside>
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-6">
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Account Status</p>
+              <p class="font-semibold text-lg ${sellerDisplay.isSuspended ? 'text-red-600' : 'text-green-600'}">${sellerDisplay.isSuspended ? 'Suspended' : 'Active'}</p>
+            </div>
+
             <div>
               <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Financial Summary</p>
               <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Wallet & Settlement</h3>
@@ -1350,8 +1355,12 @@ async function viewAdminSeller(id) {
             <div>
               <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Seller Actions</p>
               <div class="flex flex-wrap gap-3 mt-3">
-                ${['pending', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="approve" data-seller-id="${escapeHtml(sellerDisplay.id || '')}" onclick="approveSeller('${escapeHtml(sellerDisplay.id || '')}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"><i class="fas fa-check mr-2"></i>Approve</button>` : ''}
-                ${['pending', 'approved', 'rejected', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" data-seller-id="${escapeHtml(sellerDisplay.id || '')}" onclick="rejectSeller('${escapeHtml(sellerDisplay.id || '')}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject</button>` : ''}
+                ${['pending', 'not_submitted'].includes(String(sellerDisplay.kycStatus || sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="approve" onclick="approveSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"><i class="fas fa-check mr-2"></i>Approve KYC</button>` : ''}
+                ${['pending','approved','rejected','not_submitted'].includes(String(sellerDisplay.kycStatus || sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" onclick="rejectSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject KYC</button>` : ''}
+                ${sellerDisplay.isSuspended
+                  ? `<button onclick="reactivateSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"><i class="fas fa-user-check mr-2"></i>Reactivate</button>`
+                  : `<button onclick="suspendSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold"><i class="fas fa-ban mr-2"></i>Suspend</button>`
+                }
               </div>
             </div>
           </div>
