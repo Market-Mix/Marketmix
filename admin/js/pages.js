@@ -1171,121 +1171,148 @@ function viewBuyer(id) {
 }
 
 // Sellers Management
+async function fetchAdminSellers(search = '', status = 'All') {
+  const params = new URLSearchParams({ page: 1, limit: 100 });
+  if (search) params.set('search', search);
+  if (status && status !== 'All') params.set('status', status.toLowerCase());
+  const res = await fetch(`${ADMIN_API_BASE}/admin/sellers?${params}`, { headers: getAdminAuthHeaders() });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.message || 'Failed to load sellers');
+  return body?.data?.sellers || [];
+}
+
 function renderSellers() {
   const html = `
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Sellers Management</h1>
-      
-      <div class="mb-6 flex gap-4">
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
         <input type="text" id="sellerSearch" placeholder="Search sellers..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
+        <select id="sellerStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          <option value="All">All</option><option value="pending">Pending</option>
+          <option value="approved">Approved</option><option value="rejected">Rejected</option>
+          <option value="not_submitted">Not Submitted</option>
+        </select>
       </div>
-
-      ${renderTable(['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'Status', 'Join Date'], dummyData.sellers, [
-        { label: 'View', callback: 'viewSeller' }
-      ])}
-    </div>
-  `;
+      <div id="sellerTableContainer" class="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Loading sellers...</p>
+      </div>
+    </div>`;
   document.getElementById('content').innerHTML = html;
-  
-  document.getElementById('sellerSearch').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    const filtered = dummyData.sellers.filter(s => 
-      s.shopName.toLowerCase().includes(query) || s.sellerName.toLowerCase().includes(query)
-    );
-    const tableHtml = renderTable(['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'Status', 'Join Date'], filtered, [
-      { label: 'View', callback: 'viewSeller' }
-    ]);
-    document.querySelector('.overflow-x-auto').outerHTML = tableHtml;
-  });
+
+  window._adminSellers = [];
+
+  async function reload() {
+    const container = document.getElementById('sellerTableContainer');
+    try {
+      const search = document.getElementById('sellerSearch').value.trim();
+      const status = document.getElementById('sellerStatusFilter').value;
+      const sellers = await fetchAdminSellers(search, status);
+      window._adminSellers = sellers;
+      if (!sellers.length) {
+        container.innerHTML = `<p class="text-sm text-gray-600 dark:text-gray-300 text-center py-6">No sellers found.</p>`;
+        return;
+      }
+      container.innerHTML = renderTable(
+        ['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'KYC Status', 'Account Status', 'Join Date'],
+        sellers.map(s => ({ ...s, id: s.id, kycstatus: s.kycStatus, accountstatus: s.accountStatus, joindate: new Date(s.joinDate).toLocaleDateString() })),
+        [{ label: 'View', callback: 'viewAdminSeller' }]
+      );
+    } catch (err) {
+      container.innerHTML = `<p class="text-sm text-red-600">${err.message}</p>`;
+    }
+  }
+
+  document.getElementById('sellerSearch').addEventListener('input', () => { clearTimeout(window._sellerSearchDebounce); window._sellerSearchDebounce = setTimeout(reload, 350); });
+  document.getElementById('sellerStatusFilter').addEventListener('change', reload);
+  reload();
 }
 
-function viewSeller(id) {
-  const seller = dummyData.sellers.find(s => s.id === id);
-  const html = `
-    <div>
-      <button onclick="loadPage('sellers')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Sellers</button>
-      
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Seller KYC Verification - ${seller.shopName}</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">Submitted KYC Information Review</p>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <!-- KYC Information Display (Read-Only) -->
-          <div class="space-y-4">
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Full Name</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.fullName || seller.sellerName}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Date of Birth</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.dateOfBirth || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Country</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.country || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Type</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.idType || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Number</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.idNumber || 'Not provided'}</p>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Residential Address</p>
-              <p class="font-semibold text-gray-900 dark:text-white text-lg">${seller.residentialAddress || 'Not provided'}</p>
-            </div>
-          </div>
-          
-          <!-- Document Previews Section -->
-          <div class="space-y-4">
+async function viewAdminSeller(id) {
+  document.getElementById('content').innerHTML = `<p class="text-sm text-gray-500 p-6">Loading seller...</p>`;
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load seller');
+    const s = body.data.seller;
+    setSellerKycRealStatus(id, s.kycStatus, s.kycStatus === 'approved');
+
+    const html = `
+      <div>
+        <button onclick="loadPage('sellers')" class="mb-6 text-blue-600 hover:underline">← Back to Sellers</button>
+        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
-              <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">ID Document</label>
-              <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700 h-80 flex items-center justify-center overflow-hidden">
-                ${seller.idDocumentUrl ? `<img src="${seller.idDocumentUrl}" alt="ID Document" class="max-h-full max-w-full object-contain">` : `<div class="text-center"><i class="fas fa-image text-4xl text-gray-400 mb-2"></i><p class="text-gray-600 dark:text-gray-400 text-sm">No document uploaded</p></div>`}
-              </div>
+              <p class="text-sm uppercase text-gray-500 font-semibold">Seller Overview</p>
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${s.shopName || s.fullName}</h2>
             </div>
-            
-            <div>
-              <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">Proof of Address</label>
-              <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700 h-80 flex items-center justify-center overflow-hidden">
-                ${seller.proofOfAddressUrl ? `<img src="${seller.proofOfAddressUrl}" alt="Proof of Address" class="max-h-full max-w-full object-contain">` : `<div class="text-center"><i class="fas fa-image text-4xl text-gray-400 mb-2"></i><p class="text-gray-600 dark:text-gray-400 text-sm">No document uploaded</p></div>`}
-              </div>
-            </div>
-            
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p class="text-sm text-blue-900 dark:text-blue-200 font-semibold mb-3">Seller Information</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Status:</span> ${seller.status}</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Email:</span> ${seller.email}</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300 mb-2"><span class="font-semibold">Phone:</span> ${seller.phone}</p>
-              <p class="text-sm text-blue-800 dark:text-blue-300"><span class="font-semibold">Joined:</span> ${seller.joinDate || 'N/A'}</p>
+            <div class="flex flex-wrap gap-2">
+              ${['pending','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="approve" data-seller-id="${id}" onclick="approveSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Approve Seller</button>` : ''}
+              ${['pending','approved','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="reject" data-seller-id="${id}" onclick="rejectSeller('${id}')" class="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold">Reject Seller</button>` : ''}
+              ${s.isSuspended
+                ? `<button onclick="reactivateSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Reactivate Account</button>`
+                : `<button onclick="suspendSeller('${id}')" class="px-5 py-2 bg-amber-600 text-white rounded-lg font-semibold">Suspend Account</button>`}
             </div>
           </div>
-        </div>
-        
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <div class="flex gap-3 flex-wrap">
-            ${seller.status === 'Pending' ? `<button onclick="approveSeller('${seller.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold flex items-center gap-2"><i class="fas fa-check"></i> Approve Seller</button>` : ''}
-            <button onclick="toggleSellerStatus('${seller.id}')" class="px-6 py-2 ${seller.status === 'Approved' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg font-semibold flex items-center gap-2">
-              <i class="fas ${seller.status === 'Approved' ? 'fa-ban' : 'fa-check-circle'}"></i>
-              ${seller.status === 'Approved' ? 'Suspend' : 'Activate'} Seller
-            </button>
-            <button onclick="openModal('Delete Seller', 'Are you sure? This will delete all associated data.', () => { deleteSeller('${seller.id}'); })" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold flex items-center gap-2">
-              <i class="fas fa-trash"></i> Delete Seller
-            </button>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            ${[
+              ['Email', s.email], ['Phone', s.phone || 'N/A'], ['Business Address', s.businessAddress || 'N/A'],
+              ['Rating', `${s.rating.toFixed(1)} / 5.0 (${s.totalReviews} reviews)`],
+              ['Joined', new Date(s.joinDate).toLocaleDateString()],
+              ['Account Status', s.isSuspended ? 'Suspended' : 'Active']
+            ].map(([label, value]) => `
+              <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
+                <p class="text-xs font-semibold uppercase text-gray-500 mb-2">${label}</p>
+                <p class="text-base font-semibold text-gray-900 dark:text-white">${value}</p>
+              </div>`).join('')}
           </div>
-        </div>
-      </div>
-    </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Performance</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            ${[
+              ['Products', s.productCount], ['Orders', s.totalOrders],
+              ['Sales', '₦' + s.totalSales.toLocaleString()], ['Earnings', '₦' + s.totalEarnings.toLocaleString()],
+              ['Available Balance', '₦' + s.availableBalance.toLocaleString()], ['Outstanding Debt', '₦' + s.outstandingDebt.toLocaleString()],
+              ['Total Withdrawn', '₦' + s.totalWithdrawn.toLocaleString()]
+            ].map(([label, value]) => `
+              <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
+                <p class="text-xs uppercase text-gray-500 mb-2">${label}</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">${value}</p>
+              </div>`).join('')}
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6">
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">KYC Documents</h3>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="space-y-3">
+              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Full Name</p><p class="font-semibold">${s.kycFullName || 'N/A'}</p></div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">ID Type</p><p class="font-semibold">${s.kycIdType || 'N/A'}</p></div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Submitted</p><p class="font-semibold">${s.kycSubmittedAt ? new Date(s.kycSubmittedAt).toLocaleString() : 'N/A'}</p></div>
+            </div>
+            <div class="space-y-4">
+              ${s.kycIdDocumentUrl ? `<div><p class="text-sm font-semibold mb-2">ID Document</p><img src="${s.kycIdDocumentUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycIdDocumentUrl}','_blank')"></div>` : '<p class="text-sm text-gray-500">No ID document uploaded.</p>'}
+              ${s.kycSelfieUrl ? `<div><p class="text-sm font-semibold mb-2">Selfie</p><img src="${s.kycSelfieUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycSelfieUrl}','_blank')"></div>` : ''}
+            </div>
+          </div>
+        </section>
+      </div>`;
+    document.getElementById('content').innerHTML = html;
+  } catch (err) {
+    document.getElementById('content').innerHTML = `<p class="text-red-600 p-6">${err.message}</p>`;
+  }
+}
+
+async function suspendSeller(id) {
+  if (!confirm('Suspend this seller account?')) return;
+  const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/suspend`, { method: 'POST', headers: getAdminAuthHeaders() });
+  if (res.ok) { showToast('Seller suspended'); viewAdminSeller(id); } else showToast('Failed to suspend seller', 'error');
+}
+
+async function reactivateSeller(id) {
+  const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/activate`, { method: 'POST', headers: getAdminAuthHeaders() });
+  if (res.ok) { showToast('Seller reactivated'); viewAdminSeller(id); } else showToast('Failed to reactivate seller', 'error');
 }
 
 // Products Management
