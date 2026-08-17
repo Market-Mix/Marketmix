@@ -3,6 +3,28 @@ let adminRefundCases = [];
 let refundFetchRetryTimer = null;
 let refundFetchRetryCount = 0;
 const ADMIN_API_BASE = window.ADMIN_API_BASE || (window.location.protocol === 'file:' ? 'http://localhost:5000/api' : 'https://marketmix-backend.onrender.com/api');
+
+window.formatCurrency = window.formatCurrency || function formatCurrency(value) {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num)) return '₦0';
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(num);
+};
+
+window.escapeHtml = window.escapeHtml || function escapeHtml(text) {
+  if (text === undefined || text === null) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 // Sellers Management
 async function fetchAdminSellers(search = '', status = 'All') {
   const params = new URLSearchParams({ page: 1, limit: 100 });
@@ -650,26 +672,8 @@ function getRefundStatusBadgeMarkup(refundRequest = {}) {
     return { Authorization: `Bearer ${token}` };
   };
 
-  const formatCurrencySafe = window.formatCurrency || function formatCurrency(value) {
-    const num = Number(value ?? 0);
-    if (!Number.isFinite(num)) return '₦0';
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(num);
-  };
-
-  const escapeHtmlSafe = window.escapeHtml || function escapeHtml(text) {
-    if (text === undefined || text === null) return '';
-    return String(text)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  };
+  const formatCurrencySafe = window.formatCurrency;
+  const escapeHtmlSafe = window.escapeHtml;
 
   window.loadDashboardCounts = window.loadDashboardCounts || async function loadDashboardCounts() {
     try {
