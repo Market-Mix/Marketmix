@@ -14,129 +14,6 @@ async function fetchAdminSellers(search = '', status = 'All') {
   return body?.data?.sellers || [];
 }
 
-function renderSellers() {
-  const html = `
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Sellers Management</h1>
-      <div class="mb-6 flex flex-col sm:flex-row gap-4">
-        <input type="text" id="sellerSearch" placeholder="Search sellers..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <select id="sellerStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-          <option value="All">All</option><option value="pending">Pending</option>
-          <option value="approved">Approved</option><option value="rejected">Rejected</option>
-          <option value="not_submitted">Not Submitted</option>
-        </select>
-      </div>
-      <div id="sellerTableContainer" class="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-        <p class="text-sm text-gray-500 dark:text-gray-400">Loading sellers...</p>
-      </div>
-    </div>`;
-  document.getElementById('content').innerHTML = html;
-
-  window._adminSellers = [];
-
-  async function reload() {
-    const container = document.getElementById('sellerTableContainer');
-    try {
-      const search = document.getElementById('sellerSearch').value.trim();
-      const status = document.getElementById('sellerStatusFilter').value;
-      const sellers = await fetchAdminSellers(search, status);
-      window._adminSellers = sellers;
-      if (!sellers.length) {
-        container.innerHTML = `<p class="text-sm text-gray-600 dark:text-gray-300 text-center py-6">No sellers found.</p>`;
-        return;
-      }
-      container.innerHTML = renderTable(
-        ['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'KYC Status', 'Account Status', 'Join Date'],
-        sellers.map(s => ({ ...s, id: s.id, kycstatus: s.kycStatus, accountstatus: s.accountStatus, joindate: new Date(s.joinDate).toLocaleDateString() })),
-        [{ label: 'View', callback: 'viewAdminSeller' }]
-      );
-    } catch (err) {
-      container.innerHTML = `<p class="text-sm text-red-600">${err.message}</p>`;
-    }
-  }
-
-  document.getElementById('sellerSearch').addEventListener('input', () => { clearTimeout(window._sellerSearchDebounce); window._sellerSearchDebounce = setTimeout(reload, 350); });
-  document.getElementById('sellerStatusFilter').addEventListener('change', reload);
-  reload();
-}
-
-async function viewAdminSeller(id) {
-  document.getElementById('content').innerHTML = `<p class="text-sm text-gray-500 p-6">Loading seller...</p>`;
-  try {
-    const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}`, { headers: getAdminAuthHeaders() });
-    const body = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(body?.message || 'Failed to load seller');
-    const s = body.data.seller;
-    setSellerKycRealStatus(id, s.kycStatus, s.kycStatus === 'approved');
-
-    const html = `
-      <div>
-        <button onclick="loadPage('sellers')" class="mb-6 text-blue-600 hover:underline">← Back to Sellers</button>
-        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <p class="text-sm uppercase text-gray-500 font-semibold">Seller Overview</p>
-              <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${s.shopName || s.fullName}</h2>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              ${['pending','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="approve" data-seller-id="${id}" onclick="approveSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Approve Seller</button>` : ''}
-              ${['pending','approved','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="reject" data-seller-id="${id}" onclick="rejectSeller('${id}')" class="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold">Reject Seller</button>` : ''}
-              ${s.isSuspended
-                ? `<button onclick="reactivateSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Reactivate Account</button>`
-                : `<button onclick="suspendSeller('${id}')" class="px-5 py-2 bg-amber-600 text-white rounded-lg font-semibold">Suspend Account</button>`}
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            ${[
-              ['Email', s.email], ['Phone', s.phone || 'N/A'], ['Business Address', s.businessAddress || 'N/A'],
-              ['Rating', `${s.rating.toFixed(1)} / 5.0 (${s.totalReviews} reviews)`],
-              ['Joined', new Date(s.joinDate).toLocaleDateString()],
-              ['Account Status', s.isSuspended ? 'Suspended' : 'Active']
-            ].map(([label, value]) => `
-              <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
-                <p class="text-xs font-semibold uppercase text-gray-500 mb-2">${label}</p>
-                <p class="text-base font-semibold text-gray-900 dark:text-white">${value}</p>
-              </div>`).join('')}
-          </div>
-        </section>
-
-        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Performance</h3>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            ${[
-              ['Products', s.productCount], ['Orders', s.totalOrders],
-              ['Sales', '₦' + s.totalSales.toLocaleString()], ['Earnings', '₦' + s.totalEarnings.toLocaleString()],
-              ['Available Balance', '₦' + s.availableBalance.toLocaleString()], ['Outstanding Debt', '₦' + s.outstandingDebt.toLocaleString()],
-              ['Total Withdrawn', '₦' + s.totalWithdrawn.toLocaleString()]
-            ].map(([label, value]) => `
-              <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
-                <p class="text-xs uppercase text-gray-500 mb-2">${label}</p>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white">${value}</p>
-              </div>`).join('')}
-          </div>
-        </section>
-
-        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6">
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">KYC Documents</h3>
-          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div class="space-y-3">
-              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Full Name</p><p class="font-semibold">${s.kycFullName || 'N/A'}</p></div>
-              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">ID Type</p><p class="font-semibold">${s.kycIdType || 'N/A'}</p></div>
-              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Submitted</p><p class="font-semibold">${s.kycSubmittedAt ? new Date(s.kycSubmittedAt).toLocaleString() : 'N/A'}</p></div>
-            </div>
-            <div class="space-y-4">
-              ${s.kycIdDocumentUrl ? `<div><p class="text-sm font-semibold mb-2">ID Document</p><img src="${s.kycIdDocumentUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycIdDocumentUrl}','_blank')"></div>` : '<p class="text-sm text-gray-500">No ID document uploaded.</p>'}
-              ${s.kycSelfieUrl ? `<div><p class="text-sm font-semibold mb-2">Selfie</p><img src="${s.kycSelfieUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycSelfieUrl}','_blank')"></div>` : ''}
-            </div>
-          </div>
-        </section>
-      </div>`;
-    document.getElementById('content').innerHTML = html;
-  } catch (err) {
-    document.getElementById('content').innerHTML = `<p class="text-red-600 p-6">${err.message}</p>`;
-  }
-}
-
 async function suspendSeller(id) {
   if (!confirm('Suspend this seller account?')) return;
   const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/suspend`, { method: 'POST', headers: getAdminAuthHeaders() });
@@ -147,8 +24,27 @@ async function reactivateSeller(id) {
   const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/activate`, { method: 'POST', headers: getAdminAuthHeaders() });
   if (res.ok) { showToast('Seller reactivated'); viewAdminSeller(id); } else showToast('Failed to reactivate seller', 'error');
 }
-      `;
-    }).join('');
+
+async function loadRecentAdminActivity() {
+  const container = document.getElementById('recentAdminActivityList');
+  if (!container) return;
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/activity?limit=5`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load activity');
+    const activities = body?.data?.activities || [];
+    if (!activities.length) {
+      container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No recent activity.</p>';
+      return;
+    }
+    container.innerHTML = activities.map(a => `
+      <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(a.description)}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHtml(a.actor_name)} · ${new Date(a.created_at).toLocaleString()}</p>
+        </div>
+      </div>
+    `).join('');
   } catch (err) {
     console.error('[Connection 7A]', err.message || err);
     container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Unable to load recent admin activity.</p>';
