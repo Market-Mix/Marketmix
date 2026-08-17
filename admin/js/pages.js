@@ -643,6 +643,126 @@ function getRefundStatusBadgeMarkup(refundRequest = {}) {
   return `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${classes}">${displayState.label}</span>`;
 }
 
+(function ensureDashboardLoaders() {
+  const getHeaders = window.getAdminAuthHeaders || function getAdminAuthHeaders() {
+    const token = window.ADMIN_AUTH_TOKEN || localStorage.getItem('adminToken') || localStorage.getItem('adminSession') || localStorage.getItem('token') || '';
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const formatCurrencySafe = window.formatCurrency || function formatCurrency(value) {
+    const num = Number(value ?? 0);
+    if (!Number.isFinite(num)) return '₦0';
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+  };
+
+  const escapeHtmlSafe = window.escapeHtml || function escapeHtml(text) {
+    if (text === undefined || text === null) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  window.loadDashboardCounts = window.loadDashboardCounts || async function loadDashboardCounts() {
+    try {
+      const res = await fetch(`${ADMIN_API_BASE}/admin/dashboard-stats`, { headers: getHeaders() });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.message || 'Failed to load dashboard stats');
+
+      const d = body?.data || {};
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+
+      set('totalBuyersCount', d.totalBuyers ?? '—');
+      set('totalSellersCount', d.totalSellers ?? '—');
+      set('totalProductsCount', d.totalProducts ?? '—');
+      set('totalOrdersCount', d.totalOrders ?? '—');
+      set('totalSalesValue', formatCurrencySafe(d.totalSales ?? 0));
+      set('platformEarningsValue', formatCurrencySafe(d.platformEarnings ?? 0));
+      set('fundsInEscrowValue', formatCurrencySafe(d.fundsInEscrow ?? 0));
+      set('availableSellerFundsValue', formatCurrencySafe(d.availableSellerFunds ?? 0));
+      set('pendingSellerEarningsValue', formatCurrencySafe(d.pendingSellerEarnings ?? 0));
+      set('pendingWithdrawalsValue', formatCurrencySafe(d.pendingWithdrawals ?? 0));
+      set('refundsValue', formatCurrencySafe(d.refunds ?? 0));
+      set('outstandingSellerDebtValue', formatCurrencySafe(d.outstandingSellerDebt ?? 0));
+    } catch (err) {
+      console.error('loadDashboardCounts failed:', err?.message || err);
+    }
+  };
+
+  window.loadPendingActionCounts = window.loadPendingActionCounts || async function loadPendingActionCounts() {
+    try {
+      const res = await fetch(`${ADMIN_API_BASE}/admin/pending-actions`, { headers: getHeaders() });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.message || 'Failed to load pending actions');
+
+      const d = body?.data || {};
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+
+      set('pendingSellersCount', d.pendingSellers ?? 0);
+      set('pendingProductsCount', d.pendingProducts ?? 0);
+      set('pendingWithdrawalsCount', d.pendingWithdrawals ?? 0);
+      set('refundCasesCount', d.refundCases ?? 0);
+      set('escalatedCasesCount', d.escalatedCases ?? 0);
+    } catch (err) {
+      console.error('loadPendingActionCounts failed:', err?.message || err);
+    }
+  };
+
+  window.loadDashboardActivity = window.loadDashboardActivity || async function loadDashboardActivity() {
+    try {
+      const res = await fetch(`${ADMIN_API_BASE}/admin/dashboard-activity`, { headers: getHeaders() });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.message || 'Failed to load dashboard activity');
+
+      const d = body?.data || {};
+
+      const ordersEl = document.getElementById('recentOrdersContainer');
+      if (ordersEl) {
+        ordersEl.innerHTML = (d.recentOrders || []).length
+          ? d.recentOrders.map((o) => `
+              <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">#${String(o.order_id || '').slice(0, 8)} — ${escapeHtmlSafe(o.buyer_name || 'Unknown buyer')}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtmlSafe(o.seller_name || 'Unknown seller')} · ${escapeHtmlSafe(o.status || 'unknown')}</p>
+                </div>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">${formatCurrencySafe(o.total_amount ?? 0)}</p>
+              </div>`).join('')
+          : '<p class="text-sm text-gray-500 dark:text-gray-400">No recent orders.</p>';
+      }
+
+      const productsEl = document.getElementById('topProductsContainer');
+      if (productsEl) {
+        productsEl.innerHTML = (d.topProducts || []).length
+          ? d.topProducts.map((p) => `
+              <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtmlSafe(p.name || 'Unnamed product')}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtmlSafe(p.seller_name || 'Unknown seller')} · ${p.quantity_sold ?? 0} sold</p>
+                </div>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">${formatCurrencySafe(p.price ?? 0)}</p>
+              </div>`).join('')
+          : '<p class="text-sm text-gray-500 dark:text-gray-400">No product data.</p>';
+      }
+    } catch (err) {
+      console.error('loadDashboardActivity failed:', err?.message || err);
+    }
+  };
+})();
+
 function renderDashboard() {
   const html = `
     <div>
