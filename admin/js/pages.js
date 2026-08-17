@@ -3,268 +3,150 @@ let adminRefundCases = [];
 let refundFetchRetryTimer = null;
 let refundFetchRetryCount = 0;
 const ADMIN_API_BASE = window.ADMIN_API_BASE || (window.location.protocol === 'file:' ? 'http://localhost:5000/api' : 'https://marketmix-backend.onrender.com/api');
+// Sellers Management
+async function fetchAdminSellers(search = '', status = 'All') {
+  const params = new URLSearchParams({ page: 1, limit: 100 });
+  if (search) params.set('search', search);
+  if (status && status !== 'All') params.set('status', status.toLowerCase());
+  const res = await fetch(`${ADMIN_API_BASE}/admin/sellers?${params}`, { headers: getAdminAuthHeaders() });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.message || 'Failed to load sellers');
+  return body?.data?.sellers || [];
+}
 
-function getAdminAuthToken() {
-  if (window.ADMIN_AUTH_TOKEN) return window.ADMIN_AUTH_TOKEN;
+function renderSellers() {
+  const html = `
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Sellers Management</h1>
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
+        <input type="text" id="sellerSearch" placeholder="Search sellers..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="sellerStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          <option value="All">All</option><option value="pending">Pending</option>
+          <option value="approved">Approved</option><option value="rejected">Rejected</option>
+          <option value="not_submitted">Not Submitted</option>
+        </select>
+      </div>
+      <div id="sellerTableContainer" class="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Loading sellers...</p>
+      </div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
 
-  const storedToken = localStorage.getItem('adminToken');
-  if (storedToken) return storedToken;
+  window._adminSellers = [];
 
-  const sessionValue = localStorage.getItem('adminSession');
-  if (sessionValue) {
+  async function reload() {
+    const container = document.getElementById('sellerTableContainer');
     try {
-      const session = JSON.parse(sessionValue);
-      return session?.token || session?.accessToken || session?.authToken || session?.jwt || session?.user?.token || '';
-    async function viewAdminSeller(id) {
-      document.getElementById('content').innerHTML = `<p class="text-sm text-gray-500 p-6">Loading seller...</p>`;
-      try {
-        const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}`, { headers: getAdminAuthHeaders() });
-        const body = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(body?.message || 'Failed to load seller');
-        const s = body.data.seller;
-        setSellerKycRealStatus(id, s.kycStatus, s.kycStatus === 'approved');
-
-        const html = `
-          <div>
-            <button onclick="loadPage('sellers')" class="mb-6 text-blue-600 hover:underline">← Back to Sellers</button>
-            <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <div>
-                  <p class="text-sm uppercase text-gray-500 font-semibold">Seller Overview</p>
-                  <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${s.shopName || s.fullName}</h2>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  ${['pending','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="approve" data-seller-id="${id}" onclick="approveSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Approve Seller</button>` : ''}
-                  ${['pending','approved','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="reject" data-seller-id="${id}" onclick="rejectSeller('${id}')" class="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold">Reject Seller</button>` : ''}
-                  ${s.isSuspended
-                    ? `<button onclick="reactivateSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Reactivate Account</button>`
-                    : `<button onclick="suspendSeller('${id}')" class="px-5 py-2 bg-amber-600 text-white rounded-lg font-semibold">Suspend Account</button>`}
-                </div>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                ${[
-                  ['Email', s.email], ['Phone', s.phone || 'N/A'], ['Business Address', s.businessAddress || 'N/A'],
-                  ['Rating', `${(s.rating||0).toFixed(1)} / 5.0 (${s.totalReviews||0} reviews)`],
-                  ['Joined', s.joinDate? new Date(s.joinDate).toLocaleDateString() : 'N/A'],
-                  ['Account Status', s.isSuspended ? 'Suspended' : 'Active']
-                ].map(([label, value]) => `
-                  <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
-                    <p class="text-xs font-semibold uppercase text-gray-500 mb-2">${label}</p>
-                    <p class="text-base font-semibold text-gray-900 dark:text-white">${value}</p>
-                  </div>`).join('')}
-              </div>
-            </section>
-
-            <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Performance</h3>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                ${[
-                  ['Products', s.productCount || 0], ['Orders', s.totalOrders || 0],
-                  ['Sales', '₦' + (s.totalSales||0).toLocaleString()], ['Earnings', '₦' + (s.totalEarnings||0).toLocaleString()],
-                  ['Available Balance', '₦' + (s.availableBalance||0).toLocaleString()], ['Outstanding Debt', '₦' + (s.outstandingDebt||0).toLocaleString()],
-                  ['Total Withdrawn', '₦' + (s.totalWithdrawn||0).toLocaleString()]
-                ].map(([label, value]) => `
-                  <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
-                    <p class="text-xs uppercase text-gray-500 mb-2">${label}</p>
-                    <p class="text-lg font-semibold text-gray-900 dark:text-white">${value}</p>
-                  </div>`).join('')}
-              </div>
-            </section>
-
-            <section class="bg-white dark:bg-gray-800 rounded-xl border p-6">
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">KYC Documents</h3>
-              <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div class="space-y-3">
-                  <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Full Name</p><p class="font-semibold">${s.kycFullName || 'N/A'}</p></div>
-                  <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">ID Type</p><p class="font-semibold">${s.kycIdType || 'N/A'}</p></div>
-                  <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Submitted</p><p class="font-semibold">${s.kycSubmittedAt ? new Date(s.kycSubmittedAt).toLocaleString() : 'N/A'}</p></div>
-                </div>
-                <div class="space-y-4">
-                  ${s.kycIdDocumentUrl ? `<div><p class="text-sm font-semibold mb-2">ID Document</p><img src="${s.kycIdDocumentUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycIdDocumentUrl}','_blank')"></div>` : '<p class="text-sm text-gray-500">No ID document uploaded.</p>'}
-                  ${s.kycSelfieUrl ? `<div><p class="text-sm font-semibold mb-2">Selfie</p><img src="${s.kycSelfieUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycSelfieUrl}','_blank')"></div>` : ''}
-                </div>
-              </div>
-            </section>
-          </div>`;
-        document.getElementById('content').innerHTML = html;
-      } catch (err) {
-        document.getElementById('content').innerHTML = `<p class="text-red-600 p-6">${err.message}</p>`;
+      const search = document.getElementById('sellerSearch').value.trim();
+      const status = document.getElementById('sellerStatusFilter').value;
+      const sellers = await fetchAdminSellers(search, status);
+      window._adminSellers = sellers;
+      if (!sellers.length) {
+        container.innerHTML = `<p class="text-sm text-gray-600 dark:text-gray-300 text-center py-6">No sellers found.</p>`;
+        return;
       }
+      container.innerHTML = renderTable(
+        ['ID', 'Shop Name', 'Seller Name', 'Email', 'Phone', 'KYC Status', 'Account Status', 'Join Date'],
+        sellers.map(s => ({ ...s, id: s.id, kycstatus: s.kycStatus, accountstatus: s.accountStatus, joindate: new Date(s.joinDate).toLocaleDateString() })),
+        [{ label: 'View', callback: 'viewAdminSeller' }]
+      );
+    } catch (err) {
+      container.innerHTML = `<p class="text-sm text-red-600">${err.message}</p>`;
     }
-  });
+  }
 
+  document.getElementById('sellerSearch').addEventListener('input', () => { clearTimeout(window._sellerSearchDebounce); window._sellerSearchDebounce = setTimeout(reload, 350); });
+  document.getElementById('sellerStatusFilter').addEventListener('change', reload);
+  reload();
+}
+
+async function viewAdminSeller(id) {
+  document.getElementById('content').innerHTML = `<p class="text-sm text-gray-500 p-6">Loading seller...</p>`;
   try {
-    const response = await fetch(`${ADMIN_API_BASE}/admin/pending-actions`, {
-      headers: getAdminAuthHeaders()
-    });
-    const body = await response.json().catch(() => null);
+    const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load seller');
+    const s = body.data.seller;
+    setSellerKycRealStatus(id, s.kycStatus, s.kycStatus === 'approved');
 
-    if (!response.ok) {
-      console.error('Admin pending actions request failed:', body?.message || response.statusText);
-      return;
-    }
-
-    const data = body?.data || {};
-    const mapping = {
-      pendingSellersCount: Number(data.pendingSellers) || 0,
-      pendingProductsCount: Number(data.pendingProducts) || 0,
-      pendingWithdrawalsCount: Number(data.pendingWithdrawals) || 0,
-      refundCasesCount: Number(data.refundCases) || 0,
-      escalatedCasesCount: Number(data.escalatedCases) || 0
-    };
-
-    Object.entries(mapping).forEach(([id, value]) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value;
-    });
-  } catch (err) {
-    console.error('Error loading admin pending action counts:', err);
-  }
-}
-
-function formatRefundAmount(value) {
-  const amount = Number(value || 0);
-  return `₦${amount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
-}
-
-function formatCurrency(value) {
-  const amount = Number(value || 0);
-  return `₦${amount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
-}
-
-function getStatusBadgeClass(status) {
-  const normalized = String(status || '').toLowerCase();
-  if (['delivered', 'paid', 'confirmed', 'completed'].includes(normalized)) return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200';
-  if (['shipped', 'processing'].includes(normalized)) return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200';
-  if (['pending', 'awaiting_payment', 'awaiting_confirmation'].includes(normalized)) return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200';
-  if (['cancelled', 'refunded', 'returned', 'failed'].includes(normalized)) return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200';
-  return 'bg-slate-100 dark:bg-slate-900/30 text-slate-800 dark:text-slate-200';
-}
-
-function renderRecentOrders(orders = []) {
-  if (!Array.isArray(orders) || orders.length === 0) {
-    return '<p class="text-sm text-gray-500 dark:text-gray-400">No recent orders found.</p>';
-  }
-
-  return orders.map(order => `
-    <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
+    const html = `
       <div>
-        <p class="font-semibold text-gray-900 dark:text-white">${escapeHtml(order.order_id)}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(order.buyer_name)} → ${escapeHtml(order.seller_name)}</p>
-      </div>
-      <div class="text-right">
-        <p class="font-semibold text-gray-900 dark:text-white">${formatCurrency(order.total_amount)}</p>
-        <span class="px-2 py-1 text-xs rounded-full ${getStatusBadgeClass(order.status)}">${escapeHtml(order.status)}</span>
-      </div>
-    </div>
-  `).join('');
-}
+        <button onclick="loadPage('sellers')" class="mb-6 text-blue-600 hover:underline">← Back to Sellers</button>
+        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <p class="text-sm uppercase text-gray-500 font-semibold">Seller Overview</p>
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${s.shopName || s.fullName}</h2>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              ${['pending','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="approve" data-seller-id="${id}" onclick="approveSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Approve Seller</button>` : ''}
+              ${['pending','approved','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="reject" data-seller-id="${id}" onclick="rejectSeller('${id}')" class="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold">Reject Seller</button>` : ''}
+              ${s.isSuspended
+                ? `<button onclick="reactivateSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Reactivate Account</button>`
+                : `<button onclick="suspendSeller('${id}')" class="px-5 py-2 bg-amber-600 text-white rounded-lg font-semibold">Suspend Account</button>`}
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            ${[
+              ['Email', s.email], ['Phone', s.phone || 'N/A'], ['Business Address', s.businessAddress || 'N/A'],
+              ['Rating', `${s.rating.toFixed(1)} / 5.0 (${s.totalReviews} reviews)`],
+              ['Joined', new Date(s.joinDate).toLocaleDateString()],
+              ['Account Status', s.isSuspended ? 'Suspended' : 'Active']
+            ].map(([label, value]) => `
+              <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
+                <p class="text-xs font-semibold uppercase text-gray-500 mb-2">${label}</p>
+                <p class="text-base font-semibold text-gray-900 dark:text-white">${value}</p>
+              </div>`).join('')}
+          </div>
+        </section>
 
-function renderTopProducts(products = []) {
-  if (!Array.isArray(products) || products.length === 0) {
-    return '<p class="text-sm text-gray-500 dark:text-gray-400">No top products available yet.</p>';
-  }
+        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Performance</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            ${[
+              ['Products', s.productCount], ['Orders', s.totalOrders],
+              ['Sales', '₦' + s.totalSales.toLocaleString()], ['Earnings', '₦' + s.totalEarnings.toLocaleString()],
+              ['Available Balance', '₦' + s.availableBalance.toLocaleString()], ['Outstanding Debt', '₦' + s.outstandingDebt.toLocaleString()],
+              ['Total Withdrawn', '₦' + s.totalWithdrawn.toLocaleString()]
+            ].map(([label, value]) => `
+              <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
+                <p class="text-xs uppercase text-gray-500 mb-2">${label}</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">${value}</p>
+              </div>`).join('')}
+          </div>
+        </section>
 
-  return products.map(product => `
-    <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
-      <div>
-        <p class="font-semibold text-gray-900 dark:text-white">${escapeHtml(product.name)}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(product.seller_name)}</p>
-      </div>
-      <div class="text-right">
-        <p class="font-semibold text-gray-900 dark:text-white">${formatCurrency(product.price)}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Sold: ${escapeHtml(product.quantity_sold)} • Stock: ${escapeHtml(product.stock_quantity)}</p>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function loadDashboardActivity() {
-  const recentOrdersContainer = document.getElementById('recentOrdersContainer');
-  const topProductsContainer = document.getElementById('topProductsContainer');
-
-  if (recentOrdersContainer) {
-    recentOrdersContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Loading recent orders...</p>';
-  }
-  if (topProductsContainer) {
-    topProductsContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Loading top products...</p>';
-  }
-
-  try {
-    const response = await fetch(`${ADMIN_API_BASE}/admin/dashboard-activity`, {
-      headers: getAdminAuthHeaders()
-    });
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      console.error('Admin dashboard activity request failed:', body?.message || response.statusText);
-      if (recentOrdersContainer) recentOrdersContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Unable to load recent orders.</p>';
-      if (topProductsContainer) topProductsContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Unable to load top products.</p>';
-      return;
-    }
-
-    const data = body?.data || {};
-    if (recentOrdersContainer) recentOrdersContainer.innerHTML = renderRecentOrders(data.recentOrders);
-    if (topProductsContainer) topProductsContainer.innerHTML = renderTopProducts(data.topProducts);
+        <section class="bg-white dark:bg-gray-800 rounded-xl border p-6">
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">KYC Documents</h3>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="space-y-3">
+              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Full Name</p><p class="font-semibold">${s.kycFullName || 'N/A'}</p></div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">ID Type</p><p class="font-semibold">${s.kycIdType || 'N/A'}</p></div>
+              <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Submitted</p><p class="font-semibold">${s.kycSubmittedAt ? new Date(s.kycSubmittedAt).toLocaleString() : 'N/A'}</p></div>
+            </div>
+            <div class="space-y-4">
+              ${s.kycIdDocumentUrl ? `<div><p class="text-sm font-semibold mb-2">ID Document</p><img src="${s.kycIdDocumentUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycIdDocumentUrl}','_blank')"></div>` : '<p class="text-sm text-gray-500">No ID document uploaded.</p>'}
+              ${s.kycSelfieUrl ? `<div><p class="text-sm font-semibold mb-2">Selfie</p><img src="${s.kycSelfieUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycSelfieUrl}','_blank')"></div>` : ''}
+            </div>
+          </div>
+        </section>
+      </div>`;
+    document.getElementById('content').innerHTML = html;
   } catch (err) {
-    console.error('Error loading dashboard activity:', err);
-    if (recentOrdersContainer) recentOrdersContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Unable to load recent orders.</p>';
-    if (topProductsContainer) topProductsContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Unable to load top products.</p>';
+    document.getElementById('content').innerHTML = `<p class="text-red-600 p-6">${err.message}</p>`;
   }
 }
 
-async function loadRecentAdminActivity() {
-  const container = document.getElementById('recentAdminActivityList');
-  if (!container) return;
+async function suspendSeller(id) {
+  if (!confirm('Suspend this seller account?')) return;
+  const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/suspend`, { method: 'POST', headers: getAdminAuthHeaders() });
+  if (res.ok) { showToast('Seller suspended'); viewAdminSeller(id); } else showToast('Failed to suspend seller', 'error');
+}
 
-  container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Loading recent admin activity...</p>';
-
-  try {
-    const response = await fetch(`${ADMIN_API_BASE}/admin/activity?limit=5`, { headers: getAdminAuthHeaders() });
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(body?.message || 'Unable to load recent admin activity');
-    }
-
-    const activities = Array.isArray(body?.data?.activities) ? body.data.activities : [];
-    if (!activities.length) {
-      container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No recent admin activity found.</p>';
-      return;
-    }
-
-    const iconClassByAction = (action = '') => {
-      const text = String(action).toLowerCase();
-      if (text.includes('approve') || text.includes('complete') || text.includes('resolved') || text.includes('verified')) return 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400';
-      if (text.includes('create') || text.includes('login') || text.includes('payment')) return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
-      if (text.includes('reject') || text.includes('delete') || text.includes('cancel')) return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
-      if (text.includes('withdraw') || text.includes('refund')) return 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400';
-      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400';
-    };
-
-    const iconNameByAction = (action = '') => {
-      const text = String(action).toLowerCase();
-      if (text.includes('approve') || text.includes('complete') || text.includes('resolved')) return 'fa-check-circle';
-      if (text.includes('create') || text.includes('login')) return 'fa-user-plus';
-      if (text.includes('delete') || text.includes('reject') || text.includes('cancel')) return 'fa-exclamation-circle';
-      if (text.includes('withdraw') || text.includes('refund')) return 'fa-money-bill-wave';
-      return 'fa-clipboard-list';
-    };
-
-    container.innerHTML = activities.map((item) => {
-      const timestamp = item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently';
-      const actionLabel = String(item.action || 'ADMIN_ACTIVITY').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      const description = item.description || `${item.actor_name || 'Admin'} performed ${actionLabel}`;
-      return `
-        <div class="flex items-start gap-3 pb-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 last:pb-0">
-          <div class="${iconClassByAction(item.action)} rounded-full p-2 mt-0.5">
-            <i class="fas ${iconNameByAction(item.action)} text-sm"></i>
-          </div>
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(actionLabel)}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(description)} • ${escapeHtml(timestamp)}</p>
-          </div>
-        </div>
+async function reactivateSeller(id) {
+  const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/activate`, { method: 'POST', headers: getAdminAuthHeaders() });
+  if (res.ok) { showToast('Seller reactivated'); viewAdminSeller(id); } else showToast('Failed to reactivate seller', 'error');
+}
       `;
     }).join('');
   } catch (err) {
@@ -1362,89 +1244,106 @@ function renderSellers() {
 }
 
 async function viewAdminSeller(id) {
-  document.getElementById('content').innerHTML = `<p class="text-sm text-gray-500 p-6">Loading seller...</p>`;
-}
-            <div class="space-y-4">
+  const container = document.getElementById('content');
+  if (!container) return;
+  container.innerHTML = `<p class="text-sm text-gray-500 p-6">Loading seller...</p>`;
+
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${encodeURIComponent(id)}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load seller');
+
+    const sellerDisplay = body?.data?.seller || body?.data || {};
+
+    const financialSummary = [
+      { label: 'Wallet Balance', value: formatCurrency((sellerDisplay.wallet && sellerDisplay.wallet.balance) || sellerDisplay.walletBalance || 0) },
+      { label: 'Pending Settlements', value: formatCurrency((sellerDisplay.wallet && sellerDisplay.wallet.pending) || sellerDisplay.pendingSettlements || 0) },
+      { label: 'Total Sales', value: formatCurrency((sellerDisplay.financial && sellerDisplay.financial.totalSales) || sellerDisplay.totalSales || 0) },
+      { label: 'Total Payouts', value: formatCurrency((sellerDisplay.financial && sellerDisplay.financial.totalPayouts) || sellerDisplay.totalPayouts || 0) }
+    ];
+
+    function renderSellerDocumentPreview(url, label) {
+      if (!url) return `<p class="text-sm text-gray-500 dark:text-gray-400">No ${escapeHtml(label)} available.</p>`;
+      const safe = escapeHtml(url);
+      if (/\.(jpg|jpeg|png|gif|webp)$/i.test(url)) {
+        return `<a href="${safe}" target="_blank" rel="noopener noreferrer"><img src="${safe}" alt="${escapeHtml(label)}" class="max-h-48 rounded-md border"/></a>`;
+      }
+      return `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${escapeHtml(label)}</a>`;
+    }
+
+    const html = `
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Seller Details</h1>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section class="lg:col-span-2">
+          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Full Name</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.fullName || sellerDisplay.sellerName || 'N/A'}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${escapeHtml(sellerDisplay.fullName || sellerDisplay.sellerName || 'N/A')}</p>
               </div>
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Date of Birth</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.dateOfBirth || 'N/A'}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${escapeHtml(sellerDisplay.dateOfBirth || 'N/A')}</p>
               </div>
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Country</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.country || 'N/A'}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${escapeHtml(sellerDisplay.country || 'N/A')}</p>
               </div>
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Type</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.idType || 'N/A'}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${escapeHtml(sellerDisplay.idType || 'N/A')}</p>
               </div>
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">ID Number</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${sellerDisplay.idNumber || 'N/A'}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words">${escapeHtml(sellerDisplay.idNumber || 'N/A')}</p>
               </div>
               <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p class="text-gray-600 dark:text-gray-400 text-xs font-semibold uppercase mb-1">Residential Address</p>
-                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words whitespace-normal overflow-wrap-anywhere">${sellerDisplay.residentialAddress || 'N/A'}</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-lg break-words whitespace-normal overflow-wrap-anywhere">${escapeHtml(sellerDisplay.residentialAddress || 'N/A')}</p>
               </div>
             </div>
 
-            <div class="space-y-4">
+            <div class="mt-6 space-y-4">
               <div>
                 <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">ID Document</label>
-                ${renderSellerDocumentPreview(sellerDisplay.idDocumentUrl, 'ID Document')}
+                ${renderSellerDocumentPreview(sellerDisplay.idDocumentUrl || sellerDisplay.idDocument || '', 'ID Document')}
               </div>
               <div>
                 <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-3">Proof of Address</label>
-                ${renderSellerDocumentPreview(sellerDisplay.proofOfAddressUrl, 'Proof of Address')}
+                ${renderSellerDocumentPreview(sellerDisplay.proofOfAddressUrl || sellerDisplay.proofOfAddress || '', 'Proof of Address')}
               </div>
             </div>
           </div>
         </section>
 
-        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-          <div class="mb-4">
-            <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Financial Summary</p>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Wallet & Settlement</h3>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            ${financialSummary.map(item => `
-              <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-4">
-                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">${item.label}</p>
-                <p class="text-lg font-semibold text-gray-500 dark:text-gray-400">${item.value}</p>
-              </div>
-            `).join('')}
-          </div>
-        </section>
+        <aside>
+          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-6">
+            <div>
+              <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Financial Summary</p>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Wallet & Settlement</h3>
+            </div>
+            <div class="grid grid-cols-1 gap-3">
+              ${financialSummary.map(item => `<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 p-3"><p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">${item.label}</p><p class="text-lg font-semibold text-gray-500 dark:text-gray-400">${item.value}</p></div>`).join('')}
+            </div>
 
-        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-          <div class="mb-4">
-            <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Recent Activity</p>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Activity Timeline</h3>
-          </div>
-          <div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 p-8 text-center">
-            <p class="text-gray-500 dark:text-gray-400">No recent activity available.</p>
-          </div>
-        </section>
-
-        <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-          <div class="flex items-center justify-between gap-3 mb-4">
             <div>
               <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Seller Actions</p>
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white mt-1">Valid Actions</h3>
+              <div class="flex flex-wrap gap-3 mt-3">
+                ${['pending', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="approve" data-seller-id="${escapeHtml(sellerDisplay.id || '')}" onclick="approveSeller('${escapeHtml(sellerDisplay.id || '')}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"><i class="fas fa-check mr-2"></i>Approve</button>` : ''}
+                ${['pending', 'approved', 'rejected', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" data-seller-id="${escapeHtml(sellerDisplay.id || '')}" onclick="rejectSeller('${escapeHtml(sellerDisplay.id || '')}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject</button>` : ''}
+              </div>
             </div>
           </div>
-          <div class="flex flex-wrap gap-3">
-            ${['pending', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="approve" data-seller-id="${sellerDisplay.id}" onclick="approveSeller('${sellerDisplay.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"><i class="fas fa-check mr-2"></i>Approve Seller</button>` : ''}
-            ${['pending', 'approved', 'rejected', 'not_submitted'].includes(String(sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" data-seller-id="${sellerDisplay.id}" onclick="rejectSeller('${sellerDisplay.id}')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject Seller</button>` : ''}
-          </div>
-        </section>
+        </aside>
       </div>
     </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+    `;
+
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = `<p class="text-sm text-red-600 p-6">${escapeHtml(err.message || 'Unable to load seller')}</p>`;
+  }
 }
 
 // Products Management
