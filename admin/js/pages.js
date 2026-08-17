@@ -15,90 +15,82 @@ function getAdminAuthToken() {
     try {
       const session = JSON.parse(sessionValue);
       return session?.token || session?.accessToken || session?.authToken || session?.jwt || session?.user?.token || '';
-    } catch (err) {
-      return '';
+    async function viewAdminSeller(id) {
+      document.getElementById('content').innerHTML = `<p class="text-sm text-gray-500 p-6">Loading seller...</p>`;
+      try {
+        const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}`, { headers: getAdminAuthHeaders() });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.message || 'Failed to load seller');
+        const s = body.data.seller;
+        setSellerKycRealStatus(id, s.kycStatus, s.kycStatus === 'approved');
+
+        const html = `
+          <div>
+            <button onclick="loadPage('sellers')" class="mb-6 text-blue-600 hover:underline">← Back to Sellers</button>
+            <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                  <p class="text-sm uppercase text-gray-500 font-semibold">Seller Overview</p>
+                  <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${s.shopName || s.fullName}</h2>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  ${['pending','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="approve" data-seller-id="${id}" onclick="approveSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Approve Seller</button>` : ''}
+                  ${['pending','approved','not_submitted'].includes(s.kycStatus) ? `<button data-seller-kyc-action="reject" data-seller-id="${id}" onclick="rejectSeller('${id}')" class="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold">Reject Seller</button>` : ''}
+                  ${s.isSuspended
+                    ? `<button onclick="reactivateSeller('${id}')" class="px-5 py-2 bg-green-600 text-white rounded-lg font-semibold">Reactivate Account</button>`
+                    : `<button onclick="suspendSeller('${id}')" class="px-5 py-2 bg-amber-600 text-white rounded-lg font-semibold">Suspend Account</button>`}
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                ${[
+                  ['Email', s.email], ['Phone', s.phone || 'N/A'], ['Business Address', s.businessAddress || 'N/A'],
+                  ['Rating', `${(s.rating||0).toFixed(1)} / 5.0 (${s.totalReviews||0} reviews)`],
+                  ['Joined', s.joinDate? new Date(s.joinDate).toLocaleDateString() : 'N/A'],
+                  ['Account Status', s.isSuspended ? 'Suspended' : 'Active']
+                ].map(([label, value]) => `
+                  <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
+                    <p class="text-xs font-semibold uppercase text-gray-500 mb-2">${label}</p>
+                    <p class="text-base font-semibold text-gray-900 dark:text-white">${value}</p>
+                  </div>`).join('')}
+              </div>
+            </section>
+
+            <section class="bg-white dark:bg-gray-800 rounded-xl border p-6 mb-6">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Performance</h3>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                ${[
+                  ['Products', s.productCount || 0], ['Orders', s.totalOrders || 0],
+                  ['Sales', '₦' + (s.totalSales||0).toLocaleString()], ['Earnings', '₦' + (s.totalEarnings||0).toLocaleString()],
+                  ['Available Balance', '₦' + (s.availableBalance||0).toLocaleString()], ['Outstanding Debt', '₦' + (s.outstandingDebt||0).toLocaleString()],
+                  ['Total Withdrawn', '₦' + (s.totalWithdrawn||0).toLocaleString()]
+                ].map(([label, value]) => `
+                  <div class="rounded-lg border bg-gray-50 dark:bg-gray-700/40 p-4">
+                    <p class="text-xs uppercase text-gray-500 mb-2">${label}</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">${value}</p>
+                  </div>`).join('')}
+              </div>
+            </section>
+
+            <section class="bg-white dark:bg-gray-800 rounded-xl border p-6">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">KYC Documents</h3>
+              <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="space-y-3">
+                  <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Full Name</p><p class="font-semibold">${s.kycFullName || 'N/A'}</p></div>
+                  <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">ID Type</p><p class="font-semibold">${s.kycIdType || 'N/A'}</p></div>
+                  <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"><p class="text-xs uppercase text-gray-500">Submitted</p><p class="font-semibold">${s.kycSubmittedAt ? new Date(s.kycSubmittedAt).toLocaleString() : 'N/A'}</p></div>
+                </div>
+                <div class="space-y-4">
+                  ${s.kycIdDocumentUrl ? `<div><p class="text-sm font-semibold mb-2">ID Document</p><img src="${s.kycIdDocumentUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycIdDocumentUrl}','_blank')"></div>` : '<p class="text-sm text-gray-500">No ID document uploaded.</p>'}
+                  ${s.kycSelfieUrl ? `<div><p class="text-sm font-semibold mb-2">Selfie</p><img src="${s.kycSelfieUrl}" class="max-h-64 rounded-lg border cursor-pointer" onclick="window.open('${s.kycSelfieUrl}','_blank')"></div>` : ''}
+                </div>
+              </div>
+            </section>
+          </div>`;
+        document.getElementById('content').innerHTML = html;
+      } catch (err) {
+        document.getElementById('content').innerHTML = `<p class="text-red-600 p-6">${err.message}</p>`;
+      }
     }
-  }
-
-  return localStorage.getItem('token') || '';
-}
-
-function getAdminAuthHeaders() {
-  const token = getAdminAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function loadDashboardCounts() {
-  const ids = [
-    'totalBuyersCount',
-    'totalSellersCount',
-    'totalProductsCount',
-    'totalOrdersCount',
-    'totalSalesValue',
-    'platformEarningsValue',
-    'fundsInEscrowValue',
-    'availableSellerFundsValue',
-    'pendingSellerEarningsValue',
-    'pendingWithdrawalsValue',
-    'refundsValue',
-    'outstandingSellerDebtValue'
-  ];
-
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = id === 'totalBuyersCount' || id === 'totalSellersCount' || id === 'totalProductsCount' || id === 'totalOrdersCount'
-      ? '—'
-      : '₦—';
-  });
-
-  try {
-    const response = await fetch(`${ADMIN_API_BASE}/admin/dashboard-stats`, {
-      headers: getAdminAuthHeaders()
-    });
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      console.error('Admin dashboard stats request failed:', body?.message || response.statusText);
-      return;
-    }
-
-    const data = body?.data || {};
-    const mapping = {
-      totalBuyersCount: Number(data.totalBuyers) || 0,
-      totalSellersCount: Number(data.totalSellers) || 0,
-      totalProductsCount: Number(data.totalProducts) || 0,
-      totalOrdersCount: Number(data.totalOrders) || 0,
-      totalSalesValue: formatCurrency(data.totalSales),
-      platformEarningsValue: formatCurrency(data.platformEarnings),
-      fundsInEscrowValue: formatCurrency(data.fundsInEscrow),
-      availableSellerFundsValue: formatCurrency(data.availableSellerFunds),
-      pendingSellerEarningsValue: formatCurrency(data.pendingSellerEarnings),
-      pendingWithdrawalsValue: formatCurrency(data.pendingWithdrawals),
-      refundsValue: formatCurrency(data.refunds),
-      outstandingSellerDebtValue: formatCurrency(data.outstandingSellerDebt)
-    };
-
-    Object.entries(mapping).forEach(([id, value]) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value;
-    });
-  } catch (err) {
-    console.error('Error loading admin dashboard counts:', err);
-  }
-}
-
-async function loadPendingActionCounts() {
-  const ids = [
-    'pendingSellersCount',
-    'pendingProductsCount',
-    'pendingWithdrawalsCount',
-    'refundCasesCount',
-    'escalatedCasesCount'
-  ];
-
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = '0';
   });
 
   try {
