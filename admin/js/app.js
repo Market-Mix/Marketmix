@@ -584,6 +584,7 @@ function loadPage(page) {
     'roles-permissions': renderRolesPermissions,
     reports: renderReports,
     returns: renderReturns,
+    'debt-adjustments': renderDebtAdjustments,
     'admin-users': renderAdminUsers,
     settings: renderSettings,
     profile: renderProfile
@@ -868,30 +869,147 @@ function renderTable(columns, data, actions = []) {
   return html;
 }
 
-// Seller actions: approve, toggle status, delete
+const SELLER_KYC_API_BASE = window.ADMIN_API_BASE || (window.location.protocol === 'file:' ? 'http://localhost:5000/api' : 'https://marketmix-backend.onrender.com/api');
+
+function getAdminAuthToken() {
+  if (window.ADMIN_AUTH_TOKEN) return window.ADMIN_AUTH_TOKEN;
+  const storedToken = localStorage.getItem('adminToken');
+  if (storedToken) return storedToken;
+  const sessionValue = localStorage.getItem('adminSession');
+  if (sessionValue) {
+    try {
+      const session = JSON.parse(sessionValue);
+      return session?.token || session?.accessToken || session?.authToken || session?.jwt || session?.user?.token || '';
+    } catch (err) {
+      return '';
+    }
+  }
+  return localStorage.getItem('token') || '';
+}
+
+function getAdminAuthHeaders() {
+  const token = getAdminAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function getSellerKycActionButton(targetId) {
+  return document.querySelector(`[data-seller-id="${CSS.escape(String(targetId))}"]`);
+}
+
+const SELLER_KYC_REAL_STATUS_CACHE = {};
+
+function setSellerKycRealStatus(id, statusValue, isVerifiedValue = null) {
+  if (!id) return;
+  SELLER_KYC_REAL_STATUS_CACHE[id] = {
+    kyc_status: statusValue ?? null,
+    is_verified: isVerifiedValue ?? null
+  };
+}
+
+function getSellerKycRealStatus(id) {
+  if (!id) return null;
+  return SELLER_KYC_REAL_STATUS_CACHE[id] || null;
+}
+
+async function refreshSellerKycFromRealBackend(id) {
+  const refreshUrl = `${SELLER_KYC_API_BASE}/admin/sellers/${encodeURIComponent(id)}/kyc/status`;
+
+  try {
+    const response = await fetch(refreshUrl, {
+      method: 'GET',
+      headers: {
+        ...getAdminAuthHeaders(),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json().catch(() => null);
+    const data = payload?.data || payload || {};
+    const kycStatus = data?.kycStatus ?? data?.kyc_status ?? null;
+    const isVerified = data?.isVerified ?? data?.is_verified ?? null;
+
+    if (kycStatus !== null || isVerified !== null) {
+      setSellerKycRealStatus(id, kycStatus, isVerified);
+      return { url: refreshUrl, payload, kycStatus, isVerified };
+    }
+  } catch (err) {
+    console.warn('[Seller KYC refresh] Failed to fetch selected seller status from backend', refreshUrl, err);
+  }
+
+  return null;
+}
+
+async function runSellerKycAction(id, action) {
+  if (!id) return showToast('Seller not found', 'error');
+
+  const buttons = document.querySelectorAll('[data-seller-kyc-action]');
+  buttons.forEach(btn => {
+    btn.disabled = true;
+    btn.classList.add('opacity-60', 'cursor-not-allowed');
+  });
+
+  try {
+    const response = await fetch(`${SELLER_KYC_API_BASE}/admin/sellers/${encodeURIComponent(id)}/kyc/${action}`, {
+      method: 'POST',
+      headers: {
+        ...getAdminAuthHeaders(),
+        'Content-Type': 'application/json'
+      }
+    });
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(body?.message || `Seller KYC ${action} failed`);
+    }
+
+    const refreshedSeller = await refreshSellerKycFromRealBackend(id);
+    if (refreshedSeller) {
+      console.info('[Seller KYC refresh]', {
+        id,
+        action,
+        url: refreshedSeller.url,
+        kycStatus: refreshedSeller.kycStatus,
+        isVerified: refreshedSeller.isVerified
+      });
+    }
+
+    showToast(action === 'approve' ? 'Seller KYC approved' : 'Seller KYC rejected');
+
+    if (currentPage === 'sellers') {
+      renderSellers();
+    } else if (typeof viewSeller === 'function') {
+      try { viewSeller(id); } catch (e) {}
+    }
+  } catch (err) {
+    console.error('[Seller KYC]', err);
+    showToast(action === 'approve' ? 'Unable to approve seller' : 'Unable to reject seller', 'error');
+  } finally {
+    const buttons = document.querySelectorAll('[data-seller-kyc-action]');
+    buttons.forEach(btn => {
+      btn.disabled = false;
+      btn.classList.remove('opacity-60', 'cursor-not-allowed');
+    });
+  }
+}
+
 function approveSeller(id) {
-  const s = dummyData.sellers.find(x => x.id === id);
-  if (!s) return showToast('Seller not found', 'error');
-  s.status = 'Approved';
-  showToast('Seller approved');
-  renderSellers();
+  return runSellerKycAction(id, 'approve');
+}
+
+function rejectSeller(id) {
+  return runSellerKycAction(id, 'reject');
 }
 
 function toggleSellerStatus(id) {
-  const s = dummyData.sellers.find(x => x.id === id);
-  if (!s) return showToast('Seller not found', 'error');
-  s.status = s.status === 'Approved' ? 'Suspended' : 'Approved';
-  showToast(`Seller ${s.status === 'Approved' ? 'activated' : 'suspended'}`);
-  // if currently on details page for this seller, refresh
-  if (currentPage === 'sellers') renderSellers(); else if (typeof viewSeller === 'function') try { viewSeller(id); } catch(e){}
+  showToast('Seller suspension is not implemented because no real backend workflow exists.', 'error');
 }
 
 function deleteSeller(id) {
-  const idx = dummyData.sellers.findIndex(x => x.id === id);
-  if (idx === -1) return showToast('Seller not found', 'error');
-  dummyData.sellers.splice(idx, 1);
-  showToast('Seller deleted');
-  renderSellers();
+  showToast('Seller deletion is not implemented because no real backend workflow exists.', 'error');
 }
 
 // Buyer actions: toggle status, delete
