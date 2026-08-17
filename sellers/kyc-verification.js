@@ -6,7 +6,7 @@
  *  2. On submit: each file is uploaded via POST /api/seller/kyc/upload
  *     (your backend proxies to Supabase Storage using the service key)
  *  3. Backend returns a URL for each uploaded file
- *  4. POST /api/seller/kyc with form fields + the two file URLs
+ *  4. POST /api/seller/kyc with form fields + the file URLs
  */
 
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
@@ -40,14 +40,20 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => {}); // non-fatal
 
   // File list display
-  const idDocument      = document.getElementById('idDocument');
-  const selfiePhoto     = document.getElementById('selfiePhoto');
-  const idDocumentList  = document.getElementById('idDocumentList');
-  const selfiePhotoList = document.getElementById('selfiePhotoList');
+  const idDocument       = document.getElementById('idDocument');
+  const proofOfAddress   = document.getElementById('proofOfAddress');
+  const selfiePhoto      = document.getElementById('selfiePhoto');
+  const idDocumentList   = document.getElementById('idDocumentList');
+  const proofOfAddressList = document.getElementById('proofOfAddressList');
+  const selfiePhotoList  = document.getElementById('selfiePhotoList');
 
   idDocument.addEventListener('change', () => {
     updateFileList(idDocument, idDocumentList);
     clearFieldError('idDocument');
+  });
+  proofOfAddress.addEventListener('change', () => {
+    updateFileList(proofOfAddress, proofOfAddressList);
+    clearFieldError('proofOfAddress');
   });
   selfiePhoto.addEventListener('change', () => {
     updateFileList(selfiePhoto, selfiePhotoList);
@@ -69,10 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Get user ID for storage path namespacing
       const userId = getUserId();
 
-      // Upload both files to your backend (which stores them in Supabase Storage)
-      const [idDocumentUrl, selfiePhotoUrl] = await Promise.all([
-        uploadFile(idDocument.files[0],  `${userId}/id-doc`,  token),
-        uploadFile(selfiePhoto.files[0], `${userId}/selfie`,  token),
+      // Upload the KYC files to your backend (which stores them in Supabase Storage)
+      const [idDocumentUrl, proofOfAddressUrl, selfiePhotoUrl] = await Promise.all([
+        uploadFile(idDocument.files[0], `${userId}/id-doc`, token),
+        uploadFile(proofOfAddress.files[0], `${userId}/proof-of-address`, token),
+        uploadFile(selfiePhoto.files[0], `${userId}/selfie`, token),
       ]);
 
       submitButton.textContent = 'Submitting…';
@@ -89,10 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
           dob:             document.getElementById('dob').value || null,
           businessName:    document.getElementById('businessName').value.trim() || null,
           businessAddress: document.getElementById('businessAddress').value.trim() || null,
+          residentialAddress: document.getElementById('businessAddress').value.trim() || null,
           email:           document.getElementById('email').value.trim(),
           phone:           document.getElementById('phone').value.trim() || null,
+          country:         document.getElementById('country').value.trim(),
           idType:          document.getElementById('idType').value,
+          idNumber:        document.getElementById('idNumber').value.trim(),
           idDocumentUrl,
+          proofOfAddressUrl,
           selfiePhotoUrl,
         }),
       });
@@ -192,7 +203,7 @@ function getUserId() {
 }
 
 function validateForm() {
-  ['fullName', 'email', 'idType', 'idDocument', 'selfiePhoto'].forEach(clearFieldError);
+  ['fullName', 'email', 'idType', 'country', 'idNumber', 'idDocument', 'proofOfAddress', 'selfiePhoto'].forEach(clearFieldError);
   let valid = true;
 
   if (!document.getElementById('fullName').value.trim()) {
@@ -211,8 +222,20 @@ function validateForm() {
     showFieldError('idType', 'Please select an ID type.');
     valid = false;
   }
+  if (!document.getElementById('country').value.trim()) {
+    showFieldError('country', 'Please enter your country.');
+    valid = false;
+  }
+  if (!document.getElementById('idNumber').value.trim()) {
+    showFieldError('idNumber', 'Please enter your ID number.');
+    valid = false;
+  }
   if (!document.getElementById('idDocument').files.length) {
     showFieldError('idDocument', 'Please upload your ID document.');
+    valid = false;
+  }
+  if (!document.getElementById('proofOfAddress').files.length) {
+    showFieldError('proofOfAddress', 'Please upload proof of address.');
     valid = false;
   }
   if (!document.getElementById('selfiePhoto').files.length) {
