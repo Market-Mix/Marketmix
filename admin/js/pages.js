@@ -42,6 +42,17 @@ async function suspendSeller(id) {
   if (res.ok) { showToast('Seller suspended'); viewAdminSeller(id); } else showToast('Failed to suspend seller', 'error');
 }
 
+function openSuspendModal(sellerId) {
+  const reason = prompt('Suspension reason:');
+  if (!reason) return;
+  const duration = prompt('Duration: 1week, 2weeks, 1month, or indefinite', '1week');
+  if (!['1week', '2weeks', '1month', 'indefinite'].includes(duration)) return alert('Invalid duration');
+  fetch(`${ADMIN_API_BASE}/admin/sellers/${sellerId}/suspend`, {
+    method: 'POST', headers: getAdminAuthHeaders(),
+    body: JSON.stringify({ duration, reason })
+  }).then(r => r.json()).then(() => { showToast('Seller suspended'); viewAdminSeller(sellerId); });
+}
+
 async function reactivateSeller(id) {
   const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/activate`, { method: 'POST', headers: getAdminAuthHeaders() });
   if (res.ok) { showToast('Seller reactivated'); viewAdminSeller(id); } else showToast('Failed to reactivate seller', 'error');
@@ -1359,7 +1370,7 @@ async function viewAdminSeller(id) {
                 ${['pending','approved','rejected','not_submitted'].includes(String(sellerDisplay.kycStatus || sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" onclick="rejectSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject KYC</button>` : ''}
                 ${sellerDisplay.isSuspended
                   ? `<button onclick="reactivateSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"><i class="fas fa-user-check mr-2"></i>Reactivate</button>`
-                  : `<button onclick="suspendSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold"><i class="fas fa-ban mr-2"></i>Suspend</button>`
+                  : `<button onclick="openSuspendModal('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold"><i class="fas fa-ban mr-2"></i>Suspend</button>`
                 }
               </div>
             </div>

@@ -316,6 +316,20 @@ async function _loadDashboardDataImpl() {
   const activities = activityRes.status === "fulfilled"
     ? (activityRes.value?.data?.activities || [])
     : [];
+
+  if (profile?.isSuspended) {
+    const untilText = profile.suspendedUntil
+      ? `until ${new Date(profile.suspendedUntil).toLocaleDateString()}`
+      : 'indefinitely';
+    let banner = document.getElementById('suspensionBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'suspensionBanner';
+      banner.style.cssText = 'background:#dc2626;color:#fff;padding:14px;text-align:center;font-weight:600;';
+      document.body.prepend(banner);
+    }
+    banner.textContent = `⚠️ Account Suspended ${untilText}. Reason: ${profile.suspensionReason || 'Policy violation'}.`;
+  }
   
   let refundsCount = 0;
   if (refundsRes.status === "fulfilled" && refundsRes.value?.data) {
