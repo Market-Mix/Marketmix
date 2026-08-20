@@ -1376,33 +1376,108 @@ async function viewAdminSeller(id) {
 }
 
 // Products Management
-function renderProducts() {
-  const html = `
+let realProductData = [];
+
+function getProductStatus(product) {
+  if (product.is_active === false) return 'Inactive';
+  if (Number(product.stock_quantity) === 0) return 'Out of Stock';
+  if (Number(product.stock_quantity) <= 10) return 'Low Stock';
+  return 'Active';
+}
+
+function normalizeProduct(product) {
+  return {
+    ...product,
+    id: product.id ?? null,
+    name: product.name ?? null,
+    category: product.category_name ?? product.category ?? null,
+    seller: null,
+    price: product.price ?? null,
+    stock: product.stock_quantity ?? null,
+    status: getProductStatus(product)
+  };
+}
+
+function renderProductState(message, isError = false) {
+  const color = isError ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300';
+  return `<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center"><p class="${color}">${message}</p></div>`;
+}
+
+function renderProductTable(products) {
+  return products.length
+    ? renderTable(['ID', 'Name', 'Category', 'Seller', 'Price', 'Stock', 'Status'], products, [{ label: 'View', callback: 'viewProduct' }])
+    : renderProductState('No products found.');
+}
+
+function renderProductList(products) {
+  const categories = ['All Categories', ...Array.from(new Set(products.map(product => product.category).filter(Boolean)))];
+  const statuses = ['All Statuses', ...Array.from(new Set(products.map(product => product.status).filter(Boolean)))];
+  const content = document.getElementById('content');
+
+  content.innerHTML = `
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Products Management</h1>
-      
-      <div class="mb-6 flex gap-4">
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
         <input type="text" id="productSearch" placeholder="Search products..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <select class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-          <option>All Categories</option>
-          <option>Electronics</option>
-          <option>Fashion</option>
-          <option>Home</option>
-          <option>Sports</option>
+        <select id="productCategoryFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          ${categories.map(category => `<option value="${category}">${category}</option>`).join('')}
+        </select>
+        <select id="productStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          ${statuses.map(status => `<option value="${status}">${status}</option>`).join('')}
         </select>
         <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
       </div>
-
-      ${renderTable(['ID', 'Name', 'Category', 'Seller', 'Price', 'Stock', 'Status'], dummyData.products, [
-        { label: 'View', callback: 'viewProduct' }
-      ])}
+      <div id="productTableContainer">${renderProductTable(products)}</div>
     </div>
   `;
-  document.getElementById('content').innerHTML = html;
+
+  const applyFilters = () => {
+    const query = document.getElementById('productSearch').value.trim().toLowerCase();
+    const category = document.getElementById('productCategoryFilter').value;
+    const status = document.getElementById('productStatusFilter').value;
+    const filteredProducts = products.filter(product => {
+      const searchable = [product.id, product.name, product.category, product.seller, product.price, product.stock, product.status]
+        .map(value => value == null ? '' : String(value)).join(' ').toLowerCase();
+      return (!query || searchable.includes(query))
+        && (category === 'All Categories' || product.category === category)
+        && (status === 'All Statuses' || product.status === status);
+    });
+    document.getElementById('productTableContainer').innerHTML = renderProductTable(filteredProducts);
+  };
+
+  document.getElementById('productSearch').addEventListener('input', applyFilters);
+  document.getElementById('productCategoryFilter').addEventListener('change', applyFilters);
+  document.getElementById('productStatusFilter').addEventListener('change', applyFilters);
+}
+
+function renderProducts() {
+  const content = document.getElementById('content');
+  content.innerHTML = renderProductState('Loading products...');
+  const apiBase = window.ADMIN_API_BASE || (window.location.protocol === 'file:'
+    ? 'http://localhost:5000/api'
+    : 'https://marketmix-backend.onrender.com/api');
+
+  fetch(`${apiBase}/products?page=1&limit=1000`)
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(payload => {
+      realProductData = (Array.isArray(payload?.data) ? payload.data : []).map(normalizeProduct);
+      renderProductList(realProductData);
+    })
+    .catch(error => {
+      console.error('Failed to load products:', error);
+      content.innerHTML = renderProductState('Unable to load products.', true);
+    });
 }
 
 function viewProduct(id) {
-  const product = dummyData.products.find(p => p.id === id);
+  const product = realProductData.find(p => String(p.id) === String(id));
+  if (!product) {
+    document.getElementById('content').innerHTML = renderProductState('Unable to load product.', true);
+    return;
+  }
   const html = `
     <div>
       <button onclick="loadPage('products')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Products</button>
