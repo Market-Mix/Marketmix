@@ -884,6 +884,7 @@
       <button class="btn-contact" onclick="contactSeller()">
         <i class="fa-solid fa-envelope"></i> Contact
       </button>
+      <button id="report-store-btn" title="Report store" style="background:none;border:none;color:#94a3b8;cursor:pointer"><i class="fas fa-flag"></i></button>
     </div>
   </div>
 
@@ -985,6 +986,25 @@
 
   <div id="toast"></div>
 
+  <div id="reportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%">
+      <h3>Report Store</h3>
+      <select id="reportReason" style="width:100%;padding:8px;margin:12px 0">
+        <option value="counterfeit">Counterfeit item</option>
+        <option value="misleading">Misleading listing</option>
+        <option value="prohibited">Prohibited item</option>
+        <option value="offensive">Offensive content</option>
+        <option value="scam">Scam/fraud</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea id="reportDetails" placeholder="Additional details (optional)" style="width:100%;padding:8px;min-height:70px"></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="submitReportBtn" style="flex:1;background:#f97316;color:#fff;border:none;padding:10px;border-radius:6px">Submit Report</button>
+        <button onclick="document.getElementById('reportModal').style.display='none'" style="flex:1;padding:10px;border-radius:6px">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/buyers/notification-manager.js"></script>
   <script src="/buyers/store-id.js"></script>
   <script>
@@ -999,6 +1019,25 @@
     });
   </script>
   <script>
+    document.getElementById('report-store-btn')?.addEventListener('click', () => {
+      document.getElementById('reportModal').style.display = 'flex';
+    });
+    document.getElementById('submitReportBtn')?.addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) { alert('Please log in to report'); return; }
+      const res = await fetch(`https://marketmix-backend.onrender.com/api/reports/store/${resolvedStoreId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          reason: document.getElementById('reportReason').value,
+          details: document.getElementById('reportDetails').value
+        })
+      });
+      const d = await res.json();
+      alert(res.ok ? 'Report submitted. Thank you.' : (d.message || 'Error submitting report'));
+      document.getElementById('reportModal').style.display = 'none';
+    });
+
     // Override renderStoreInfo to use new layout
     const _originalRenderStoreInfo = window.renderStoreInfo;
 

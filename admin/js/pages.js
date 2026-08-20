@@ -42,6 +42,17 @@ async function suspendSeller(id) {
   if (res.ok) { showToast('Seller suspended'); viewAdminSeller(id); } else showToast('Failed to suspend seller', 'error');
 }
 
+function openSuspendModal(sellerId) {
+  const reason = prompt('Suspension reason:');
+  if (!reason) return;
+  const duration = prompt('Duration: 1week, 2weeks, 1month, or indefinite', '1week');
+  if (!['1week', '2weeks', '1month', 'indefinite'].includes(duration)) return alert('Invalid duration');
+  fetch(`${ADMIN_API_BASE}/admin/sellers/${sellerId}/suspend`, {
+    method: 'POST', headers: getAdminAuthHeaders(),
+    body: JSON.stringify({ duration, reason })
+  }).then(r => r.json()).then(() => { showToast('Seller suspended'); viewAdminSeller(sellerId); });
+}
+
 async function reactivateSeller(id) {
   const res = await fetch(`${ADMIN_API_BASE}/admin/sellers/${id}/activate`, { method: 'POST', headers: getAdminAuthHeaders() });
   if (res.ok) { showToast('Seller reactivated'); viewAdminSeller(id); } else showToast('Failed to reactivate seller', 'error');
@@ -1359,7 +1370,7 @@ async function viewAdminSeller(id) {
                 ${['pending','approved','rejected','not_submitted'].includes(String(sellerDisplay.kycStatus || sellerDisplay.kyc_status || sellerDisplay.status || '').toLowerCase()) ? `<button data-seller-kyc-action="reject" onclick="rejectSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"><i class="fas fa-times mr-2"></i>Reject KYC</button>` : ''}
                 ${sellerDisplay.isSuspended
                   ? `<button onclick="reactivateSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"><i class="fas fa-user-check mr-2"></i>Reactivate</button>`
-                  : `<button onclick="suspendSeller('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold"><i class="fas fa-ban mr-2"></i>Suspend</button>`
+                  : `<button onclick="openSuspendModal('${escapeHtml(sellerDisplay.id||'')}')" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold"><i class="fas fa-ban mr-2"></i>Suspend</button>`
                 }
               </div>
             </div>
@@ -1523,87 +1534,222 @@ function viewProduct(id) {
 }
 
 // Orders Management
-function renderOrders() {
-  const html = `
+let adminOrdersState = { page: 1, limit: 20, search: '', status: 'all', orders: [], total: 0 };
+
+async function renderOrders() {
+  document.getElementById('content').innerHTML = `
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Orders Management</h1>
-      
-      <div class="mb-6 flex gap-4">
-        <input type="text" id="orderSearch" placeholder="Search orders..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <select class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-          <option>All Status</option>
-          <option>Pending</option>
-          <option>Processing</option>
-          <option>Shipped</option>
-          <option>Delivered</option>
+      <div class="mb-6 flex gap-4 flex-wrap">
+        <input type="text" id="orderSearch" placeholder="Search by order #, buyer name/email..." class="flex-1 min-w-[220px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="orderStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          <option value="all">All Status</option>
+          <option value="awaiting_payment">Awaiting Payment</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="processing">Processing</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="refunded">Refunded</option>
         </select>
-        <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
+        <button id="orderExportBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export CSV</button>
       </div>
+      <div id="ordersTableContainer" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Loading orders...</p>
+      </div>
+      <div id="ordersPagination" class="mt-4 flex justify-end items-center gap-2"></div>
+    </div>`;
 
-      ${renderTable(['ID', 'Buyer', 'Seller', 'Amount', 'Status', 'Date'], dummyData.orders, [
-        { label: 'View', callback: 'viewOrder' }
-      ])}
-    </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+  document.getElementById('orderSearch').addEventListener('input', (e) => {
+    clearTimeout(window._orderSearchDebounce);
+    window._orderSearchDebounce = setTimeout(() => {
+      adminOrdersState.search = e.target.value.trim();
+      adminOrdersState.page = 1;
+      fetchAdminOrders();
+    }, 350);
+  });
+  document.getElementById('orderStatusFilter').addEventListener('change', (e) => {
+    adminOrdersState.status = e.target.value;
+    adminOrdersState.page = 1;
+    fetchAdminOrders();
+  });
+  document.getElementById('orderExportBtn').addEventListener('click', exportOrdersCSV);
+
+  await fetchAdminOrders();
 }
 
-function viewOrder(id) {
-  const order = dummyData.orders.find(o => o.id === id);
-  const html = `
-    <div>
+async function fetchAdminOrders() {
+  const container = document.getElementById('ordersTableContainer');
+  container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">Loading orders...</p>`;
+  try {
+    const params = new URLSearchParams({ page: adminOrdersState.page, limit: adminOrdersState.limit });
+    if (adminOrdersState.search) params.set('search', adminOrdersState.search);
+    if (adminOrdersState.status !== 'all') params.set('status', adminOrdersState.status);
+
+    const res = await fetch(`${ADMIN_API_BASE}/admin/orders?${params}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load orders');
+
+    adminOrdersState.orders = body?.data?.orders || [];
+    adminOrdersState.total = body?.data?.total || 0;
+
+    if (!adminOrdersState.orders.length) {
+      container.innerHTML = `<p class="text-sm text-gray-600 dark:text-gray-300 text-center py-6">No orders found.</p>`;
+      document.getElementById('ordersPagination').innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = renderTable(
+      ['Order #', 'Buyer', 'Seller(s)', 'Items', 'Amount', 'Status', 'Payment', 'Date'],
+      adminOrdersState.orders.map(o => ({
+        'order#': o.orderNumber,
+        buyer: `${escapeHtml(o.buyerName)}<br><small class="text-gray-500">${escapeHtml(o.buyerEmail)}</small>`,
+        'seller(s)': escapeHtml(o.sellerNames),
+        items: o.itemCount,
+        amount: formatCurrency(o.totalAmount),
+        status: o.status.charAt(0).toUpperCase() + o.status.slice(1),
+        payment: o.paymentStatus,
+        date: new Date(o.createdAt).toLocaleDateString(),
+        id: o.id
+      })),
+      [{ label: 'View', callback: 'viewAdminOrder' }]
+    );
+    renderOrdersPagination();
+  } catch (err) {
+    container.innerHTML = `<p class="text-sm text-red-600 dark:text-red-400">${err.message}</p>`;
+  }
+}
+
+function renderOrdersPagination() {
+  const totalPages = Math.max(1, Math.ceil(adminOrdersState.total / adminOrdersState.limit));
+  document.getElementById('ordersPagination').innerHTML = `
+    <button ${adminOrdersState.page <= 1 ? 'disabled' : ''} onclick="changeOrdersPage(${adminOrdersState.page - 1})" class="px-3 py-1 border rounded ${adminOrdersState.page<=1?'opacity-50':''}">Prev</button>
+    <span class="px-3 py-1 text-sm text-gray-600 dark:text-gray-300">Page ${adminOrdersState.page} of ${totalPages} (${adminOrdersState.total} orders)</span>
+    <button ${adminOrdersState.page >= totalPages ? 'disabled' : ''} onclick="changeOrdersPage(${adminOrdersState.page + 1})" class="px-3 py-1 border rounded ${adminOrdersState.page>=totalPages?'opacity-50':''}">Next</button>`;
+}
+
+function changeOrdersPage(p) { if (p < 1) return; adminOrdersState.page = p; fetchAdminOrders(); }
+
+function exportOrdersCSV() {
+  const rows = [['Order #','Buyer','Email','Amount','Status','Payment','Date']]
+    .concat(adminOrdersState.orders.map(o => [o.orderNumber,o.buyerName,o.buyerEmail,o.totalAmount,o.status,o.paymentStatus,new Date(o.createdAt).toISOString()]));
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `orders-export-${Date.now()}.csv`;
+  a.click();
+}
+
+async function viewAdminOrder(id) {
+  const container = document.getElementById('content');
+  container.innerHTML = `<p class="text-sm text-gray-500 p-6">Loading order...</p>`;
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/orders/${id}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load order');
+
+    const { order, items, vendorOrders, payments, escrow } = body.data;
+    const statusOptions = ['pending','awaiting_payment','confirmed','processing','shipped','delivered','cancelled','refunded','returned'];
+
+    container.innerHTML = `
       <button onclick="loadPage('orders')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Orders</button>
-      
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">${order.id}</h2>
-        
-        <div class="grid grid-cols-2 gap-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <div class="flex justify-between items-start mb-6 flex-wrap gap-4">
           <div>
-            <p class="text-gray-600 dark:text-gray-400">Buyer</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${order.buyer}</p>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">${order.order_number || '#' + order.id.slice(0,8).toUpperCase()}</h2>
+            <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">Placed ${new Date(order.created_at).toLocaleString()}</p>
           </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Seller</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${order.seller}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Amount</p>
-            <p class="font-semibold text-gray-900 dark:text-white">$${order.amount}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Date</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${order.date}</p>
+          <div class="text-right">
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">${formatCurrency(order.totalAmount)}</p>
+            <p class="text-sm text-gray-500">${order.payment_method || ''} · ${order.payment_status}</p>
           </div>
         </div>
 
-        <div class="mb-6">
-          <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Order Timeline</h3>
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white"><i class="fas fa-check"></i></div>
-              <p class="text-xs mt-2">Pending</p>
-            </div>
-            <div class="flex-1 h-px bg-green-500 mt-4"></div>
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white"><i class="fas fa-check"></i></div>
-              <p class="text-xs mt-2">Processing</p>
-            </div>
-            <div class="flex-1 h-px bg-blue-500 mt-4"></div>
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white"><i class="fas fa-box"></i></div>
-              <p class="text-xs mt-2">Shipped</p>
-            </div>
-            <div class="flex-1 h-px bg-gray-300 mt-4"></div>
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white"><i class="fas fa-truck"></i></div>
-              <p class="text-xs mt-2">Delivered</p>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <p class="text-xs uppercase text-gray-500 font-semibold mb-1">Buyer</p>
+            <p class="font-semibold text-gray-900 dark:text-white">${escapeHtml(order.buyerName)}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(order.buyer_email)}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">${escapeHtml(order.buyer_phone || '')}</p>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <p class="text-xs uppercase text-gray-500 font-semibold mb-1">Shipping Address</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(order.shipping_address || '—')}</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(order.shipping_city || '')} ${escapeHtml(order.shipping_state || '')}</p>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <p class="text-xs uppercase text-gray-500 font-semibold mb-1">Order Status</p>
+            <select id="orderStatusSelect" class="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:text-white">
+              ${statusOptions.map(s => `<option value="${s}" ${s === order.status ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+            <button onclick="updateAdminOrderStatus('${order.id}')" class="mt-2 w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">Update Status</button>
           </div>
         </div>
-      </div>
-    </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Items</h3>
+        <div class="space-y-3 mb-6">
+          ${items.map(it => `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <img src="${it.main_image_url || ''}" class="w-12 h-12 rounded object-cover bg-gray-200">
+              <div class="flex-1">
+                <p class="font-semibold text-gray-900 dark:text-white text-sm">${escapeHtml(it.product_name || 'Product')}</p>
+                <p class="text-xs text-gray-500">Sold by ${escapeHtml(it.seller_name || 'Unknown')} · Qty ${it.quantity}</p>
+              </div>
+              <p class="font-semibold text-gray-900 dark:text-white">${formatCurrency(it.price_at_purchase * it.quantity)}</p>
+            </div>`).join('')}
+        </div>
+
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Vendor Suborders</h3>
+        <div class="space-y-2 mb-6">
+          ${vendorOrders.map(vo => `
+            <div class="flex justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm">
+              <span>${vo.suborder_number || vo.id.slice(0,8)} — ${escapeHtml(vo.seller_name)}</span>
+              <span class="font-semibold">${vo.status} · ${formatCurrency(vo.subtotal)}</span>
+            </div>`).join('') || '<p class="text-sm text-gray-500">No vendor suborders.</p>'}
+        </div>
+
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Payments</h3>
+        <div class="space-y-2">
+          ${payments.map(p => `
+            <div class="flex justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm">
+              <span>${p.provider} · ${p.provider_reference}</span>
+              <span class="font-semibold">${p.status} · ${formatCurrency(p.amount)}</span>
+            </div>`).join('') || '<p class="text-sm text-gray-500">No payment records.</p>'}
+        </div>
+
+        ${escrow.length ? `
+        <h3 class="font-semibold text-gray-900 dark:text-white mt-6 mb-3">Escrow</h3>
+        <div class="space-y-2">
+          ${escrow.map(e => `
+            <div class="flex justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm">
+              <span>Seller ${e.seller_id.slice(0,8)}</span>
+              <span class="font-semibold">${e.status} · ${formatCurrency(e.amount)}</span>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+  } catch (err) {
+    container.innerHTML = `<p class="text-sm text-red-600 p-6">${err.message}</p>`;
+  }
+}
+
+async function updateAdminOrderStatus(orderId) {
+  const status = document.getElementById('orderStatusSelect').value;
+  const reason = prompt('Reason for this status change (optional):') || '';
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { ...getAdminAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, reason })
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to update status');
+    showToast('Order status updated');
+    viewAdminOrder(orderId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 // Categories Management

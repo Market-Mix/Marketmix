@@ -123,6 +123,7 @@
             cursor:pointer;
             transition:all 0.2s ease
           ">❤️ Add to Wishlist</button>
+          <button id="report-product-btn" title="Report" style="background:none;border:none;color:#94a3b8;cursor:pointer"><i class="fas fa-flag"></i></button>
 
           <div id="product-share-icons" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px;">
             <button id="share-whatsapp" type="button" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#25D366;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;"> <i class="fab fa-whatsapp"></i> WhatsApp</button>
@@ -178,6 +179,24 @@
   ">✕</button>
   <img id="mm-lightbox-img" src="" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;">
 </div>
+<div id="reportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%">
+    <h3>Report Product</h3>
+    <select id="reportReason" style="width:100%;padding:8px;margin:12px 0">
+      <option value="counterfeit">Counterfeit item</option>
+      <option value="misleading">Misleading listing</option>
+      <option value="prohibited">Prohibited item</option>
+      <option value="offensive">Offensive content</option>
+      <option value="scam">Scam/fraud</option>
+      <option value="other">Other</option>
+    </select>
+    <textarea id="reportDetails" placeholder="Additional details (optional)" style="width:100%;padding:8px;min-height:70px"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="submitReportBtn" style="flex:1;background:#f97316;color:#fff;border:none;padding:10px;border-radius:6px">Submit Report</button>
+      <button onclick="document.getElementById('reportModal').style.display='none'" style="flex:1;padding:10px;border-radius:6px">Cancel</button>
+    </div>
+  </div>
+</div>
   <!-- Scripts -->
 
   <script src="wishlist-util.js"></script>
@@ -193,6 +212,26 @@
   <script src="js/product-page.js"></script>
   <script src="js/components/ProductVideo.js"></script>
   <script>
+    document.getElementById('report-product-btn')?.addEventListener('click', () => {
+      document.getElementById('reportModal').style.display = 'flex';
+    });
+    document.getElementById('submitReportBtn')?.addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) { alert('Please log in to report'); return; }
+      const productId = new URLSearchParams(location.search).get('id');
+      const res = await fetch(`https://marketmix-backend.onrender.com/api/reports/product/${productId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          reason: document.getElementById('reportReason').value,
+          details: document.getElementById('reportDetails').value
+        })
+      });
+      const d = await res.json();
+      alert(res.ok ? 'Report submitted. Thank you.' : (d.message || 'Error submitting report'));
+      document.getElementById('reportModal').style.display = 'none';
+    });
+
 function getToken() {
   return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
 }
