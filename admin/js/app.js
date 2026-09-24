@@ -1012,21 +1012,66 @@ function deleteSeller(id) {
   showToast('Seller deletion is not implemented because no real backend workflow exists.', 'error');
 }
 
-// Buyer actions: toggle status, delete
-function toggleBuyerStatus(id) {
-  const b = dummyData.buyers.find(x => x.id === id);
-  if (!b) return showToast('Buyer not found', 'error');
-  b.status = b.status === 'Active' ? 'Suspended' : 'Active';
-  showToast(`Buyer ${b.status === 'Active' ? 'activated' : 'suspended'}`);
-  if (currentPage === 'buyers') renderBuyers(); else if (typeof viewBuyer === 'function') try { viewBuyer(id); } catch(e){}
+async function productAction(id, path, method = 'POST', body) {
+  const res = await fetch(`${SELLER_KYC_API_BASE}/admin/products/${encodeURIComponent(id)}${path}`, {
+    method,
+    headers: { ...getAdminAuthHeaders(), 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.message || 'Action failed');
+  return data;
 }
 
-function deleteBuyer(id) {
-  const idx = dummyData.buyers.findIndex(x => x.id === id);
-  if (idx === -1) return showToast('Buyer not found', 'error');
-  dummyData.buyers.splice(idx, 1);
-  showToast('Buyer deleted');
-  renderBuyers();
+function openProductDisableModal(id) {
+  openModal('Disable Product', 'The seller is notified with this reason.',
+    async (reason) => {
+      try { await productAction(id, '/deactivate', 'POST', { reason }); showToast('Product disabled'); viewProduct(id); }
+      catch (e) { showToast(e.message, 'error'); }
+    },
+    { requiresReason: true, placeholder: 'Why is this product being disabled?', confirmText: 'Disable', confirmClass: 'bg-amber-600' });
+}
+
+async function activateProduct(id) {
+  try { await productAction(id, '/activate'); showToast('Product activated'); viewProduct(id); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteProduct(id) {
+  try { await productAction(id, '', 'DELETE'); showToast('Product deleted'); loadPage('products'); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+async function buyerAction(id, path, method = 'POST', body) {
+  const res = await fetch(`${SELLER_KYC_API_BASE}/admin/buyers/${encodeURIComponent(id)}${path}`, {
+    method,
+    headers: { ...getAdminAuthHeaders(), 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.message || 'Action failed');
+  return data;
+}
+
+function openBuyerSuspendModal(id) {
+  openModal('Suspend Buyer', 'Provide a reason (min 10 characters). Duration: 1week, 2weeks, 1month or indefinite.',
+    async (reason) => {
+      const duration = prompt('Duration: 1week, 2weeks, 1month, indefinite', '1week');
+      if (!['1week', '2weeks', '1month', 'indefinite'].includes(duration)) return showToast('Invalid duration', 'error');
+      try { await buyerAction(id, '/suspend', 'POST', { duration, reason }); showToast('Buyer suspended'); viewBuyer(id); }
+      catch (e) { showToast(e.message, 'error'); }
+    },
+    { requiresReason: true, placeholder: 'Reason for suspension...', confirmText: 'Suspend', confirmClass: 'bg-amber-600' });
+}
+
+async function unsuspendBuyer(id) {
+  try { await buyerAction(id, '/unsuspend'); showToast('Buyer reactivated'); viewBuyer(id); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteBuyer(id) {
+  try { await buyerAction(id, '', 'DELETE'); showToast('Buyer deleted'); loadPage('buyers'); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
 // Card component

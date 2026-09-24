@@ -6,6 +6,7 @@ const RESOLVED_API_BASE_URL = String(
   window.API_BASE_URL || window.CONFIG?.API_BASE_URL || DEFAULT_API_BASE_URL || ''
 ).replace(/\/$/, '');
 window.API_BASE_URL = RESOLVED_API_BASE_URL;
+const nativeFetch = window.fetch.bind(window);
 
 function getToken() {
   return sessionStorage.getItem('token')
@@ -56,7 +57,7 @@ async function apiCall(path, options = {}) {
   }
 
   try {
-    const response = await fetch(url, init);
+    const response = await apiFetch(url, init);
     const text = await response.text();
     let data = null;
 
@@ -75,6 +76,28 @@ async function apiCall(path, options = {}) {
   } catch (error) {
     return { ok: false, status: 0, data: null, error: error.message || String(error) };
   }
+}
+
+async function apiFetch(url, options = {}) {
+  const response = await nativeFetch(url, options);
+
+  if (response.status === 403) {
+    const data = await response.clone().json().catch(() => null);
+    if (data?.errors?.code === 'ACCOUNT_SUSPENDED') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('buyer_token');
+      sessionStorage.setItem('suspended', JSON.stringify(data.errors));
+      window.location.href = '/buyers/login%20for%20buyers.html';
+    }
+  }
+
+  return response;
+}
+
+window.apiFetch = apiFetch;
+if (!window.__marketmixSuspensionGuardInstalled) {
+  window.fetch = apiFetch;
+  window.__marketmixSuspensionGuardInstalled = true;
 }
 
 function updateNotificationBadge(count) {

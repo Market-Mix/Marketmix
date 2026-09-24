@@ -1,20 +1,3 @@
-// Product actions: toggle status, delete
-function toggleProductStatus(id) {
-  const p = dummyData.products.find(x => x.id === id);
-  if (!p) return showToast('Product not found', 'error');
-  p.status = p.status === 'Active' ? 'Inactive' : 'Active';
-  showToast(`Product ${p.status === 'Active' ? 'activated' : 'deactivated'}`);
-  if (currentPage === 'products') renderProducts(); else if (typeof viewProduct === 'function') try { viewProduct(id); } catch(e){}
-}
-
-function deleteProduct(id) {
-  const idx = dummyData.products.findIndex(x => x.id === id);
-  if (idx === -1) return showToast('Product not found', 'error');
-  dummyData.products.splice(idx, 1);
-  showToast('Product deleted');
-  renderProducts();
-}
-
 // Notification bell: show notifications dropdown
 function toggleNotificationBell() {
   // Find the bell button specifically wired to toggleNotificationBell

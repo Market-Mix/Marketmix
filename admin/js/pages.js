@@ -1118,72 +1118,96 @@ function renderDashboard() {
   }, 200);
 }
 
-// Buyers Management
-function renderBuyers() {
-  const html = `
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Buyers Management</h1>
-      
-      <div class="mb-6 flex gap-4">
-        <input type="text" id="buyerSearch" placeholder="Search buyers..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
-      </div>
-
-      ${renderTable(['ID', 'Name', 'Email', 'Phone', 'Status', 'Join Date'], dummyData.buyers, [
-        { label: 'View', callback: 'viewBuyer' }
-      ])}
-    </div>
-  `;
-  document.getElementById('content').innerHTML = html;
-  
-  document.getElementById('buyerSearch').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    const filtered = dummyData.buyers.filter(b => 
-      b.name.toLowerCase().includes(query) || b.email.toLowerCase().includes(query)
-    );
-    const tableHtml = renderTable(['ID', 'Name', 'Email', 'Phone', 'Status', 'Join Date'], filtered, [
-      { label: 'View', callback: 'viewBuyer' }
-    ]);
-    document.querySelector('.overflow-x-auto').outerHTML = tableHtml;
-  });
+// Buyers Management (live)
+async function fetchAdminBuyers(search = '', status = 'all') {
+  const p = new URLSearchParams({ page: 1, limit: 100, status });
+  if (search) p.set('search', search);
+  const res = await fetch(`${ADMIN_API_BASE}/admin/buyers?${p}`, { headers: getAdminAuthHeaders() });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.message || 'Failed to load buyers');
+  return body.data;
 }
 
-function viewBuyer(id) {
-  const buyer = dummyData.buyers.find(b => b.id === id);
-  const html = `
+function renderBuyers() {
+  document.getElementById('content').innerHTML = `
     <div>
-      <button onclick="loadPage('buyers')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Buyers</button>
-      
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">${buyer.name}</h2>
-        
-        <div class="grid grid-cols-2 gap-6 mb-6">
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Email</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${buyer.email}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Phone</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${buyer.phone}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Joined</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${buyer.joinDate}</p>
-          </div>
-        </div>
-
-        <div class="flex gap-3">
-          <button onclick="toggleBuyerStatus('${buyer.id}')" class="px-6 py-2 ${buyer.status === 'Active' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg">
-            ${buyer.status === 'Active' ? 'Suspend' : 'Activate'} Buyer
-          </button>
-          <button onclick="openModal('Delete Buyer', 'Are you sure you want to delete this buyer?', () => { deleteBuyer('${buyer.id}'); })" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-            Delete Buyer
-          </button>
-        </div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Buyers Management</h1>
+      <div id="buyerStats" class="grid grid-cols-3 gap-4 mb-6"></div>
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
+        <input id="buyerSearch" placeholder="Search name, email, phone..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="buyerStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          <option value="all">All</option><option value="active">Active</option><option value="suspended">Suspended</option>
+        </select>
       </div>
-    </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+      <div id="buyerTableContainer" class="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <p class="text-sm text-gray-500">Loading buyers...</p>
+      </div>
+    </div>`;
+
+  async function reload() {
+    const box = document.getElementById('buyerTableContainer');
+    try {
+      const { buyers, stats } = await fetchAdminBuyers(
+        document.getElementById('buyerSearch').value.trim(),
+        document.getElementById('buyerStatusFilter').value);
+      document.getElementById('buyerStats').innerHTML = [
+        ['Total Buyers', stats.total], ['Suspended', stats.suspended], ['New (30d)', stats.new30d]
+      ].map(([l, v]) => `<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <p class="text-xs text-gray-500 uppercase">${l}</p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white">${v}</p></div>`).join('');
+      box.innerHTML = buyers.length
+        ? renderTable(['ID', 'Name', 'Email', 'Phone', 'Orders', 'Total Spent', 'Status', 'Join Date'],
+            buyers.map(b => ({ ...b, id: b.id, totalspent: formatCurrency(b.totalSpent),
+              joinDate: new Date(b.joinDate).toLocaleDateString() })),
+            [{ label: 'View', callback: 'viewBuyer' }])
+        : '<p class="text-center text-sm text-gray-500 py-6">No buyers found.</p>';
+    } catch (e) { box.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(e.message)}</p>`; }
+  }
+  document.getElementById('buyerSearch').addEventListener('input',
+    () => { clearTimeout(window._buyerDebounce); window._buyerDebounce = setTimeout(reload, 350); });
+  document.getElementById('buyerStatusFilter').addEventListener('change', reload);
+  reload();
+}
+
+async function viewBuyer(id) {
+  const c = document.getElementById('content');
+  c.innerHTML = '<p class="p-6 text-sm text-gray-500">Loading buyer...</p>';
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/buyers/${encodeURIComponent(id)}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load buyer');
+    const b = body.data.buyer;
+    const cell = (l, v) => `<div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">${l}</p><p class="font-semibold text-gray-900 dark:text-white break-words">${v}</p></div>`;
+    const addr = b.address ? [b.address.address_line1, b.address.city, b.address.state, b.address.country].filter(Boolean).join(', ') : '—';
+
+    c.innerHTML = `
+      <button onclick="loadPage('buyers')" class="mb-6 text-blue-600 hover:underline">← Back to Buyers</button>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="flex justify-between items-start mb-6 flex-wrap gap-3">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white">${escapeHtml(b.name)}</h2>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold ${b.suspended ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${b.suspended ? 'Suspended' : 'Active'}</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          ${cell('Email', escapeHtml(b.email))}${cell('Phone', escapeHtml(b.phone || '—'))}
+          ${cell('Joined', new Date(b.joinDate).toLocaleDateString())}
+          ${cell('Total Orders', b.totalOrders)}${cell('Total Spent', formatCurrency(b.totalSpent))}
+          ${cell('Refund Cases', b.refundCases)}${cell('Default Address', escapeHtml(addr))}
+          ${b.suspended ? cell('Suspension', escapeHtml(b.suspensionReason || '—') + '<br><small>' + (b.suspendedUntil ? 'Until ' + new Date(b.suspendedUntil).toLocaleDateString() : 'Indefinite') + '</small>') : ''}
+        </div>
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Recent Orders</h3>
+        <div class="space-y-2 mb-6">
+          ${b.recentOrders.map(o => `<div class="flex justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm cursor-pointer" onclick="viewAdminOrder('${o.id}')">
+            <span>${escapeHtml(o.orderNumber)} · ${new Date(o.createdAt).toLocaleDateString()}</span>
+            <span class="font-semibold">${escapeHtml(o.status)} · ${formatCurrency(o.amount)}</span></div>`).join('') || '<p class="text-sm text-gray-500">No orders yet.</p>'}
+        </div>
+        <div class="flex gap-3 flex-wrap">
+          ${b.suspended
+            ? `<button onclick="unsuspendBuyer('${b.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Reactivate Buyer</button>`
+            : `<button onclick="openBuyerSuspendModal('${b.id}')" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">Suspend Buyer</button>`}
+          <button onclick="openModal('Delete Buyer','This soft-deletes the account and frees the email. Continue?', () => deleteBuyer('${b.id}'))" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete Buyer</button>
+        </div>
+      </div>`;
+  } catch (e) { c.innerHTML = `<p class="p-6 text-sm text-red-600">${escapeHtml(e.message)}</p>`; }
 }
 
 // Sellers Management
@@ -1387,150 +1411,89 @@ async function viewAdminSeller(id) {
 }
 
 // Products Management
-let realProductData = [];
-
-function getProductStatus(product) {
-  if (product.is_active === false) return 'Inactive';
-  if (Number(product.stock_quantity) === 0) return 'Out of Stock';
-  if (Number(product.stock_quantity) <= 10) return 'Low Stock';
-  return 'Active';
-}
-
-function normalizeProduct(product) {
-  return {
-    ...product,
-    id: product.id ?? null,
-    name: product.name ?? null,
-    category: product.category_name ?? product.category ?? null,
-    seller: null,
-    price: product.price ?? null,
-    stock: product.stock_quantity ?? null,
-    status: getProductStatus(product)
-  };
-}
-
 function renderProductState(message, isError = false) {
   const color = isError ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300';
   return `<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center"><p class="${color}">${message}</p></div>`;
 }
 
-function renderProductTable(products) {
-  return products.length
-    ? renderTable(['ID', 'Name', 'Category', 'Seller', 'Price', 'Stock', 'Status'], products, [{ label: 'View', callback: 'viewProduct' }])
-    : renderProductState('No products found.');
-}
-
-function renderProductList(products) {
-  const categories = ['All Categories', ...Array.from(new Set(products.map(product => product.category).filter(Boolean)))];
-  const statuses = ['All Statuses', ...Array.from(new Set(products.map(product => product.status).filter(Boolean)))];
-  const content = document.getElementById('content');
-
-  content.innerHTML = `
+async function renderProducts() {
+  document.getElementById('content').innerHTML = `
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Products Management</h1>
+      <div id="productStats" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6"></div>
       <div class="mb-6 flex flex-col sm:flex-row gap-4">
-        <input type="text" id="productSearch" placeholder="Search products..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <select id="productCategoryFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-          ${categories.map(category => `<option value="${category}">${category}</option>`).join('')}
-        </select>
+        <input id="productSearch" placeholder="Search name, SKU, seller..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
         <select id="productStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-          ${statuses.map(status => `<option value="${status}">${status}</option>`).join('')}
+          <option value="all">All</option><option value="active">Active</option><option value="inactive">Inactive</option>
+          <option value="out-of-stock">Out of stock</option><option value="reported">Reported</option>
         </select>
-        <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
       </div>
-      <div id="productTableContainer">${renderProductTable(products)}</div>
-    </div>
-  `;
+      <div id="productTableContainer" class="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <p class="text-sm text-gray-500">Loading products...</p></div>
+    </div>`;
 
-  const applyFilters = () => {
-    const query = document.getElementById('productSearch').value.trim().toLowerCase();
-    const category = document.getElementById('productCategoryFilter').value;
-    const status = document.getElementById('productStatusFilter').value;
-    const filteredProducts = products.filter(product => {
-      const searchable = [product.id, product.name, product.category, product.seller, product.price, product.stock, product.status]
-        .map(value => value == null ? '' : String(value)).join(' ').toLowerCase();
-      return (!query || searchable.includes(query))
-        && (category === 'All Categories' || product.category === category)
-        && (status === 'All Statuses' || product.status === status);
-    });
-    document.getElementById('productTableContainer').innerHTML = renderProductTable(filteredProducts);
-  };
-
-  document.getElementById('productSearch').addEventListener('input', applyFilters);
-  document.getElementById('productCategoryFilter').addEventListener('change', applyFilters);
-  document.getElementById('productStatusFilter').addEventListener('change', applyFilters);
-}
-
-function renderProducts() {
-  const content = document.getElementById('content');
-  content.innerHTML = renderProductState('Loading products...');
-  const apiBase = window.ADMIN_API_BASE || (window.location.protocol === 'file:'
-    ? 'http://localhost:5000/api'
-    : 'https://marketmix-backend.onrender.com/api');
-
-  fetch(`${apiBase}/products?page=1&limit=1000`)
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(payload => {
-      realProductData = (Array.isArray(payload?.data) ? payload.data : []).map(normalizeProduct);
-      renderProductList(realProductData);
-    })
-    .catch(error => {
-      console.error('Failed to load products:', error);
-      content.innerHTML = renderProductState('Unable to load products.', true);
-    });
-}
-
-function viewProduct(id) {
-  const product = realProductData.find(p => String(p.id) === String(id));
-  if (!product) {
-    document.getElementById('content').innerHTML = renderProductState('Unable to load product.', true);
-    return;
+  async function reload() {
+    const box = document.getElementById('productTableContainer');
+    try {
+      const p = new URLSearchParams({ limit: 100, status: document.getElementById('productStatusFilter').value });
+      const q = document.getElementById('productSearch').value.trim(); if (q) p.set('search', q);
+      const res = await fetch(`${ADMIN_API_BASE}/admin/products?${p}`, { headers: getAdminAuthHeaders() });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.message || 'Failed to load products');
+      const { products, stats } = body.data;
+      document.getElementById('productStats').innerHTML = [
+        ['Total', stats.total], ['Active', stats.active], ['Inactive', stats.inactive],
+        ['Out of stock', stats.out_of_stock], ['Reported', stats.reported]
+      ].map(([l, v]) => `<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4"><p class="text-xs text-gray-500 uppercase">${l}</p><p class="text-2xl font-bold text-gray-900 dark:text-white">${v}</p></div>`).join('');
+      box.innerHTML = products.length
+        ? renderTable(['ID', 'Name', 'Category', 'Seller', 'Price', 'Stock', 'Reports', 'Status'],
+            products.map(x => ({ ...x, price: formatCurrency(x.price), name: escapeHtml(x.name), seller: escapeHtml(x.seller) })),
+            [{ label: 'View', callback: 'viewProduct' }])
+        : '<p class="text-center text-sm text-gray-500 py-6">No products found.</p>';
+    } catch (e) { box.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(e.message)}</p>`; }
   }
-  const html = `
-    <div>
-      <button onclick="loadPage('products')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Products</button>
-      
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">${product.name}</h2>
-        
-        <div class="grid grid-cols-2 gap-6 mb-6">
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Category</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.category}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Seller</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.seller}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Price</p>
-            <p class="font-semibold text-gray-900 dark:text-white">$${product.price}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Stock</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.stock}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Status</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.status}</p>
-          </div>
-        </div>
+  document.getElementById('productSearch').addEventListener('input',
+    () => { clearTimeout(window._prodDebounce); window._prodDebounce = setTimeout(reload, 350); });
+  document.getElementById('productStatusFilter').addEventListener('change', reload);
+  reload();
+}
 
-        <div class="flex gap-3">
-          <button onclick="toggleProductStatus('${product.id}')" class="px-6 py-2 ${product.status === 'Active' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg">
-            ${product.status === 'Active' ? 'Deactivate' : 'Activate'} Product
-          </button>
-          <button onclick="openModal('Delete Product','Are you sure you want to delete this product?', () => { deleteProduct('${product.id}'); })" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-            Delete Product
-          </button>
+async function viewProduct(id) {
+  const c = document.getElementById('content');
+  c.innerHTML = '<p class="p-6 text-sm text-gray-500">Loading product...</p>';
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/products/${encodeURIComponent(id)}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load product');
+    const p = body.data.product;
+    const cell = (l, v) => `<div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">${l}</p><p class="font-semibold text-gray-900 dark:text-white break-words">${v}</p></div>`;
+    const fee = p.sellerPrice ? formatCurrency(p.price - p.sellerPrice) : '—';
+    c.innerHTML = `
+      <button onclick="loadPage('products')" class="mb-6 text-blue-600 hover:underline">← Back to Products</button>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="flex gap-4 items-start mb-6 flex-wrap">
+          <img src="${escapeHtml(p.image || '')}" class="w-24 h-24 rounded-lg object-cover bg-gray-200">
+          <div class="flex-1"><h2 class="text-2xl font-bold text-gray-900 dark:text-white">${escapeHtml(p.name)}</h2>
+            <p class="text-sm text-gray-500 mt-1">${escapeHtml(p.description || '').slice(0, 200)}</p></div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold ${p.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${p.adminDisabled ? 'Disabled by Admin' : p.isActive ? 'Active' : 'Inactive'}</span>
         </div>
-      </div>
-    </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          ${cell('Seller', escapeHtml(p.seller) + '<br><small>' + escapeHtml(p.sellerEmail || '') + '</small>')}
+          ${cell('Category', escapeHtml(p.category))}${cell('SKU', escapeHtml(p.sku || '—'))}
+          ${cell('Listed Price', formatCurrency(p.price))}${cell('Seller Payout Price', p.sellerPrice ? formatCurrency(p.sellerPrice) : '—')}
+          ${cell('Platform Fee', fee)}${cell('Stock', p.stock)}${cell('Units Sold', p.unitsSold)}${cell('Views', p.views)}
+          ${p.adminDisabled ? cell('Disabled Reason', escapeHtml(p.disabledReason || '—')) : ''}
+        </div>
+        ${p.reports.length ? `<h3 class="font-semibold text-gray-900 dark:text-white mb-3">Reports (${p.reports.length})</h3>
+          <div class="space-y-2 mb-6">${p.reports.map(r => `<div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm"><b>${escapeHtml(r.reason)}</b> · ${new Date(r.created_at).toLocaleDateString()}<br>${escapeHtml(r.details || '')}</div>`).join('')}</div>` : ''}
+        <div class="flex gap-3 flex-wrap">
+          ${p.isActive
+            ? `<button onclick="openProductDisableModal('${p.id}')" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">Disable Product</button>`
+            : `<button onclick="activateProduct('${p.id}')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Approve / Activate</button>`}
+          <button onclick="openModal('Delete Product','Soft-deletes the listing. Continue?', () => deleteProduct('${p.id}'))" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete Product</button>
+        </div>
+      </div>`;
+  } catch (e) { c.innerHTML = `<p class="p-6 text-sm text-red-600">${escapeHtml(e.message)}</p>`; }
 }
 
 // Orders Management

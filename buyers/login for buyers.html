@@ -40,6 +40,8 @@
 
             <button type="submit" class="login-btn" id="loginBtn">Login to your account</button>
 
+            <div id="loginError" aria-live="polite"></div>
+
             <p class="or">Or continue with</p>
 
             <div class="social-login" id="google-signin-container">
@@ -124,6 +126,10 @@ function getToken() {
                 console.log('📥 Response data:', data);
 
                 showLoading(false);
+
+                if (response.status === 403 && data.errors?.code === 'ACCOUNT_SUSPENDED') {
+                    return showSuspendedNotice(data.errors.reason, data.errors.until);
+                }
 
                 if (response.ok && data.status === 'success') {
                     // Store user data securely
@@ -239,6 +245,10 @@ function getToken() {
 
                 showLoading(false);
 
+                if (apiResponse.status === 403 && data.errors?.code === 'ACCOUNT_SUSPENDED') {
+                    return showSuspendedNotice(data.errors.reason, data.errors.until);
+                }
+
                 if (apiResponse.ok && data.status === 'success') {
                     if (!storeAuthData(data.data.user, data.data.token)) {
                         showLoading(false);
@@ -292,6 +302,20 @@ function getToken() {
         // =====================================================
         // HELPER FUNCTIONS
         // =====================================================
+        function showSuspendedNotice(reason = 'Please contact support for more information.', until) {
+            const when = until ? `until ${new Date(until).toLocaleDateString()}` : 'until further notice';
+            const errorContainer = document.getElementById('loginError');
+            const safeReason = String(reason).replace(/</g, '&lt;');
+
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <div style="border:1px solid #FF7A00;background:#FFF4E8;border-radius:8px;padding:12px;font-size:14px">
+                        <b>Account suspended ${when}</b><br>${safeReason}<br>
+                        <a href="mailto:support@mail.marketmix.africa" style="color:#FF7A00">Contact support</a>
+                    </div>`;
+            }
+        }
+
         function togglePasswordVisibility() {
             const input = document.getElementById('password');
             const icon = event.target.closest('button').querySelector('i');
@@ -481,6 +505,18 @@ function getToken() {
 
         // Real-time email validation
         document.addEventListener('DOMContentLoaded', function() {
+            const suspended = sessionStorage.getItem('suspended');
+            if (suspended) {
+                try {
+                    const details = JSON.parse(suspended);
+                    showSuspendedNotice(details.reason, details.until);
+                } catch (error) {
+                    console.warn('Could not restore suspension notice:', error);
+                } finally {
+                    sessionStorage.removeItem('suspended');
+                }
+            }
+
             const emailInput = document.getElementById('email');
             emailInput.addEventListener('input', function() {
                 if (this.value.length > 3) {
