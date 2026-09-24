@@ -2,7 +2,6 @@
   "rewrites": [
     { "source": "/buyers/:path*", "destination": "/buyers/:path*" },
     { "source": "/sellers/:path*", "destination": "/sellers/:path*" },
-    { "source": "/admin/:path*", "destination": "/admin/:path*" },
-    { "source": "/:acct/:store", "destination": "/buyers/store-id.html?acct=:acct&store=:store" }
+    { "source": "/:acct((?!admin$)[^/]+)/:store", "destination": "/buyers/store-id.html?acct=:acct&store=:store" }
   ]
 }
