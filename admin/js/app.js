@@ -3,8 +3,18 @@ let currentPage = 'dashboard';
 let currentAction = null;
 let sidebarOpen = false;
 
+function hasAdminSession() {
+  return Boolean(localStorage.getItem('adminSession'));
+}
+
+if (!hasAdminSession()) {
+  window.location.replace('login.html');
+}
+
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
+  if (!hasAdminSession()) return;
+
   const initialPage = (window.location.hash || '').replace('#', '').trim() || 'dashboard';
   loadPage(initialPage);
   setupEventListeners();
