@@ -1775,7 +1775,7 @@ async function loadCategories() {
     const p = new URLSearchParams({ status: document.getElementById('catStatus').value });
     const q = document.getElementById('catSearch').value.trim(); if (q) p.set('search', q);
     const { data } = await categoryApi(`?${p}`);
-    window._adminCategories = data.categories;
+    window._adminCategories = data.categories || [];
     grid.innerHTML = data.categories.length ? data.categories.map(c => `
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${c.isActive ? '' : 'opacity-70'}">
         <div class="flex justify-between items-start mb-2 gap-2">
@@ -1860,7 +1860,8 @@ function closeSubModal() { const m = document.getElementById('subModal'); m.clas
 
 async function openSubcategories(catId) {
   ensureSubModal();
-  const cat = window._adminCategories.find(c => c.id === catId);
+  const cat = (window._adminCategories || []).find(c => String(c.id) === String(catId))
+    || { id: catId, name: 'Category' };
   window._subCat = cat;
   document.getElementById('subTitle').textContent = `Subcategories — ${cat.name}`;
   const m = document.getElementById('subModal'); m.classList.remove('hidden'); m.classList.add('flex');
