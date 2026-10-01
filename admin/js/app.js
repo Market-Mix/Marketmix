@@ -1269,22 +1269,14 @@ function deleteReturn(id) {
 }
 
 // Category Functions
-function toggleCategoryStatus(id) {
-  const category = dummyData.categories.find(c => c.id === id);
-  if (category) {
-    category.status = category.status === 'Active' ? 'Inactive' : 'Active';
-    showToast(`Category ${category.status === 'Active' ? 'activated' : 'deactivated'} successfully`, 'success');
-    renderCategories();
-  }
+async function toggleCategoryStatus(id) {
+  try { const r = await categoryApi(`/${id}/toggle`, 'POST'); showToast(r.message); loadCategories(); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
-function deleteCategory(id) {
-  const index = dummyData.categories.findIndex(c => c.id === id);
-  if (index > -1) {
-    dummyData.categories.splice(index, 1);
-    showToast('Category deleted successfully', 'success');
-    renderCategories();
-  }
+async function deleteCategory(id) {
+  try { await categoryApi(`/${id}`, 'DELETE'); showToast('Category deleted'); loadCategories(); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
 // Transaction Functions

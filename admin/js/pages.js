@@ -1715,40 +1715,249 @@ async function updateAdminOrderStatus(orderId) {
   }
 }
 
-// Categories Management
-function renderCategories() {
-  const html = `
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Categories Management</h1>
-      
-      <button onclick="addCategory()" class="mb-6 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">+ Add Category</button>
+// Categories Management (live)
+const categoryApi = async (path = '', method = 'GET', body) => {
+  const res = await fetch(`${ADMIN_API_BASE}/admin/categories${path}`, {
+    method,
+    headers: { ...getAdminAuthHeaders(), 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.message || 'Request failed');
+  return data;
+};
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        ${dummyData.categories.map(cat => `
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 class="font-bold text-gray-900 dark:text-white mb-2">${cat.name}</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">${cat.products} products</p>
-            <div class="flex gap-2">
-              <button onclick="toggleCategoryStatus('${cat.id}')" class="flex-1 px-3 py-2 text-sm ${cat.status === 'Active' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'} rounded hover:opacity-80">
-                ${cat.status === 'Active' ? 'Deactivate' : 'Activate'}
-              </button>
-              <button onclick="openModal('Delete Category', 'Are you sure you want to delete ${cat.name}?', () => { deleteCategory('${cat.id}'); })" class="px-3 py-2 text-sm bg-red-100 text-red-600 rounded hover:opacity-80">Delete</button>
-            </div>
-          </div>
-        `).join('')}
+function renderCategories() {
+  document.getElementById('content').innerHTML = `
+    <div>
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Categories Management</h1>
+        <button onclick="openCategoryForm()" class="px-6 py-2 text-white rounded-lg hover:opacity-90" style="background:#FF7A00">+ Add Category</button>
+      </div>
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
+        <input id="catSearch" placeholder="Search categories..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="catStatus" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          <option value="all">All</option><option value="active">Active</option><option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div id="catGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <p class="text-sm text-gray-500">Loading categories...</p>
       </div>
     </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+
+    <div id="catFormModal" class="hidden fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
+        <h2 id="catFormTitle" class="text-lg font-bold text-gray-900 dark:text-white mb-4">Add Category</h2>
+        <input type="hidden" id="catFormId">
+        <label class="block text-sm text-gray-700 dark:text-gray-300 mb-1">Name</label>
+        <input id="catFormName" maxlength="100" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white mb-3">
+        <label class="block text-sm text-gray-700 dark:text-gray-300 mb-1">Description (optional)</label>
+        <textarea id="catFormDesc" rows="3" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"></textarea>
+        <p id="catFormError" class="text-sm text-red-600 mt-2 hidden"></p>
+        <div class="flex justify-end gap-3 mt-5">
+          <button onclick="closeCategoryForm()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded">Cancel</button>
+          <button id="catFormSave" onclick="saveCategory()" class="px-4 py-2 text-white rounded" style="background:#FF7A00">Save</button>
+        </div>
+      </div>
+    </div>`;
+
+  window._adminCategories = [];
+  document.getElementById('catSearch').addEventListener('input',
+    () => { clearTimeout(window._catDebounce); window._catDebounce = setTimeout(loadCategories, 350); });
+  document.getElementById('catStatus').addEventListener('change', loadCategories);
+  loadCategories();
 }
 
-function addCategory() {
-  const name = prompt('Category name:');
-  if (name) {
-    dummyData.categories.push({ id: 'CAT' + (dummyData.categories.length + 1), name, status: 'Active', products: 0 });
-    renderCategories();
-    showToast('Category added successfully');
-  }
+async function loadCategories() {
+  const grid = document.getElementById('catGrid');
+  if (!grid) return;
+  try {
+    const p = new URLSearchParams({ status: document.getElementById('catStatus').value });
+    const q = document.getElementById('catSearch').value.trim(); if (q) p.set('search', q);
+    const { data } = await categoryApi(`?${p}`);
+    window._adminCategories = data.categories;
+    grid.innerHTML = data.categories.length ? data.categories.map(c => `
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${c.isActive ? '' : 'opacity-70'}">
+        <div class="flex justify-between items-start mb-2 gap-2">
+          <h3 class="font-bold text-gray-900 dark:text-white break-words">${escapeHtml(c.name)}</h3>
+          <span class="px-2 py-1 rounded-full text-xs font-semibold ${c.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${c.isActive ? 'Active' : 'Inactive'}</span>
+        </div>
+        <p class="text-sm text-gray-500 mb-3 break-words">${escapeHtml(c.description) || '—'}</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">${c.productCount} products · ${c.subcategoryCount} subcategories</p>
+        <div class="flex gap-2">
+          <button onclick="openCategoryForm('${c.id}')" class="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:opacity-80">Edit</button>
+          <button onclick="openSubcategories('${c.id}')" class="px-3 py-2 text-sm rounded hover:opacity-80" style="background:#FFF1E3;color:#FF7A00">Subcategories</button>
+          <button onclick="toggleCategoryStatus('${c.id}')" class="flex-1 px-3 py-2 text-sm ${c.isActive ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'} rounded hover:opacity-80">${c.isActive ? 'Deactivate' : 'Activate'}</button>
+          <button onclick="openModal('Delete Category','Delete &quot;${escapeHtml(c.name).replace(/'/g, '')}&quot;? This cannot be undone.', () => deleteCategory('${c.id}'))" class="px-3 py-2 text-sm bg-red-100 text-red-600 rounded hover:opacity-80">Delete</button>
+        </div>
+      </div>`).join('') : '<p class="text-sm text-gray-500">No categories found.</p>';
+  } catch (e) { grid.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(e.message)}</p>`; }
+}
+
+function openCategoryForm(id = null) {
+  const c = id ? window._adminCategories.find(x => x.id === id) : null;
+  document.getElementById('catFormTitle').textContent = c ? 'Edit Category' : 'Add Category';
+  document.getElementById('catFormId').value = c?.id || '';
+  document.getElementById('catFormName').value = c?.name || '';
+  document.getElementById('catFormDesc').value = c?.description || '';
+  document.getElementById('catFormError').classList.add('hidden');
+  const m = document.getElementById('catFormModal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+}
+
+function closeCategoryForm() {
+  const m = document.getElementById('catFormModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+}
+
+async function saveCategory() {
+  const id = document.getElementById('catFormId').value;
+  const name = document.getElementById('catFormName').value.trim();
+  const description = document.getElementById('catFormDesc').value.trim();
+  const err = document.getElementById('catFormError');
+  const btn = document.getElementById('catFormSave');
+  if (name.length < 2) { err.textContent = 'Name must be at least 2 characters'; err.classList.remove('hidden'); return; }
+  btn.disabled = true;
+  try {
+    await categoryApi(id ? `/${id}` : '', id ? 'PUT' : 'POST', { name, description });
+    closeCategoryForm();
+    showToast(id ? 'Category updated' : 'Category created');
+    loadCategories();
+  } catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
+}
+
+// ── Subcategories ────────────────────────────────────────────────────────
+const subApi = async (path, method = 'GET', body) => {
+  const res = await fetch(`${ADMIN_API_BASE}/admin${path}`, {
+    method, headers: { ...getAdminAuthHeaders(), 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const d = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(d?.message || 'Request failed');
+  return d;
+};
+const INP = 'px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white';
+
+function ensureSubModal() {
+  if (document.getElementById('subModal')) return;
+  const m = document.createElement('div');
+  m.id = 'subModal';
+  m.className = 'hidden fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 p-4';
+  m.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="subTitle" class="text-lg font-bold text-gray-900 dark:text-white"></h2>
+        <button onclick="closeSubModal()" class="text-gray-500 text-xl">✕</button>
+      </div>
+      <div id="subList"></div>
+      <div id="subForm" class="hidden"></div>
+    </div>`;
+  document.body.appendChild(m);
+}
+
+function closeSubModal() { const m = document.getElementById('subModal'); m.classList.add('hidden'); m.classList.remove('flex'); loadCategories(); }
+
+async function openSubcategories(catId) {
+  ensureSubModal();
+  const cat = window._adminCategories.find(c => c.id === catId);
+  window._subCat = cat;
+  document.getElementById('subTitle').textContent = `Subcategories — ${cat.name}`;
+  const m = document.getElementById('subModal'); m.classList.remove('hidden'); m.classList.add('flex');
+  await loadSubs();
+}
+
+async function loadSubs() {
+  const list = document.getElementById('subList');
+  document.getElementById('subForm').classList.add('hidden'); list.classList.remove('hidden');
+  list.innerHTML = '<p class="text-sm text-gray-500">Loading...</p>';
+  try {
+    const { data } = await subApi(`/categories/${window._subCat.id}/subcategories`);
+    window._subs = data.subcategories;
+    list.innerHTML = `
+      <button onclick="openSubForm()" class="mb-4 px-4 py-2 text-white rounded-lg text-sm" style="background:#FF7A00">+ Add Subcategory</button>
+      ${data.subcategories.map(s => `
+        <div class="flex items-center justify-between gap-3 p-3 mb-2 rounded-lg bg-gray-50 dark:bg-gray-700 ${s.isActive ? '' : 'opacity-60'}">
+          <div class="min-w-0">
+            <p class="font-semibold text-gray-900 dark:text-white break-words">${escapeHtml(s.name)}</p>
+            <p class="text-xs text-gray-500">${s.fields.length} fields · ${s.productCount} products · ${s.isActive ? 'Active' : 'Inactive'}</p>
+          </div>
+          <div class="flex gap-2 shrink-0">
+            <button onclick="openSubForm('${s.id}')" class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded">Edit</button>
+            <button onclick="toggleSub('${s.id}')" class="px-3 py-1 text-xs ${s.isActive ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'} rounded">${s.isActive ? 'Deactivate' : 'Activate'}</button>
+            <button onclick="deleteSub('${s.id}')" class="px-3 py-1 text-xs bg-red-100 text-red-600 rounded">Delete</button>
+          </div>
+        </div>`).join('') || '<p class="text-sm text-gray-500">No subcategories yet.</p>'}`;
+  } catch (e) { list.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(e.message)}</p>`; }
+}
+
+function fieldRowHtml(f = {}) {
+  const types = ['text', 'select', 'multiselect', 'tags', 'date'];
+  return `<div class="fld-row grid grid-cols-12 gap-2 items-center mb-2">
+    <input class="f-key col-span-2 ${INP}" placeholder="key" value="${escapeHtml(f.key || '')}">
+    <input class="f-label col-span-3 ${INP}" placeholder="Label" value="${escapeHtml(f.label || '')}"
+      oninput="const k=this.closest('.fld-row').querySelector('.f-key'); if(!k.dataset.touched) k.value=this.value.toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')">
+    <select class="f-type col-span-2 ${INP}">${types.map(t => `<option ${t === f.type ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <input class="f-opts col-span-3 ${INP}" placeholder="Options, comma separated" value="${escapeHtml((f.options || []).join(', '))}">
+    <label class="col-span-1 text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1"><input type="checkbox" class="f-req" ${f.required ? 'checked' : ''}>Req</label>
+    <button type="button" onclick="this.closest('.fld-row').remove()" class="col-span-1 text-red-600">✕</button>
+  </div>`;
+}
+
+function openSubForm(id = null) {
+  const s = id ? window._subs.find(x => x.id === id) : null;
+  window._editSubId = id;
+  document.getElementById('subList').classList.add('hidden');
+  const f = document.getElementById('subForm'); f.classList.remove('hidden');
+  f.innerHTML = `
+    <label class="block text-sm text-gray-700 dark:text-gray-300 mb-1">Subcategory name</label>
+    <input id="subName" maxlength="100" class="w-full mb-4 ${INP}" value="${escapeHtml(s?.name || '')}">
+    <div class="flex justify-between items-center mb-2">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">Product fields (shown to sellers)</p>
+      <button type="button" onclick="document.getElementById('fldRows').insertAdjacentHTML('beforeend', fieldRowHtml())" class="text-sm" style="color:#FF7A00">+ Add field</button>
+    </div>
+    <div id="fldRows">${(s?.fields || []).map(fieldRowHtml).join('')}</div>
+    <p id="subError" class="text-sm text-red-600 mt-2 hidden"></p>
+    <div class="flex justify-end gap-3 mt-5">
+      <button onclick="loadSubs()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded">Back</button>
+      <button id="subSave" onclick="saveSub()" class="px-4 py-2 text-white rounded" style="background:#FF7A00">Save</button>
+    </div>`;
+  f.querySelectorAll('.f-key').forEach(k => k.addEventListener('input', () => k.dataset.touched = '1'));
+}
+
+function collectFields() {
+  return [...document.querySelectorAll('#fldRows .fld-row')].map(r => {
+    const type = r.querySelector('.f-type').value;
+    const o = { key: r.querySelector('.f-key').value.trim(), label: r.querySelector('.f-label').value.trim(),
+                type, required: r.querySelector('.f-req').checked };
+    if (['select', 'multiselect'].includes(type))
+      o.options = r.querySelector('.f-opts').value.split(',').map(x => x.trim()).filter(Boolean);
+    return o;
+  });
+}
+
+async function saveSub() {
+  const err = document.getElementById('subError'), btn = document.getElementById('subSave');
+  const body = { name: document.getElementById('subName').value.trim(), fields: collectFields() };
+  btn.disabled = true;
+  try {
+    const id = window._editSubId;
+    await subApi(id ? `/subcategories/${id}` : `/categories/${window._subCat.id}/subcategories`, id ? 'PUT' : 'POST', body);
+    showToast(id ? 'Subcategory updated' : 'Subcategory created');
+    await loadSubs();
+  } catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleSub(id) {
+  try { const r = await subApi(`/subcategories/${id}/toggle`, 'POST'); showToast(r.message); loadSubs(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteSub(id) {
+  if (!confirm('Delete this subcategory? This cannot be undone.')) return;
+  try { await subApi(`/subcategories/${id}`, 'DELETE'); showToast('Subcategory deleted'); loadSubs(); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
 // Reports & Analytics
