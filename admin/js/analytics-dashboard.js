@@ -1,277 +1,170 @@
-const analyticsData = {
-  kpis: [
-    { title: 'Total Revenue', value: '$4,825,930', badge: '+18.2%', badgeClass: 'bg-emerald-50 text-emerald-600' },
-    { title: 'Total Orders', value: '94,382', badge: '+9%', badgeClass: 'bg-emerald-50 text-emerald-600' },
-    { title: 'Total Buyers', value: '38,511', badge: '+14%', badgeClass: 'bg-emerald-50 text-emerald-600' },
-    { title: 'Active Sellers', value: '4,628', badge: '+7%', badgeClass: 'bg-emerald-50 text-emerald-600' },
-    { title: 'Refund Rate', value: '1.8%', badge: '-0.4%', badgeClass: 'bg-red-50 text-red-600' },
-    { title: 'Completed Withdrawals', value: '$1,930,000' },
-    { title: 'Conversion Rate', value: '6.2%' },
-    { title: 'Marketplace Health', value: '98%', indicator: true }
-  ],
-  topCategories: [
-    { category: 'Electronics', orders: '24,120', revenue: '$1,240,000', growth: '+18%', conversion: '7.9%' },
-    { category: 'Fashion', orders: '19,560', revenue: '$965,400', growth: '+12%', conversion: '6.2%' },
-    { category: 'Home', orders: '12,850', revenue: '$712,300', growth: '+9%', conversion: '5.6%' },
-    { category: 'Gaming', orders: '8,340', revenue: '$398,200', growth: '+15%', conversion: '6.8%' },
-    { category: 'Beauty', orders: '7,230', revenue: '$312,140', growth: '+7%', conversion: '4.9%' }
-  ],
-  topProducts: [
-    { product: 'Wireless Headphones', seller: 'TechHub', orders: '6,480', revenue: '$513,000', rating: '4.8' },
-    { product: 'Premium Sneakers', seller: 'Fashion Pro', orders: '5,720', revenue: '$448,500', rating: '4.7' },
-    { product: 'Smartwatch Pro', seller: 'Gadget World', orders: '5,040', revenue: '$369,600', rating: '4.9' },
-    { product: 'Designer Bag', seller: 'Luxury Lane', orders: '4,390', revenue: '$391,500', rating: '4.6' },
-    { product: 'LED Desk Lamp', seller: 'Home Essentials', orders: '4,120', revenue: '$193,800', rating: '4.5' }
-  ],
-  activityFeed: [
-    'New Order • ORD-9145 • $1,120 • 2m ago',
-    'New Seller Registration • MoonCart • 5m ago',
-    'Product Approved • Smart Leisure Watch • 12m ago',
-    'Refund Requested • ORD-9098 • $84 • 21m ago',
-    'Withdrawal Approved • WD-20425 • 35m ago',
-    'Support Ticket Created • Ticket #7851 • 42m ago',
-    'Coupon Redeemed • SAVE15 • 58m ago',
-    'User Registered • Sarah N. • 1h ago'
-  ],
-  reports: [
-    { title: 'Revenue Report' },
-    { title: 'Seller Report' },
-    { title: 'Buyer Report' },
-    { title: 'Orders Report' },
-    { title: 'Refund Report' },
-    { title: 'Payments Report' },
-    { title: 'Products Report' },
-    { title: 'Support Report' }
-  ],
-  insights: [
-    'Revenue increased 18% this month.',
-    'Electronics remain the top-performing category.',
-    'Refund requests decreased by 11%.',
-    'Buyer retention improved by 6%.',
-    'Weekend sales outperform weekdays by 14%.'
-  ],
-  revenueSeries: [
-    285000, 352000, 398000, 412000, 455000, 468000, 485000, 502000, 520000, 530000, 554000, 582000
-  ],
-  ordersSeries: Array.from({ length: 30 }, (_, i) => 760 + Math.round(Math.sin(i / 4) * 80 + Math.random() * 35)),
-  categorySeries: [27, 18, 13, 11, 9, 7, 6, 9],
-  categoryLabels: ['Electronics','Fashion','Home','Gaming','Beauty','Automotive','Books','Digital Products'],
-  customerGrowthSeries: [2400, 2550, 2680, 2810, 2920, 3040, 3180, 3320, 3450, 3610, 3790, 4190],
-  sellerPerformanceSeries: [72, 75, 79, 82, 84, 86, 88, 90, 91, 92, 93, 94],
-  trafficSourcesSeries: [45, 28, 14, 8, 5],
-  deviceTypesSeries: [52, 31, 13, 4]
-};
+(function () {
+  const BR = '#FF7A00', PAL = [BR, '#1E293B', '#14B8A6', '#6366F1', '#EAB308', '#EC4899', '#22C55E', '#94A3B8'];
+  const $ = id => document.getElementById(id);
+  const esc = s => window.escapeHtml(s);
+  const S = { range: '30d', data: null, first: true, timer: null, charts: {} };
+  const FMT = {
+    money: v => { v = +v || 0; return Math.abs(v) >= 1e6 ? '₦' + (v / 1e6).toFixed(2) + 'M' : '₦' + Math.round(v).toLocaleString('en-NG'); },
+    int: v => Math.round(v).toLocaleString(), pct: v => (+v).toFixed(1) + '%', score: v => Math.round(v) + '%',
+    days: v => (+v).toFixed(1) + 'd', mins: v => Math.round(v) + 'm', rating: v => (+v).toFixed(1) + '/5', text: v => v,
+  };
+  const val = (v, f) => v == null ? '<span title="Not tracked">—</span>' : f === 'text' ? esc(v) : `<span data-count="${v}" data-fmt="${f}">${FMT[f](v)}</span>`;
+  const badge = (c, inv, u = '%') => c == null ? '' : `<span class="inline-flex rounded-full px-3 py-1 text-sm font-semibold whitespace-nowrap ${(c >= 0) !== !!inv ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}">${c >= 0 ? '+' : ''}${c}${u}</span>`;
+  const tile = (l, v, f) => `<div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 fade-in"><p class="text-sm text-slate-500">${l}</p><p class="mt-2 text-2xl font-semibold text-slate-900">${val(v, f)}</p></div>`;
+  const kpi = (l, v, f) => `<div class="analytics-kpi-card fade-in"><div class="analytics-kpi-card-inner"><p class="text-sm text-slate-500">${l}</p><div class="text-2xl font-semibold text-slate-900">${val(v, f)}</div></div></div>`;
+  const put = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
 
-function renderAnalyticsSummaryCards() {
-  const container = document.getElementById('summaryCards');
-  container.innerHTML = analyticsData.kpis.map((kpi) => `
-    <div class="summary-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-h-[190px] min-w-0 flex flex-col justify-between overflow-hidden">
-      <div class="summary-card-header flex flex-wrap items-start justify-between gap-3 min-w-0">
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 break-words">${kpi.title}</p>
-          <p class="mt-3 text-3xl font-semibold text-slate-900 break-words">${kpi.value}</p>
-        </div>
-        <div class="flex-shrink-0">
-          ${kpi.indicator ? '<span class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-600 whitespace-nowrap">● Healthy</span>' : kpi.badge ? `<span class="inline-flex rounded-full ${kpi.badgeClass} px-3 py-1 text-sm font-semibold whitespace-nowrap">${kpi.badge}</span>` : ''}
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
+  async function api(path) {
+    const r = await fetch(`${ADMIN_API_BASE}/admin/analytics${path}`, { headers: getAdminAuthHeaders() });
+    const b = await r.json().catch(() => null);
+    if (!r.ok) throw new Error(b?.message || 'Request failed');
+    return b.data;
+  }
 
-function renderTopCategoriesTable() {
-  const body = document.getElementById('topCategoriesTable');
-  body.innerHTML = analyticsData.topCategories.map(item => `
-    <tr>
-      <td class="px-4 py-3 font-medium text-slate-900">${item.category}</td>
-      <td class="px-4 py-3">${item.orders}</td>
-      <td class="px-4 py-3">${item.revenue}</td>
-      <td class="px-4 py-3 text-emerald-600">${item.growth}</td>
-      <td class="px-4 py-3">${item.conversion}</td>
-    </tr>
-  `).join('');
-}
+  function skeleton() {
+    put('summaryCards', Array.from({ length: 8 }, () => '<div class="skel min-h-[190px]"></div>').join(''));
+  }
 
-function renderTopProductsTable() {
-  const body = document.getElementById('topProductsTable');
-  body.innerHTML = analyticsData.topProducts.map(item => `
-    <tr>
-      <td class="px-4 py-3 font-medium text-slate-900">${item.product}</td>
-      <td class="px-4 py-3">${item.seller}</td>
-      <td class="px-4 py-3">${item.orders}</td>
-      <td class="px-4 py-3">${item.revenue}</td>
-      <td class="px-4 py-3">${item.rating}</td>
-    </tr>
-  `).join('');
-}
+  async function load(force) {
+    try { S.data = await api(`?range=${S.range}${force ? '&refresh=1' : ''}`); render(); }
+    catch (e) { showToast(e.message, 'error'); if (!S.data) put('summaryCards', `<p class="text-sm text-red-600">${esc(e.message)}</p>`); }
+  }
 
-function renderActivityFeed() {
-  const container = document.getElementById('activityFeed');
-  container.innerHTML = analyticsData.activityFeed.map(item => `
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <p class="text-sm text-slate-700">${item}</p>
-    </div>
-  `).join('');
-}
+  const lbl = k => new Date(k + 'T00:00:00Z').toLocaleDateString('en-US',
+    S.data.granularity === 'month' ? { month: 'short', year: '2-digit', timeZone: 'UTC' } : { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const ago = iso => { const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? m + 'm ago' : m < 1440 ? Math.floor(m / 60) + 'h ago' : Math.floor(m / 1440) + 'd ago'; };
 
-function renderReportsPanel() {
-  const container = document.getElementById('reportsPanel');
-  container.innerHTML = analyticsData.reports.map(report => `
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="text-sm font-semibold text-slate-900">${report.title}</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-100">View</button>
-          <button class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-100">PDF</button>
-          <button class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-100">Excel</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
+  function render() {
+    const d = S.data, k = d.kpis;
+    const healthPill = `<span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${k.health.value >= 90 ? 'bg-emerald-50 text-emerald-600' : k.health.value >= 75 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-600'}">● ${k.health.label}</span>`;
+    const cards = [
+      ['Total Revenue', k.revenue.value, 'money', badge(k.revenue.change)],
+      ['Total Orders', k.orders.value, 'int', badge(k.orders.change)],
+      ['Total Buyers', k.buyers.total, 'int', badge(k.buyers.change)],
+      ['Active Sellers', k.sellers.active, 'int', `<span class="text-sm text-slate-500">${k.sellers.total} total</span>`],
+      ['Refund Rate', k.refundRate.value, 'pct', badge(k.refundRate.change, true, ' pts')],
+      ['Completed Withdrawals', k.withdrawals.value, 'money', ''],
+      ['Buyer Conversion', k.conversion.value, 'pct', ''],
+      ['Marketplace Health', k.health.value, 'score', healthPill],
+    ];
+    put('summaryCards', cards.map(([t, v, f, b]) => `
+      <div class="summary-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-h-[190px] flex flex-col justify-between overflow-hidden fade-in">
+        <div class="flex flex-wrap items-start justify-between gap-3 min-w-0">
+          <div class="min-w-0 flex-1"><p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 break-words">${t}</p>
+          <p class="mt-3 text-3xl font-semibold text-slate-900 break-words">${val(v, f)}</p></div>
+          <div class="flex-shrink-0">${b}</div></div></div>`).join(''));
 
-function renderAiInsights() {
-  const container = document.getElementById('aiInsights');
-  container.innerHTML = analyticsData.insights.map(item => `
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-      <p class="text-sm text-slate-700">${item}</p>
-    </div>
-  `).join('');
-}
+    $('revenueSub').textContent = { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '12m': 'Last 12 months' }[d.range] + ' · paid orders, ' + (d.granularity === 'month' ? 'monthly' : 'daily');
 
-function initAnalyticsCharts() {
-  const revenueCtx = document.getElementById('revenueChart');
-  const ordersCtx = document.getElementById('ordersChart');
-  const categoryCtx = document.getElementById('categoryChart');
-  const customerGrowthCtx = document.getElementById('customerGrowthChart');
-  const sellerPerformanceCtx = document.getElementById('sellerPerformanceChart');
-  const trafficSourcesCtx = document.getElementById('trafficSourcesChart');
-  const deviceTypesCtx = document.getElementById('deviceTypesChart');
+    const empty = c => `<tr><td colspan="${c}" class="px-4 py-8 text-center text-slate-400">No sales in this period.</td></tr>`;
+    put('topCategoriesTable', d.categories.length ? d.categories.map(c => `<tr class="fade-in"><td class="px-4 py-3 font-medium text-slate-900">${esc(c.category)}</td><td class="px-4 py-3">${c.orders}</td>
+      <td class="px-4 py-3">${FMT.money(c.revenue)}</td><td class="px-4 py-3">${c.growth == null ? '<span class="text-slate-400">New</span>' : `<span class="${c.growth >= 0 ? 'text-emerald-600' : 'text-red-600'}">${c.growth >= 0 ? '+' : ''}${c.growth}%</span>`}</td>
+      <td class="px-4 py-3">${c.share}%</td></tr>`).join('') : empty(5));
+    put('topProductsTable', d.products.length ? d.products.map(p => `<tr class="fade-in"><td class="px-4 py-3 font-medium text-slate-900">${esc(p.name)}</td><td class="px-4 py-3">${esc(p.seller)}</td>
+      <td class="px-4 py-3">${p.orders}</td><td class="px-4 py-3">${FMT.money(p.revenue)}</td><td class="px-4 py-3">${p.rating ? '★ ' + p.rating : '—'}</td></tr>`).join('') : empty(5));
 
-  if (revenueCtx) {
-    new Chart(revenueCtx, {
-      type: 'line',
-      data: {
-        labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-        datasets: [{
-          label: 'Revenue',
-          data: analyticsData.revenueSeries,
-          borderColor: '#2563EB',
-          backgroundColor: 'rgba(59,130,246,0.18)',
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointBackgroundColor: '#1D4ED8'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: '#475569' } },
-          y: { grid: { color: '#E2E8F0' }, ticks: { color: '#475569' } }
-        }
-      }
+    const c = d.customers, s = d.sellerStats, p = d.productStats, f = d.financial, o = d.operational;
+    put('customerStats', tile('New Buyers', c.newBuyers, 'int') + tile('Returning Buyers (all-time)', c.returning, 'int') + tile('Retention Rate', c.retention, 'pct') + tile('Avg. Buyer Value', c.clv, 'money'));
+    put('sellerStats', tile('New Sellers', s.newSellers, 'int') + tile('Active Sellers', s.active, 'int') + tile('KYC Approval Rate', s.kycRate, 'pct') + tile('Avg. Seller Rating', s.avgRating, 'rating'));
+    put('productStats', tile('Total Products', p.total, 'int') + tile('Out of Stock', p.oos, 'int') + tile('Low Stock (≤10)', p.low, 'int') + tile('Pending Approvals', p.pending, 'int'));
+    put('trafficStats', tile('Top Payment Channel', d.channels[0]?.name || '—', 'text') + tile('Orders in Period', d.orderStatus.reduce((a, x) => a + x.value, 0), 'int'));
+    put('financialStats', kpi('Gross Revenue', f.gross, 'money') + kpi('Net (Seller Share)', f.net, 'money') + kpi('Platform Commission', f.commission, 'money') +
+      kpi('Refund Amount', f.refunds, 'money') + kpi('Withdrawal Amount', f.withdrawals, 'money') + kpi('Taxes Collected', f.taxes, 'money'));
+    put('operationalStats', kpi('Avg Delivery Time', o.deliveryDays, 'days') + kpi('Avg Refund Time', o.refundDays, 'days') + kpi('Avg Support Response', o.supportMinutes, 'mins') +
+      kpi('Order Success', o.orderSuccess, 'pct') + kpi('Payment Success', o.paymentSuccess, 'pct') + kpi('Failed Txns', o.failedRate, 'pct'));
+
+    const ICON = { order: 'fa-receipt', seller: 'fa-store', refund: 'fa-undo', withdrawal: 'fa-wallet' };
+    put('activityFeed', d.activity.length ? d.activity.map(a => `<div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 fade-in">
+      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 text-[#FF7A00]"><i class="fas ${ICON[a.type] || 'fa-bell'}"></i></span>
+      <div class="min-w-0 flex-1"><p class="text-sm text-slate-700 break-words">${esc(a.text)}</p><p class="text-xs text-slate-400">${ago(a.at)}</p></div></div>`).join('') : '<p class="text-sm text-slate-400">No recent activity.</p>');
+    put('aiInsights', d.insights.length ? d.insights.map(i => `<div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 fade-in"><p class="text-sm text-slate-700">${esc(i)}</p></div>`).join('') : '<p class="text-sm text-slate-400">Not enough data yet.</p>');
+
+    drawCharts(d);
+    if (S.first) { S.first = false; countUp(); }
+  }
+
+  function countUp() {
+    document.querySelectorAll('[data-count]').forEach(el => {
+      const to = +el.dataset.count, fn = FMT[el.dataset.fmt], t0 = performance.now();
+      (function tick(t) { const p = Math.min((t - t0) / 700, 1); el.textContent = fn(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(tick); })(t0);
     });
   }
 
-  if (ordersCtx) {
-    new Chart(ordersCtx, {
-      type: 'bar',
-      data: {
-        labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-        datasets: [{
-          label: 'Daily Orders',
-          data: analyticsData.ordersSeries,
-          backgroundColor: '#2563EB',
-          borderRadius: 12,
-          maxBarThickness: 18
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: '#475569' } },
-          y: { grid: { color: '#E2E8F0' }, ticks: { color: '#475569' } }
-        }
-      }
+  function mk(id, cfg) {
+    const el = $(id); if (!el || !window.Chart) return;
+    S.charts[id]?.destroy(); S.charts[id] = new Chart(el, cfg);
+  }
+  const axes = { x: { grid: { display: false }, ticks: { color: '#475569', maxTicksLimit: 12 } }, y: { grid: { color: '#E2E8F0' }, ticks: { color: '#475569' }, beginAtZero: true } };
+  const base = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: axes };
+  const pie = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#475569' } } } };
+
+  function drawCharts(d) {
+    const L = d.series.labels.map(lbl);
+    mk('revenueChart', { type: 'line', data: { labels: L, datasets: [{ label: 'Revenue', data: d.series.revenue, borderColor: BR, backgroundColor: 'rgba(255,122,0,.15)', fill: true, tension: .35, pointRadius: L.length > 40 ? 0 : 3 }] },
+      options: { ...base, plugins: { ...base.plugins, tooltip: { callbacks: { label: c => FMT.money(c.raw) } } } } });
+    mk('ordersChart', { type: 'bar', data: { labels: L, datasets: [{ label: 'Orders', data: d.series.orders, backgroundColor: '#1E293B', borderRadius: 8, maxBarThickness: 18 }] }, options: base });
+    mk('categoryChart', { type: 'doughnut', data: { labels: d.categories.map(c => c.category), datasets: [{ data: d.categories.map(c => c.revenue), backgroundColor: PAL }] }, options: pie });
+    mk('customerGrowthChart', { type: 'line', data: { labels: L, datasets: [{ label: 'New Buyers', data: d.series.buyers, borderColor: '#14B8A6', backgroundColor: 'rgba(20,184,166,.15)', fill: true, tension: .35, pointRadius: 2 }] }, options: base });
+    mk('sellerPerformanceChart', { type: 'line', data: { labels: L, datasets: [{ label: 'Active Sellers', data: d.series.sellers, borderColor: '#6366F1', backgroundColor: 'rgba(99,102,241,.15)', fill: true, tension: .35, pointRadius: 2 }] }, options: base });
+    mk('trafficSourcesChart', { type: 'doughnut', data: { labels: d.channels.map(c => c.name), datasets: [{ data: d.channels.map(c => c.value), backgroundColor: PAL }] }, options: pie });
+    mk('deviceTypesChart', { type: 'pie', data: { labels: d.orderStatus.map(c => c.name), datasets: [{ data: d.orderStatus.map(c => c.value), backgroundColor: PAL }] }, options: pie });
+  }
+
+  const REPORTS = [['revenue', 'Revenue Report'], ['orders', 'Orders Report'], ['sellers', 'Seller Report'], ['buyers', 'Buyer Report'],
+                   ['refunds', 'Refund Report'], ['payments', 'Payments Report'], ['products', 'Products Report']];
+  const cell = c => { c = String(c ?? ''); return /^[=+\-@]/.test(c) ? "'" + c : c; };
+  const head = c => c.replace(/_/g, ' ');
+  function download(name, cols, rows) {
+    const csv = [cols.map(head), ...rows].map(r => r.map(c => `"${cell(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = name + '.csv'; a.click();
+  }
+  const tableHtml = (cols, rows, max) => `<table style="width:100%;border-collapse:collapse;font:13px Arial"><thead><tr>${cols.map(c => `<th style="background:#FF7A00;color:#fff;padding:6px;text-align:left;text-transform:capitalize">${esc(head(c))}</th>`).join('')}</tr></thead>
+    <tbody>${rows.slice(0, max).map(r => `<tr>${r.map(c => `<td style="padding:6px;border-bottom:1px solid #e2e8f0">${esc(c ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+
+  function modal(title, html) {
+    const m = document.createElement('div');
+    m.className = 'fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4';
+    m.innerHTML = `<div class="max-h-[85vh] w-full max-w-5xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl"><div class="mb-4 flex items-center justify-between"><h3 class="text-lg font-semibold">${esc(title)}</h3><button class="text-slate-500 text-xl">✕</button></div>${html}</div>`;
+    m.addEventListener('click', e => { if (e.target === m || e.target.tagName === 'BUTTON') m.remove(); });
+    document.body.appendChild(m);
+  }
+
+  function wireReports() {
+    put('reportsPanel', REPORTS.map(([k, t]) => `<div class="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div class="flex items-center justify-between gap-3"><p class="text-sm font-semibold text-slate-900">${t}</p>
+      <div class="flex gap-2">${['view', 'pdf', 'csv'].map(a => `<button data-r="${k}" data-a="${a}" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 hover:border-[#FF7A00] hover:text-[#FF7A00]">${a.toUpperCase()}</button>`).join('')}</div></div></div>`).join(''));
+    $('reportsPanel').addEventListener('click', async e => {
+      const b = e.target.closest('button[data-r]'); if (!b) return;
+      b.disabled = true;
+      try {
+        const { columns, rows } = await api(`/reports/${b.dataset.r}?range=${S.range}`);
+        const title = REPORTS.find(r => r[0] === b.dataset.r)[1], a = b.dataset.a;
+        if (a === 'csv') download(`${b.dataset.r}-${S.range}`, columns, rows);
+        else if (a === 'view') modal(`${title} (${rows.length} rows${rows.length > 100 ? ', first 100' : ''})`, rows.length ? tableHtml(columns, rows, 100) : '<p class="text-sm text-slate-500">No data for this period.</p>');
+        else { const w = window.open('', '', 'width=900,height=700'); w.document.write(`<h2 style="font-family:Arial">MarketMix — ${title} (${S.range})</h2>${tableHtml(columns, rows, 5000)}`); w.document.close(); w.print(); }
+      } catch (err) { showToast(err.message, 'error'); } finally { b.disabled = false; }
     });
   }
 
-  if (categoryCtx) {
-    new Chart(categoryCtx, {
-      type: 'doughnut',
-      data: {
-        labels: analyticsData.categoryLabels,
-        datasets: [{
-          data: analyticsData.categorySeries,
-          backgroundColor: ['#2563EB','#6366F1','#14B8A6','#F97316','#EC4899','#8B5CF6','#22C55E','#EAB308']
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#475569' }}}}
+  function wire() {
+    const sel = $('rangeSelect'); sel.value = S.range;
+    sel.addEventListener('change', () => { S.range = sel.value; S.first = true; skeleton(); load(); });
+    $('refreshAnalyticsBtn').addEventListener('click', async e => {
+      const btn = e.currentTarget; btn.classList.add('spin'); await load(true); btn.classList.remove('spin'); showToast('Analytics refreshed');
+    });
+    $('exportReportBtn').addEventListener('click', () => {
+      if (!S.data) return;
+      const s = S.data.series;
+      download(`analytics-${S.range}`, ['period', 'revenue', 'orders', 'new_buyers', 'active_sellers'], s.labels.map((k, i) => [k, s.revenue[i], s.orders[i], s.buyers[i], s.sellers[i]]));
     });
   }
 
-  if (customerGrowthCtx) {
-    new Chart(customerGrowthCtx, {
-      type: 'line',
-      data: {
-        labels: ['Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug'],
-        datasets: [{ label: 'New Buyers', data: analyticsData.customerGrowthSeries, borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.18)', fill: true, tension: 0.35, pointRadius: 3 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#475569' } }, y: { grid: { color: '#E2E8F0' }, ticks: { color: '#475569' } } } }
-    });
+  function init() {
+    if (!$('summaryCards')) return;
+    S.data = null; S.first = true;
+    wire(); wireReports(); skeleton(); load();
+    clearInterval(S.timer);
+    S.timer = setInterval(() => { if (!$('summaryCards')) return clearInterval(S.timer); if (!document.hidden) load(); }, 60000);
   }
-
-  if (sellerPerformanceCtx) {
-    new Chart(sellerPerformanceCtx, {
-      type: 'line',
-      data: {
-        labels: ['Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug'],
-        datasets: [{ label: 'Seller Score', data: analyticsData.sellerPerformanceSeries, borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.18)', fill: true, tension: 0.35, pointRadius: 3 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#475569' } }, y: { grid: { color: '#E2E8F0' }, ticks: { color: '#475569' } } } }
-    });
-  }
-
-  if (trafficSourcesCtx) {
-    new Chart(trafficSourcesCtx, {
-      type: 'doughnut',
-      data: { labels: ['Organic','Referral','Paid Search','Social','Email'], datasets: [{ data: analyticsData.trafficSourcesSeries, backgroundColor: ['#2563EB','#F97316','#EAB308','#8B5CF6','#14B8A6'] }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#475569' } } } }
-    });
-  }
-
-  if (deviceTypesCtx) {
-    new Chart(deviceTypesCtx, {
-      type: 'pie',
-      data: { labels: ['Desktop','Mobile','Tablet','Other'], datasets: [{ data: analyticsData.deviceTypesSeries, backgroundColor: ['#2563EB','#10B981','#8B5CF6','#F97316'] }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#475569' } } } }
-    });
-  }
-}
-
-function wireAnalyticsButtons() {
-  document.getElementById('refreshAnalyticsBtn').addEventListener('click', () => showToast('Analytics refreshed (UI-only)', 'success'));
-  document.getElementById('exportReportBtn').addEventListener('click', () => showToast('Export started (UI-only)', 'success'));
-  document.getElementById('dateRangeBtn').addEventListener('click', () => showToast('Date range selector is UI-only', 'success'));
-  document.getElementById('comparePeriodsBtn').addEventListener('click', () => showToast('Compare periods panel is UI-only', 'success'));
-}
-
-function initializeAnalyticsDashboardPage() {
-  renderAnalyticsSummaryCards();
-  renderTopCategoriesTable();
-  renderTopProductsTable();
-  renderActivityFeed();
-  renderReportsPanel();
-  renderAiInsights();
-  initAnalyticsCharts();
-  wireAnalyticsButtons();
-}
-
-window.initializeAnalyticsDashboardPage = initializeAnalyticsDashboardPage;
+  window.initializeAnalyticsDashboardPage = init;
+})();
