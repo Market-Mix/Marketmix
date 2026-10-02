@@ -42,9 +42,9 @@
         <select id="statusFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
           <option value="all">All Status</option>
           <option value="Sent">Sent</option>
-          <option value="Scheduled">Scheduled</option>
           <option value="Draft">Draft</option>
-          <option value="Failed">Failed</option>
+          <option value="Sending">Sending</option>
+          <option value="Scheduled">Scheduled</option>
         </select>
         <select id="typeFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
           <option value="all">All Types</option>
@@ -110,10 +110,9 @@
             <textarea id="notifMessage" rows="4" placeholder="Message" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
             <div class="grid gap-4 lg:grid-cols-4">
               <select id="notifType" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                <option value="Push">Push</option>
-                <option value="Email">Email</option>
-                <option value="SMS">SMS</option>
-                <option value="In-App">In-App</option>
+                <option value="in_app">In-App</option>
+                <option value="email">Email</option>
+                <option value="both">In-App + Email</option>
               </select>
               <select id="notifAudience" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 <option value="All">All Users</option>
@@ -127,6 +126,17 @@
                 <input id="scheduleDate" type="date" class="rounded-xl border border-slate-200 px-3 py-2 text-sm w-full" />
                 <input id="scheduleTime" type="time" class="rounded-xl border border-slate-200 px-3 py-2 text-sm w-full" />
               </div>
+            </div>
+            <input id="notifTarget" type="email" placeholder="User email (Individual only)" class="hidden rounded-xl border border-slate-200 px-3 py-2 text-sm w-full" />
+            <div class="grid gap-4 lg:grid-cols-3">
+              <select id="notifCategory" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                <option value="system">System</option><option value="user">User</option><option value="seller">Seller</option>
+              </select>
+              <select id="notifPriority" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                <option value="low">Low</option><option value="medium" selected>Medium</option>
+                <option value="high">High</option><option value="critical">Critical</option>
+              </select>
+              <input id="notifLink" type="text" placeholder="Link e.g. /buyers/buyers%20order%20&%20tracking.html" class="rounded-xl border border-slate-200 px-3 py-2 text-sm" />
             </div>
             <div class="flex items-center justify-end gap-3">
               <button id="saveDraftBtn" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">Save Draft</button>

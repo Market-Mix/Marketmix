@@ -1,207 +1,221 @@
-const notificationsData = [
-  { id: 'NTF-1001', title: 'Flash Sale Starts Tomorrow', audience: 'All', type: 'System', priority: 'High', status: 'Scheduled', sentDate: '2026-08-05', recipients: 12000, delivered: 0, opened: 0, clicked: 0, failed: 0, createdBy: 'System' },
-  { id: 'NTF-1002', title: 'Withdrawal Approved', audience: 'Sellers', type: 'User', priority: 'Medium', status: 'Sent', sentDate: '2026-07-31', recipients: 3200, delivered: 3180, opened: 2800, clicked: 1200, failed: 20, createdBy: 'Finance Admin' },
-  { id: 'NTF-1003', title: 'Order Delivered', audience: 'Buyers', type: 'User', priority: 'Low', status: 'Sent', sentDate: '2026-07-30', recipients: 5400, delivered: 5388, opened: 4000, clicked: 500, failed: 12, createdBy: 'Logistics' },
-  { id: 'NTF-1004', title: 'New Seller Registered', audience: 'Admins', type: 'System', priority: 'Low', status: 'Draft', sentDate: '', recipients: 12, delivered: 0, opened: 0, clicked: 0, failed: 0, createdBy: 'System' },
-  { id: 'NTF-1005', title: 'System Maintenance', audience: 'All', type: 'System', priority: 'Critical', status: 'Sent', sentDate: '2026-07-28', recipients: 15000, delivered: 14800, opened: 10000, clicked: 3000, failed: 200, createdBy: 'Infra' },
-  { id: 'NTF-1006', title: 'Refund Completed', audience: 'Buyers', type: 'User', priority: 'Medium', status: 'Sent', sentDate: '2026-07-27', recipients: 800, delivered: 800, opened: 600, clicked: 40, failed: 0, createdBy: 'Support' }
-];
-
-const state = {
-  page: 1,
-  perPage: 5,
-  filters: {
-    search: '',
-    status: 'all',
-    type: 'all',
-    audience: 'all',
-    date: ''
-  },
-  selected: null
-};
-
 function formatDate(d) {
   if (!d) return '-';
   return new Date(d).toLocaleDateString();
 }
 
+const NOTIF_API = `${window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api'}/admin/notifications`;
+const state = { page: 1, perPage: 10, total: 0, items: [], stats: {}, selected: null, editingId: null,
+  filters: { search: '', id: '', status: 'all', type: 'all', audience: 'all', date: '' } };
+const esc = s => window.escapeHtml(s);
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+
+async function nApi(path = '', method = 'GET', body, isForm = false) {
+  const headers = { ...getAdminAuthHeaders() };
+  if (body && !isForm) headers['Content-Type'] = 'application/json';
+  const res = await fetch(NOTIF_API + path, { method, headers, body: body ? (isForm ? body : JSON.stringify(body)) : undefined });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message || 'Request failed');
+  return json.data;
+}
+
+async function loadNotifications() {
+  const q = new URLSearchParams({ page: state.page, limit: state.perPage });
+  Object.entries(state.filters).forEach(([k, v]) => { if (v && v !== 'all') q.set(k, v); });
+  try {
+    const d = await nApi('?' + q);
+    state.items = d.notifications; state.total = d.total;
+    renderNotificationsTable();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function loadStats() {
+  try { state.stats = await nApi('/stats'); renderSummaryCards(); updateSidebarAnalytics(); }
+  catch (e) { console.error('notif stats', e.message); }
+}
+const refreshAll = () => Promise.all([loadNotifications(), loadStats()]);
+
 function renderSummaryCards() {
+  const s = state.stats;
   const cards = [
-    { title: 'Total Notifications', value: notificationsData.length, icon: 'fa-bell', badge: 'primary' },
-    { title: 'Unread Notifications', value: 124, icon: 'fa-envelope', badge: 'amber' },
-    { title: 'System Alerts', value: notificationsData.filter(n => n.type === 'System').length, icon: 'fa-server', badge: 'red' },
-    { title: 'User Notifications', value: notificationsData.filter(n => n.type === 'User').length, icon: 'fa-user', badge: 'blue' },
-    { title: 'Seller Notifications', value: notificationsData.filter(n => n.audience === 'Sellers').length, icon: 'fa-store', badge: 'violet' },
-    { title: 'Scheduled Notifications', value: notificationsData.filter(n => n.status === 'Scheduled').length, icon: 'fa-calendar', badge: 'cyan' }
+    ['Total Notifications', s.total, 'fa-bell'], ['Unread (Admin Inbox)', s.unread, 'fa-envelope'],
+    ['System Alerts', s.systemAlerts, 'fa-server'], ['User Notifications', s.userNotifications, 'fa-user'],
+    ['Seller Notifications', s.sellerNotifications, 'fa-store'], ['Scheduled', s.scheduled, 'fa-calendar'],
   ];
-
-  const container = document.getElementById('summaryCards');
-  if (!container) return;
-  container.innerHTML = cards.map(c => `
-    <div class="metric-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
-      <div class="mb-3 flex items-center justify-between">
-        <div class="rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 px-3 py-2 text-slate-700 shadow-sm"><i class="fa-solid ${c.icon}"></i></div>
-        <span class="rounded-full bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">${c.title}</span>
-      </div>
-      <p class="text-sm text-slate-500">${c.title}</p>
-      <p class="mt-2 text-2xl font-semibold text-slate-900">${c.value}</p>
-    </div>
-  `).join('');
+  const el = document.getElementById('summaryCards'); if (!el) return;
+  el.innerHTML = cards.map(([t, v, i]) => `
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="mb-3 rounded-xl bg-slate-100 px-3 py-2 w-fit text-slate-700"><i class="fa-solid ${i}"></i></div>
+      <p class="text-sm text-slate-500">${t}</p><p class="mt-2 text-2xl font-semibold text-slate-900">${v ?? 0}</p>
+    </div>`).join('');
 }
 
-function getFilteredNotifications() {
-  return notificationsData.filter(n => {
-    if (state.filters.search && !(`${n.title} ${n.id}`.toLowerCase().includes(state.filters.search.toLowerCase()))) return false;
-    if (state.filters.status !== 'all' && n.status !== state.filters.status) return false;
-    if (state.filters.type !== 'all' && n.type !== state.filters.type) return false;
-    if (state.filters.audience !== 'all' && state.filters.audience !== '' && n.audience !== state.filters.audience) return false;
-    if (state.filters.date && n.sentDate && new Date(n.sentDate).toDateString() !== new Date(state.filters.date).toDateString()) return false;
-    return true;
-  });
-}
+const STATUS_CLS = { sent: 'bg-emerald-50 text-emerald-700', scheduled: 'bg-blue-50 text-blue-700',
+  draft: 'bg-slate-100 text-slate-600', sending: 'bg-amber-50 text-amber-700', failed: 'bg-red-50 text-red-700' };
 
 function renderNotificationsTable() {
-  const body = document.getElementById('notificationsTableBody');
-  if (!body) return;
-  const all = getFilteredNotifications();
-  const start = (state.page - 1) * state.perPage;
-  const pageItems = all.slice(start, start + state.perPage);
-
-  body.innerHTML = pageItems.map(n => `
+  const body = document.getElementById('notificationsTableBody'); if (!body) return;
+  body.innerHTML = state.items.length ? state.items.map(n => `
     <tr>
-      <td class="px-4 py-3 font-medium text-slate-900">${n.id}</td>
-      <td class="px-4 py-3">${n.title}</td>
-      <td class="px-4 py-3">${n.audience}</td>
-      <td class="px-4 py-3">${n.type}</td>
-      <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs bg-slate-100">${n.priority}</span></td>
-      <td class="px-4 py-3">${n.status}</td>
-      <td class="px-4 py-3">${formatDate(n.sentDate)}</td>
-      <td class="px-4 py-3">
-        <div class="flex gap-2">
-          <button class="view-btn rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700" data-id="${n.id}"><i class="fas fa-eye mr-1"></i>View</button>
-          <button class="edit-btn rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700" data-id="${n.id}"><i class="fas fa-edit mr-1"></i>Edit</button>
-          <button class="delete-btn rounded-lg border border-slate-200 bg-white px-3 py-2 text-red-600" data-id="${n.id}"><i class="fas fa-trash mr-1"></i>Delete</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-
-  document.getElementById('notificationsCount') && (document.getElementById('notificationsCount').textContent = `${all.length} notifications`);
-  renderPagination(all.length);
-
-  // wire buttons
-  document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', (e) => openNotificationDetails(e.currentTarget.dataset.id)));
-  document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', (e) => editNotification(e.currentTarget.dataset.id)));
-  document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', (e) => deleteNotification(e.currentTarget.dataset.id)));
+      <td class="px-4 py-3 font-medium text-slate-900">${n.displayId}</td>
+      <td class="px-4 py-3">${esc(n.title)}</td>
+      <td class="px-4 py-3">${cap(n.audience)}</td>
+      <td class="px-4 py-3">${cap(n.type)}</td>
+      <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs bg-slate-100">${cap(n.priority)}</span></td>
+      <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-semibold ${STATUS_CLS[n.status] || ''}">${cap(n.status)}</span></td>
+      <td class="px-4 py-3">${formatDate(n.sentDate || n.scheduledFor)}</td>
+      <td class="px-4 py-3"><div class="flex gap-2">
+        <button data-act="view" data-id="${n.id}" class="rounded-lg border border-slate-200 bg-white px-3 py-2"><i class="fas fa-eye mr-1"></i>View</button>
+        ${['draft', 'scheduled'].includes(n.status) ? `
+          <button data-act="edit" data-id="${n.id}" class="rounded-lg border border-slate-200 bg-white px-3 py-2"><i class="fas fa-edit mr-1"></i>Edit</button>
+          <button data-act="send" data-id="${n.id}" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-blue-600"><i class="fas fa-paper-plane mr-1"></i>Send</button>` : ''}
+        ${n.status !== 'sending' ? `<button data-act="delete" data-id="${n.id}" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-red-600"><i class="fas fa-trash mr-1"></i>Delete</button>` : ''}
+      </div></td>
+    </tr>`).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center text-slate-500">No notifications found.</td></tr>`;
+  const c = document.getElementById('notificationsCount'); if (c) c.textContent = `${state.total} notifications`;
+  renderPagination(state.total);
 }
 
 function renderPagination(total) {
-  const container = document.getElementById('pagination');
-  if (!container) return;
+  const el = document.getElementById('pagination'); if (!el) return;
   const pages = Math.max(1, Math.ceil(total / state.perPage));
-  let html = '';
-  for (let i = 1; i <= pages; i++) {
-    html += `<button class="px-3 py-1 rounded ${i===state.page ? 'bg-blue-600 text-white' : 'bg-white'}" data-page="${i}">${i}</button>`;
-  }
-  container.innerHTML = html;
-  container.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (e) => { state.page = Number(e.currentTarget.dataset.page); renderNotificationsTable(); }));
+  el.innerHTML = Array.from({ length: pages }, (_, i) => i + 1).map(i =>
+    `<button class="px-3 py-1 rounded ${i === state.page ? 'bg-blue-600 text-white' : 'bg-white border'}" data-page="${i}">${i}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { state.page = +b.dataset.page; loadNotifications(); }));
 }
 
-function openNotificationDetails(id) {
-  const n = notificationsData.find(x => x.id === id);
-  if (!n) return;
-  state.selected = n;
-  const container = document.getElementById('notificationDetails');
-  if (!container) return;
-  container.innerHTML = `
-    <h4 class="text-lg font-semibold text-slate-900">${n.title}</h4>
-    <p class="text-sm text-slate-500 mt-1">${n.type} • ${n.audience} • ${n.status}</p>
-    <div class="mt-4 grid gap-3">
-      <div><strong>Full Message</strong><p class="mt-1 text-sm text-slate-700">${n.title} — full message placeholder for designers.</p></div>
-      <div class="grid grid-cols-2 gap-4">
-        <div><strong>Created By</strong><p class="mt-1 text-sm">${n.createdBy}</p></div>
-        <div><strong>Scheduled Time</strong><p class="mt-1 text-sm">${n.status === 'Scheduled' ? formatDate(n.sentDate) : '-'}</p></div>
+async function openNotificationDetails(id) {
+  try {
+    const { notification: n } = await nApi('/' + id);
+    state.selected = n;
+    document.getElementById('notificationDetails').innerHTML = `
+      ${n.bannerUrl ? `<img src="${esc(n.bannerUrl)}" class="mb-3 max-h-40 rounded-xl object-cover">` : ''}
+      <h4 class="text-lg font-semibold text-slate-900">${esc(n.title)}</h4>
+      <p class="text-sm text-slate-500 mt-1">${cap(n.type)} • ${cap(n.audience)} • ${n.channel.replace('_', '-')} • ${cap(n.status)}</p>
+      <p class="mt-3 text-sm text-slate-700 whitespace-pre-line">${esc(n.message)}</p>
+      <div class="mt-3 grid grid-cols-2 gap-4 text-sm">
+        <div><strong>Created By</strong><p>${esc(n.createdBy)}</p></div>
+        <div><strong>${n.status === 'scheduled' ? 'Scheduled For' : 'Sent'}</strong><p>${formatDate(n.scheduledFor || n.sentDate)}</p></div>
       </div>
-      <div class="mt-3 rounded-xl border p-3 bg-slate-50">
-        <h5 class="font-semibold">Delivery Statistics</h5>
-        <div class="grid gap-2 mt-2">
-          <div>Total Recipients: <strong>${n.recipients}</strong></div>
-          <div>Delivered: <strong>${n.delivered}</strong></div>
-          <div>Opened: <strong>${n.opened}</strong></div>
-          <div>Clicked: <strong>${n.clicked}</strong></div>
+      ${n.error ? `<p class="mt-3 text-sm text-red-600">Error: ${esc(n.error)}</p>` : ''}
+      <div class="mt-3 rounded-xl border p-3 bg-slate-50"><h5 class="font-semibold">Delivery Statistics</h5>
+        <div class="grid gap-1 mt-2 text-sm">
+          <div>Total Recipients: <strong>${n.recipients}</strong></div><div>Delivered: <strong>${n.delivered}</strong></div>
+          <div>Opened: <strong>${n.opened}</strong></div><div>Clicked: <strong>N/A</strong></div>
           <div>Failed: <strong>${n.failed}</strong></div>
-        </div>
-      </div>
-    </div>
-  `;
-  updateSidebarAnalytics();
+        </div></div>`;
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 function editNotification(id) {
-  const n = notificationsData.find(x => x.id === id);
-  if (!n) return alert('Not found');
-  // populate compose form
-  document.getElementById('notifTitle').value = n.title;
-  document.getElementById('notifSubject').value = n.title;
-  document.getElementById('notifMessage').value = `${n.title} — editable message`;
-  document.getElementById('notifType').value = n.type;
-  document.getElementById('notifAudience').value = n.audience;
-  showToast('Loaded notification into compose form', 'success');
+  const n = state.items.find(x => x.id === id); if (!n) return;
+  state.editingId = id;
+  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v ?? ''; };
+  set('notifTitle', n.title); set('notifSubject', n.subject); set('notifMessage', n.message);
+  set('notifType', n.channel); set('notifAudience', n.audience); set('notifCategory', n.type);
+  set('notifPriority', n.priority); set('notifLink', n.link);
+  toggleTargetField();
+  if (n.scheduledFor) {
+    const d = new Date(n.scheduledFor);
+    set('scheduleDate', d.toISOString().slice(0, 10)); set('scheduleTime', d.toTimeString().slice(0, 5));
+  }
+  document.getElementById('notifTitle').scrollIntoView({ behavior: 'smooth' });
+  showToast('Editing — Save, Send or Schedule when ready', 'success');
 }
 
-function deleteNotification(id) {
-  if (!confirm('Delete this notification?')) return;
-  const idx = notificationsData.findIndex(x => x.id === id);
-  if (idx === -1) return showToast('Not found', 'error');
-  notificationsData.splice(idx, 1);
-  renderSummaryCards();
-  renderNotificationsTable();
-  showToast('Notification deleted', 'success');
+async function deleteNotification(id) {
+  if (!confirm('Delete this notification? Copies already delivered in-app will be recalled.')) return;
+  try { await nApi('/' + id, 'DELETE'); showToast('Notification deleted'); refreshAll(); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
-function wireFilters() {
-  document.getElementById('searchNotification').addEventListener('input', (e) => { state.filters.search = e.target.value; state.page = 1; renderNotificationsTable(); });
-  document.getElementById('statusFilter').addEventListener('change', (e) => { state.filters.status = e.target.value; state.page = 1; renderNotificationsTable(); });
-  document.getElementById('typeFilter').addEventListener('change', (e) => { state.filters.type = e.target.value; state.page = 1; renderNotificationsTable(); });
-  document.getElementById('audienceFilter').addEventListener('change', (e) => { state.filters.audience = e.target.value; state.page = 1; renderNotificationsTable(); });
-  document.getElementById('notifDateInput').addEventListener('change', (e) => { state.filters.date = e.target.value; state.page = 1; renderNotificationsTable(); });
-  document.getElementById('resetNotifFiltersBtn').addEventListener('click', () => { state.filters = { search: '', status: 'all', type: 'all', audience: 'all', date: '' }; document.getElementById('searchNotification').value = ''; document.getElementById('statusFilter').value = 'all'; document.getElementById('typeFilter').value = 'all'; document.getElementById('audienceFilter').value = 'all'; document.getElementById('notifDateInput').value = ''; renderNotificationsTable(); });
+async function sendExisting(id) {
+  if (!confirm('Send this notification now?')) return;
+  try { await nApi(`/${id}/send`, 'POST'); showToast('Sending…'); setTimeout(refreshAll, 1200); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
-function wireTopButtons() {
-  document.getElementById('refreshNotifBtn').addEventListener('click', () => { renderSummaryCards(); renderNotificationsTable(); showToast('Refreshed'); });
-  document.getElementById('exportNotifBtn').addEventListener('click', () => { showToast('Exported (UI-only)', 'success'); });
-  document.getElementById('createNotifBtn').addEventListener('click', () => { document.getElementById('notifTitle').focus(); showToast('Compose opened'); });
+/* ── Compose ── */
+const val = id => (document.getElementById(id)?.value || '').trim();
+function toggleTargetField() {
+  document.getElementById('notifTarget')?.classList.toggle('hidden', val('notifAudience').toLowerCase() !== 'individual');
+}
+function resetCompose() {
+  document.getElementById('composeForm').reset(); state.editingId = null; toggleTargetField();
+}
+
+async function submitCompose(action) {
+  const form = document.getElementById('composeForm');
+  const btns = [...form.querySelectorAll('button')]; btns.forEach(b => b.disabled = true);
+  try {
+    const body = { action, title: val('notifTitle'), subject: val('notifSubject'), message: val('notifMessage'),
+      channel: val('notifType'), audience: val('notifAudience'), target_email: val('notifTarget'),
+      type: val('notifCategory'), priority: val('notifPriority'), link: val('notifLink') };
+    if (action === 'schedule') {
+      if (!val('scheduleDate') || !val('scheduleTime')) throw new Error('Pick a schedule date and time');
+      body.scheduled_for = new Date(`${val('scheduleDate')}T${val('scheduleTime')}`).toISOString();
+    }
+    if (action === 'send' && !confirm(`Send now to: ${body.audience}?`)) return;
+    const file = document.getElementById('notifBannerInput').files[0];
+    if (file) {
+      const fd = new FormData(); fd.append('file', file);
+      body.banner_url = (await nApi('/banner-upload', 'POST', fd, true)).url;
+    }
+    await nApi(state.editingId ? '/' + state.editingId : '', state.editingId ? 'PUT' : 'POST', body);
+    showToast({ draft: 'Draft saved', send: 'Notification sent', schedule: 'Notification scheduled' }[action]);
+    resetCompose(); state.page = 1;
+    setTimeout(refreshAll, action === 'send' ? 800 : 0);
+  } catch (e) { showToast(e.message, 'error'); }
+  finally { btns.forEach(b => b.disabled = false); }
 }
 
 function wireComposeForm() {
-  document.getElementById('saveDraftBtn').addEventListener('click', (e) => { e.preventDefault(); showToast('Saved draft (UI-only)', 'success'); });
-  document.getElementById('previewBtn').addEventListener('click', (e) => { e.preventDefault(); const title = document.getElementById('notifTitle').value; const message = document.getElementById('notifMessage').value; alert(`Preview:\n${title}\n---\n${message}`); });
-  document.getElementById('sendNowBtn').addEventListener('click', (e) => { e.preventDefault(); showToast('Sent (UI-only)', 'success'); });
-  document.getElementById('scheduleBtn').addEventListener('click', (e) => { e.preventDefault(); showToast('Scheduled (UI-only)', 'success'); });
+  const on = (id, fn) => document.getElementById(id).addEventListener('click', e => { e.preventDefault(); fn(); });
+  on('saveDraftBtn', () => submitCompose('draft'));
+  on('sendNowBtn', () => submitCompose('send'));
+  on('scheduleBtn', () => submitCompose('schedule'));
+  on('previewBtn', () => alert(`Preview:\n${val('notifTitle')}\n---\n${val('notifMessage')}`));
+  document.getElementById('notifAudience').addEventListener('change', toggleTargetField);
+}
+
+/* ── Filters / top buttons ── */
+const reloadFilters = (() => { let t; return () => { clearTimeout(t); t = setTimeout(() => { state.page = 1; loadNotifications(); }, 300); }; })();
+
+function wireFilters() {
+  const bind = (id, key, ev = 'input') => document.getElementById(id).addEventListener(ev, e => { state.filters[key] = e.target.value; reloadFilters(); });
+  bind('searchNotification', 'search'); bind('notificationIdFilter', 'id');
+  bind('statusFilter', 'status', 'change'); bind('typeFilter', 'type', 'change');
+  bind('audienceFilter', 'audience', 'change'); bind('notifDateInput', 'date', 'change');
+  document.getElementById('resetNotifFiltersBtn').addEventListener('click', () => {
+    state.filters = { search: '', id: '', status: 'all', type: 'all', audience: 'all', date: '' };
+    ['searchNotification', 'notificationIdFilter', 'notifDateInput'].forEach(i => document.getElementById(i).value = '');
+    ['statusFilter', 'typeFilter', 'audienceFilter'].forEach(i => document.getElementById(i).value = 'all');
+    reloadFilters();
+  });
+}
+
+function wireTopButtons() {
+  document.getElementById('refreshNotifBtn').addEventListener('click', async () => { await refreshAll(); showToast('Refreshed'); });
+  document.getElementById('createNotifBtn').addEventListener('click', () => { resetCompose(); document.getElementById('notifTitle').focus(); });
+  document.getElementById('exportNotifBtn').addEventListener('click', () => {
+    const rows = [['ID', 'Title', 'Audience', 'Type', 'Priority', 'Status', 'Recipients', 'Delivered', 'Opened', 'Failed', 'Date']]
+      .concat(state.items.map(n => [n.displayId, n.title, n.audience, n.type, n.priority, n.status, n.recipients, n.delivered, n.opened, n.failed, n.sentDate || n.scheduledFor || '']));
+    const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `notifications-${Date.now()}.csv`; a.click();
+  });
 }
 
 function updateSidebarAnalytics() {
-  const totalToday = notificationsData.filter(n => n.sentDate === new Date().toISOString().slice(0,10)).length;
-  document.getElementById('todayCount') && (document.getElementById('todayCount').textContent = String(totalToday));
-  // simplistic rates
-  const delivered = notificationsData.reduce((s,n)=>s+n.delivered,0);
-  const recipients = notificationsData.reduce((s,n)=>s+n.recipients,0) || 1;
-  const opened = notificationsData.reduce((s,n)=>s+n.opened,0);
-  const clicked = notificationsData.reduce((s,n)=>s+n.clicked,0);
-  const failed = notificationsData.reduce((s,n)=>s+n.failed,0);
-  document.getElementById('deliveryRate') && (document.getElementById('deliveryRate').textContent = Math.round((delivered/recipients)*100) + '%');
-  document.getElementById('openRate') && (document.getElementById('openRate').textContent = Math.round((opened/recipients)*100) + '%');
-  document.getElementById('clickRate') && (document.getElementById('clickRate').textContent = Math.round((clicked/recipients)*100) + '%');
+  const s = state.stats, set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('todayCount', s.today ?? 0); set('deliveryRate', (s.deliveryRate ?? 0) + '%');
+  set('openRate', (s.openRate ?? 0) + '%'); set('clickRate', 'N/A');
 }
 
 function initializeNotificationsPage() {
-  renderSummaryCards();
-  wireFilters();
-  wireTopButtons();
-  wireComposeForm();
-  renderNotificationsTable();
-  updateSidebarAnalytics();
+  wireFilters(); wireTopButtons(); wireComposeForm();
+  document.getElementById('notificationsTableBody').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    ({ view: openNotificationDetails, edit: editNotification, send: sendExisting, delete: deleteNotification })[b.dataset.act](b.dataset.id);
+  });
+  refreshAll();
 }
-
 window.initializeNotificationsPage = initializeNotificationsPage;
