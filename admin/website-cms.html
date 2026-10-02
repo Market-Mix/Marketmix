@@ -108,7 +108,12 @@
             <input id="keywordsInput" class="w-full rounded-xl border px-3 py-2" placeholder="Keywords (comma separated)" />
             <div class="grid gap-3 lg:grid-cols-2">
               <input id="featuredImageInput" type="file" accept="image/*" class="rounded-xl border px-3 py-2" />
-              <select id="pageStatusSelect" class="rounded-xl border px-3 py-2"><option>Draft</option><option>Published</option><option>Scheduled</option><option>Hidden</option></select>
+              <select id="pageStatusSelect" class="rounded-xl border px-3 py-2">
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="hidden">Hidden</option>
+              </select>
             </div>
             <textarea id="richContent" rows="10" class="w-full rounded-xl border px-3 py-2" placeholder="Rich text content (UI-only)"></textarea>
             <div class="grid gap-3 lg:grid-cols-2">
@@ -153,7 +158,6 @@
         <label class="flex gap-2 text-sm"><input id="bnActive" type="checkbox" checked /> Active</label>
         <button id="bnSave" class="w-full rounded-xl bg-blue-600 px-4 py-2 text-white">Save Banner</button>
       </div></div></div>
-    </div>
 
     <div id="postDrawer" class="drawer hidden"><div class="drawer-backdrop" data-close-drawer="true"></div>
       <div class="drawer-panel"><div class="drawer-header"><h3 id="postDrawerTitle" class="text-xl font-semibold">Blog Post</h3>
@@ -169,7 +173,6 @@
           <input id="pbPublishAt" type="datetime-local" class="rounded-xl border px-3 py-2" /></div>
         <button id="pbSave" class="w-full rounded-xl bg-blue-600 px-4 py-2 text-white">Save Post</button>
       </div></div></div>
-    </div>
 
   </main>
   <script src="js/website-cms.js"></script>

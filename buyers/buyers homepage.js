@@ -640,95 +640,75 @@ function makeFloatingList(btn, items) {
     });
   }
 
+  let heroTimer;
+  function startHeroRotation() {
+    clearInterval(heroTimer);
+    const slides = [...document.querySelectorAll('.hero-slider .slide')];
+    if (slides.length < 2) return;
+    let i = 0;
+    heroTimer = setInterval(() => {
+      slides[i].classList.remove('active');
+      i = (i + 1) % slides.length;
+      slides[i].classList.add('active');
+    }, 3500);
+  }
+
   async function loadHero() {
     const slider = document.querySelector('.hero-slider .slides');
     if (!slider) return;
     try {
-      const res = await fetch(`${API}/cms/homepage?section=hero`);
-      if (!res.ok) throw new Error('hero unavailable');
-      const payload = await res.json();
-      const items = Array.isArray(payload?.data?.items) ? payload.data.items : Array.isArray(payload?.items) ? payload.items : null;
-      if (!items || !items.length) return;
-      slider.innerHTML = items.map((item, idx) => {
-        const image = item.imageUrl || item.image || item.bannerUrl || '../images/slideshow.png';
-        const href = item.linkUrl || item.link || '#';
-        const alt = item.title || 'MarketMix promo';
-        return `<a href="${escapeHtml(href)}" target="${href.startsWith('http') ? '_blank' : '_self'}" rel="noopener noreferrer"><img src="${escapeHtml(image)}" alt="${escapeHtml(alt)}" class="slide ${idx === 0 ? 'active' : ''}" loading="lazy" onerror="this.src='../images/slideshow.png'"></a>`;
-      }).join('');
-      const slides = slider.querySelectorAll('.slide');
-      if (!slides.length) return;
-      slides[0].classList.add('active');
-    } catch (e) {
-      console.warn('Hero data unavailable:', e.message);
-    }
+      const res = await fetch(`${API}/cms/hero`);
+      const slides = (await res.json())?.data?.slides || [];
+      if (slides.length) {
+        slider.innerHTML = slides.map((s, i) => {
+          const href = s.linkUrl || '#';
+          const ext = /^https?:/.test(href);
+          return `<a href="${escapeHtml(href)}" ${ext ? 'target="_blank" rel="noopener"' : ''}>
+            <img src="${escapeHtml(s.imageUrl)}" alt="${escapeHtml(s.title || '')}" class="slide ${i === 0 ? 'active' : ''}"></a>`;
+        }).join('');
+      }
+    } catch (e) { console.warn('Hero:', e.message); }
+    startHeroRotation();
   }
 
   async function loadBlog() {
-    const slider = document.querySelector('.blog-cards');
-    if (!slider) return;
+    const sec = document.querySelector('.blog-section');
+    const box = document.querySelector('.blog-cards');
+    if (!sec || !box) return;
     try {
-      const res = await fetch(`${API}/cms/blog?limit=6`);
-      if (!res.ok) throw new Error('blog unavailable');
-      const payload = await res.json();
-      const posts = Array.isArray(payload?.data?.posts) ? payload.data.posts : Array.isArray(payload?.posts) ? payload.posts : [];
+      const res = await fetch(`${API}/cms/blog?limit=8`);
+      const posts = (await res.json())?.data?.posts || [];
       if (!posts.length) return;
-      slider.innerHTML = posts.map((post, idx) => {
-        const title = post.title || 'MarketMix story';
-        const excerpt = post.excerpt || post.summary || 'Read more about this update.';
-        const image = post.coverImageUrl || post.image || post.cover || '../images/marketplace.png';
-        const slug = post.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `post-${idx + 1}`;
-        return `
-          <article class="blog-card">
-            <img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" loading="lazy" onerror="this.src='../images/marketplace.png'">
-            <h3>${escapeHtml(title)}</h3>
-            <p>${escapeHtml(excerpt)}</p>
-            <a href="blog details.html?slug=${encodeURIComponent(slug)}">Read More</a>
-          </article>
-        `;
-      }).join('');
-    } catch (e) {
-      console.warn('Blog data unavailable:', e.message);
-    }
+      box.innerHTML = posts.map(p => `
+        <article class="blog-card">
+          <img src="${escapeHtml(p.coverImageUrl || '../images/marketplace.png')}" alt="${escapeHtml(p.title)}" loading="lazy"
+               onerror="this.src='../images/marketplace.png'">
+          <h3>${escapeHtml(p.title)}</h3>
+          <p>${escapeHtml(p.excerpt || '')}</p>
+          <a href="blog details.html?slug=${encodeURIComponent(p.slug)}">Read More</a>
+        </article>`).join('');
+      sec.hidden = false;
+    } catch (e) { console.warn('Blog:', e.message); }
   }
 
-  function applySections() {
-    const slides = document.querySelectorAll('.hero-slider .slide');
-    if (slides.length > 1) {
-      let i = 0;
-      setInterval(() => {
-        i = (i + 1) % slides.length;
-        slides.forEach((slide, index) => slide.classList.toggle('active', index === i));
-      }, 3500);
-    }
-
-    const slider = document.querySelector('.blog-cards');
-    const cards = Array.from(document.querySelectorAll('.blog-card'));
-    if (!slider || !cards.length) return;
-    const w = cards[0].offsetWidth + 20;
-    let idx = 0, drag = false, startX = 0, prevT = 0, tid;
-    function slide() {
-      slider.style.transition = 'transform .5s ease-in-out';
-      slider.style.transform = `translateX(-${idx * w}px)`;
-      if (idx >= cards.length) {
-        setTimeout(() => {
-          slider.style.transition = 'none';
-          slider.style.transform = 'translateX(0)';
-          idx = 0;
-        }, 220);
-      }
-    }
-    tid = setInterval(() => { idx++; slide(); }, 4000);
-    const px = e => e.type.includes('mouse') ? e.pageX : (e.touches?.[0]?.clientX || 0);
-    slider.addEventListener('mousedown', e => {
-      clearInterval(tid); startX = px(e); drag = true; slider.style.transition = 'none';
-    });
-    slider.addEventListener('mousemove', e => {
-      if (!drag) return; slider.style.transform = `translateX(${prevT + (px(e) - startX)}px)`;
-    });
-    slider.addEventListener('mouseup', e => {
-      if (!drag) return; drag = false; const offset = Number((slider.style.transform || '').match(/-?\d+/)?.[0] || 0) - prevT; if (offset < -50) idx++; else if (offset > 50 && idx > 0) idx--; slide(); prevT = -idx * w; tid = setInterval(() => { idx++; slide(); }, 4000);
-    });
-    slider.addEventListener('mouseleave', () => drag && slider.dispatchEvent(new MouseEvent('mouseup')));
+  async function applyCmsSections() {
+    const MAP = {
+      hero: '.hero-slider',
+      categories: '.popular-categories',
+      products: '.flash-sales,.best-selling,.new-arrivals,.recommended-section',
+      sellers: '.featured-brands',
+      testimonials: '.testimonials-section',
+      blog: '.blog-section',
+      newsletter: '.subscribe-section',
+      footer: '.footer'
+    };
+    try {
+      const res = await fetch(`${API}/cms/sections`);
+      const s = (await res.json())?.data?.sections || {};
+      Object.entries(MAP).forEach(([key, sel]) => {
+        if (s[key] === false) document.querySelectorAll(sel).forEach(el => el.classList.add('cms-off'));
+      });
+    } catch (e) { console.warn('Sections:', e.message); }
   }
 
   (function flashScrollBtns() {
@@ -750,8 +730,8 @@ function makeFloatingList(btn, items) {
   buildFilterDropdown('bestSellingFilterContainer', 'best-selling', loadAllProducts);
   buildFilterDropdown('newArrivalsFilterContainer', 'new-arrivals', loadAllProducts);
 
-  Promise.all([loadFlashProducts(), loadAllProducts(), loadCategories(), loadBrands(), loadFollowedShops(), loadHero(), loadBlog()]);
-  applySections();
+  Promise.all([loadFlashProducts(), loadAllProducts(), loadCategories(), loadBrands(),
+             loadFollowedShops(), loadHero(), loadBlog(), applyCmsSections()]);
 
   if(flashRefreshInterval) clearInterval(flashRefreshInterval);
   flashRefreshInterval = setInterval(loadFlashProducts, 60000);

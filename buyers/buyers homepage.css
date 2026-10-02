@@ -217,6 +217,11 @@ button { font-family: inherit; cursor: pointer; }
 }
 .hero-slider .slide.active { left: 0; opacity: 1; }
 
+.cms-off { display: none !important; }
+.blog-slider { overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.blog-slider::-webkit-scrollbar { display: none; }
+.blog-card { scroll-snap-align: start; }
+
 /* ─── Shared Section Styles ─────────────────────────────────────────────── */
 .section-title,
 .best-selling h2,
