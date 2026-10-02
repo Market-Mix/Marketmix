@@ -135,12 +135,12 @@
 
   <main class="blog-container">
     <div class="blog-header">
-      <img src="marketplace.png" alt="Online Shopping">
-      <h1>How to Save Money on Online Shopping</h1>
-      <p class="blog-meta">By MarketMix Team • October 20, 2025</p>
+      <img id="postCover" src="marketplace.png" alt="Online Shopping">
+      <h1 id="postTitle">How to Save Money on Online Shopping</h1>
+      <p id="postMeta" class="blog-meta">By MarketMix Team • October 20, 2025</p>
     </div>
 
-    <div class="blog-content">
+    <div id="postBody" class="blog-content">
       <p>Online shopping has made it easier than ever to get your favorite items delivered straight to your door. However, without smart shopping habits, you might end up overspending or missing out on discounts.</p>
 
       <p>Here are a few practical tips to help you save money while shopping online:</p>
@@ -160,7 +160,7 @@
 
     <section class="related-section">
       <h3>You Might Also Like</h3>
-      <div class="related-posts">
+      <div id="relatedPosts" class="related-posts">
         <div class="related-card">
           <img src="elon.jfif" alt="Fashion Trends">
           <h4>Top Fashion Trends in 2025</h4>
@@ -182,6 +182,66 @@
    <footer>
     &copy; 2025 MarketMix. All Rights Reserved.
   </footer>
+
+  <script>
+    (() => {
+      const API = 'https://marketmix-backend.onrender.com/api';
+      const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c]));
+      const qs = new URLSearchParams(window.location.search);
+      const slug = qs.get('slug') || window.location.pathname.split('/').pop().replace(/\.[^.]+$/, '');
+      const cover = document.getElementById('postCover');
+      const title = document.getElementById('postTitle');
+      const meta = document.getElementById('postMeta');
+      const body = document.getElementById('postBody');
+      const related = document.getElementById('relatedPosts');
+
+      async function loadArticle() {
+        try {
+          const url = slug ? `${API}/cms/blog/${encodeURIComponent(slug)}` : `${API}/cms/blog?limit=1`;
+          const res = await fetch(url, { headers: { Accept: 'application/json' } });
+          if (!res.ok) throw new Error('Blog article unavailable');
+          const payload = await res.json();
+          const article = payload?.data?.post || payload?.data?.article || payload?.post || payload?.article || payload?.data || null;
+          if (!article) throw new Error('No article');
+
+          const post = {
+            title: article.title || 'MarketMix Blog',
+            author: article.authorName || article.author || 'MarketMix Team',
+            cover: article.coverImageUrl || article.image || article.cover || 'marketplace.png',
+            updatedAt: article.publishedAt || article.updatedAt || article.createdAt || new Date().toISOString(),
+            content: article.content || article.body || article.summary || '',
+            excerpt: article.excerpt || article.summary || ''
+          };
+
+          cover.src = post.cover;
+          cover.alt = post.title;
+          title.textContent = post.title;
+          meta.textContent = `By ${post.author} • ${new Date(post.updatedAt).toLocaleDateString()}`;
+
+          const paragraphs = String(post.content || post.excerpt || '').split(/\n{2,}|\r?\n/).filter(Boolean);
+          body.innerHTML = paragraphs.length ? paragraphs.map(p => `<p>${escapeHtml(p.trim())}</p>`).join('') : `<p>${escapeHtml(post.excerpt || 'This article is currently being updated.')}</p>`;
+
+          const relatedPosts = Array.isArray(payload?.data?.relatedPosts)
+            ? payload.data.relatedPosts
+            : Array.isArray(payload?.relatedPosts)
+              ? payload.relatedPosts
+              : [];
+
+          related.innerHTML = relatedPosts.slice(0, 3).map(item => `
+            <div class="related-card">
+              <img src="${escapeHtml(item.coverImageUrl || item.image || 'marketplace.png')}" alt="${escapeHtml(item.title || 'Related article')}" onerror="this.src='marketplace.png'">
+              <h4>${escapeHtml(item.title || 'Related article')}</h4>
+              <a href="blog details.html?slug=${encodeURIComponent(item.slug || item.title || 'related-post')}">Read More</a>
+            </div>
+          `).join('') || related.innerHTML;
+        } catch (error) {
+          console.warn('Blog detail fetch failed:', error.message);
+        }
+      }
+
+      loadArticle();
+    })();
+  </script>
 
 </body>
 </html>

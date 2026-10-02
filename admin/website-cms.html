@@ -56,8 +56,15 @@
         </div>
 
         <div id="bannerManagement" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 class="text-lg font-semibold">Banner Management</h3>
+          <div class="flex items-center justify-between"><h3 class="text-lg font-semibold">Banner Management</h3>
+            <button id="addBannerBtn" class="rounded-xl bg-blue-600 px-3 py-1.5 text-sm text-white">+ Add Banner</button></div>
           <div id="bannersList" class="mt-4 space-y-3"></div>
+        </div>
+
+        <div id="blogManagement" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mt-6">
+          <div class="flex items-center justify-between"><h3 class="text-lg font-semibold">Blog Posts</h3>
+            <button id="addPostBtn" class="rounded-xl bg-blue-600 px-3 py-1.5 text-sm text-white">+ New Post</button></div>
+          <div id="postsList" class="mt-4 space-y-3"></div>
         </div>
       </div>
 
@@ -104,6 +111,10 @@
               <select id="pageStatusSelect" class="rounded-xl border px-3 py-2"><option>Draft</option><option>Published</option><option>Scheduled</option><option>Hidden</option></select>
             </div>
             <textarea id="richContent" rows="10" class="w-full rounded-xl border px-3 py-2" placeholder="Rich text content (UI-only)"></textarea>
+            <div class="grid gap-3 lg:grid-cols-2">
+              <select id="pageVisibility" class="rounded-xl border px-3 py-2"><option value="public">Public</option><option value="private">Private</option></select>
+              <input id="pagePublishAt" type="datetime-local" class="rounded-xl border px-3 py-2" title="Used when status = Scheduled" />
+            </div>
             <div class="flex justify-end gap-3">
               <button id="saveDraftCms" type="button" class="rounded-xl border px-4 py-2">Save Draft</button>
               <button id="previewCms" type="button" class="rounded-xl border px-4 py-2">Preview</button>
@@ -112,20 +123,52 @@
           </form>
         </div>
       </div>
-        <!-- Preview Drawer -->
-        <div id="cmsPreviewDrawer" class="drawer hidden">
-          <div class="drawer-backdrop" data-close-preview="true"></div>
-          <div class="drawer-panel">
-            <div class="drawer-header">
-              <div>
-                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Preview</p>
-                <h3 id="previewTitle" class="mt-1 text-2xl font-semibold text-slate-900">Preview</h3>
-              </div>
-              <button class="rounded-full p-2 text-slate-500" data-close-preview="true"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="cmsPreviewContent" class="drawer-body"></div>
+    </div>
+
+    <div id="cmsPreviewDrawer" class="drawer hidden">
+      <div class="drawer-backdrop" data-close-preview="true"></div>
+      <div class="drawer-panel">
+        <div class="drawer-header">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Preview</p>
+            <h3 id="previewTitle" class="mt-1 text-2xl font-semibold text-slate-900">Preview</h3>
           </div>
+          <button class="rounded-full p-2 text-slate-500" data-close-preview="true"><i class="fas fa-times"></i></button>
         </div>
+        <div id="cmsPreviewContent" class="drawer-body"></div>
+      </div>
+    </div>
+
+    <div id="bannerDrawer" class="drawer hidden"><div class="drawer-backdrop" data-close-drawer="true"></div>
+      <div class="drawer-panel"><div class="drawer-header"><h3 id="bannerDrawerTitle" class="text-xl font-semibold">Banner</h3>
+        <button data-close-drawer="true"><i class="fas fa-times"></i></button></div>
+      <div class="drawer-body space-y-3">
+        <input id="bnTitle" class="w-full rounded-xl border px-3 py-2" placeholder="Title" />
+        <label class="text-xs text-slate-500">Image (recommended 1600×500)</label>
+        <input id="bnImage" type="file" accept="image/*" class="w-full rounded-xl border px-3 py-2" />
+        <input id="bnLink" class="w-full rounded-xl border px-3 py-2" placeholder="Link e.g. ../sellers/signup-sellers.html or https://..." />
+        <select id="bnLocation" class="w-full rounded-xl border px-3 py-2"><option value="homepage_hero">Homepage Hero</option><option value="category_sidebar">Category Sidebar</option></select>
+        <div class="grid grid-cols-2 gap-3"><input id="bnStart" type="datetime-local" class="rounded-xl border px-3 py-2" /><input id="bnEnd" type="datetime-local" class="rounded-xl border px-3 py-2" /></div>
+        <input id="bnOrder" type="number" value="0" class="w-full rounded-xl border px-3 py-2" placeholder="Sort order" />
+        <label class="flex gap-2 text-sm"><input id="bnActive" type="checkbox" checked /> Active</label>
+        <button id="bnSave" class="w-full rounded-xl bg-blue-600 px-4 py-2 text-white">Save Banner</button>
+      </div></div></div>
+    </div>
+
+    <div id="postDrawer" class="drawer hidden"><div class="drawer-backdrop" data-close-drawer="true"></div>
+      <div class="drawer-panel"><div class="drawer-header"><h3 id="postDrawerTitle" class="text-xl font-semibold">Blog Post</h3>
+        <button data-close-drawer="true"><i class="fas fa-times"></i></button></div>
+      <div class="drawer-body space-y-3">
+        <input id="pbTitle" class="w-full rounded-xl border px-3 py-2" placeholder="Title" />
+        <input id="pbCover" type="file" accept="image/*" class="w-full rounded-xl border px-3 py-2" />
+        <input id="pbAuthor" class="w-full rounded-xl border px-3 py-2" placeholder="Author" value="MarketMix Team" />
+        <textarea id="pbExcerpt" rows="2" maxlength="300" class="w-full rounded-xl border px-3 py-2" placeholder="Short excerpt (shown on cards)"></textarea>
+        <textarea id="pbContent" rows="12" class="w-full rounded-xl border px-3 py-2" placeholder="Write your post. Blank line = new paragraph."></textarea>
+        <div class="grid grid-cols-2 gap-3">
+          <select id="pbStatus" class="rounded-xl border px-3 py-2"><option value="draft">Draft</option><option value="published">Published</option><option value="scheduled">Scheduled</option></select>
+          <input id="pbPublishAt" type="datetime-local" class="rounded-xl border px-3 py-2" /></div>
+        <button id="pbSave" class="w-full rounded-xl bg-blue-600 px-4 py-2 text-white">Save Post</button>
+      </div></div></div>
     </div>
 
   </main>
