@@ -316,6 +316,9 @@
   }
 
   function attachEvents() {
+    if (window.__paymentsEventsBound) return;
+    window.__paymentsEventsBound = true;
+
     document.getElementById('searchInput').addEventListener('input', (event) => {
       state.filters.search = event.target.value;
       reload();
@@ -383,28 +386,22 @@
   }
 
   async function initializePaymentsPage() {
-    const requiredElements = ['summaryCards', 'paymentsTableBody', 'gatewayCards', 'financeSummary', 'activityTimeline'];
-    const hasRequiredElements = requiredElements.every((id) => document.getElementById(id));
+    if (window.__paymentsInitRunning) return;
+    window.__paymentsInitRunning = true;
+    try {
+      const requiredElements = ['summaryCards', 'paymentsTableBody', 'gatewayCards', 'financeSummary', 'activityTimeline'];
+      if (!requiredElements.every((id) => document.getElementById(id))) {
+        window.__paymentsInitRunning = false;
+        return setTimeout(initializePaymentsPage, 120);
+      }
 
-    if (!hasRequiredElements) {
-      setTimeout(initializePaymentsPage, 120);
-      return;
+      renderSkeletons();
+      await Promise.all([loadPayments(), loadOverview()]);
+      renderSummaryCards();
+      attachEvents();
+    } finally {
+      window.__paymentsInitRunning = false;
     }
-
-    if (!window.__paymentsInitialized) {
-      window.__paymentsInitialized = true;
-    }
-
-    renderSkeletons();
-    await Promise.all([loadPayments(), loadOverview()]);
-    renderSummaryCards();
-    attachEvents();
-  }
-
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', initializePaymentsPage);
-  } else {
-    initializePaymentsPage();
   }
 
   window.initializePaymentsPage = initializePaymentsPage;
