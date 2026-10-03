@@ -32,3 +32,12 @@
 @media (max-width: 767px) {
   .coupon-card { min-height: auto; }
 }
+
+.drawer { position: fixed; inset: 0; z-index: 60; display: flex; }
+.drawer.hidden { display: none; }
+.drawer .drawer-backdrop { position: absolute; inset: 0; background: rgba(2,6,23,.45); }
+.drawer .drawer-panel { position: relative; margin-left: auto; width: 32rem; max-width: 100%; background: #fff; height: 100%; display: flex; flex-direction: column; box-shadow: -8px 0 30px rgba(2,6,23,.1); }
+.drawer .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
+.drawer .drawer-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
+.fld { width: 100%; border: 1px solid #e2e8f0; border-radius: .75rem; padding: .55rem .75rem; font-size: .875rem; }
+.fld-label { display: block; font-size: .75rem; font-weight: 600; color: #64748b; margin: .75rem 0 .25rem; }

@@ -59,10 +59,7 @@
             </select>
             <select id="sellerFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none">
               <option value="all">All Sellers</option>
-              <option value="MarketStyle">MarketStyle</option>
-              <option value="UrbanCart">UrbanCart</option>
-              <option value="HomeGoods">HomeGoods</option>
-              <option value="GamerZone">GamerZone</option>
+              <option value="platform">MarketMix (Platform)</option>
             </select>
             <div class="grid gap-4 sm:grid-cols-2">
               <input id="dateStartFilter" type="date" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm outline-none" />
@@ -108,7 +105,10 @@
               <h2 class="text-lg font-semibold text-slate-900">Promotions</h2>
               <p class="text-sm text-slate-500">Measure campaign reach, budget and channel performance.</p>
             </div>
-            <span id="promotionTableCount" class="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">0 promotions</span>
+            <div class="flex flex-wrap items-center gap-3">
+              <span id="promotionTableCount" class="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">0 promotions</span>
+              <button id="createPromotionBtn" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition"><i class="fas fa-plus mr-2"></i>Create Promotion</button>
+            </div>
           </div>
           <div class="overflow-hidden rounded-2xl border border-slate-200">
             <div class="overflow-x-auto">
@@ -170,6 +170,46 @@
         </div>
       </aside>
     </div>
+    <div id="couponDrawer" class="drawer hidden"><div class="drawer-backdrop" data-close-drawer="true"></div>
+      <div class="drawer-panel">
+        <div class="drawer-header"><h3 id="couponDrawerTitle" class="text-xl font-semibold">Coupon</h3><button data-close-drawer="true"><i class="fas fa-times"></i></button></div>
+        <div class="drawer-body">
+          <label class="fld-label">Code</label><input id="cpCode" class="fld uppercase" maxlength="30" placeholder="SUMMER25" />
+          <label class="fld-label">Description</label><input id="cpDesc" class="fld" maxlength="255" />
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="fld-label">Discount type</label>
+              <select id="cpType" class="fld"><option value="percentage">Percentage</option><option value="fixed">Fixed Amount</option><option value="free_shipping">Free Shipping</option></select></div>
+            <div id="cpValueWrap"><label class="fld-label" id="cpValueLabel">Value (%)</label><input id="cpValue" type="number" min="0" step="0.01" class="fld" /></div>
+            <div id="cpMaxWrap"><label class="fld-label">Max discount (₦, 0 = none)</label><input id="cpMax" type="number" min="0" class="fld" value="0" /></div>
+            <div><label class="fld-label">Min order (₦)</label><input id="cpMin" type="number" min="0" class="fld" value="0" /></div>
+            <div><label class="fld-label">Total usage limit (0 = ∞)</label><input id="cpLimit" type="number" min="0" class="fld" value="0" /></div>
+            <div><label class="fld-label">Per-user limit (0 = ∞)</label><input id="cpPerUser" type="number" min="0" class="fld" value="0" /></div>
+            <div><label class="fld-label">Starts</label><input id="cpStart" type="datetime-local" class="fld" /></div>
+            <div><label class="fld-label">Ends</label><input id="cpEnd" type="datetime-local" class="fld" /></div>
+          </div>
+          <label class="fld-label">Campaign</label><select id="cpCampaign" class="fld"><option value="">None</option></select>
+          <label class="fld-label">Status</label>
+          <select id="cpStatus" class="fld"><option value="draft">Draft</option><option value="active">Active</option><option value="disabled">Disabled</option></select>
+          <button id="cpSave" class="mt-5 w-full rounded-xl bg-[#FF7A00] px-4 py-2.5 text-sm font-semibold text-white">Save Coupon</button>
+        </div></div></div>
+
+    <div id="campaignDrawer" class="drawer hidden"><div class="drawer-backdrop" data-close-drawer="true"></div>
+      <div class="drawer-panel">
+        <div class="drawer-header"><h3 id="campaignDrawerTitle" class="text-xl font-semibold">Campaign</h3><button data-close-drawer="true"><i class="fas fa-times"></i></button></div>
+        <div class="drawer-body">
+          <label class="fld-label">Name</label><input id="pmName" class="fld" maxlength="120" />
+          <label class="fld-label">Description</label><textarea id="pmDesc" rows="3" class="fld"></textarea>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="fld-label">Audience</label>
+              <select id="pmAudience" class="fld"><option value="all">All buyers</option><option value="new_buyers">New buyers only</option><option value="returning_buyers">Returning buyers</option></select></div>
+            <div><label class="fld-label">Budget (₦, 0 = none)</label><input id="pmBudget" type="number" min="0" class="fld" value="0" /></div>
+            <div><label class="fld-label">Starts</label><input id="pmStart" type="datetime-local" class="fld" /></div>
+            <div><label class="fld-label">Ends</label><input id="pmEnd" type="datetime-local" class="fld" /></div>
+          </div>
+          <label class="fld-label">Status</label>
+          <select id="pmStatus" class="fld"><option value="draft">Draft</option><option value="active">Active</option><option value="disabled">Disabled</option></select>
+          <button id="pmSave" class="mt-5 w-full rounded-xl bg-[#FF7A00] px-4 py-2.5 text-sm font-semibold text-white">Save Campaign</button>
+        </div></div></div>
   </main>
 
   <script src="js/coupons-promotions.js"></script>
