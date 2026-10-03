@@ -151,9 +151,9 @@
     return; // don't throw, just return
   }
 
-  state.session = session;
+  state.session = { ...(state.session || {}), ...session };
   state.sessionId = session.id;
-  state.items = Array.isArray(items) ? items : [];
+  if (Array.isArray(items) && items.length) state.items = items;
   state.selectedAddressId = session.address_id || session.addressId || state.selectedAddressId;
   state.selectedPayment = session.paymentMethod || session.payment_method || state.selectedPayment;
 
