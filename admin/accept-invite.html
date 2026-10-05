@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Accept Invitation | MarketMix Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+  <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="180" height="45"><text x="10" y="58" font-family="system-ui,sans-serif" font-weight="700" font-size="52" letter-spacing="-1.5px"><tspan fill="#000">market</tspan><tspan fill="#FF7A00">mix</tspan></text></svg>
+    <h1 class="mt-4 text-xl font-semibold">Accept your invitation</h1>
+    <p id="info" class="mt-1 text-sm text-slate-500">Checking invitation…</p>
+    <div id="form" class="mt-5 hidden space-y-3">
+      <input id="pw" type="password" autocomplete="new-password" placeholder="Create password (8+ chars)" class="w-full rounded-xl border px-4 py-3 text-sm">
+      <input id="pw2" type="password" autocomplete="new-password" placeholder="Confirm password" class="w-full rounded-xl border px-4 py-3 text-sm">
+      <p id="err" class="text-sm text-red-600" role="alert"></p>
+      <button id="go" class="w-full rounded-xl bg-[#FF7A00] px-4 py-3 text-sm font-semibold text-white">Create admin account</button>
+    </div>
+  </div>
+  <script>
+    const API = window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api';
+    const token = new URLSearchParams(location.search).get('token') || '';
+    const $ = id => document.getElementById(id);
+
+    async function verifyInvitation() {
+      if (!token) {
+        $('info').textContent = 'Invitation is invalid or expired.';
+        return;
+      }
+      try {
+        const response = await fetch(`${API}/admin/rbac/invitations/verify/${encodeURIComponent(token)}`);
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          $('info').textContent = body?.message || 'Invitation is invalid or expired.';
+          return;
+        }
+        $('info').textContent = `${body.data.email} · ${body.data.role}`;
+        $('form').classList.remove('hidden');
+      } catch {
+        $('info').textContent = 'Unable to verify invitation. Please try again later.';
+      }
+    }
+
+    $('go').addEventListener('click', async () => {
+      $('err').textContent = '';
+      if ($('pw').value.length < 8) {
+        $('err').textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+      if ($('pw').value !== $('pw2').value) {
+        $('err').textContent = 'Passwords do not match.';
+        return;
+      }
+      $('go').disabled = true;
+      try {
+        const response = await fetch(`${API}/admin/rbac/invitations/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password: $('pw').value })
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          $('err').textContent = body?.message || 'Failed to accept invitation.';
+          return;
+        }
+        location.href = 'login.html';
+      } catch {
+        $('err').textContent = 'Unable to accept invitation. Please try again.';
+      } finally {
+        $('go').disabled = false;
+      }
+    });
+
+    verifyInvitation();
+  </script>
+</body>
+</html>

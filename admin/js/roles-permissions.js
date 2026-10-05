@@ -1,31 +1,49 @@
-const adminAccounts = [
-  { name: 'Amina Johnson', email: 'amina.johnson@marketmix.com', role: 'Super Admin', department: 'Platform', status: 'Active', lastLogin: 'Today, 08:24', created: 'Jan 12, 2024' },
-  { name: 'Tyler Brooks', email: 'tyler.brooks@marketmix.com', role: 'Platform Administrator', department: 'Infrastructure', status: 'Active', lastLogin: 'Today, 07:05', created: 'Mar 22, 2024' },
-  { name: 'Priya Singh', email: 'priya.singh@marketmix.com', role: 'Operations Manager', department: 'Operations', status: 'Active', lastLogin: 'Yesterday, 18:40', created: 'Feb 08, 2024' },
-  { name: 'Jamal Carter', email: 'jamal.carter@marketmix.com', role: 'Finance Manager', department: 'Finance', status: 'Active', lastLogin: 'Yesterday, 16:12', created: 'Apr 03, 2024' },
-  { name: 'Lena West', email: 'lena.west@marketmix.com', role: 'Support Manager', department: 'Customer Support', status: 'Pending', lastLogin: 'Apr 17, 2024', created: 'Apr 17, 2024' },
-  { name: 'Melody Chen', email: 'melody.chen@marketmix.com', role: 'Content Manager', department: 'Content', status: 'Active', lastLogin: 'Apr 23, 2024', created: 'Jan 31, 2024' },
-  { name: 'Hector Alvarez', email: 'hector.alvarez@marketmix.com', role: 'Moderator', department: 'Community', status: 'Active', lastLogin: 'Apr 23, 2024', created: 'Feb 18, 2024' },
-  { name: 'Noah Patel', email: 'noah.patel@marketmix.com', role: 'Analytics Viewer', department: 'Insights', status: 'Inactive', lastLogin: 'Apr 12, 2024', created: 'Mar 10, 2024' },
-  { name: 'Keisha Morgan', email: 'keisha.morgan@marketmix.com', role: 'Support Agent', department: 'Customer Support', status: 'Suspended', lastLogin: 'Apr 05, 2024', created: 'Feb 14, 2024' }
-];
+let adminAccounts = [], rolesDataset = [], permissionHistory = [], selectedAdmin = null, currentRoleId = null;
+const RBAC_API = `${window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api'}/admin/rbac`;
+const esc = value => window.escapeHtml(value);
+const val = id => (document.getElementById(id)?.value || '').trim();
+const fmtDate = date => date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
-const rolesDataset = [
-  { role: 'Super Admin', description: 'Full platform control with all system permissions.', admins: 2, permissions: 98, created: 'Jan 02, 2024', status: 'Full Access' },
-  { role: 'Platform Administrator', description: 'Manage infrastructure, release schedules and integrations.', admins: 3, permissions: 76, created: 'Jan 18, 2024', status: 'High Access' },
-  { role: 'Operations Manager', description: 'Oversee operations and logistics workflows.', admins: 2, permissions: 56, created: 'Feb 02, 2024', status: 'Moderate Access' },
-  { role: 'Finance Manager', description: 'Handle payments, settlements and financial reporting.', admins: 2, permissions: 48, created: 'Feb 20, 2024', status: 'Moderate Access' },
-  { role: 'Support Manager', description: 'Manage support teams, tickets and service standards.', admins: 1, permissions: 32, created: 'Mar 05, 2024', status: 'Limited Access' },
-  { role: 'Content Manager', description: 'Create and review promotional content and marketplace pages.', admins: 2, permissions: 28, created: 'Mar 14, 2024', status: 'Limited Access' },
-  { role: 'Moderator', description: 'Review community submissions and enforce content policy.', admins: 3, permissions: 22, created: 'Mar 30, 2024', status: 'Read Only' }
-];
+async function rbac(path = '', method = 'GET', body) {
+  const response = await fetch(RBAC_API + path, {
+    method,
+    headers: { ...getAdminAuthHeaders(), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.message || 'Request failed');
+  return result.data;
+}
 
-const roleSummaries = [
-  { name: 'Super Admin', admins: 2, permissions: 98, access: 'Full Access', status: 'Active' },
-  { name: 'Platform Administrator', admins: 3, permissions: 76, access: 'High Access', status: 'Active' },
-  { name: 'Operations Manager', admins: 2, permissions: 56, access: 'Moderate Access', status: 'Active' },
-  { name: 'Support Manager', admins: 1, permissions: 32, access: 'Limited Access', status: 'Active' }
-];
+async function loadRbac() {
+  try {
+    const [summary, admins, roles, history] = await Promise.all([
+      rbac('/summary'), rbac('/admins'), rbac('/roles'), rbac('/history')
+    ]);
+    adminAccounts = admins.admins;
+    rolesDataset = roles.roles;
+    permissionHistory = history.history;
+    const values = [summary.total, summary.active, summary.pending, summary.roles, summary.custom, summary.suspended];
+    document.querySelectorAll('main section.mb-6.grid p.text-3xl').forEach((element, index) => {
+      element.textContent = values[index] ?? 0;
+    });
+    renderAdministratorsTable();
+    renderRolesTable();
+    renderRoleSummaryCards();
+    populateFilterOptions();
+    renderPermissionHistoryList();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+const guarded = fn => async (...args) => {
+  try {
+    return await fn(...args);
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+};
 
 const permissionTypes = ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Reject', 'Export', 'Manage'];
 const permissionModules = [
@@ -44,9 +62,10 @@ const permissionStates = {
   inherited: { label: 'Inherited', icon: 'fas fa-check-double' },
   none: { label: 'Not Allowed', icon: 'fas fa-minus' }
 };
+const normalizePermission = state => ['allowed', 'restricted', 'inherited', 'none'].includes(state) ? state : 'none';
 
 function formatStatusBadge(status) {
-  const normalized = (status || '').toLowerCase();
+  const normalized = String(status || '').toLowerCase();
   const styles = {
     'full access': 'bg-emerald-100 text-emerald-700',
     'high access': 'bg-blue-100 text-blue-700',
@@ -60,7 +79,7 @@ function formatStatusBadge(status) {
   };
 
   const classes = styles[normalized] || 'bg-slate-100 text-slate-700';
-  return `<span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${classes}">${status}</span>`;
+  return `<span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${classes}">${esc(status || 'Unknown')}</span>`;
 }
 
 function getNextState(currentState) {
@@ -82,23 +101,19 @@ function getPermissionIcon(state) {
   return `<i class="${permissionStates[state]?.icon || permissionStates.none.icon}"></i>`;
 }
 
-function initializeRolePermissions(roleName = '') {
-  const templateName = roleName || currentRole || '';
-  const templatePermissions = roleTemplatePermissions[templateName] || null;
-
-  permissionMatrix = permissionModules.map((module) => {
-    const permissions = {};
-    permissionTypes.forEach((type) => {
-      permissions[type] = templatePermissions?.[module]?.[type] ?? 'none';
-    });
-    return { module, permissions };
-  });
-
-  baselineMatrix = permissionMatrix.map((row) => ({
-    module: row.module,
-    permissions: { ...row.permissions }
+function applyMatrix(matrix) {
+  permissionMatrix = permissionModules.map(module => ({
+    module,
+    permissions: Object.fromEntries(permissionTypes.map(type => [type, normalizePermission(matrix?.[module]?.[type])]))
   }));
 }
+
+function initializeRolePermissions(matrix) {
+  applyMatrix(matrix);
+  baselineMatrix = permissionMatrix.map(row => ({ module: row.module, permissions: { ...row.permissions } }));
+}
+
+const collectMatrix = () => Object.fromEntries(permissionMatrix.map(row => [row.module, row.permissions]));
 
 function all(state) {
   return permissionTypes.reduce((acc, type) => { acc[type] = state; return acc; }, {});
@@ -199,143 +214,70 @@ const roleTemplatePermissions = {
   }
 };
 
-const permissionHistory = [
-  { date: 'Apr 22, 2024', administrator: 'Amina Johnson', action: 'Role created', changedBy: 'System' },
-  { date: 'Apr 21, 2024', administrator: 'Tyler Brooks', action: 'Permissions updated', changedBy: 'Amina Johnson' },
-  { date: 'Apr 20, 2024', administrator: 'Priya Singh', action: 'Administrator role changed', changedBy: 'Amina Johnson' },
-  { date: 'Apr 18, 2024', administrator: 'Lena West', action: 'High-risk permission granted', changedBy: 'Tyler Brooks' },
-  { date: 'Apr 17, 2024', administrator: 'Keisha Morgan', action: 'Permission removed', changedBy: 'Amina Johnson' }
-];
-
-const adminProfiles = {
-  'Amina Johnson': { name: 'Amina Johnson', email: 'amina.johnson@marketmix.com', role: 'Super Admin', department: 'Platform', status: 'Active', lastLogin: 'Today, 08:24', assigned: 98, inherited: 2, custom: ['Manage Roles & Permissions', 'Approve Withdrawals'], security: 'High' },
-  'Tyler Brooks': { name: 'Tyler Brooks', email: 'tyler.brooks@marketmix.com', role: 'Platform Administrator', department: 'Infrastructure', status: 'Active', lastLogin: 'Today, 07:05', assigned: 76, inherited: 4, custom: ['Manage Payments'], security: 'High' },
-  'Priya Singh': { name: 'Priya Singh', email: 'priya.singh@marketmix.com', role: 'Operations Manager', department: 'Operations', status: 'Active', lastLogin: 'Yesterday, 18:40', assigned: 56, inherited: 6, custom: ['Approve Refunds'], security: 'Moderate' },
-  'Jamal Carter': { name: 'Jamal Carter', email: 'jamal.carter@marketmix.com', role: 'Finance Manager', department: 'Finance', status: 'Active', lastLogin: 'Yesterday, 16:12', assigned: 48, inherited: 3, custom: ['Manage Payments', 'Approve Withdrawals'], security: 'High' },
-  'Lena West': { name: 'Lena West', email: 'lena.west@marketmix.com', role: 'Support Manager', department: 'Customer Support', status: 'Pending', lastLogin: 'Apr 17, 2024', assigned: 32, inherited: 8, custom: ['Manage Support Tickets'], security: 'Moderate' },
-  'Melody Chen': { name: 'Melody Chen', email: 'melody.chen@marketmix.com', role: 'Content Manager', department: 'Content', status: 'Active', lastLogin: 'Apr 23, 2024', assigned: 28, inherited: 4, custom: ['Manage Website CMS'], security: 'Moderate' },
-  'Hector Alvarez': { name: 'Hector Alvarez', email: 'hector.alvarez@marketmix.com', role: 'Moderator', department: 'Community', status: 'Active', lastLogin: 'Apr 23, 2024', assigned: 22, inherited: 2, custom: ['Review Content'], security: 'Limited' },
-  'Noah Patel': { name: 'Noah Patel', email: 'noah.patel@marketmix.com', role: 'Analytics Viewer', department: 'Insights', status: 'Inactive', lastLogin: 'Apr 12, 2024', assigned: 18, inherited: 5, custom: ['View Analytics'], security: 'Limited' },
-  'Keisha Morgan': { name: 'Keisha Morgan', email: 'keisha.morgan@marketmix.com', role: 'Support Agent', department: 'Customer Support', status: 'Suspended', lastLogin: 'Apr 05, 2024', assigned: 12, inherited: 1, custom: ['View Support Center'], security: 'Restricted' }
-};
-
 let permissionMatrix = [];
 let currentRole = null;
 let currentRoleMode = 'create';
-let selectedAdmin = null;
 let baselineMatrix = [];
 
 function renderAdministratorsTable() {
   const tbody = document.getElementById('rolesAdminsTableBody');
   if (!tbody) return;
-
-  if (!adminAccounts.length) {
-    tbody.innerHTML = `
-      <tr><td colspan="8" class="px-6 py-10 text-center text-sm text-slate-500">No administrators found.</td></tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = adminAccounts.map((admin) => `
-      <tr class="hover:bg-slate-50 transition">
-        <td class="px-4 py-4">
-          <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700"><i class="fas fa-user"></i></div>
-            <div>
-              <p class="font-semibold text-slate-900">${admin.name}</p>
-              <p class="text-xs text-slate-500">${admin.role}</p>
-            </div>
-          </div>
-        </td>
-        <td class="px-4 py-4 text-slate-600">${admin.email}</td>
-        <td class="px-4 py-4 text-slate-600">${admin.role}</td>
-        <td class="px-4 py-4 text-slate-600">${admin.department}</td>
-        <td class="px-4 py-4">${formatStatusBadge(admin.status)}</td>
-        <td class="px-4 py-4 text-slate-600">${admin.lastLogin}</td>
-        <td class="px-4 py-4 text-slate-600">${admin.created}</td>
-        <td class="px-4 py-4 text-slate-600">
-          <div class="flex flex-wrap gap-2">
-            <button onclick="openAdminModal('${admin.name}')" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
-            <button onclick="openRoleModal('edit', '${admin.role}')" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
-            <button onclick="handleAdminSuspendAccount('${admin.name}')" class="action-btn text-amber-600 hover:bg-amber-50">Suspend</button>
-            <button onclick="handleAdminDelete('${admin.name}')" class="action-btn text-red-600 hover:bg-red-50">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+  tbody.innerHTML = adminAccounts.length ? adminAccounts.map(admin => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="px-4 py-4"><div class="flex items-center gap-3">
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700"><i class="fas fa-user"></i></div>
+        <div><p class="font-semibold text-slate-900">${esc(admin.name)}</p><p class="text-xs text-slate-500">${esc(admin.role)}</p></div></div></td>
+      <td class="px-4 py-4 text-slate-600">${esc(admin.email)}</td><td class="px-4 py-4 text-slate-600">${esc(admin.role)}</td>
+      <td class="px-4 py-4 text-slate-600">${esc(admin.department)}</td><td class="px-4 py-4">${formatStatusBadge(admin.status)}</td>
+      <td class="px-4 py-4 text-slate-600">${admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : 'Never'}</td>
+      <td class="px-4 py-4 text-slate-600">${fmtDate(admin.createdAt)}</td>
+      <td class="px-4 py-4"><div class="flex flex-wrap gap-2">
+        <button data-admin-action="view" data-id="${esc(admin.id)}" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
+        <button data-admin-action="edit" data-id="${esc(admin.id)}" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
+        <button data-admin-action="suspend" data-id="${esc(admin.id)}" class="action-btn text-amber-600 hover:bg-amber-50">${admin.status === 'Suspended' ? 'Activate' : 'Suspend'}</button>
+        <button data-admin-action="delete" data-id="${esc(admin.id)}" class="action-btn text-red-600 hover:bg-red-50">Delete</button></div></td></tr>`).join('')
+    : '<tr><td colspan="8" class="px-6 py-10 text-center text-sm text-slate-500">No administrators found.</td></tr>';
 }
 
 function renderRolesTable() {
   const tbody = document.getElementById('rolesTableBody');
   if (!tbody) return;
-
-  if (!rolesDataset.length) {
-    tbody.innerHTML = `
-      <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-slate-500">No roles found.</td></tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = rolesDataset.map((role) => `
-      <tr class="hover:bg-slate-50 transition">
-        <td class="px-4 py-4 font-semibold text-slate-900">${role.role}</td>
-        <td class="px-4 py-4 text-slate-600">${role.description}</td>
-        <td class="px-4 py-4 text-slate-600">${role.admins}</td>
-        <td class="px-4 py-4 text-slate-600">${role.permissions}</td>
-        <td class="px-4 py-4 text-slate-600">${role.created}</td>
-        <td class="px-4 py-4">${formatStatusBadge(role.status)}</td>
-        <td class="px-4 py-4">
-          <div class="flex flex-wrap gap-2">
-            <button onclick="openRoleModal('view', '${role.role}')" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
-            <button onclick="openRoleModal('edit', '${role.role}')" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+  tbody.innerHTML = rolesDataset.length ? rolesDataset.map(role => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="px-4 py-4 font-semibold text-slate-900">${esc(role.name)}</td><td class="px-4 py-4 text-slate-600">${esc(role.description)}</td>
+      <td class="px-4 py-4 text-slate-600">${Number(role.admins) || 0}</td><td class="px-4 py-4 text-slate-600">${Number(role.permissionCount) || 0}</td>
+      <td class="px-4 py-4 text-slate-600">${fmtDate(role.createdAt)}</td><td class="px-4 py-4">${formatStatusBadge(role.accessLevel)}</td>
+      <td class="px-4 py-4"><div class="flex flex-wrap gap-2">
+        <button data-role-action="view" data-id="${esc(role.id)}" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
+        ${role.isSuper ? '' : `<button data-role-action="edit" data-id="${esc(role.id)}" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
+        <button data-role-action="delete" data-id="${esc(role.id)}" class="action-btn text-red-600 hover:bg-red-50">Delete</button>`}</div></td></tr>`).join('')
+    : '<tr><td colspan="7" class="px-6 py-10 text-center text-sm text-slate-500">No roles found.</td></tr>';
 }
 
 function renderRoleSummaryCards() {
   const container = document.getElementById('roleSummaryCards');
   if (!container) return;
-
-  container.innerHTML = roleSummaries.map((item) => `
-      <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">${item.name}</p>
-            <h3 class="mt-3 text-2xl font-semibold text-slate-900">${item.admins} Admins</h3>
-          </div>
-          <span class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">${item.access}</span>
-        </div>
-        <div class="mt-4 space-y-2 text-sm text-slate-600">
-          <div class="flex items-center justify-between gap-2"><span>Permissions</span><span class="font-semibold text-slate-900">${item.permissions}</span></div>
-          <div class="flex items-center justify-between gap-2"><span>Status</span><span class="font-semibold text-slate-900">${item.status}</span></div>
-          <button onclick="openRoleModal('view', '${item.name}')" class="mt-4 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-100 transition">View Permissions</button>
-        </div>
-      </div>
-    `).join('');
+  container.innerHTML = [...rolesDataset].sort((a, b) => b.admins - a.admins).slice(0, 4).map(role => `
+    <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <div class="flex items-center justify-between gap-3"><div>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">${esc(role.name)}</p>
+        <h3 class="mt-3 text-2xl font-semibold text-slate-900">${Number(role.admins) || 0} Admins</h3></div>
+        <span class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">${esc(role.accessLevel)}</span></div>
+      <div class="mt-4 space-y-2 text-sm text-slate-600">
+        <div class="flex justify-between"><span>Permissions</span><span class="font-semibold text-slate-900">${Number(role.permissionCount) || 0}</span></div>
+        <div class="flex justify-between"><span>Status</span><span class="font-semibold text-slate-900">${esc(role.status)}</span></div>
+        <button data-role-action="view" data-id="${esc(role.id)}" class="mt-4 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-100">View Permissions</button></div></div>`).join('');
 }
 
 function renderPermissionHistoryList() {
   const container = document.getElementById('permissionHistoryList');
   if (!container) return;
-
-  if (!permissionHistory.length) {
-    container.innerHTML = '<p class="text-sm text-slate-500">No permission change history available.</p>';
-    return;
-  }
-
-  container.innerHTML = permissionHistory.map((item) => `
-      <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <p class="text-sm font-semibold text-slate-900">${item.action}</p>
-            <p class="mt-1 text-sm text-slate-500">${item.administrator} • Changed by ${item.changedBy}</p>
-          </div>
-          <span class="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">${item.date}</span>
-        </div>
-      </div>
-    `).join('');
+  container.innerHTML = permissionHistory.length ? permissionHistory.map(item => `
+    <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4"><div class="flex items-start justify-between gap-4"><div>
+      <p class="text-sm font-semibold text-slate-900">${esc(item.description)}</p>
+      <p class="mt-1 text-sm text-slate-500">${esc(item.target)} • Changed by ${esc(item.changedBy)}</p></div>
+      <span class="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">${fmtDate(item.at)}</span></div></div>`).join('')
+    : '<p class="text-sm text-slate-500">No permission change history available.</p>';
 }
 
 function populateFilterOptions() {
@@ -347,7 +289,7 @@ function populateFilterOptions() {
     moduleSelect.innerHTML = `<option value="">All modules</option>${permissionModules.map((module) => `<option value="${module}">${module}</option>`).join('')}`;
   }
   if (roleSelect) {
-    roleSelect.innerHTML = `<option value="">All roles</option>${Object.keys(roleTemplatePermissions).map((role) => `<option value="${role}">${role}</option>`).join('')}`;
+    roleSelect.innerHTML = `<option value="">All roles</option>${rolesDataset.map(role => `<option value="${esc(role.name)}">${esc(role.name)}</option>`).join('')}`;
   }
   if (typeSelect) {
     typeSelect.innerHTML = `<option value="">All types</option>${permissionTypes.map((type) => `<option value="${type}">${type}</option>`).join('')}`;
@@ -391,7 +333,7 @@ function renderPermissionMatrix() {
 
   tbody.innerHTML = rows.map((row) => {
     const cells = permissionTypes.map((type) => {
-      const state = row.permissions[type] || 'none';
+      const state = normalizePermission(row.permissions[type]);
       return `
         <td class="px-2 py-3 text-center">
           <button type="button" data-module="${row.module}" data-permission="${type}" data-state="${state}" class="permission-toggle ${getPermissionClass(state)}" aria-label="${type} permission for ${row.module}">
@@ -473,61 +415,71 @@ function showDangerWarning() {
   warning.classList.toggle('hidden', !hasDanger);
 }
 
-function openRoleModal(mode, roleName = '') {
-  currentRoleMode = mode;
-  currentRole = roleName || null;
-
-  const modal = document.getElementById('roleModal');
-  const modalModeText = document.getElementById('roleModalMode');
-  const modalTitle = document.getElementById('roleModalTitle');
-  const roleNameField = document.getElementById('roleNameField');
-  const roleDescriptionField = document.getElementById('roleDescriptionField');
-  const roleStatusField = document.getElementById('roleStatusField');
-  const roleAccessField = document.getElementById('roleAccessField');
-
-  if (modalModeText) modalModeText.textContent = mode === 'edit' ? 'Edit Role' : 'Create Role';
-  if (modalTitle) modalTitle.textContent = mode === 'edit' ? `Edit ${roleName}` : 'New role details';
-  if (roleNameField) roleNameField.value = roleName || '';
-  if (roleDescriptionField) roleDescriptionField.value = rolesDataset.find((r) => r.role === roleName)?.description || '';
-  if (roleStatusField) roleStatusField.value = rolesDataset.find((r) => r.role === roleName)?.status || 'Active';
-  if (roleAccessField) roleAccessField.value = rolesDataset.find((r) => r.role === roleName)?.status || 'Moderate Access';
-
-  initializeRolePermissions(roleName);
+function openRoleModal(mode, id = '') {
+  const role = rolesDataset.find(item => item.id === id) || null;
+  currentRoleMode = mode !== 'create' && role?.isSuper ? 'view' : mode;
+  currentRoleId = mode === 'admin' ? null : role?.id || null;
+  currentRole = mode === 'admin' ? selectedAdmin.role : role?.name || null;
+  const locked = currentRoleMode === 'view' || currentRoleMode === 'admin';
+  const set = (fieldId, value) => {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      field.value = value ?? '';
+      field.disabled = locked;
+    }
+  };
+  set('roleNameField', mode === 'admin' ? `${selectedAdmin.name} — ${selectedAdmin.role}` : role?.name);
+  set('roleDescriptionField', mode === 'admin' ? 'Custom permission overrides for this administrator' : role?.description);
+  set('roleStatusField', role?.status || 'Active');
+  set('roleAccessField', role?.accessLevel || 'Moderate Access');
+  document.getElementById('saveRoleBtn').classList.toggle('hidden', currentRoleMode === 'view');
+  document.getElementById('saveRoleDraftBtn').classList.toggle('hidden', locked);
+  document.getElementById('roleModalMode').textContent = {
+    create: 'Create Role', edit: 'Edit Role', view: 'View Role', admin: 'Edit Administrator Permissions'
+  }[currentRoleMode];
+  document.getElementById('roleModalTitle').textContent =
+    mode === 'create' ? 'New role details' : (mode === 'admin' ? selectedAdmin.name : role?.name || '');
+  initializeRolePermissions(mode === 'admin' ? selectedAdmin.effective : role?.permissions);
   renderPermissionMatrix();
   updatePermissionSummary();
   updateChangePreview();
   showDangerWarning();
-  attachMatrixEvents();
-
-  if (modal) modal.classList.remove('hidden');
+  document.getElementById('roleModal')?.classList.remove('hidden');
 }
 
 function closeRoleModal() {
   document.getElementById('roleModal')?.classList.add('hidden');
 }
 
-function openAdminModal(adminName) {
-  selectedAdmin = adminName;
-  const profile = adminProfiles[adminName];
-  if (!profile) return;
-
-  document.getElementById('adminNameField').textContent = profile.name;
-  document.getElementById('adminEmailField').textContent = profile.email;
-  document.getElementById('adminRoleField').textContent = profile.role;
-  document.getElementById('adminDepartmentField').textContent = profile.department;
-  document.getElementById('adminStatusField').textContent = profile.status;
-  document.getElementById('adminLastLoginField').textContent = profile.lastLogin;
-  document.getElementById('adminAssignedPermissions').textContent = profile.assigned;
-  document.getElementById('adminInheritedPermissions').textContent = profile.inherited;
-  document.getElementById('adminSecurityLevel').textContent = profile.security;
-
-  const customPermissions = document.getElementById('adminCustomPermissions');
-  if (customPermissions) {
-    customPermissions.innerHTML = profile.custom.map((perm) => `<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">${perm}</span>`).join('');
-  }
-
-  document.getElementById('adminModal')?.classList.remove('hidden');
+async function loadAdmin(id) {
+  selectedAdmin = (await rbac('/admins/' + encodeURIComponent(id))).admin;
+  return selectedAdmin;
 }
+
+const openAdminModal = guarded(async id => {
+  const admin = await loadAdmin(id);
+  const setText = (fieldId, value) => { document.getElementById(fieldId).textContent = value ?? '—'; };
+  setText('adminNameField', admin.name);
+  setText('adminEmailField', admin.email);
+  setText('adminRoleField', admin.role);
+  setText('adminDepartmentField', admin.department);
+  setText('adminStatusField', admin.status);
+  setText('adminLastLoginField', admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : 'Never');
+  setText('adminAssignedPermissions', admin.assigned);
+  setText('adminInheritedPermissions', admin.inherited);
+  setText('adminSecurityLevel', admin.security);
+  document.getElementById('adminCustomPermissions').innerHTML = admin.custom.length
+    ? admin.custom.map(permission => `<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">${esc(permission)}</span>`).join('')
+    : '<span class="text-sm text-slate-400">None</span>';
+  document.querySelector('#adminModal button[onclick*="handleAdminSuspendAccount"]').textContent =
+    admin.status === 'Suspended' ? 'Reactivate Account' : 'Suspend Account';
+  document.getElementById('adminModal').classList.remove('hidden');
+});
+
+const editAdmin = guarded(async id => {
+  await loadAdmin(id);
+  openRoleModal('admin');
+});
 
 function closeAdminModal() {
   document.getElementById('adminModal')?.classList.add('hidden');
@@ -535,30 +487,58 @@ function closeAdminModal() {
 
 function handleAdminChangeRole() {
   if (!selectedAdmin) return;
-  openRoleModal('edit', adminProfiles[selectedAdmin].role);
+  document.getElementById('adminRoleField').innerHTML = `
+    <select id="adminRoleSelect" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+      ${rolesDataset.filter(role => role.status === 'Active').map(role => `<option value="${esc(role.id)}" ${role.id === selectedAdmin.roleId ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}
+    </select><button type="button" onclick="saveAdminRole()" class="ml-2 rounded-xl bg-slate-900 px-3 py-2 text-sm text-white">Save</button>`;
 }
+
+const saveAdminRole = guarded(async () => {
+  await rbac(`/admins/${encodeURIComponent(selectedAdmin.id)}/role`, 'PUT', {
+    roleId: document.getElementById('adminRoleSelect').value
+  });
+  showToast('Role updated (custom overrides reset)');
+  await loadRbac();
+  await openAdminModal(selectedAdmin.id);
+});
 
 function handleAdminEditPermissions() {
+  if (selectedAdmin) openRoleModal('admin');
+}
+
+const handleAdminSuspendAccount = guarded(async id => {
+  id = id || selectedAdmin?.id;
+  const admin = adminAccounts.find(item => item.id === id);
+  if (!admin) throw new Error('Administrator not found');
+  const suspend = admin.status !== 'Suspended';
+  if (!confirm(`${suspend ? 'Suspend' : 'Reactivate'} ${admin.name}?`)) return;
+  await rbac(`/admins/${encodeURIComponent(id)}/${suspend ? 'suspend' : 'activate'}`, 'POST');
+  closeAdminModal();
+  showToast(suspend ? 'Administrator suspended' : 'Administrator reactivated');
+  await loadRbac();
+});
+
+const handleAdminResetPermissions = guarded(async () => {
   if (!selectedAdmin) return;
-  openRoleModal('edit', adminProfiles[selectedAdmin].role);
-}
+  if (!confirm('Reset to the role defaults?')) return;
+  await rbac(`/admins/${encodeURIComponent(selectedAdmin.id)}/reset-permissions`, 'POST');
+  showToast('Permissions reset');
+  await loadRbac();
+  await openAdminModal(selectedAdmin.id);
+});
 
-function handleAdminSuspendAccount(adminName) {
-  alert(`Suspend account action is not connected yet for ${adminName || 'this administrator'}.`);
-}
-
-function handleAdminResetPermissions() {
-  if (!selectedAdmin) return;
-  alert(`Reset permissions action is not connected yet for ${selectedAdmin}.`);
-}
-
-function handleAdminDelete(adminName) {
-  alert(`Delete administrator action is not connected yet for ${adminName}.`);
-}
+const handleAdminDelete = guarded(async id => {
+  const admin = adminAccounts.find(item => item.id === id);
+  if (!admin) throw new Error('Administrator not found');
+  if (!confirm(`Remove admin access for ${admin.name}? Their account becomes a normal user.`)) return;
+  await rbac('/admins/' + encodeURIComponent(id), 'DELETE');
+  showToast('Administrator removed');
+  await loadRbac();
+});
 
 function openPermissionsConfirmModal() {
   const modal = document.getElementById('permissionsConfirmModal');
-  document.getElementById('confirmAdminName').textContent = selectedAdmin || 'System preview';
+  document.getElementById('confirmAdminName').textContent = currentRoleMode === 'admin' ? selectedAdmin.name : 'Role update';
   document.getElementById('confirmRoleName').textContent = currentRole || 'New Role';
   updateChangePreview();
   if (modal) modal.classList.remove('hidden');
@@ -568,18 +548,103 @@ function closePermissionsConfirmModal() {
   document.getElementById('permissionsConfirmModal')?.classList.add('hidden');
 }
 
-function confirmPermissionChanges() {
-  closePermissionsConfirmModal();
-  showToast('Permission changes previewed successfully (UI-only).', 'success');
+async function persistRole(statusOverride) {
+  if (currentRoleMode === 'admin') {
+    return rbac(`/admins/${encodeURIComponent(selectedAdmin.id)}/permissions`, 'PUT', { permissions: collectMatrix() });
+  }
+  const body = {
+    name: val('roleNameField'),
+    description: val('roleDescriptionField'),
+    accessLevel: val('roleAccessField'),
+    status: statusOverride || val('roleStatusField'),
+    permissions: collectMatrix()
+  };
+  return currentRoleId
+    ? rbac(`/roles/${encodeURIComponent(currentRoleId)}`, 'PUT', body)
+    : rbac('/roles', 'POST', body);
 }
 
-function saveRoleDraft() {
-  showToast('Role draft saved (UI-only).', 'success');
-}
+const finishSave = async message => {
+  closeRoleModal();
+  closeAdminModal();
+  showToast(message);
+  await loadRbac();
+};
+
+const saveRoleDraft = guarded(async () => {
+  await persistRole('Pending');
+  await finishSave('Role saved as draft');
+});
 
 function saveRole() {
   openPermissionsConfirmModal();
 }
+
+const confirmPermissionChanges = guarded(async () => {
+  await persistRole();
+  closePermissionsConfirmModal();
+  await finishSave('Permissions saved');
+});
+
+const deleteRole = guarded(async id => {
+  const role = rolesDataset.find(item => item.id === id);
+  if (!role) throw new Error('Role not found');
+  if (!confirm(`Delete role "${role.name}"?`)) return;
+  await rbac(`/roles/${encodeURIComponent(id)}`, 'DELETE');
+  showToast('Role deleted');
+  await loadRbac();
+});
+
+const closeInviteModal = () => {
+  const modal = document.getElementById('inviteModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+const refreshInvites = guarded(async () => {
+  const { invitations } = await rbac('/invitations');
+  document.getElementById('invList').innerHTML = invitations.length ? invitations.map(invitation => `
+    <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+      <div><p class="font-semibold text-slate-900">${esc(invitation.email)}</p><p class="text-xs text-slate-500">${esc(invitation.role)} · expires ${fmtDate(invitation.expiresAt)}</p></div>
+      <div class="flex gap-2"><button data-invite-action="resend" data-id="${esc(invitation.id)}" class="action-btn text-blue-600">Resend</button>
+      <button data-invite-action="revoke" data-id="${esc(invitation.id)}" class="action-btn text-red-600">Revoke</button></div></div>`).join('')
+    : '<p class="text-sm text-slate-400">No pending invitations.</p>';
+});
+
+const openInviteModal = guarded(async () => {
+  document.getElementById('invRole').innerHTML = rolesDataset.filter(role => role.status === 'Active')
+    .map(role => `<option value="${esc(role.id)}">${esc(role.name)}</option>`).join('');
+  const modal = document.getElementById('inviteModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  await refreshInvites();
+});
+
+const sendInvite = guarded(async () => {
+  await rbac('/invitations', 'POST', {
+    firstName: val('invFirst'),
+    lastName: val('invLast'),
+    email: val('invEmail'),
+    department: val('invDept'),
+    roleId: val('invRole')
+  });
+  ['invFirst', 'invLast', 'invEmail', 'invDept'].forEach(id => { document.getElementById(id).value = ''; });
+  showToast('Invitation sent');
+  await refreshInvites();
+  await loadRbac();
+});
+
+const resendInvite = guarded(async id => {
+  await rbac(`/invitations/${encodeURIComponent(id)}/resend`, 'POST');
+  showToast('Invitation resent');
+});
+
+const revokeInvite = guarded(async id => {
+  await rbac('/invitations/' + encodeURIComponent(id), 'DELETE');
+  showToast('Invitation revoked');
+  await refreshInvites();
+  await loadRbac();
+});
 
 function attachInlineActions() {
   const refreshButton = document.getElementById('refreshRolesBtn');
@@ -593,11 +658,36 @@ function attachInlineActions() {
   const roleFilter = document.getElementById('permissionRoleFilter');
   const statusFilter = document.getElementById('permissionStatusFilter');
 
-  if (refreshButton) refreshButton.addEventListener('click', () => window.location.reload());
+  if (refreshButton) refreshButton.addEventListener('click', loadRbac);
   if (createRoleBtn) createRoleBtn.addEventListener('click', () => openRoleModal('create'));
-  if (inviteAdminBtn) inviteAdminBtn.addEventListener('click', () => alert('Invite Administrator is not connected yet.'));
+  if (inviteAdminBtn) inviteAdminBtn.addEventListener('click', openInviteModal);
   if (saveRoleDraftBtn) saveRoleDraftBtn.addEventListener('click', saveRoleDraft);
   if (saveRoleBtn) saveRoleBtn.addEventListener('click', saveRole);
+  document.getElementById('sendInviteBtn')?.addEventListener('click', sendInvite);
+  document.getElementById('rolesAdminsTableBody')?.addEventListener('click', event => {
+    const button = event.target.closest('button[data-admin-action]');
+    if (!button) return;
+    const { adminAction, id } = button.dataset;
+    if (adminAction === 'view') openAdminModal(id);
+    if (adminAction === 'edit') editAdmin(id);
+    if (adminAction === 'suspend') handleAdminSuspendAccount(id);
+    if (adminAction === 'delete') handleAdminDelete(id);
+  });
+  const handleRoleAction = event => {
+    const button = event.target.closest('button[data-role-action]');
+    if (!button) return;
+    const { roleAction, id } = button.dataset;
+    if (roleAction === 'delete') deleteRole(id);
+    else openRoleModal(roleAction, id);
+  };
+  document.getElementById('rolesTableBody')?.addEventListener('click', handleRoleAction);
+  document.getElementById('roleSummaryCards')?.addEventListener('click', handleRoleAction);
+  document.getElementById('invList')?.addEventListener('click', event => {
+    const button = event.target.closest('button[data-invite-action]');
+    if (!button) return;
+    if (button.dataset.inviteAction === 'resend') resendInvite(button.dataset.id);
+    if (button.dataset.inviteAction === 'revoke') revokeInvite(button.dataset.id);
+  });
   if (searchInput) searchInput.addEventListener('input', () => {
     renderPermissionMatrix();
     updateChangePreview();
@@ -609,15 +699,23 @@ function attachInlineActions() {
 
   document.querySelectorAll('.role-template-btn').forEach((button) => {
     button.addEventListener('click', () => {
-      const templateName = button.dataset.template;
-      if (!templateName) return;
-      currentRole = templateName;
-      initializeRolePermissions(templateName);
+      const name = button.dataset.template;
+      const preset = roleTemplatePermissions[name];
+      if (!preset) return;
+      if (document.getElementById('roleModal').classList.contains('hidden')) {
+        openRoleModal('create');
+        document.getElementById('roleNameField').value = name;
+      }
+      if (currentRoleMode === 'view' || currentRoleMode === 'admin') {
+        showToast('Templates apply to role editing only', 'error');
+        return;
+      }
+      applyMatrix(preset);
       renderPermissionMatrix();
       updatePermissionSummary();
       updateChangePreview();
       showDangerWarning();
-      showToast(`${templateName} template loaded (UI-only).`, 'success');
+      showToast(`${name} template loaded`);
     });
   });
 }
@@ -627,6 +725,7 @@ function attachMatrixEvents() {
   if (!tbody) return;
 
   tbody.addEventListener('click', (event) => {
+    if (currentRoleMode === 'view') return;
     const button = event.target.closest('.permission-toggle');
     if (!button) return;
 
@@ -646,19 +745,15 @@ function attachMatrixEvents() {
   });
 }
 
-function initializeRolesPermissionsPage() {
-  renderAdministratorsTable();
-  renderRolesTable();
-  renderRoleSummaryCards();
-  populateFilterOptions();
-  renderPermissionHistoryList();
-  initializeRolePermissions();
+async function initializeRolesPermissionsPage() {
+  attachInlineActions();
+  attachMatrixEvents();
+  initializeRolePermissions(null);
   renderPermissionMatrix();
   updatePermissionSummary();
   updateChangePreview();
   showDangerWarning();
-  attachInlineActions();
-  attachMatrixEvents();
+  await loadRbac();
 }
 
 window.initializeRolesPermissionsPage = initializeRolesPermissionsPage;
