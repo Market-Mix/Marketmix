@@ -1,27 +1,73 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Audit Logs | MarketMix Admin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="css/audit-logs.css" />
-</head>
-<body class="bg-gray-50 text-slate-800">
-  <main class="ml-64 mt-16 p-4 md:p-6 lg:p-8">
-    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Audit Logs</p>
-        <h1 class="text-3xl font-semibold text-slate-900">Audit Logs</h1>
-        <p class="mt-2 text-sm text-slate-500">View audit activity from the admin panel and track system events.</p>
+<main class="ml-0 mt-0 p-0">
+  <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Audit Logs</p>
+      <h1 class="text-3xl font-semibold text-slate-900">Audit Logs</h1>
+      <p class="mt-2 text-sm text-slate-500">Immutable record of admin, seller and system activity across MarketMix.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm">
+        <input id="auditLive" type="checkbox" /> Live (30s)</label>
+      <button id="exportAuditLogsBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm"><i class="fas fa-file-export mr-2"></i>Export CSV</button>
+      <button id="refreshAuditLogsBtn" class="rounded-xl bg-[#FF7A00] px-4 py-2.5 text-sm font-medium text-white shadow-sm"><i class="fas fa-rotate-right mr-2"></i>Refresh</button>
+    </div>
+  </div>
+
+  <section id="summaryCards" class="mb-6 grid gap-4 xl:grid-cols-4 md:grid-cols-2"></section>
+
+  <div class="grid gap-6 xl:grid-cols-[1.9fr_0.7fr]">
+    <div class="space-y-6">
+      <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <div class="grid gap-3 xl:grid-cols-4 lg:grid-cols-3">
+          <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm xl:col-span-2">
+            <i class="fas fa-search text-slate-400"></i>
+            <input id="auditSearch" type="text" placeholder="Search action, actor, IP, object ID, metadata…" class="w-full border-none bg-transparent outline-none" /></label>
+          <select id="actionFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="all">All Actions</option></select>
+          <select id="typeFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="all">All Objects</option></select>
+          <select id="actorFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="all">All Actors</option></select>
+          <select id="severityFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+            <option value="all">All Severity</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+          <input id="dateFrom" type="date" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />
+          <input id="dateTo" type="date" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />
+          <select id="sortSelect" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="desc">Newest first</option><option value="asc">Oldest first</option></select>
+          <button id="resetAuditFilters" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700">Reset</button>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-900">Activity</h2>
+          <span id="auditCount" class="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">0 events</span>
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-slate-200"><div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm text-slate-600">
+            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr>
+              <th class="px-4 py-3">Time</th><th class="px-4 py-3">Severity</th><th class="px-4 py-3">Action</th>
+              <th class="px-4 py-3">Actor</th><th class="px-4 py-3">Object</th><th class="px-4 py-3">IP</th><th class="px-4 py-3"></th></tr></thead>
+            <tbody id="auditTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+          </table></div></div>
+        <div id="auditPagination" class="mt-4 flex items-center justify-between text-sm text-slate-600"></div>
+      </section>
+    </div>
+
+    <aside class="space-y-6">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-lg font-semibold text-slate-900">Top Actions</h3>
+        <p class="mt-1 text-sm text-slate-500">Last 30 days · click to filter</p>
+        <div id="topActions" class="mt-4 space-y-2"></div>
       </div>
-      <button id="refreshAuditLogsBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm"><i class="fas fa-rotate-right mr-2"></i>Refresh</button>
+    </aside>
+  </div>
+
+  <div id="auditDrawer" class="audit-drawer hidden">
+    <div class="audit-backdrop" data-close-audit="true"></div>
+    <div class="audit-panel">
+      <div class="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+        <div><p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Log Entry</p>
+          <h3 id="auditDrawerTitle" class="mt-1 text-xl font-semibold text-slate-900"></h3></div>
+        <button data-close-audit="true" class="rounded-full p-2 text-slate-500 hover:bg-slate-100"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="auditDrawerBody" class="flex-1 overflow-y-auto px-6 py-5"></div>
     </div>
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <p class="text-sm text-slate-600">Audit Logs content is loaded by the SPA router. If you see this message, the page fragment is now valid.</p>
-    </div>
-  </main>
-  <script src="js/audit-logs.js"></script>
-</body>
-</html>
+  </div>
+</main>
