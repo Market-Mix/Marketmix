@@ -295,13 +295,6 @@ function closeReviewModal() {
   document.getElementById('reviewModal').classList.add('hidden');
 }
 
-function showToast(message) {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.classList.remove('hidden');
-  setTimeout(() => toast.classList.add('hidden'), 2200);
-}
-
 const NEEDS_NOTE = ['hide', 'remove', 'warn-seller', 'warn-buyer'];
 const perform = guard(async (ids, action) => {
   let note = '';
