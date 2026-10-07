@@ -1209,9 +1209,6 @@ async function approveReturnConfirmed(id, reason) {
     }
 
     showToast('Return request approved successfully', 'success');
-    if (typeof fetchAdminRefundCases === 'function') {
-      fetchAdminRefundCases();
-    }
     loadPage('returns');
   } catch (err) {
     showToast(err.message || 'Failed to approve refund', 'error');
@@ -1255,17 +1252,10 @@ async function denyReturnConfirmed(id, reason) {
     }
 
     showToast('Return request denied successfully', 'success');
-    if (typeof fetchAdminRefundCases === 'function') {
-      fetchAdminRefundCases();
-    }
     loadPage('returns');
   } catch (err) {
     showToast(err.message || 'Failed to reject refund', 'error');
   }
-}
-
-function deleteReturn(id) {
-  showToast('Delete action is not supported for backend refund cases.', 'error');
 }
 
 // Category Functions

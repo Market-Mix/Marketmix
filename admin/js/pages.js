@@ -25,6 +25,8 @@ window.escapeHtml = window.escapeHtml || function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 };
 
+window.formatRefundAmount = window.formatRefundAmount || (v => formatCurrency(v));
+
 // Sellers Management
 async function fetchAdminSellers(search = '', status = 'All') {
   const params = new URLSearchParams({ page: 1, limit: 100 });
@@ -439,6 +441,11 @@ function normalizeRefundCase(refundCase) {
     statusClass: displayState.className,
     statusKey: displayState.statusKey,
     rawResolutionStatus: refundCase.resolution_status || refundCase.status || '',
+    marketmixReason: refundCase.marketmix_decision_reason || '',
+    buyerId: refundCase.buyer_id || '',
+    sellerId: refundCase.seller_id || '',
+    returnDeadline: refundCase.buyer_return_deadline || null,
+    returnAddress: [refundCase.return_address_line1, refundCase.return_city, refundCase.return_state, refundCase.return_country].filter(Boolean).join(', '),
     date: createdDate,
     returnDate: createdDate,
     productName: refundCase.product_name || refundCase.productName || 'Unknown product',
@@ -543,6 +550,7 @@ function applyReturnFilters() {
 
     return matchesQuery && matchesStatus;
   });
+  window._filteredReturns = filtered;
 
   const container = document.getElementById('returnTableContainer');
   if (!container) return;
@@ -2589,10 +2597,15 @@ function renderReturns() {
           <option value="waiting_buyer_confirmation">Awaiting Buyer Confirmation</option>
           <option value="buyer_shipped_waiting_seller">Buyer shipped / Waiting for seller confirmation</option>
           <option value="seller_confirmed">Seller confirmed receipt / Refund Processing</option>
+          <option value="waiting_seller_return_decision">Awaiting seller decision</option>
+          <option value="return_in_transit">Return in transit</option>
+          <option value="refund_processing">Refund processing</option>
+          <option value="awaiting_refund_release">Awaiting refund release</option>
+          <option value="refund_rejected">Rejected</option>
           <option value="resolved">Resolved</option>
           <option value="escalated">Escalated</option>
         </select>
-        <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
+        <button onclick="exportReturnsCSV()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export CSV</button>
       </div>
 
       <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
@@ -2626,6 +2639,58 @@ function renderReturns() {
   if (typeof fetchAdminRefundCases === 'function') {
     fetchAdminRefundCases();
   }
+
+  clearInterval(window._returnsPoll);
+  window._returnsPoll = setInterval(() => {
+    if (currentPage === 'returns' && document.getElementById('returnTableContainer') && !document.hidden) fetchAdminRefundCases();
+  }, 60000);
+}
+
+function exportReturnsCSV() {
+  const list = window._filteredReturns || adminRefundCases;
+  if (!list.length) return showToast('Nothing to export', 'error');
+  const cell = c => { c = String(c ?? ''); if (/^[=+\-@]/.test(c)) c = "'" + c; return `"${c.replace(/"/g, '""')}"`; };
+  const rows = [['Case ID','Order','Buyer','Seller','Product','Amount','Status','MarketMix Decision','Date']]
+    .concat(list.map(r => [r.id, r.orderId, r.buyer, r.seller, r.productName, r.amountValue,
+      r.status.replace(/\n/g, ' '), r.marketmixDecision || '', r.date]));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(cell).join(',')).join('\n')], { type: 'text/csv' }));
+  a.download = `returns-${Date.now()}.csv`; a.click();
+}
+
+async function loadReturnChat(caseId) {
+  const box = document.getElementById('returnChatBox');
+  if (!box) return;
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/refund-chat/${encodeURIComponent(caseId)}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load chat');
+    const msgs = body.data.messages || [];
+    box.innerHTML = msgs.length ? msgs.map(m => {
+      const who = m.sender_type === 'admin' ? 'MarketMix' : m.sender_type === 'seller' ? 'Seller' : 'Buyer';
+      const media = m.media_url ? `<a href="${escapeHtml(m.media_url)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline text-xs">📎 Attachment</a>` : '';
+      return `<div class="p-2 rounded bg-white dark:bg-gray-800 text-sm">
+        <b>${who}</b> <span class="text-xs text-gray-500">${new Date(m.created_at).toLocaleString()}</span>
+        <p class="text-gray-800 dark:text-gray-200">${escapeHtml(m.message_text || '')}</p>${media}</div>`;
+    }).join('') : '<p class="text-sm text-gray-500">No messages in this case.</p>';
+    box.scrollTop = box.scrollHeight;
+  } catch (e) { box.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(e.message)}</p>`; }
+}
+
+async function sendAdminReturnMessage(caseId) {
+  const input = document.getElementById('returnChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/refund-chat/${encodeURIComponent(caseId)}`, {
+      method: 'POST', headers: { ...getAdminAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_text: text })
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to send');
+    input.value = '';
+    loadReturnChat(caseId);
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 // Marketplace Performance Period Selector
@@ -2865,6 +2930,15 @@ async function viewReturn(id) {
             </div>
           </div>
         </div>
+
+        <div class="mb-6">
+          <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Buyer–Seller Conversation</h3>
+          <div id="returnChatBox" class="max-h-72 overflow-y-auto space-y-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">Loading…</div>
+          <div class="flex gap-2 mt-3">
+            <input id="returnChatInput" placeholder="Message both parties as MarketMix…" class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+            <button onclick="sendAdminReturnMessage('${returnRequest.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send</button>
+          </div>
+        </div>
         
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
           <div class="flex gap-3 flex-wrap">
@@ -2876,15 +2950,13 @@ async function viewReturn(id) {
                 <i class="fas fa-times"></i> Deny Refund
               </button>
             ` : ''}
-            <button onclick="openModal('Delete Return Request', 'Are you sure? This will delete the return request permanently.', () => { deleteReturn('${returnRequest.id}'); })" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold flex items-center gap-2">
-              <i class="fas fa-trash"></i> Delete Request
-            </button>
           </div>
         </div>
       </div>
     </div>
   `;
   document.getElementById('content').innerHTML = html;
+  loadReturnChat(returnRequest.id);
 
   try {
     const detailContainer = document.getElementById('adjustmentDetailPanel');
