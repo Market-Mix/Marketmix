@@ -1,7 +1,7 @@
 let adminAccounts = [], rolesDataset = [], permissionHistory = [], selectedAdmin = null, currentRoleId = null;
 const RBAC_API = `${window.ADMIN_API_BASE || 'https://marketmix-backend.onrender.com/api'}/admin/rbac`;
-const esc = value => window.escapeHtml(value);
-const val = id => (document.getElementById(id)?.value || '').trim();
+const rbEsc = value => window.escapeHtml(value);
+const rbVal = id => (document.getElementById(id)?.value || '').trim();
 const fmtDate = date => date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
 async function rbac(path = '', method = 'GET', body) {
@@ -79,7 +79,7 @@ function formatStatusBadge(status) {
   };
 
   const classes = styles[normalized] || 'bg-slate-100 text-slate-700';
-  return `<span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${classes}">${esc(status || 'Unknown')}</span>`;
+  return `<span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${classes}">${rbEsc(status || 'Unknown')}</span>`;
 }
 
 function getNextState(currentState) {
@@ -226,16 +226,16 @@ function renderAdministratorsTable() {
     <tr class="hover:bg-slate-50 transition">
       <td class="px-4 py-4"><div class="flex items-center gap-3">
         <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700"><i class="fas fa-user"></i></div>
-        <div><p class="font-semibold text-slate-900">${esc(admin.name)}</p><p class="text-xs text-slate-500">${esc(admin.role)}</p></div></div></td>
-      <td class="px-4 py-4 text-slate-600">${esc(admin.email)}</td><td class="px-4 py-4 text-slate-600">${esc(admin.role)}</td>
-      <td class="px-4 py-4 text-slate-600">${esc(admin.department)}</td><td class="px-4 py-4">${formatStatusBadge(admin.status)}</td>
+        <div><p class="font-semibold text-slate-900">${rbEsc(admin.name)}</p><p class="text-xs text-slate-500">${rbEsc(admin.role)}</p></div></div></td>
+      <td class="px-4 py-4 text-slate-600">${rbEsc(admin.email)}</td><td class="px-4 py-4 text-slate-600">${rbEsc(admin.role)}</td>
+      <td class="px-4 py-4 text-slate-600">${rbEsc(admin.department)}</td><td class="px-4 py-4">${formatStatusBadge(admin.status)}</td>
       <td class="px-4 py-4 text-slate-600">${admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : 'Never'}</td>
       <td class="px-4 py-4 text-slate-600">${fmtDate(admin.createdAt)}</td>
       <td class="px-4 py-4"><div class="flex flex-wrap gap-2">
-        <button data-admin-action="view" data-id="${esc(admin.id)}" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
-        <button data-admin-action="edit" data-id="${esc(admin.id)}" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
-        <button data-admin-action="suspend" data-id="${esc(admin.id)}" class="action-btn text-amber-600 hover:bg-amber-50">${admin.status === 'Suspended' ? 'Activate' : 'Suspend'}</button>
-        <button data-admin-action="delete" data-id="${esc(admin.id)}" class="action-btn text-red-600 hover:bg-red-50">Delete</button></div></td></tr>`).join('')
+        <button data-admin-action="view" data-id="${rbEsc(admin.id)}" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
+        <button data-admin-action="edit" data-id="${rbEsc(admin.id)}" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
+        <button data-admin-action="suspend" data-id="${rbEsc(admin.id)}" class="action-btn text-amber-600 hover:bg-amber-50">${admin.status === 'Suspended' ? 'Activate' : 'Suspend'}</button>
+        <button data-admin-action="delete" data-id="${rbEsc(admin.id)}" class="action-btn text-red-600 hover:bg-red-50">Delete</button></div></td></tr>`).join('')
     : '<tr><td colspan="8" class="px-6 py-10 text-center text-sm text-slate-500">No administrators found.</td></tr>';
 }
 
@@ -244,13 +244,13 @@ function renderRolesTable() {
   if (!tbody) return;
   tbody.innerHTML = rolesDataset.length ? rolesDataset.map(role => `
     <tr class="hover:bg-slate-50 transition">
-      <td class="px-4 py-4 font-semibold text-slate-900">${esc(role.name)}</td><td class="px-4 py-4 text-slate-600">${esc(role.description)}</td>
+      <td class="px-4 py-4 font-semibold text-slate-900">${rbEsc(role.name)}</td><td class="px-4 py-4 text-slate-600">${rbEsc(role.description)}</td>
       <td class="px-4 py-4 text-slate-600">${Number(role.admins) || 0}</td><td class="px-4 py-4 text-slate-600">${Number(role.permissionCount) || 0}</td>
       <td class="px-4 py-4 text-slate-600">${fmtDate(role.createdAt)}</td><td class="px-4 py-4">${formatStatusBadge(role.accessLevel)}</td>
       <td class="px-4 py-4"><div class="flex flex-wrap gap-2">
-        <button data-role-action="view" data-id="${esc(role.id)}" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
-        ${role.isSuper ? '' : `<button data-role-action="edit" data-id="${esc(role.id)}" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
-        <button data-role-action="delete" data-id="${esc(role.id)}" class="action-btn text-red-600 hover:bg-red-50">Delete</button>`}</div></td></tr>`).join('')
+        <button data-role-action="view" data-id="${rbEsc(role.id)}" class="action-btn text-blue-600 hover:bg-blue-50">View</button>
+        ${role.isSuper ? '' : `<button data-role-action="edit" data-id="${rbEsc(role.id)}" class="action-btn text-slate-700 hover:bg-slate-100">Edit</button>
+        <button data-role-action="delete" data-id="${rbEsc(role.id)}" class="action-btn text-red-600 hover:bg-red-50">Delete</button>`}</div></td></tr>`).join('')
     : '<tr><td colspan="7" class="px-6 py-10 text-center text-sm text-slate-500">No roles found.</td></tr>';
 }
 
@@ -260,13 +260,13 @@ function renderRoleSummaryCards() {
   container.innerHTML = [...rolesDataset].sort((a, b) => b.admins - a.admins).slice(0, 4).map(role => `
     <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
       <div class="flex items-center justify-between gap-3"><div>
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">${esc(role.name)}</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">${rbEsc(role.name)}</p>
         <h3 class="mt-3 text-2xl font-semibold text-slate-900">${Number(role.admins) || 0} Admins</h3></div>
-        <span class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">${esc(role.accessLevel)}</span></div>
+        <span class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">${rbEsc(role.accessLevel)}</span></div>
       <div class="mt-4 space-y-2 text-sm text-slate-600">
         <div class="flex justify-between"><span>Permissions</span><span class="font-semibold text-slate-900">${Number(role.permissionCount) || 0}</span></div>
-        <div class="flex justify-between"><span>Status</span><span class="font-semibold text-slate-900">${esc(role.status)}</span></div>
-        <button data-role-action="view" data-id="${esc(role.id)}" class="mt-4 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-100">View Permissions</button></div></div>`).join('');
+        <div class="flex justify-between"><span>Status</span><span class="font-semibold text-slate-900">${rbEsc(role.status)}</span></div>
+        <button data-role-action="view" data-id="${rbEsc(role.id)}" class="mt-4 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-100">View Permissions</button></div></div>`).join('');
 }
 
 function renderPermissionHistoryList() {
@@ -274,8 +274,8 @@ function renderPermissionHistoryList() {
   if (!container) return;
   container.innerHTML = permissionHistory.length ? permissionHistory.map(item => `
     <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4"><div class="flex items-start justify-between gap-4"><div>
-      <p class="text-sm font-semibold text-slate-900">${esc(item.description)}</p>
-      <p class="mt-1 text-sm text-slate-500">${esc(item.target)} • Changed by ${esc(item.changedBy)}</p></div>
+      <p class="text-sm font-semibold text-slate-900">${rbEsc(item.description)}</p>
+      <p class="mt-1 text-sm text-slate-500">${rbEsc(item.target)} • Changed by ${rbEsc(item.changedBy)}</p></div>
       <span class="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">${fmtDate(item.at)}</span></div></div>`).join('')
     : '<p class="text-sm text-slate-500">No permission change history available.</p>';
 }
@@ -289,7 +289,7 @@ function populateFilterOptions() {
     moduleSelect.innerHTML = `<option value="">All modules</option>${permissionModules.map((module) => `<option value="${module}">${module}</option>`).join('')}`;
   }
   if (roleSelect) {
-    roleSelect.innerHTML = `<option value="">All roles</option>${rolesDataset.map(role => `<option value="${esc(role.name)}">${esc(role.name)}</option>`).join('')}`;
+    roleSelect.innerHTML = `<option value="">All roles</option>${rolesDataset.map(role => `<option value="${rbEsc(role.name)}">${rbEsc(role.name)}</option>`).join('')}`;
   }
   if (typeSelect) {
     typeSelect.innerHTML = `<option value="">All types</option>${permissionTypes.map((type) => `<option value="${type}">${type}</option>`).join('')}`;
@@ -469,7 +469,7 @@ const openAdminModal = guarded(async id => {
   setText('adminInheritedPermissions', admin.inherited);
   setText('adminSecurityLevel', admin.security);
   document.getElementById('adminCustomPermissions').innerHTML = admin.custom.length
-    ? admin.custom.map(permission => `<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">${esc(permission)}</span>`).join('')
+    ? admin.custom.map(permission => `<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">${rbEsc(permission)}</span>`).join('')
     : '<span class="text-sm text-slate-400">None</span>';
   document.querySelector('#adminModal button[onclick*="handleAdminSuspendAccount"]').textContent =
     admin.status === 'Suspended' ? 'Reactivate Account' : 'Suspend Account';
@@ -489,7 +489,7 @@ function handleAdminChangeRole() {
   if (!selectedAdmin) return;
   document.getElementById('adminRoleField').innerHTML = `
     <select id="adminRoleSelect" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-      ${rolesDataset.filter(role => role.status === 'Active').map(role => `<option value="${esc(role.id)}" ${role.id === selectedAdmin.roleId ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}
+      ${rolesDataset.filter(role => role.status === 'Active').map(role => `<option value="${rbEsc(role.id)}" ${role.id === selectedAdmin.roleId ? 'selected' : ''}>${rbEsc(role.name)}</option>`).join('')}
     </select><button type="button" onclick="saveAdminRole()" class="ml-2 rounded-xl bg-slate-900 px-3 py-2 text-sm text-white">Save</button>`;
 }
 
@@ -553,10 +553,10 @@ async function persistRole(statusOverride) {
     return rbac(`/admins/${encodeURIComponent(selectedAdmin.id)}/permissions`, 'PUT', { permissions: collectMatrix() });
   }
   const body = {
-    name: val('roleNameField'),
-    description: val('roleDescriptionField'),
-    accessLevel: val('roleAccessField'),
-    status: statusOverride || val('roleStatusField'),
+    name: rbVal('roleNameField'),
+    description: rbVal('roleDescriptionField'),
+    accessLevel: rbVal('roleAccessField'),
+    status: statusOverride || rbVal('roleStatusField'),
     permissions: collectMatrix()
   };
   return currentRoleId
@@ -605,15 +605,15 @@ const refreshInvites = guarded(async () => {
   const { invitations } = await rbac('/invitations');
   document.getElementById('invList').innerHTML = invitations.length ? invitations.map(invitation => `
     <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-      <div><p class="font-semibold text-slate-900">${esc(invitation.email)}</p><p class="text-xs text-slate-500">${esc(invitation.role)} · expires ${fmtDate(invitation.expiresAt)}</p></div>
-      <div class="flex gap-2"><button data-invite-action="resend" data-id="${esc(invitation.id)}" class="action-btn text-blue-600">Resend</button>
-      <button data-invite-action="revoke" data-id="${esc(invitation.id)}" class="action-btn text-red-600">Revoke</button></div></div>`).join('')
+      <div><p class="font-semibold text-slate-900">${rbEsc(invitation.email)}</p><p class="text-xs text-slate-500">${rbEsc(invitation.role)} · expires ${fmtDate(invitation.expiresAt)}</p></div>
+      <div class="flex gap-2"><button data-invite-action="resend" data-id="${rbEsc(invitation.id)}" class="action-btn text-blue-600">Resend</button>
+      <button data-invite-action="revoke" data-id="${rbEsc(invitation.id)}" class="action-btn text-red-600">Revoke</button></div></div>`).join('')
     : '<p class="text-sm text-slate-400">No pending invitations.</p>';
 });
 
 const openInviteModal = guarded(async () => {
   document.getElementById('invRole').innerHTML = rolesDataset.filter(role => role.status === 'Active')
-    .map(role => `<option value="${esc(role.id)}">${esc(role.name)}</option>`).join('');
+    .map(role => `<option value="${rbEsc(role.id)}">${rbEsc(role.name)}</option>`).join('');
   const modal = document.getElementById('inviteModal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
@@ -622,11 +622,11 @@ const openInviteModal = guarded(async () => {
 
 const sendInvite = guarded(async () => {
   await rbac('/invitations', 'POST', {
-    firstName: val('invFirst'),
-    lastName: val('invLast'),
-    email: val('invEmail'),
-    department: val('invDept'),
-    roleId: val('invRole')
+    firstName: rbVal('invFirst'),
+    lastName: rbVal('invLast'),
+    email: rbVal('invEmail'),
+    department: rbVal('invDept'),
+    roleId: rbVal('invRole')
   });
   ['invFirst', 'invLast', 'invEmail', 'invDept'].forEach(id => { document.getElementById(id).value = ''; });
   showToast('Invitation sent');

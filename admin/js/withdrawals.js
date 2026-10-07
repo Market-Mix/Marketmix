@@ -200,7 +200,7 @@ const withdrawalsData = [
   }
 ];
 
-function formatCurrency(value, currency = 'NGN') {
+function wdFormatCurrency(value, currency = 'NGN') {
   if (currency === 'NGN') {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(value);
   }
@@ -227,10 +227,10 @@ function getRowActions(withdrawal) {
 
 function renderSummaryCards() {
   const cards = [
-    { title: 'Wallet Balance', value: formatCurrency(24580450), badge: '+8.4%', icon: 'fa-wallet', color: 'from-sky-500 to-blue-600' },
+    { title: 'Wallet Balance', value: wdFormatCurrency(24580450), badge: '+8.4%', icon: 'fa-wallet', color: 'from-sky-500 to-blue-600' },
     { title: 'Pending Withdrawals', value: '18', badge: 'Awaiting Approval', icon: 'fa-clock', color: 'from-orange-500 to-amber-600' },
     { title: 'Approved Today', value: '12', badge: '', icon: 'fa-check-circle', color: 'from-emerald-500 to-emerald-600' },
-    { title: 'Completed Payouts', value: formatCurrency(8450000), badge: '', icon: 'fa-money-bill-wave', color: 'from-emerald-500 to-teal-600' },
+    { title: 'Completed Payouts', value: wdFormatCurrency(8450000), badge: '', icon: 'fa-money-bill-wave', color: 'from-emerald-500 to-teal-600' },
     { title: 'Rejected Requests', value: '6', badge: '', icon: 'fa-xmark-circle', color: 'from-rose-500 to-red-600' },
     { title: 'Average Processing Time', value: '1.8 Days', badge: '', icon: 'fa-chart-line', color: 'from-violet-500 to-purple-600' }
   ];
@@ -328,7 +328,7 @@ function renderWithdrawalsTable() {
         <td class="px-4 py-3 text-sm text-slate-600">${withdrawal.store}</td>
         <td class="px-4 py-3 text-sm text-slate-600">${withdrawal.bank}</td>
         <td class="px-4 py-3 text-sm text-slate-600">${withdrawal.accountName}</td>
-        <td class="px-4 py-3 text-sm font-semibold text-slate-900">${formatCurrency(withdrawal.amount, withdrawal.currency)}</td>
+        <td class="px-4 py-3 text-sm font-semibold text-slate-900">${wdFormatCurrency(withdrawal.amount, withdrawal.currency)}</td>
         <td class="px-4 py-3 text-sm text-slate-600">${withdrawal.currency}</td>
         <td class="px-4 py-3 text-sm text-slate-600">${new Date(withdrawal.requestedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
         <td class="px-4 py-3 text-sm text-slate-600">${new Date(withdrawal.processingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
@@ -346,14 +346,14 @@ function renderWithdrawalsTable() {
 
 function renderFinanceSummary() {
   const items = [
-    { title: "Today's Withdrawals", value: formatCurrency(1125000) },
-    { title: 'Weekly Withdrawals', value: formatCurrency(4870000) },
-    { title: 'Monthly Withdrawals', value: formatCurrency(18250000) },
-    { title: 'Average Withdrawal', value: formatCurrency(128500) },
-    { title: 'Largest Withdrawal', value: formatCurrency(420000) },
-    { title: 'Pending Balance', value: formatCurrency(2580000) },
-    { title: 'Platform Revenue', value: formatCurrency(965000) },
-    { title: 'Escrow Balance', value: formatCurrency(3500000) },
+    { title: "Today's Withdrawals", value: wdFormatCurrency(1125000) },
+    { title: 'Weekly Withdrawals', value: wdFormatCurrency(4870000) },
+    { title: 'Monthly Withdrawals', value: wdFormatCurrency(18250000) },
+    { title: 'Average Withdrawal', value: wdFormatCurrency(128500) },
+    { title: 'Largest Withdrawal', value: wdFormatCurrency(420000) },
+    { title: 'Pending Balance', value: wdFormatCurrency(2580000) },
+    { title: 'Platform Revenue', value: wdFormatCurrency(965000) },
+    { title: 'Escrow Balance', value: wdFormatCurrency(3500000) },
     { title: 'Top Seller by Withdrawal', value: 'TechHub' }
   ];
 
@@ -387,9 +387,9 @@ function renderRiskMonitoring() {
 
 function renderActivityTimeline() {
   const events = [
-    { time: '09:10 AM', title: 'Withdrawal approved', store: 'Fashion Pro', amount: formatCurrency(150000) },
+    { time: '09:10 AM', title: 'Withdrawal approved', store: 'Fashion Pro', amount: wdFormatCurrency(150000) },
     { time: '08:25 AM', title: 'Withdrawal rejected', store: 'TechHub', amount: 'Invalid bank account' },
-    { time: '07:40 AM', title: 'Withdrawal completed', store: 'Bright Cart', amount: formatCurrency(420000) }
+    { time: '07:40 AM', title: 'Withdrawal completed', store: 'Bright Cart', amount: wdFormatCurrency(420000) }
   ];
 
   document.getElementById('activityTimeline').innerHTML = events.map((event) => `
@@ -497,16 +497,16 @@ function openWithdrawalDrawer(withdrawalId) {
   const amountsEl = document.getElementById('drawerAmounts');
   if (amountsEl) amountsEl.innerHTML = `
     <div class="rounded-2xl bg-slate-50 p-3">
-      <div class="flex items-center justify-between text-sm text-slate-500"><span>Requested Amount</span><strong>${formatCurrency(withdrawal.amount, withdrawal.currency)}</strong></div>
+      <div class="flex items-center justify-between text-sm text-slate-500"><span>Requested Amount</span><strong>${wdFormatCurrency(withdrawal.amount, withdrawal.currency)}</strong></div>
     </div>
     <div class="rounded-2xl bg-slate-50 p-3">
-      <div class="flex items-center justify-between text-sm text-slate-500"><span>Marketplace Fees</span><strong>${formatCurrency(withdrawal.marketplaceFees, withdrawal.currency)}</strong></div>
+      <div class="flex items-center justify-between text-sm text-slate-500"><span>Marketplace Fees</span><strong>${wdFormatCurrency(withdrawal.marketplaceFees, withdrawal.currency)}</strong></div>
     </div>
     <div class="rounded-2xl bg-slate-50 p-3">
-      <div class="flex items-center justify-between text-sm text-slate-500"><span>Net Amount</span><strong>${formatCurrency(withdrawal.netAmount, withdrawal.currency)}</strong></div>
+      <div class="flex items-center justify-between text-sm text-slate-500"><span>Net Amount</span><strong>${wdFormatCurrency(withdrawal.netAmount, withdrawal.currency)}</strong></div>
     </div>
     <div class="rounded-2xl bg-slate-50 p-3">
-      <div class="flex items-center justify-between text-sm text-slate-500"><span>Wallet Balance</span><strong>${formatCurrency(withdrawal.walletBalance, withdrawal.currency)}</strong></div>
+      <div class="flex items-center justify-between text-sm text-slate-500"><span>Wallet Balance</span><strong>${wdFormatCurrency(withdrawal.walletBalance, withdrawal.currency)}</strong></div>
     </div>
   `;
   else console.warn('openWithdrawalDrawer: #drawerAmounts not found');
@@ -713,6 +713,7 @@ function attachEvents() {
   document.getElementById('refreshDataBtn').addEventListener('click', () => {
     renderSkeletons();
     setTimeout(() => {
+      if (!document.getElementById('summaryCards')) return;
       renderSummaryCards();
       renderWithdrawalsTable();
       renderFinanceSummary();
@@ -823,6 +824,7 @@ function initializeWithdrawalsPage() {
     window.__withdrawalsInitialized = true;
     renderSkeletons();
     setTimeout(() => {
+      if (!document.getElementById('summaryCards')) return;
       renderSummaryCards();
       renderWithdrawalsTable();
       renderFinanceSummary();

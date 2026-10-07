@@ -1,3 +1,4 @@
+(function () {
 function formatDate(d) {
   if (!d) return '-';
   return new Date(d).toLocaleDateString();
@@ -219,3 +220,4 @@ function initializeNotificationsPage() {
   refreshAll();
 }
 window.initializeNotificationsPage = initializeNotificationsPage;
+})();
