@@ -1971,8 +1971,10 @@ async function deleteSub(id) {
 
 // Reports & Analytics
 let salesChart = null;
+let lastSalesReport = null;
 
 function renderReports() {
+  if (salesChart) { salesChart.destroy(); salesChart = null; }
   const html = `
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Reports & Analytics</h1>
@@ -1989,33 +1991,17 @@ function renderReports() {
         <button id="exportCsv" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">CSV</button>
         <button id="exportPdf" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">PDF</button>
       </div>
-  
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sales Reports</h2>
-            <div class="h-64">
-              <canvas id="salesChart" width="400" height="200"></canvas>
-            </div>
-          </div>
-
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top Selling Categories</h2>
-            <div class="space-y-4">
-              ${['Electronics', 'Fashion', 'Home & Garden', 'Sports'].map((cat, idx) => {
-                const pct = 100 - idx * 15;
-                return `
-                <div class="flex items-center justify-between">
-                  <p class="text-gray-700 dark:text-gray-300 w-32">${cat}</p>
-                  <div class="w-40 h-6 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden relative">
-                    <div class="h-full bg-blue-500" style="width: ${pct}%"></div>
-                    <span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-gray-900 dark:text-white">${pct}%</span>
-                  </div>
-                </div>
-              `;
-              }).join('')}
-            </div>
-          </div>
+      <div id="reportSummary" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sales Reports</h2>
+          <div class="h-64"><canvas id="salesChart"></canvas></div>
         </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top Selling Categories</h2>
+          <div id="reportCategories" class="space-y-4"><p class="text-sm text-gray-500">Loading...</p></div>
+        </div>
+      </div>
     </div>
   `;
   document.getElementById('content').innerHTML = html;
@@ -2044,100 +2030,61 @@ function renderReports() {
   }, 50);
 }
 
-// Build / update the sales chart using orders in dummyData
-function generateReport() {
-  const startStr = document.getElementById('reportStart')?.value;
-  const endStr = document.getElementById('reportEnd')?.value;
-  const interval = document.getElementById('reportInterval')?.value || 'day';
-
-  const start = startStr ? new Date(startStr) : null;
-  const end = endStr ? new Date(endStr) : null;
-
-  const agg = aggregateSales(start, end, interval);
-  const labels = agg.labels;
-  const data = agg.values;
-
-  const canvas = document.getElementById('salesChart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  // register datalabels plugin if available
-  if (window.Chart && window.Chart.register && window.ChartDataLabels) {
-    try { Chart.register(ChartDataLabels); } catch (e) { /* ignore */ }
-  }
-
-  if (salesChart) {
-    salesChart.data.labels = labels;
-    salesChart.data.datasets[0].data = data;
-    salesChart.update();
-    return;
-  }
-
-  const total = data.reduce((s, v) => s + v, 0) || 1;
-
-  salesChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{ label: 'Sales', data: data, backgroundColor: '#3b82f6' }]
-    },
-    options: {
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const v = context.raw || 0;
-              const pct = total ? (v / total * 100).toFixed(1) : '0.0';
-              return `₦${v.toFixed(2)} (${pct}%)`;
-            }
-          }
-        },
-        datalabels: {
-          color: '#111827',
-          anchor: 'end',
-          align: 'start',
-          formatter: function(value) {
-            const pct = total ? (value / total * 100).toFixed(1) : '0.0';
-            return pct + '%';
-          },
-          font: { weight: '600' }
-        }
-      },
-      scales: { y: { beginAtZero: true } }
-    }
+function reportQuery() {
+  return new URLSearchParams({
+    from: document.getElementById('reportStart').value,
+    to: document.getElementById('reportEnd').value,
+    interval: document.getElementById('reportInterval').value || 'day'
   });
 }
 
-// Aggregate orders by day or month between start and end inclusive
-function aggregateSales(start, end, interval) {
-  const orders = (window.dummyData && window.dummyData.orders) || [];
-  const map = new Map();
+async function generateReport() {
+  const btn = document.getElementById('generateReportBtn');
+  const cats = document.getElementById('reportCategories');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/sales-reports?${reportQuery()}`, { headers: getAdminAuthHeaders() });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.message || 'Failed to load report');
+    const d = lastSalesReport = body.data;
+    const s = d.summary;
 
-  orders.forEach(o => {
-    if (!o.date) return;
-    const d = new Date(o.date);
-    // normalize to local midnight for comparisons
-    d.setHours(0,0,0,0);
-    if (start) { const s = new Date(start); s.setHours(0,0,0,0); if (d < s) return; }
-    if (end) { const e = new Date(end); e.setHours(23,59,59,999); if (d > e) return; }
+    const chg = v => v == null ? '' : `<span class="text-xs ${v >= 0 ? 'text-green-600' : 'text-red-600'}">${v >= 0 ? '+' : ''}${v}% vs prev</span>`;
+    const card = (l, v, extra = '') => `<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <p class="text-xs text-gray-500 uppercase">${l}</p>
+      <p class="text-xl font-bold text-gray-900 dark:text-white mt-1">${v}</p>${extra}</div>`;
+    document.getElementById('reportSummary').innerHTML =
+      card('Gross Sales', formatCurrency(s.gross), chg(s.grossChange)) +
+      card('Orders', s.orders, chg(s.ordersChange)) +
+      card('Avg Order Value', formatCurrency(s.aov)) +
+      card('Platform Revenue', formatCurrency(s.platformRevenue), `<span class="text-xs text-gray-500">Refunds: ${formatCurrency(s.refunds)} (${s.refundRate}%)</span>`);
 
-    let key;
-    if (interval === 'month') {
-      const m = d.getMonth() + 1; const y = d.getFullYear();
-      key = `${y}-${String(m).padStart(2,'0')}`;
-    } else {
-      key = d.toISOString().split('T')[0];
-    }
+    cats.innerHTML = d.categories.length ? d.categories.map(c => `
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-gray-700 dark:text-gray-300 w-36 truncate" title="${escapeHtml(c.category)}">${escapeHtml(c.category)}</p>
+        <div class="flex-1 h-6 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden relative">
+          <div class="h-full" style="width:${c.share}%;background:#FF7A00"></div>
+          <span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-gray-900 dark:text-white">${c.share}% · ${formatCurrency(c.revenue)}</span>
+        </div>
+      </div>`).join('') : '<p class="text-sm text-gray-500">No sales in this period.</p>';
 
-    const prev = map.get(key) || 0;
-    map.set(key, prev + (parseFloat(o.amount) || 0));
-  });
-
-  const keys = Array.from(map.keys()).sort();
-  const values = keys.map(k => map.get(k));
-  if (keys.length === 0) return { labels: ['No data'], values: [0] };
-  return { labels: keys, values };
+    const canvas = document.getElementById('salesChart');
+    if (!canvas || !window.Chart) return;
+    if (salesChart) salesChart.destroy();
+    salesChart = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels: d.series.labels, datasets: [{ label: 'Revenue', data: d.series.revenue, backgroundColor: '#FF7A00', borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, datalabels: { display: false },
+          tooltip: { callbacks: { label: c => `${formatCurrency(c.raw)} · ${d.series.orders[c.dataIndex]} orders` } } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  } catch (e) {
+    showToast(e.message, 'error');
+    if (cats) cats.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(e.message)}</p>`;
+  } finally { if (btn) btn.disabled = false; }
 }
 
 // Generate and render the revenue chart for dashboard
@@ -2266,85 +2213,37 @@ function getMonthlyRevenue() {
   return { labels, values };
 }
 
-// Export report data as CSV
-function exportReportCSV() {
-  const startStr = document.getElementById('reportStart')?.value;
-  const endStr = document.getElementById('reportEnd')?.value;
-  const interval = document.getElementById('reportInterval')?.value || 'day';
-
-  const start = startStr ? new Date(startStr) : null;
-  const end = endStr ? new Date(endStr) : null;
-
-  const agg = aggregateSales(start, end, interval);
-  const labels = agg.labels;
-  const values = agg.values;
-
-  const total = values.reduce((s, v) => s + v, 0) || 1;
-
-  // Build CSV
-  let csv = 'Date/Period,Sales Amount,Percentage\n';
-  labels.forEach((label, idx) => {
-    const val = values[idx];
-    const pct = ((val / total) * 100).toFixed(2);
-    csv += `"${label}","${val.toFixed(2)}","${pct}%"\n`;
-  });
-  csv += `\nTotal,"${total.toFixed(2)}","100%"\n`;
-
-  // Download
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `sales_report_${startStr}_to_${endStr}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('CSV exported successfully', 'success');
+async function exportReportCSV() {
+  try {
+    const res = await fetch(`${ADMIN_API_BASE}/admin/sales-reports/export?${reportQuery()}`, { headers: getAdminAuthHeaders() });
+    if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Export failed');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(await res.blob());
+    a.download = `sales-report-${Date.now()}.csv`;
+    a.click();
+    showToast('CSV exported');
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
-// Export report data as PDF
 function exportReportPDF() {
-  const startStr = document.getElementById('reportStart')?.value;
-  const endStr = document.getElementById('reportEnd')?.value;
-  const interval = document.getElementById('reportInterval')?.value || 'day';
-
-  const start = startStr ? new Date(startStr) : null;
-  const end = endStr ? new Date(endStr) : null;
-
-  const agg = aggregateSales(start, end, interval);
-  const labels = agg.labels;
-  const values = agg.values;
-
-  const total = values.reduce((s, v) => s + v, 0) || 1;
-
-  // Simple PDF generation using basic HTML (no external lib needed for simple PDFs)
-  let html = '<html><head><style>';
-  html += 'body { font-family: Arial, sans-serif; margin: 20px; } ';
-  html += 'h1 { color: #1f2937; } ';
-  html += 'table { width: 100%; border-collapse: collapse; margin: 20px 0; } ';
-  html += 'th, td { padding: 10px; text-align: left; border: 1px solid #ddd; } ';
-  html += 'th { background-color: #3b82f6; color: white; } ';
-  html += 'tr:nth-child(even) { background-color: #f3f4f6; } ';
-  html += '</style></head><body>';
-  html += '<h1>MarketMix Sales Report</h1>';
-  html += `<p><strong>Date Range:</strong> ${startStr} to ${endStr}</p>`;
-  html += `<p><strong>Interval:</strong> ${interval.charAt(0).toUpperCase() + interval.slice(1)}</p>`;
-  html += '<table><thead><tr><th>Date/Period</th><th>Sales Amount</th><th>Percentage</th></tr></thead><tbody>';
-
-  labels.forEach((label, idx) => {
-    const val = values[idx];
-    const pct = ((val / total) * 100).toFixed(2);
-    html += `<tr><td>${label}</td><td>₦${val.toFixed(2)}</td><td>${pct}%</td></tr>`;
-  });
-
-  html += `<tr style="background-color: #dbeafe; font-weight: bold;"><td>TOTAL</td><td>₦${total.toFixed(2)}</td><td>100%</td></tr>`;
-  html += '</tbody></table></body></html>';
-
-  // Convert to PDF using browser's print-to-PDF
-  const printWindow = window.open('', '', 'height=600,width=800');
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.print();
-  showToast('PDF generated - check your print dialog', 'success');
+  const d = lastSalesReport;
+  if (!d) return showToast('Generate a report first', 'error');
+  const s = d.summary, e = escapeHtml;
+  const w = window.open('', '', 'width=900,height=700');
+  w.document.write(`<html><head><title>Sales Report</title><style>
+    body{font-family:Arial;margin:24px}h1{margin:0}h1 span{color:#FF7A00}
+    table{width:100%;border-collapse:collapse;margin:16px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+    th{background:#FF7A00;color:#fff}</style></head><body>
+    <h1>market<span>mix</span> Sales Report</h1>
+    <p>${e(d.range.from)} to ${e(d.range.to)} (${e(d.range.interval)})</p>
+    <p><b>Gross:</b> ${formatCurrency(s.gross)} · <b>Orders:</b> ${s.orders} · <b>AOV:</b> ${formatCurrency(s.aov)} ·
+       <b>Platform revenue:</b> ${formatCurrency(s.platformRevenue)} · <b>Refunds:</b> ${formatCurrency(s.refunds)}</p>
+    <table><tr><th>Period</th><th>Orders</th><th>Revenue</th></tr>
+    ${d.series.labels.map((l, i) => `<tr><td>${e(l)}</td><td>${d.series.orders[i]}</td><td>${formatCurrency(d.series.revenue[i])}</td></tr>`).join('')}</table>
+    <table><tr><th>Category</th><th>Orders</th><th>Revenue</th><th>Share</th></tr>
+    ${d.categories.map(c => `<tr><td>${e(c.category)}</td><td>${c.orders}</td><td>${formatCurrency(c.revenue)}</td><td>${c.share}%</td></tr>`).join('')}</table>
+    </body></html>`);
+  w.document.close(); w.print();
 }
 
 // Transactions
