@@ -2299,42 +2299,184 @@ function renderTransactions() {
   document.getElementById('content').innerHTML = html;
 }
 
-// Admin Users
-function renderAdminUsers() {
-  const html = `
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Admin Users</h1>
-      
-      <button onclick="openAddAdminUserModal()" class="mb-6 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">+ Add Admin User</button>
+// ── Admin Users (live, backed by /api/admin/rbac) ─────────────────────────
+const AU = { admins: [], roles: [], invites: [], canManage: false, f: { search: '', status: 'all', role: 'all' } };
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <table class="w-full">
-          <thead class="bg-gray-100 dark:bg-gray-700">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Role</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${dummyData.adminUsers.map(admin => `
-              <tr class="border-b border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-gray-600">
-                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${admin.name}</td>
-                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${admin.email}</td>
-                <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${admin.role}</td>
-                <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">${admin.status}</span></td>
-                <td class="px-6 py-4"><button onclick="openEditAdminUserModal('${admin.id}')" class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Edit</button></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
-  document.getElementById('content').innerHTML = html;
+async function auApi(path = '', method = 'GET', body) {
+  const res = await fetch(`${ADMIN_API_BASE}/admin/rbac${path}`, {
+    method,
+    headers: { ...getAdminAuthHeaders(), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(j?.message || 'Request failed');
+  return j.data;
 }
+const auGuard = fn => async (...a) => { try { return await fn(...a); } catch (e) { showToast(e.message, 'error'); } };
+const auBadge = s => {
+  const c = { Active: 'bg-green-100 text-green-800', Suspended: 'bg-red-100 text-red-800', Pending: 'bg-yellow-100 text-yellow-800' }[s] || 'bg-gray-100 text-gray-700';
+  return `<span class="px-3 py-1 rounded-full text-xs font-semibold ${c}">${escapeHtml(s)}</span>`;
+};
+
+function renderAdminUsers() {
+  document.getElementById('content').innerHTML = `
+    <div>
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Admin Users</h1>
+        <button id="auInviteBtn" class="hidden px-6 py-2 text-white rounded-lg hover:opacity-90" style="background:#FF7A00">+ Invite Admin</button>
+      </div>
+      <div id="auStats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
+        <input id="auSearch" placeholder="Search name, email, department..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="auStatus" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+          <option value="all">All Status</option><option>Active</option><option>Suspended</option>
+        </select>
+        <select id="auRole" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"><option value="all">All Roles</option></select>
+      </div>
+      <div id="auTable" class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto"></div>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white mt-8 mb-3">Pending Invitations</h2>
+      <div id="auInvites" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4"></div>
+    </div>`;
+  const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  document.getElementById('auSearch').addEventListener('input', debounce(e => { AU.f.search = e.target.value.toLowerCase(); auRenderTable(); }));
+  document.getElementById('auStatus').addEventListener('change', e => { AU.f.status = e.target.value; auRenderTable(); });
+  document.getElementById('auRole').addEventListener('change', e => { AU.f.role = e.target.value; auRenderTable(); });
+  document.getElementById('auInviteBtn').addEventListener('click', auOpenInvite);
+  document.getElementById('auTable').addEventListener('click', e => {
+    const b = e.target.closest('button[data-au]'); if (b) auAction(b.dataset.au, b.dataset.id);
+  });
+  document.getElementById('auInvites').addEventListener('click', e => {
+    const b = e.target.closest('button[data-inv]'); if (b) auInviteAction(b.dataset.inv, b.dataset.id);
+  });
+  auLoad();
+}
+
+const auLoad = auGuard(async () => {
+  const [a, r, i, me, s] = await Promise.all([
+    auApi('/admins'), auApi('/roles'), auApi('/invitations').catch(() => ({ invitations: [] })),
+    auApi('/me/permissions'), auApi('/summary')
+  ]);
+  Object.assign(AU, { admins: a.admins, roles: r.roles, invites: i.invitations });
+  const m = me.permissions?.['Roles & Permissions']?.Manage;
+  AU.canManage = !!me.isSuper || m === 'allowed' || m === 'inherited';
+  document.getElementById('auInviteBtn').classList.toggle('hidden', !AU.canManage);
+  document.getElementById('auStats').innerHTML = [['Total', s.total], ['Active', s.active], ['Suspended', s.suspended], ['Pending Invites', s.pending]]
+    .map(([l, v]) => `<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4"><p class="text-xs text-gray-500 uppercase">${l}</p><p class="text-2xl font-bold text-gray-900 dark:text-white">${v}</p></div>`).join('');
+  document.getElementById('auRole').innerHTML = '<option value="all">All Roles</option>' +
+    AU.roles.map(x => `<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('');
+  auRenderTable(); auRenderInvites();
+});
+
+function auRenderTable() {
+  const { search, status, role } = AU.f;
+  const rows = AU.admins.filter(a =>
+    (status === 'all' || a.status === status) && (role === 'all' || a.role === role) &&
+    (!search || [a.name, a.email, a.department, a.role].join(' ').toLowerCase().includes(search)));
+  const th = h => `<th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase">${h}</th>`;
+  document.getElementById('auTable').innerHTML = `<table class="w-full"><thead class="bg-gray-100 dark:bg-gray-700"><tr>
+    ${['Name', 'Email', 'Role', 'Department', 'Status', 'Last Login', 'Actions'].map(th).join('')}</tr></thead><tbody>
+    ${rows.length ? rows.map(a => `<tr class="border-b border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-gray-600">
+      <td class="px-6 py-4 font-semibold text-gray-900 dark:text-white">${escapeHtml(a.name)}${a.isSuper ? ' <span class="text-xs" style="color:#FF7A00">★ Super</span>' : ''}</td>
+      <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(a.email)}</td>
+      <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(a.role)}</td>
+      <td class="px-6 py-4 text-gray-700 dark:text-gray-300">${escapeHtml(a.department || '—')}</td>
+      <td class="px-6 py-4">${auBadge(a.status)}</td>
+      <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">${a.lastLogin ? new Date(a.lastLogin).toLocaleString() : 'Never'}</td>
+      <td class="px-6 py-4"><div class="flex gap-1 flex-wrap">
+        <button data-au="view" data-id="${a.id}" class="px-3 py-1 text-xs bg-blue-600 text-white rounded">View</button>
+        ${AU.canManage ? `<button data-au="edit" data-id="${a.id}" class="px-3 py-1 text-xs bg-gray-200 text-gray-800 rounded">Edit</button>
+        <button data-au="role" data-id="${a.id}" class="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded">Role</button>
+        <button data-au="${a.status === 'Suspended' ? 'activate' : 'suspend'}" data-id="${a.id}" class="px-3 py-1 text-xs bg-amber-100 text-amber-700 rounded">${a.status === 'Suspended' ? 'Activate' : 'Suspend'}</button>
+        <button data-au="remove" data-id="${a.id}" class="px-3 py-1 text-xs bg-red-100 text-red-600 rounded">Remove</button>` : ''}
+      </div></td></tr>`).join('') : '<tr><td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">No administrators found.</td></tr>'}
+    </tbody></table>`;
+}
+
+function auRenderInvites() {
+  document.getElementById('auInvites').innerHTML = AU.invites.length ? AU.invites.map(i => `
+    <div class="flex items-center justify-between gap-3 py-2 border-b last:border-0 border-gray-200 dark:border-gray-700 text-sm">
+      <div><p class="font-semibold text-gray-900 dark:text-white">${escapeHtml(i.name || i.email)} · ${escapeHtml(i.email)}</p>
+        <p class="text-xs text-gray-500">${escapeHtml(i.role)} · expires ${new Date(i.expiresAt).toLocaleString()}</p></div>
+      ${AU.canManage ? `<div class="flex gap-2"><button data-inv="resend" data-id="${i.id}" class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded">Resend</button>
+        <button data-inv="revoke" data-id="${i.id}" class="px-3 py-1 text-xs bg-red-100 text-red-600 rounded">Revoke</button></div>` : ''}
+    </div>`).join('') : '<p class="text-sm text-gray-500">No pending invitations.</p>';
+}
+
+function auModal(title, body, onSave, saveLabel = 'Save') {
+  document.getElementById('auModal')?.remove();
+  const m = document.createElement('div');
+  m.id = 'auModal';
+  m.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+  m.innerHTML = `<div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4">${title}</h2><div class="space-y-3">${body}</div>
+    <p id="auErr" class="text-sm text-red-600 mt-3 hidden"></p>
+    <div class="flex justify-end gap-3 mt-6"><button id="auCancel" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded">Close</button>
+    ${onSave ? `<button id="auSave" class="px-4 py-2 text-white rounded" style="background:#FF7A00">${saveLabel}</button>` : ''}</div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#auCancel').onclick = () => m.remove();
+  if (onSave) m.querySelector('#auSave').onclick = async e => {
+    e.target.disabled = true;
+    try { await onSave(); m.remove(); await auLoad(); }
+    catch (err) { const el = m.querySelector('#auErr'); el.textContent = err.message; el.classList.remove('hidden'); e.target.disabled = false; }
+  };
+}
+const AU_INP = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white';
+const auV = id => document.getElementById(id).value.trim();
+const auRoleOpts = sel => AU.roles.filter(r => r.status === 'Active')
+  .map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${escapeHtml(r.name)}</option>`).join('');
+
+function auOpenInvite() {
+  auModal('Invite Administrator', `
+    <input id="iF" placeholder="First name" class="${AU_INP}"><input id="iL" placeholder="Last name" class="${AU_INP}">
+    <input id="iE" type="email" placeholder="Email" class="${AU_INP}"><input id="iD" placeholder="Department" class="${AU_INP}">
+    <select id="iR" class="${AU_INP}">${auRoleOpts()}</select>
+    <p class="text-xs text-gray-500">An invitation link (valid 72 hours) is emailed to them.</p>`,
+    async () => {
+      await auApi('/invitations', 'POST', { firstName: auV('iF'), lastName: auV('iL'), email: auV('iE'), department: auV('iD'), roleId: auV('iR') });
+      showToast('Invitation sent');
+    }, 'Send Invitation');
+}
+
+const auAction = auGuard(async (act, id) => {
+  const a = AU.admins.find(x => x.id === id);
+  if (act === 'view') {
+    const d = (await auApi('/admins/' + encodeURIComponent(id))).admin;
+    return auModal(escapeHtml(d.name), `
+      ${[['Email', d.email], ['Role', d.role], ['Department', d.department || '—'], ['Status', d.status],
+         ['Last login', d.lastLogin ? new Date(d.lastLogin).toLocaleString() : 'Never'], ['Joined', new Date(d.createdAt).toLocaleDateString()],
+         ['Permissions granted', d.assigned], ['Security level', d.security]]
+        .map(([l, v]) => `<div class="flex justify-between text-sm"><span class="text-gray-500">${l}</span><span class="font-semibold text-gray-900 dark:text-white">${escapeHtml(v)}</span></div>`).join('')}
+      <div><p class="text-xs text-gray-500 mb-1">Custom overrides</p><div class="flex flex-wrap gap-1">
+        ${d.custom.length ? d.custom.map(c => `<span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">${escapeHtml(c)}</span>`).join('') : '<span class="text-sm text-gray-400">None</span>'}</div></div>
+      <button class="text-sm underline" style="color:#FF7A00" onclick="document.getElementById('auModal').remove();loadPage('roles-permissions')">Edit permissions →</button>`);
+  }
+  if (act === 'edit') {
+    const [first, ...rest] = a.name.split(' ');
+    return auModal('Edit Administrator', `
+      <input id="eF" value="${escapeHtml(first)}" class="${AU_INP}"><input id="eL" value="${escapeHtml(rest.join(' '))}" class="${AU_INP}">
+      <input id="eD" value="${escapeHtml(a.department || '')}" placeholder="Department" class="${AU_INP}">`,
+      async () => { await auApi(`/admins/${id}/profile`, 'PUT', { firstName: auV('eF'), lastName: auV('eL'), department: auV('eD') }); showToast('Profile updated'); });
+  }
+  if (act === 'role') {
+    return auModal('Change Role', `<p class="text-sm text-gray-500">Changing role resets this admin's custom overrides.</p>
+      <select id="rR" class="${AU_INP}">${auRoleOpts(a.roleId)}</select>`,
+      async () => { await auApi(`/admins/${id}/role`, 'PUT', { roleId: auV('rR') }); showToast('Role updated'); });
+  }
+  if (act === 'suspend' || act === 'activate') {
+    if (!confirm(`${act === 'suspend' ? 'Suspend' : 'Reactivate'} ${a.name}?`)) return;
+    await auApi(`/admins/${id}/${act}`, 'POST'); showToast(act === 'suspend' ? 'Administrator suspended' : 'Administrator reactivated'); return auLoad();
+  }
+  if (act === 'remove') {
+    if (!confirm(`Remove admin access for ${a.name}? Their account becomes a normal buyer account.`)) return;
+    await auApi('/admins/' + id, 'DELETE'); showToast('Administrator removed'); return auLoad();
+  }
+});
+
+const auInviteAction = auGuard(async (act, id) => {
+  if (act === 'revoke' && !confirm('Revoke this invitation?')) return;
+  await auApi(`/invitations/${id}${act === 'resend' ? '/resend' : ''}`, act === 'resend' ? 'POST' : 'DELETE');
+  showToast(act === 'resend' ? 'Invitation resent' : 'Invitation revoked'); auLoad();
+});
 
 // Profile
 function renderProfile() {

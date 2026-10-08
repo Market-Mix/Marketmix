@@ -185,7 +185,7 @@
     </div>
   </div>
 
-  <!-- Password Change Modal -->PHASE 3 — Seller Return Decision
+  <!-- Password Change Modal -->
   <div id="passwordModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
       <h2 class="text-lg font-bold text-gray-900 dark:text-white">Change Password</h2>
@@ -209,34 +209,6 @@
       </div>
     </div>
   </div>
-
-    <div id="adminUserModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
-        <h2 class="text-lg font-bold text-gray-900 dark:text-white" id="adminUserTitle">Add Admin User</h2>
-        <div class="space-y-4 mt-4">
-          <div>
-            <label class="block text-gray-700 dark:text-gray-300 text-sm mb-1">Name</label>
-            <input type="text" id="adminUserName" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white">
-          </div>
-          <div>
-            <label class="block text-gray-700 dark:text-gray-300 text-sm mb-1">Email</label>
-            <input type="email" id="adminUserEmail" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white">
-          </div>
-          <div>
-            <label class="block text-gray-700 dark:text-gray-300 text-sm mb-1">Role</label>
-            <select id="adminUserRole" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white">
-              <option>Super Admin</option>
-              <option>Support</option>
-              <option>Moderator</option>
-            </select>
-          </div>
-        </div>
-        <div class="flex justify-end gap-3 mt-6">
-          <button onclick="closeAdminUserModal()" class="px-4 py-2 text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300">Cancel</button>
-          <button onclick="saveAdminUser()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" id="adminUserBtn">Add</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Chart.js for reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

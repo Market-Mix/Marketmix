@@ -776,11 +776,6 @@ const dummyData = {
     { id: 'WR004', seller: 'Sports Store', amount: 3200.75, status: 'Pending', date: '2024-06-20', bank: 'Bank of America' },
     { id: 'WR005', seller: 'TechHub', amount: 1100.00, status: 'Rejected', date: '2024-06-05', bank: 'Chase Bank' }
   ],
-  
-  adminUsers: [
-    { id: 'AU001', name: 'Super Admin', email: 'admin@marketmix.com', role: 'Super Admin', status: 'Active', joinDate: '2024-01-01' },
-    { id: 'AU002', name: 'Support Manager', email: 'support@marketmix.com', role: 'Support', status: 'Active', joinDate: '2024-02-15' }
-  ]
 };
 
 window.dummyData = dummyData;
@@ -1277,77 +1272,4 @@ function approveWithdrawal(id) {
     showToast('Withdrawal request approved successfully', 'success');
     renderTransactions();
   }
-}
-
-// Admin Users Functions
-let currentEditingAdminId = null;
-
-function openAddAdminUserModal() {
-  currentEditingAdminId = null;
-  document.getElementById('adminUserTitle').textContent = 'Add Admin User';
-  document.getElementById('adminUserBtn').textContent = 'Add';
-  document.getElementById('adminUserName').value = '';
-  document.getElementById('adminUserEmail').value = '';
-  document.getElementById('adminUserRole').value = 'Super Admin';
-  document.getElementById('adminUserModal').classList.remove('hidden');
-}
-
-function openEditAdminUserModal(id) {
-  const admin = dummyData.adminUsers.find(a => a.id === id);
-  if (admin) {
-    currentEditingAdminId = id;
-    document.getElementById('adminUserTitle').textContent = 'Edit Admin User';
-    document.getElementById('adminUserBtn').textContent = 'Update';
-    document.getElementById('adminUserName').value = admin.name;
-    document.getElementById('adminUserEmail').value = admin.email;
-    document.getElementById('adminUserRole').value = admin.role;
-    document.getElementById('adminUserModal').classList.remove('hidden');
-  }
-}
-
-function closeAdminUserModal() {
-  document.getElementById('adminUserModal').classList.add('hidden');
-  currentEditingAdminId = null;
-}
-
-function saveAdminUser() {
-  const name = document.getElementById('adminUserName').value;
-  const email = document.getElementById('adminUserEmail').value;
-  const role = document.getElementById('adminUserRole').value;
-  
-  if (!name || !email || !role) {
-    showToast('Please fill in all fields', 'error');
-    return;
-  }
-  
-  if (!email.includes('@')) {
-    showToast('Please enter a valid email', 'error');
-    return;
-  }
-  
-  if (currentEditingAdminId) {
-    // Edit existing admin
-    const admin = dummyData.adminUsers.find(a => a.id === currentEditingAdminId);
-    if (admin) {
-      admin.name = name;
-      admin.email = email;
-      admin.role = role;
-      showToast('Admin user updated successfully', 'success');
-    }
-  } else {
-    // Add new admin
-    const newId = 'AU' + (dummyData.adminUsers.length + 1).toString().padStart(3, '0');
-    dummyData.adminUsers.push({
-      id: newId,
-      name: name,
-      email: email,
-      role: role,
-      status: 'Active',
-      joinDate: new Date().toISOString().split('T')[0]
-    });
-    showToast('Admin user added successfully', 'success');
-  }
-  
-  closeAdminUserModal();
-  renderAdminUsers();
 }
