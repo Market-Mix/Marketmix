@@ -1428,17 +1428,34 @@ function renderProductList(products) {
   content.innerHTML = `
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">Products Management</h1>
-      <div class="mb-6 flex flex-col sm:flex-row gap-4">
-        <input type="text" id="productSearch" placeholder="Search products..." class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
-        <select id="productCategoryFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+      <div class="mb-6 flex flex-col sm:flex-row gap-4 items-stretch">
+        <input type="text" id="productSearch" placeholder="Search products..." class="min-w-0 flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="productCategoryFilter" class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
           ${categories.map(category => `<option value="${category}">${category}</option>`).join('')}
         </select>
-        <select id="productStatusFilter" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
+        <select id="productStatusFilter" class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white">
           ${statuses.map(status => `<option value="${status}">${status}</option>`).join('')}
         </select>
-        <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
+        <button class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Export</button>
       </div>
-      <div id="productTableContainer">${renderProductTable(products)}</div>
+      <div class="mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          ${['Total Products', 'Active', 'Pending', 'Low Stock', 'Out of Stock'].map(label => `
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+              <p class="text-sm text-gray-600 dark:text-gray-400">${label}</p>
+              <p class="mt-2 text-2xl font-bold text-gray-500 dark:text-gray-400">Unavailable</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div id="productTableContainer" class="overflow-hidden">${renderProductTable(products)}</div>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-800 rounded-lg shadow px-4 py-3">
+        <button type="button" disabled class="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed">Previous</button>
+        <div class="flex items-center gap-2" aria-label="Product pagination">
+          <button type="button" disabled aria-current="page" class="min-w-9 px-3 py-2 text-sm rounded-lg bg-blue-600 text-white">1</button>
+        </div>
+        <button type="button" disabled class="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed">Next</button>
+      </div>
     </div>
   `;
 
@@ -1489,44 +1506,109 @@ function viewProduct(id) {
     document.getElementById('content').innerHTML = renderProductState('Unable to load product.', true);
     return;
   }
+
+  const displayValue = (value) => value === undefined || value === null || value === '' ? 'Unavailable' : escapeHtml(String(value));
+  const productImages = [];
+  if (typeof product.main_image_url === 'string' && product.main_image_url.trim()) productImages.push(product.main_image_url);
+  if (Array.isArray(product.images)) {
+    product.images.forEach(image => {
+      const url = typeof image === 'string' ? image : image?.url;
+      if (typeof url === 'string' && url.trim()) productImages.push(url);
+    });
+  }
+  const specificationEntries = [
+    ['Color', product.color],
+    ['Size', product.size]
+  ].filter(([, value]) => value !== undefined && value !== null && value !== '');
+  if (product.dynamic_fields && typeof product.dynamic_fields === 'object' && !Array.isArray(product.dynamic_fields)) {
+    Object.entries(product.dynamic_fields).forEach(([label, value]) => {
+      if (value !== undefined && value !== null && value !== '') specificationEntries.push([label, value]);
+    });
+  }
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const performanceMetrics = [
+    ['Orders', product.orders ?? product.order_count],
+    ['Units Sold', product.units_sold ?? product.unitsSold],
+    ['Gross Sales', product.gross_sales ?? product.grossSales],
+    ['Refunds', product.refunds],
+    ['Current Stock', product.stock_quantity ?? product.stock]
+  ];
+  const sellerId = product.seller_id;
+  const sellerButton = sellerId && typeof viewAdminSeller === 'function'
+    ? `<button onclick="viewAdminSeller('${escapeHtml(String(sellerId))}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">View Seller</button>`
+    : '';
+
   const html = `
     <div>
       <button onclick="loadPage('products')" class="mb-6 text-blue-600 dark:text-blue-400 hover:underline">← Back to Products</button>
-      
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">${product.name}</h2>
-        
-        <div class="grid grid-cols-2 gap-6 mb-6">
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Category</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.category}</p>
+      <div class="space-y-6">
+        <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Product Overview</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${[
+              ['Product ID', product.id],
+              ['Product Name', product.name],
+              ['Category', product.category],
+              ['Seller', product.seller],
+              ['Status', product.status],
+              ['Created Date', product.created_at],
+              ['Updated Date', product.updated_at]
+            ].map(([label, value]) => `<div><p class="text-sm text-gray-500 dark:text-gray-400">${label}</p><p class="mt-1 font-semibold text-gray-900 dark:text-white break-words">${displayValue(value)}</p></div>`).join('')}
           </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Seller</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.seller}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Price</p>
-            <p class="font-semibold text-gray-900 dark:text-white">$${product.price}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Stock</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.stock}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 dark:text-gray-400">Status</p>
-            <p class="font-semibold text-gray-900 dark:text-white">${product.status}</p>
-          </div>
-        </div>
+        </section>
 
-        <div class="flex gap-3">
-          <button onclick="toggleProductStatus('${product.id}')" class="px-6 py-2 ${product.status === 'Active' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg">
-            ${product.status === 'Active' ? 'Deactivate' : 'Activate'} Product
-          </button>
-          <button onclick="openModal('Delete Product','Are you sure you want to delete this product?', () => { deleteProduct('${product.id}'); })" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-            Delete Product
-          </button>
-        </div>
+        <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Product Information</h2>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Product Images</p>
+              ${productImages.length
+                ? `<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">${productImages.map(url => `<img src="${escapeHtml(url)}" alt="${displayValue(product.name)}" class="w-full aspect-square object-cover rounded-lg border border-gray-200 dark:border-gray-700">`).join('')}</div>`
+                : '<div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-8 text-center text-sm text-gray-500 dark:text-gray-400">No product image available</div>'}
+            </div>
+            <div class="space-y-5">
+              <div><p class="text-sm text-gray-500 dark:text-gray-400">Description</p><p class="mt-1 text-gray-900 dark:text-white whitespace-pre-wrap break-words">${displayValue(product.description)}</p></div>
+              <div><p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Specifications</p>${specificationEntries.length ? `<div class="space-y-2">${specificationEntries.map(([label, value]) => `<div class="flex flex-wrap gap-2 text-sm"><span class="font-semibold text-gray-700 dark:text-gray-300">${escapeHtml(label)}:</span><span class="text-gray-900 dark:text-white break-words">${displayValue(value)}</span></div>`).join('')}</div>` : '<p class="text-sm text-gray-500 dark:text-gray-400">Unavailable</p>'}</div>
+              <div><p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Variants</p>${variants.length ? `<div class="space-y-2">${variants.map(variant => `<pre class="max-w-full overflow-x-auto rounded bg-gray-50 dark:bg-gray-700 p-3 text-xs text-gray-700 dark:text-gray-300">${escapeHtml(JSON.stringify(variant, null, 2))}</pre>`).join('')}</div>` : '<p class="text-sm text-gray-500 dark:text-gray-400">No variants available</p>'}</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
+            <div><p class="text-sm text-gray-500 dark:text-gray-400">Price</p><p class="mt-1 font-semibold text-gray-900 dark:text-white">${product.price === undefined || product.price === null || product.price === '' ? 'Unavailable' : formatCurrency(product.price)}</p></div>
+            <div><p class="text-sm text-gray-500 dark:text-gray-400">Stock</p><p class="mt-1 font-semibold text-gray-900 dark:text-white">${displayValue(product.stock_quantity ?? product.stock)}</p></div>
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5"><h2 class="text-xl font-bold text-gray-900 dark:text-white">Seller Information</h2>${sellerButton}</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div><p class="text-sm text-gray-500 dark:text-gray-400">Seller Name/Shop Name</p><p class="mt-1 font-semibold text-gray-900 dark:text-white">${displayValue(product.seller)}</p></div>
+            <div><p class="text-sm text-gray-500 dark:text-gray-400">Seller ID</p><p class="mt-1 font-semibold text-gray-900 dark:text-white break-words">${displayValue(product.seller_id)}</p></div>
+            <div><p class="text-sm text-gray-500 dark:text-gray-400">Seller Status</p><p class="mt-1 font-semibold text-gray-900 dark:text-white">${displayValue(product.seller_status)}</p></div>
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Product Performance</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">${performanceMetrics.map(([label, value]) => `<div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4"><p class="text-sm text-gray-500 dark:text-gray-400">${label}</p><p class="mt-2 font-bold text-gray-900 dark:text-white">${label === 'Gross Sales' && value !== undefined && value !== null ? formatCurrency(value) : displayValue(value)}</p></div>`).join('')}</div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Product Moderation</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Existing product controls are frontend-only and are not connected to a backend moderation workflow.</p>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Recent Activity</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">No activity available</p>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Admin Actions</h2>
+          <div class="flex flex-wrap gap-3">
+            <button onclick="toggleProductStatus('${escapeHtml(String(product.id))}')" class="px-6 py-2 ${product.status === 'Active' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg">${product.status === 'Active' ? 'Deactivate' : 'Activate'} Product</button>
+            <button onclick="openModal('Delete Product','Are you sure you want to delete this product?', () => { deleteProduct('${escapeHtml(String(product.id))}'); })" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete Product</button>
+          </div>
+        </section>
       </div>
     </div>
   `;
