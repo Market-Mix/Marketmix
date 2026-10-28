@@ -15,6 +15,10 @@ window.formatCurrency = window.formatCurrency || function formatCurrency(value) 
   }).format(num);
 };
 
+function formatRefundAmount(value) {
+  return window.formatCurrency(value);
+}
+
 window.escapeHtml = window.escapeHtml || function escapeHtml(text) {
   if (text === undefined || text === null) return '';
   return String(text)

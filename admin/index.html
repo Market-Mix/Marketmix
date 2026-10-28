@@ -140,10 +140,10 @@
     <div class="flex-1"></div>
 
     <div class="flex items-center gap-4">
-      <div class="relative">
-        <button onclick="toggleNotificationBell()" class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+      <div>
+        <button id="adminNotificationBell" type="button" onclick="toggleNotificationBell()" aria-label="Open notifications" aria-expanded="false" class="relative text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
           <i class="fas fa-bell text-lg"></i>
-          <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+          <span id="adminNotificationBadge" class="absolute -top-2 -right-2 hidden min-w-5 h-5 px-1 bg-red-500 text-white text-xs rounded-full items-center justify-center" aria-live="polite">0</span>
         </button>
       </div>
 

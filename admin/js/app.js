@@ -593,6 +593,7 @@ function loadPage(page) {
   if (pages[page]) {
     updateBrowserRoute(page);
     pages[page]();
+    if (typeof refreshAdminNotifications === 'function') refreshAdminNotifications();
   } else {
     console.error('Page not found:', page);
     document.getElementById('content').innerHTML = '<p>Page not found</p>';
