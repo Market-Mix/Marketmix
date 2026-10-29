@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reviews - MarketMix</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="seller-reviews.css">
+</head>
+<body>
+  <header class="reviews-header">
+    <a class="brand" href="sellers layout.html">MarketMix</a>
+    <nav aria-label="Seller navigation">
+      <a href="sellers layout.html">Dashboard</a>
+      <a href="sellers product.html">Products</a>
+      <a href="sellers order.html">Orders</a>
+      <a href="seller-reviews.html" aria-current="page">Reviews</a>
+      <a href="sellers setting.html">Shop Settings</a>
+    </nav>
+    <span id="activeStoreName" class="store-name" aria-live="polite"></span>
+  </header>
+
+  <main class="reviews-page">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">CUSTOMER FEEDBACK</p>
+        <h1>Reviews</h1>
+        <p>Reviews buyers have left on products in your active store.</p>
+      </div>
+      <a class="back-link" href="sellers layout.html"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    </section>
+
+    <section class="stats-section" aria-label="Overall store review statistics">
+      <p class="stats-caption">Overall store statistics — these totals are not changed by the filters below.</p>
+      <div class="stats-grid">
+        <article class="stat-card">
+          <span>Total reviews</span>
+          <strong id="totalReviews">—</strong>
+        </article>
+        <article class="stat-card">
+          <span>Average rating</span>
+          <strong id="averageRating">—</strong>
+        </article>
+        <article class="stat-card distribution-card">
+          <span>Rating distribution</span>
+          <div id="ratingDistribution" class="rating-distribution"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="reviews-panel" aria-label="Review list">
+      <div class="filters">
+        <label class="search-control">
+          <span>Search product or review</span>
+          <input id="reviewSearch" type="search" placeholder="Search product name or review text">
+        </label>
+        <label>
+          <span>Product</span>
+          <select id="productFilter">
+            <option value="">All products</option>
+          </select>
+        </label>
+        <label>
+          <span>Rating</span>
+          <select id="ratingFilter">
+            <option value="">All ratings</option>
+            <option value="5">5 stars</option>
+            <option value="4">4 stars</option>
+            <option value="3">3 stars</option>
+            <option value="2">2 stars</option>
+            <option value="1">1 star</option>
+          </select>
+        </label>
+        <label>
+          <span>Sort by</span>
+          <select id="sortOrder">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </label>
+      </div>
+
+      <p id="resultsSummary" class="results-summary" aria-live="polite"></p>
+      <div id="reviewsStatus" class="status-panel" role="status" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <span>Loading reviews…</span>
+      </div>
+      <div id="reviewsList" class="reviews-list"></div>
+      <div id="reviewsEmpty" class="empty-state" hidden>
+        <i class="far fa-comment-dots" aria-hidden="true"></i>
+        <h2>No reviews found</h2>
+        <p id="emptyMessage">There are no reviews for this store yet.</p>
+      </div>
+      <div id="reviewsError" class="error-state" hidden>
+        <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+        <p id="errorMessage">Reviews could not be loaded.</p>
+        <button id="retryReviews" type="button">Retry</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="reviews-footer">
+    <span>&copy; 2025 MarketMix. All rights reserved.</span>
+    <div>
+      <a href="help.html">Help</a>
+      <a href="seller-tips.html">Seller Tips</a>
+      <a href="contact.html">Contact</a>
+    </div>
+  </footer>
+
+  <script src="storeManager.js"></script>
+  <script src="seller-reviews.js"></script>
+</body>
+</html>
