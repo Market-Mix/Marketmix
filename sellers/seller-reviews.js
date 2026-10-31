@@ -28,6 +28,39 @@
     retry: document.getElementById('retryReviews')
   };
 
+  const navToggler = document.getElementById('navbar-toggler');
+  const offcanvasMenu = document.getElementById('offcanvasMenu');
+  const offcanvasClose = document.getElementById('offcanvasClose');
+
+  if (navToggler && offcanvasMenu && offcanvasClose) {
+    navToggler.addEventListener('click', () => {
+      offcanvasMenu.classList.add('show');
+      offcanvasMenu.setAttribute('aria-hidden', 'false');
+      navToggler.setAttribute('aria-expanded', 'true');
+    });
+    offcanvasClose.addEventListener('click', () => {
+      offcanvasMenu.classList.remove('show');
+      offcanvasMenu.setAttribute('aria-hidden', 'true');
+      navToggler.setAttribute('aria-expanded', 'false');
+    });
+    document.addEventListener('click', event => {
+      if (!offcanvasMenu.contains(event.target) && !navToggler.contains(event.target)) {
+        offcanvasMenu.classList.remove('show');
+        offcanvasMenu.setAttribute('aria-hidden', 'true');
+        navToggler.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  function toggleProfileDropdown() {
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown) dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+  }
+  window.toggleProfileDropdown = toggleProfileDropdown;
+  document.querySelectorAll('.profile-icon').forEach(image => {
+    image.addEventListener('click', toggleProfileDropdown);
+  });
+
   function showError(message) {
     elements.status.hidden = true;
     elements.empty.hidden = true;
@@ -68,7 +101,14 @@
 
       const activeStore = await StoreManager.requireActiveStore();
       if (!activeStore) return;
-      elements.store.textContent = activeStore.business_name || 'Active store';
+      if (elements.store) elements.store.textContent = activeStore.business_name || 'Active store';
+      const storeLogo = activeStore.store_logo_url;
+      if (storeLogo) {
+        document.querySelectorAll('.profile-icon, .navbar-toggler-icon').forEach(image => {
+          image.src = storeLogo;
+          image.addEventListener('error', () => { image.removeAttribute('src'); }, { once: true });
+        });
+      }
 
       const reviews = [];
       let page = 1;

@@ -8,22 +8,73 @@
   <link rel="stylesheet" href="seller-reviews.css">
 </head>
 <body>
-  <header class="reviews-header">
-    <a class="brand" href="sellers layout.html">MarketMix</a>
-    <nav aria-label="Seller navigation">
-      <a href="sellers layout.html">Dashboard</a>
-      <a href="sellers product.html">Products</a>
-      <a href="sellers order.html">Orders</a>
-      <a href="sellers returns.html">Returns &amp; Refunds</a>
-      <a href="sellers earning.html">Earnings</a>
-      <a href="seller-reviews.html" aria-current="page">Reviews</a>
-      <a href="sellers setting.html">Shop Settings</a>
-    </nav>
-    <a class="notifications-link" href="sellers notification page.html" aria-label="Notifications">
-      <i class="fas fa-bell" aria-hidden="true"></i>
-    </a>
-    <span id="activeStoreName" class="store-name" aria-live="polite"></span>
-  </header>
+  <nav class="navbar" aria-label="Seller navigation">
+    <div class="nav-container">
+      <a class="brand-logo" href="sellers layout.html">MarketMix</a>
+      <button class="navbar-toggler" id="navbar-toggler" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <img src="images/elon.jfif" class="navbar-toggler-icon" alt="">
+      </button>
+      <div class="nav-large">
+        <ul class="nav-links">
+          <li><a href="sellers layout.html">Dashboard</a></li>
+          <li><a href="sellers product.html">My Products</a></li>
+          <li><a href="sellers order.html">Orders</a></li>
+          <li><a href="sellers returns.html">Returns &amp; Refunds</a></li>
+          <li><a href="sellers earning.html">Earnings</a></li>
+          <li><a href="seller-reviews.html" aria-current="page">Reviews</a></li>
+          <li><a href="sellers setting.html">Shop Settings</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a href="sellers notification page.html" class="nav-icon-button" title="Notifications" aria-label="Notifications">
+            <i class="fas fa-bell" aria-hidden="true"></i>
+            <span class="notification-badge" hidden>0</span>
+          </a>
+          <div class="profile-container">
+            <img id="sellerProfileImage" src="" alt="Store Logo" class="profile-icon" loading="eager">
+            <div class="profile-dropdown" id="profileDropdown">
+              <a href="view profile.html">View Profile</a>
+              <a href="sellers setting.html">Account Settings</a>
+              <a href="sellers layout.html">View Store</a>
+              <a href="help.html">Help &amp; Support</a>
+              <a href="logout.html">Logout</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="offcanvas-menu" id="offcanvasMenu" aria-hidden="true">
+    <div class="offcanvas-header">
+      <button class="offcanvas-close" id="offcanvasClose" type="button" aria-label="Close navigation">&times;</button>
+    </div>
+    <div class="offcanvas-body">
+      <ul class="offcanvas-links">
+        <li><a href="sellers layout.html">Dashboard</a></li>
+        <li><a href="sellers product.html">My Products</a></li>
+        <li><a href="sellers order.html">Orders</a></li>
+        <li><a href="sellers returns.html">Returns &amp; Refunds</a></li>
+        <li><a href="sellers earning.html">Earnings</a></li>
+        <li><a href="seller-reviews.html" aria-current="page">Reviews</a></li>
+        <li><a href="sellers setting.html">Shop Settings</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="sellers notification page.html" class="nav-icon-button" title="Notifications" aria-label="Notifications">
+          <i class="fas fa-bell" aria-hidden="true"></i>
+          <span class="notification-badge" hidden>0</span>
+        </a>
+        <div class="profile-container">
+          <img id="sellerProfileImageMobile" src="" alt="Store Logo" class="profile-icon" loading="eager">
+          <div class="offcanvas-profile-links">
+            <a href="view profile.html">View Profile</a>
+            <a href="sellers setting.html">Account Settings</a>
+            <a href="help.html">Help &amp; Support</a>
+            <a href="logout.html">Logout</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <main class="reviews-page">
     <section class="page-heading">
@@ -104,7 +155,7 @@
     </section>
   </main>
 
-  <footer class="reviews-footer">&copy; 2025 MarketMix. All Rights Reserved.</footer>
+  <footer>&copy; 2025 MarketMix. All Rights Reserved.</footer>
 
   <script src="storeManager.js"></script>
   <script src="seller-reviews.js"></script>
