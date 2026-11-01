@@ -67,6 +67,7 @@ function createReviews(product) {
             const reviewDate = new Date(review.createdAt || review.created_at);
             const dateLabel = Number.isNaN(reviewDate.getTime()) ? 'Date unavailable' : reviewDate.toLocaleDateString();
             const media = Array.isArray(review.media) ? review.media : [];
+            const replies = Array.isArray(review.replies) ? review.replies : [];
             const mediaHtml = media.map(item => {
               const url = safeMediaUrl(item?.url);
               if (!url) return '';
@@ -79,6 +80,21 @@ function createReviews(product) {
               }
               return '';
             }).join('');
+            const repliesHtml = replies.map(reply => {
+              if (!reply || typeof reply.text !== 'string' || !reply.text.trim()) return '';
+              const replyDate = reply.createdAt ? new Date(reply.createdAt) : null;
+              const replyDateLabel = replyDate && !Number.isNaN(replyDate.getTime())
+                ? replyDate.toLocaleDateString()
+                : '';
+
+              return `
+                <div style="margin-top:12px;padding:10px 12px;border-left:3px solid #f97316;border-radius:6px;background:#fff7ed">
+                  <div style="font-size:13px;font-weight:600;color:#9a3412">Seller reply</div>
+                  <p style="margin:4px 0 0;font-size:13px;color:#475569;line-height:1.5;white-space:pre-wrap">${escapeHtml(reply.text)}</p>
+                  ${replyDateLabel ? `<div style="font-size:12px;color:#94a3b8;margin-top:4px">${escapeHtml(replyDateLabel)}</div>` : ''}
+                </div>
+              `;
+            }).join('');
 
             return `
             <div style="padding:12px 0;border-bottom:1px solid #e2e8f0">
@@ -89,6 +105,7 @@ function createReviews(product) {
               <p style="margin:0;font-size:14px;color:#475569;line-height:1.5;white-space:pre-wrap">${escapeHtml(comment)}</p>
               <div style="font-size:12px;color:#94a3b8;margin-top:4px">${escapeHtml(dateLabel)}</div>
               ${mediaHtml}
+              ${repliesHtml}
             </div>
           `;}).join('')}
           ${reviewCount > 5 ? `
