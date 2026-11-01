@@ -29,6 +29,11 @@ function createReviews(product) {
     }
   }
 
+  function voteCount(value) {
+    const count = Number(value);
+    return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  }
+
   // Generate star rating
   function renderStars(rating, size = '16') {
     let stars = '';
@@ -58,7 +63,7 @@ function createReviews(product) {
       <!-- Reviews List -->
       <div>
         <h3 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1e293b">Customer Reviews</h3>
-        <p style="margin:0 0 12px;color:#64748b;font-size:13px">To leave a review you must be a buyer who received this product; use your <a href="../purchase history.html">Purchase History</a> or <a href="../reviews%20ratings.html">My Reviews</a> page.</p>
+        <p style="margin:0 0 12px;color:#64748b;font-size:13px">To leave a review you must be a buyer who received this product; use your <a href="/buyers/purchase%20history.html">Purchase History</a> or <a href="/buyers/reviews%20ratings.html">My Reviews</a> page.</p>
         
         ${reviews.length > 0 ? `
           ${reviews.slice(0, 5).map(review => {
@@ -95,9 +100,10 @@ function createReviews(product) {
                 </div>
               `;
             }).join('');
+            const reviewId = review.id == null ? '' : String(review.id);
 
             return `
-            <div style="padding:12px 0;border-bottom:1px solid #e2e8f0">
+            <div style="padding:12px 0;border-bottom:1px solid #e2e8f0" data-review-card>
               <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
                 <div style="font-weight:600;color:#334155">${escapeHtml(buyerName)}</div>
                 <div style="display:flex;gap:2px;font-size:12px">${renderStars(review.rating || 0, '12')}</div>
@@ -106,6 +112,13 @@ function createReviews(product) {
               <div style="font-size:12px;color:#94a3b8;margin-top:4px">${escapeHtml(dateLabel)}</div>
               ${mediaHtml}
               ${repliesHtml}
+              ${reviewId ? `
+                <div class="review-vote-controls" style="display:flex;align-items:center;gap:8px;margin-top:12px">
+                  <button type="button" data-review-id="${escapeHtml(reviewId)}" data-review-vote="helpful" aria-label="Like this review" aria-pressed="false" style="border:1px solid #cbd5e1;border-radius:6px;background:#fff;padding:5px 9px;color:#475569;cursor:pointer">Like (<span data-vote-count="helpful">${voteCount(review.helpfulCount)}</span>)</button>
+                  <button type="button" data-review-id="${escapeHtml(reviewId)}" data-review-vote="not_helpful" aria-label="Dislike this review" aria-pressed="false" style="border:1px solid #cbd5e1;border-radius:6px;background:#fff;padding:5px 9px;color:#475569;cursor:pointer">Dislike (<span data-vote-count="notHelpful">${voteCount(review.notHelpfulCount)}</span>)</button>
+                  <span data-vote-feedback role="status" aria-live="polite" style="font-size:12px;color:#64748b"></span>
+                </div>
+              ` : ''}
             </div>
           `;}).join('')}
           ${reviewCount > 5 ? `
@@ -131,6 +144,49 @@ function createReviews(product) {
   `;
 
   container.innerHTML = html;
+
+  container.querySelectorAll('[data-review-vote]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        localStorage.setItem('after_login_redirect', `${window.location.pathname}${window.location.search}${window.location.hash}`);
+        window.location.href = '/buyers/login%20for%20buyers.html';
+        return;
+      }
+
+      const controls = button.closest('.review-vote-controls');
+      const feedback = controls?.querySelector('[data-vote-feedback]');
+      const voteButtons = controls ? Array.from(controls.querySelectorAll('[data-review-vote]')) : [button];
+      voteButtons.forEach(voteButton => { voteButton.disabled = true; });
+      if (feedback) feedback.textContent = 'Saving vote…';
+
+      try {
+        const response = await fetch(`${API_BASE}/reviews/${encodeURIComponent(button.dataset.reviewId)}/vote`, {
+          method: 'POST',
+          headers: scopedHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ voteType: button.dataset.reviewVote })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+          throw new Error(result.message || 'Your vote could not be saved.');
+        }
+
+        const helpfulCount = controls?.querySelector('[data-vote-count="helpful"]');
+        const notHelpfulCount = controls?.querySelector('[data-vote-count="notHelpful"]');
+        if (helpfulCount) helpfulCount.textContent = voteCount(result.data?.helpfulCount);
+        if (notHelpfulCount) notHelpfulCount.textContent = voteCount(result.data?.notHelpfulCount);
+        voteButtons.forEach(voteButton => {
+          voteButton.setAttribute('aria-pressed', String(voteButton === button));
+        });
+        if (feedback) feedback.textContent = 'Your vote was saved.';
+      } catch (error) {
+        console.error('Review vote failed:', error);
+        if (feedback) feedback.textContent = error.message || 'Your vote could not be saved. Please try again.';
+      } finally {
+        voteButtons.forEach(voteButton => { voteButton.disabled = false; });
+      }
+    });
+  });
 
   // Setup event listeners
   const writeReviewBtn = document.getElementById('write-review-btn');
