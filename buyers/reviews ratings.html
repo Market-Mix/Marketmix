@@ -4,12 +4,13 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="config.js"></script>
 <script>
 function getToken() {
   return localStorage.getItem('buyer_token') || localStorage.getItem('token') || '';
 }
 
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
     window.location.replace("login for buyers.html");
   }
@@ -734,6 +735,7 @@ footer {
           </div>
         </div>
 
+        <div id="reviewListStatus" class="small muted" role="status" aria-live="polite"></div>
         <div id="reviewList" class="review-list"></div>
       </div>
     </main>
@@ -789,6 +791,8 @@ footer {
         
         <p class="small muted">Select a recently delivered product</p>
         <select id="dropProductSelect" style="width:100%;padding:10px;margin:10px 0"></select>
+        <div id="purchasedProductsStatus" class="small muted" role="status" aria-live="polite"></div>
+        <button type="button" class="btn ghost" id="retryPurchasedProductsBtn" style="display:none;width:100%;margin-bottom:10px" onclick="loadPurchasedProducts()">Retry loading products</button>
         <button class="btn" style="width:100%" id="dropReviewBtn">Drop a Review</button>
       </div>
     </aside>
@@ -809,6 +813,7 @@ footer {
         <select id="productSelect" required>
           <option value="">Loading products...</option>
         </select>
+        <div id="productSelectStatus" class="small muted" role="status" aria-live="polite"></div>
       </div>
 
       <div class="form-group required">
@@ -862,9 +867,13 @@ footer {
 // ==============================================
 // CONFIGURATION
 // ==============================================
-const API_BASE_URL = 'https://marketmix-backend.onrender.com/api';
+const API_BASE_URL = window.CONFIG && window.CONFIG.API_BASE_URL
+  ? window.CONFIG.API_BASE_URL
+  : 'https://marketmix-backend.onrender.com/api';
 let allReviews = [];
 let purchasedProducts = [];
+let reviewsLoadState = 'loading';
+let purchasedProductsLoaded = false;
 let currentEditingId = null;
 let currentRating = 0;
 let selectedFiles = [];
@@ -874,8 +883,7 @@ let autoSaveTimer = null;
 
 const demoReviewProduct = {
   id: 'demo-product',
-  name: 'Demo Product (Test only)',
-  orderId: 'demo-order'
+  name: 'Demo Product (Test only)'
 };
 
 // Review Templates
@@ -916,9 +924,16 @@ function getBuyerId() {
   }
 }
 
+function getBuyerToken() {
+  return localStorage.getItem('buyer_token') ||
+    (window.Auth && typeof window.Auth.getToken === 'function' ? window.Auth.getToken() : '') ||
+    localStorage.getItem('token') ||
+    '';
+}
+
 async function createReviewNotification(productName) {
   const buyerId = getBuyerId();
-  const token = localStorage.getItem('token');
+  const token = getBuyerToken();
   if (!buyerId || !token || !productName) {
     console.warn('⚠️ Review notification not created because auth or product name is missing', { buyerId, tokenExists: !!token, productName });
     return null;
@@ -1130,7 +1145,7 @@ async function bulkDelete() {
   showLoading(true, 'Deleting reviews...');
 
   try {
-    const token = localStorage.getItem('token');
+    const token = getBuyerToken();
     const deletePromises = Array.from(selectedReviewIds).map(reviewId =>
       fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
         method: 'DELETE',
@@ -1399,7 +1414,7 @@ async function saveInlineEdit(reviewId) {
   showLoading(true, 'Saving...');
   
   try {
-    const token = localStorage.getItem('token');
+    const token = getBuyerToken();
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
       method: 'PUT',
       headers: {
@@ -1436,9 +1451,12 @@ function cancelInlineEdit(reviewId, originalText) {
 // LOAD REVIEWS
 // ==============================================
 async function loadMyReviews() {
+  reviewsLoadState = 'loading';
+  document.getElementById('reviewListStatus').textContent = 'Loading your reviews...';
+  document.getElementById('reviewList').innerHTML = '';
   showLoading(true, 'Loading reviews...');
   try {
-    const token = localStorage.getItem('token');
+    const token = getBuyerToken();
     const response = await fetch(`${API_BASE_URL}/reviews/my-reviews`, {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -1448,7 +1466,9 @@ async function loadMyReviews() {
     const data = await response.json();
 
     if (response.ok && data.status === 'success') {
-      allReviews = data.data.reviews;
+      allReviews = Array.isArray(data.data?.reviews) ? data.data.reviews : [];
+      reviewsLoadState = 'loaded';
+      document.getElementById('reviewListStatus').textContent = '';
       renderReviews();
       updateAnalytics();
     } else {
@@ -1456,6 +1476,11 @@ async function loadMyReviews() {
     }
   } catch (error) {
     console.error('Error loading reviews:', error);
+    reviewsLoadState = 'error';
+    document.getElementById('reviewListStatus').textContent =
+      `Could not load your reviews. ${error.message || 'Please try again.'}`;
+    document.getElementById('reviewList').innerHTML =
+      '<button type="button" class="btn ghost" onclick="loadMyReviews()">Retry</button>';
     showToast(error.message || 'Failed to load reviews', 'error');
   } finally {
     showLoading(false);
@@ -1466,8 +1491,18 @@ async function loadMyReviews() {
 // LOAD PURCHASED PRODUCTS
 // ==============================================
 async function loadPurchasedProducts() {
+  const productStatus = document.getElementById('productSelectStatus');
+  const productsStatus = document.getElementById('purchasedProductsStatus');
+  const retryButton = document.getElementById('retryPurchasedProductsBtn');
+  purchasedProductsLoaded = false;
+  productStatus.textContent = 'Loading eligible delivered products...';
+  productsStatus.textContent = 'Loading eligible delivered products...';
+  retryButton.style.display = 'none';
+  document.getElementById('productSelect').innerHTML = '<option value="">Loading products...</option>';
+  document.getElementById('dropProductSelect').innerHTML = '<option value="">Loading products...</option>';
+
   try {
-    const token = localStorage.getItem('token');
+    const token = getBuyerToken();
     const response = await fetch(`${API_BASE_URL}/orders/purchased-products`, {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -1477,7 +1512,14 @@ async function loadPurchasedProducts() {
     const data = await response.json();
 
     if (response.ok && data.status === 'success') {
-      purchasedProducts = data.data.products;
+      purchasedProducts = Array.isArray(data.data?.products) ? data.data.products : [];
+      purchasedProductsLoaded = true;
+      productStatus.textContent = purchasedProducts.length
+        ? ''
+        : 'No delivered products are currently eligible for review.';
+      productsStatus.textContent = purchasedProducts.length
+        ? ''
+        : 'No delivered products are currently eligible for review.';
       populateProductSelect();
       populateDropProductSelect();
       setupDropReviewButton();
@@ -1488,7 +1530,12 @@ async function loadPurchasedProducts() {
     }
   } catch (error) {
     console.error('Error loading products:', error);
-    document.getElementById('productSelect').innerHTML = '<option value="">No products available</option>';
+    productStatus.textContent = 'Could not load eligible products.';
+    productsStatus.textContent = 'Could not load eligible products.';
+    document.getElementById('productSelect').innerHTML = '<option value="">Could not load products</option>';
+    document.getElementById('dropProductSelect').innerHTML = '<option value="">Could not load products</option>';
+    retryButton.style.display = 'block';
+    showToast(error.message || 'Failed to load eligible products', 'error');
   }
 }
 
@@ -1496,7 +1543,14 @@ function populateProductSelect() {
   const select = document.getElementById('productSelect');
   
   if (purchasedProducts.length === 0) {
-    select.innerHTML = `<option value="${demoReviewProduct.id}" data-order-id="${demoReviewProduct.orderId}">${demoReviewProduct.name}</option>`;
+    select.innerHTML = '<option value="">Select a product...</option>';
+    const demoGroup = document.createElement('optgroup');
+    demoGroup.label = 'Demo / Test only';
+    const demoOption = document.createElement('option');
+    demoOption.value = demoReviewProduct.id;
+    demoOption.textContent = demoReviewProduct.name;
+    demoGroup.appendChild(demoOption);
+    select.appendChild(demoGroup);
     return;
   }
 
@@ -1523,7 +1577,14 @@ function populateDropProductSelect() {
   const candidates = purchasedProducts.filter(p => !p.alreadyReviewed).slice(0,5);
 
   if (candidates.length === 0) {
-    select.innerHTML = `<option value="${demoReviewProduct.id}" data-order-id="${demoReviewProduct.orderId}">${demoReviewProduct.name}</option>`;
+    select.innerHTML = '<option value="">Select a product to review...</option>';
+    const demoGroup = document.createElement('optgroup');
+    demoGroup.label = 'Demo / Test only';
+    const demoOption = document.createElement('option');
+    demoOption.value = demoReviewProduct.id;
+    demoOption.textContent = demoReviewProduct.name;
+    demoGroup.appendChild(demoOption);
+    select.appendChild(demoGroup);
     return;
   }
 
@@ -1617,6 +1678,8 @@ function processQueryParamsForReview() {
 // RENDER REVIEWS
 // ==============================================
 function renderReviews() {
+  if (reviewsLoadState !== 'loaded') return;
+
   const container = document.getElementById('reviewList');
   const sortBy = document.getElementById('sortBy').value;
   const filterStar = document.getElementById('filterStar').value;
@@ -1646,7 +1709,10 @@ function renderReviews() {
   }
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><i class="fas fa-star" style="font-size:48px;color:#ddd;"></i><p>No reviews yet. Share your experience with products you\'ve purchased! 🌟</p></div>';
+    const message = allReviews.length === 0
+      ? 'No reviews yet. Share your experience with products you\'ve purchased! 🌟'
+      : 'No reviews match your current search or filters.';
+    container.innerHTML = `<div class="empty-state"><i class="fas fa-star" style="font-size:48px;color:#ddd;"></i><p>${message}</p></div>`;
     return;
   }
 
@@ -1937,12 +2003,14 @@ async function submitReview(event) {
   }
 
   if (productId === demoReviewProduct.id) {
-    showToast('Review submitted successfully!', 'success');
-    await createReviewNotification(demoReviewProduct.name);
-    clearDraft(productId);
+    showToast('Demo only — this review was not saved or sent to the backend.', 'info');
     closeReviewModal();
-    await loadMyReviews();
-    await loadPurchasedProducts();
+    return;
+  }
+
+  if (!purchasedProductsLoaded ||
+      !purchasedProducts.some(product => String(product.id) === String(productId) && !product.alreadyReviewed)) {
+    showToast('Select an eligible delivered product from your account.', 'error');
     return;
   }
 
@@ -1951,10 +2019,10 @@ async function submitReview(event) {
   submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
 
   try {
-    const token = localStorage.getItem('token');
+    const token = getBuyerToken();
     
     const mediaArray = [];
-    for (const file of selectedFiles.slice(0, 3)) {
+    for (const file of selectedFiles.slice(0, 5)) {
       const base64 = await fileToBase64(file);
       mediaArray.push({
         type: file.type,
@@ -1964,6 +2032,9 @@ async function submitReview(event) {
 
     const selectedOption = document.querySelector(`#productSelect option[value="${productId}"]`);
     const orderId = selectedOption ? selectedOption.dataset.orderId : null;
+    if (!currentEditingId && !orderId) {
+      throw new Error('The selected delivered order could not be verified. Reload eligible products and try again.');
+    }
 
     const payload = {
       review_type: 'product',
@@ -2047,7 +2118,7 @@ async function deleteReview(reviewId) {
   showLoading(true, 'Deleting review...');
 
   try {
-    const token = localStorage.getItem('token');
+    const token = getBuyerToken();
     const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
       method: 'DELETE',
       headers: {
