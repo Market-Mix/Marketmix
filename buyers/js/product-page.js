@@ -384,14 +384,25 @@ function renderSellerInfo(seller, storeId) {
 // ── Enrich with reviews ───────────────────────────────────────
 async function enrichWithReviews(product, reviewsResult) {
   let reviewData = null;
+  let loadError = null;
   if (reviewsResult?.status === 'fulfilled') {
     try {
-      const j = await reviewsResult.value.json();
-      if (j.status === 'success' && j.data) reviewData = j.data;
-    } catch (_) {}
+      if (!reviewsResult.value.ok) {
+        throw new Error(`Review request failed with status ${reviewsResult.value.status}`);
+      }
+      const response = await reviewsResult.value.json();
+      if (response.status !== 'success' || !Array.isArray(response.data?.reviews)) {
+        throw new Error(response.message || 'The review response was invalid.');
+      }
+      reviewData = response.data;
+    } catch (error) {
+      loadError = error;
+    }
+  } else if (reviewsResult?.status === 'rejected') {
+    loadError = reviewsResult.reason;
   }
 
-  // If no reviews yet, try fetching with store context
+  // Retry with product store context if the initial public request failed.
   if (!reviewData) {
     const storeId = getProductStoreId(product);
     try {
@@ -400,16 +411,37 @@ async function enrichWithReviews(product, reviewsResult) {
         { headers: scopedHeaders({}, storeId) },
         5000
       );
-      if (res && res.ok) {
-        const j = await res.json();
-        if (j.data) reviewData = j.data;
+      if (!res.ok) {
+        throw new Error(`Review request failed with status ${res.status}`);
       }
-    } catch (_) {}
+      const response = await res.json();
+      if (response.status !== 'success' || !Array.isArray(response.data?.reviews)) {
+        throw new Error(response.message || 'The review response was invalid.');
+      }
+      reviewData = response.data;
+    } catch (error) {
+      loadError = error;
+    }
   }
 
-  if (!reviewData) return;
+  if (!reviewData) {
+    const section = document.getElementById('reviews-section');
+    if (!section) return;
+    section.innerHTML = `
+      <div style="padding:24px;text-align:center;border:1px solid #e2e8f0;border-radius:12px;background:#fff">
+        <p style="color:#b91c1c">Product reviews could not be loaded. Please try again.</p>
+        <button type="button" id="retry-product-reviews" style="padding:9px 16px;border:0;border-radius:7px;background:#f97316;color:#fff;cursor:pointer">
+          Retry
+        </button>
+      </div>`;
+    section.querySelector('#retry-product-reviews').addEventListener('click', () => {
+      enrichWithReviews(product, null);
+    });
+    console.error('Public product reviews failed to load:', loadError);
+    return;
+  }
 
-  product.reviews      = reviewData.reviews || [];
+  product.reviews      = reviewData.reviews;
   product.review_count = reviewData.pagination?.totalReviews ?? product.reviews.length;
   product.rating       = parseFloat(reviewData.summary?.averageRating) || 0;
 

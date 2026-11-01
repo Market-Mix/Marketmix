@@ -836,9 +836,8 @@ footer {
       </div>
 
       <div class="form-group">
-        <label>Add Photos/Videos (Optional)</label>
-        <input type="file" id="mediaInput" multiple accept="image/*,video/*">
-        <small class="muted">Max 5 files, 10MB each</small>
+        <label>Photos/Videos</label>
+        <p class="muted">Photo and video uploads are currently unavailable. You can still submit a text-only review.</p>
         <div id="mediaPreview" class="media-preview"></div>
       </div>
 
@@ -876,7 +875,6 @@ let reviewsLoadState = 'loading';
 let purchasedProductsLoaded = false;
 let currentEditingId = null;
 let currentRating = 0;
-let selectedFiles = [];
 let bulkModeActive = false;
 let selectedReviewIds = new Set();
 let autoSaveTimer = null;
@@ -978,6 +976,37 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function getSafeReviewMediaUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return '';
+  try {
+    const url = new URL(value, window.location.href);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function createReviewMediaElement(media) {
+  const url = getSafeReviewMediaUrl(media?.url);
+  if (!url) return null;
+
+  if (media.type === 'image') {
+    const image = document.createElement('img');
+    image.src = url;
+    image.alt = 'Review photo';
+    image.addEventListener('click', () => openZoom(url, 'image'));
+    return image;
+  }
+  if (media.type === 'video') {
+    const video = document.createElement('video');
+    video.controls = true;
+    video.preload = 'metadata';
+    video.src = url;
+    return video;
+  }
+  return null;
 }
 
 function debounce(func, wait) {
@@ -1212,8 +1241,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('searchQuery').value = '';
     renderReviews();
   });
-
-  document.getElementById('mediaInput').addEventListener('change', handleFileSelect);
 
   document.getElementById('reviewModal').addEventListener('click', (e) => {
     if (e.target.id === 'reviewModal') {
@@ -1629,46 +1656,28 @@ function setupDropReviewButton() {
   });
 }
 
-// If the page was opened with ?product=...&order=... (e.g., from Purchase History), pre-select and open the review flow
+// Product and order query values are hints only; use the eligible order ID returned by the backend.
 function processQueryParamsForReview() {
   try {
     const params = new URLSearchParams(window.location.search);
     const productParam = params.get('product');
-    const orderParam = params.get('order');
-    if (!productParam && !orderParam) return;
+    if (!productParam) return;
 
-    // If an order is specified, open the review modal for that product/order immediately
-    if (productParam && orderParam) {
-      const productSelect = document.getElementById('productSelect');
-      const option = productSelect ? productSelect.querySelector(`option[value="${productParam}"]`) : null;
-      if (option) {
-        option.dataset.orderId = orderParam;
-        productSelect.value = productParam;
-      }
-
-      showWriteReviewForm();
-      setTimeout(() => loadDraft(productParam), 120);
+    const eligibleProduct = purchasedProducts.find(product =>
+      String(product.id) === productParam && !product.alreadyReviewed
+    );
+    if (!eligibleProduct) {
+      showToast('That product is not currently eligible for review. Reviews require a delivered order.', 'error');
       return;
     }
 
-    // If only product is supplied, try to pre-select it in the Drop Review selector if present
-    if (productParam) {
-      const dropSelect = document.getElementById('dropProductSelect');
-      const dropOption = dropSelect ? Array.from(dropSelect.options).find(o => o.value === productParam) : null;
-      if (dropOption) {
-        dropSelect.value = productParam;
-        dropSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        showToast('Product selected — click "Drop a Review" to leave your review', 'info');
-        return;
-      }
+    const productSelect = document.getElementById('productSelect');
+    const dropSelect = document.getElementById('dropProductSelect');
+    if (productSelect) productSelect.value = String(eligibleProduct.id);
+    if (dropSelect) dropSelect.value = String(eligibleProduct.id);
 
-      const productSelect = document.getElementById('productSelect');
-      const option = productSelect ? productSelect.querySelector(`option[value="${productParam}"]`) : null;
-      if (option) {
-        productSelect.value = productParam;
-        showToast('This product is pre-selected. To submit a review, open Purchase History and click "Drop Review" for the delivered order.', 'info');
-      }
-    }
+    showWriteReviewForm();
+    setTimeout(() => loadDraft(String(eligibleProduct.id)), 120);
   } catch (e) {
     console.error('Error processing review query params:', e);
   }
@@ -1726,18 +1735,9 @@ function renderReviews() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const initial = (user.firstName || 'U')[0].toUpperCase();
 
-    let mediaHtml = '';
-    if (review.media && review.media.length > 0) {
-      mediaHtml = '<div class="review-media">';
-      review.media.forEach((m, idx) => {
-        if (m.type === 'image') {
-          mediaHtml += `<img src="${m.url}" alt="Review photo" onclick="openZoom('${m.url}', 'image')">`;
-        } else {
-          mediaHtml += `<video controls src="${m.url}"></video>`;
-        }
-      });
-      mediaHtml += '</div>';
-    }
+    const mediaElements = Array.isArray(review.media)
+      ? review.media.map(createReviewMediaElement).filter(Boolean)
+      : [];
 
     let repliesHtml = '';
     if (review.replies && review.replies.length > 0) {
@@ -1745,6 +1745,18 @@ function renderReviews() {
         repliesHtml += `<div class="seller-reply"><strong>Seller:</strong> ${escapeHtml(reply.text)}</div>`;
       });
     }
+
+    const moderationLabels = {
+      pending: 'Pending',
+      published: 'Published',
+      hidden: 'Hidden',
+      removed: 'Removed'
+    };
+    const moderationStatus = typeof review.moderationStatus === 'string'
+      ? moderationLabels[review.moderationStatus.trim().toLowerCase()] || 'Status unavailable'
+      : 'Status unavailable';
+    const moderationStatusBadge =
+      `<span class="badge">Review: ${escapeHtml(moderationStatus)}</span>`;
 
     let statusBadge = '';
     if (review.status === 'flagged') {
@@ -1762,6 +1774,7 @@ function renderReviews() {
           <div>
             <strong>${escapeHtml(review.productName || 'Product')}</strong>
             ${review.verifiedPurchase ? '<span class="verified-badge"><i class="fas fa-check"></i> Verified</span>' : ''}
+            ${moderationStatusBadge}
             ${statusBadge}
             <div class="stars">${formatStars(review.rating)}</div>
             <div class="meta">${new Date(review.createdAt).toLocaleDateString()}</div>
@@ -1771,7 +1784,6 @@ function renderReviews() {
           </div>
         </div>
         <div class="review-content" style="margin-top:8px">${escapeHtml(review.body)}</div>
-        ${mediaHtml}
         ${repliesHtml}
         <div style="margin-top:10px">
           <button class="btn ghost" onclick="enableInlineEdit('${review.id}')"><i class="fas fa-edit"></i> Quick Edit</button>
@@ -1780,6 +1792,24 @@ function renderReviews() {
         </div>
       </div>
     `;
+
+    if (mediaElements.length) {
+      const mediaContainer = document.createElement('div');
+      mediaContainer.className = 'review-media';
+      mediaContainer.append(...mediaElements);
+      if (mediaElements.length < review.media.length) {
+        const unavailable = document.createElement('p');
+        unavailable.className = 'muted';
+        unavailable.textContent = 'Some review media could not be displayed because it is not a supported HTTP(S) URL.';
+        mediaContainer.appendChild(unavailable);
+      }
+      div.querySelector('.review-content').after(mediaContainer);
+    } else if (Array.isArray(review.media) && review.media.length) {
+      const unavailable = document.createElement('p');
+      unavailable.className = 'muted';
+      unavailable.textContent = 'Review media could not be displayed because it is not a supported HTTP(S) URL.';
+      div.querySelector('.review-content').after(unavailable);
+    }
 
     container.appendChild(div);
   });
@@ -1818,74 +1848,11 @@ function initializeStarRating() {
 }
 
 // ==============================================
-// FILE HANDLING
-// ==============================================
-function handleFileSelect(event) {
-  const files = Array.from(event.target.files);
-  
-  if (selectedFiles.length + files.length > 5) {
-    showToast('Maximum 5 files allowed', 'error');
-    return;
-  }
-
-  for (const file of files) {
-    if (file.size > 10 * 1024 * 1024) {
-      showToast(`${file.name} exceeds 10MB limit`, 'error');
-      continue;
-    }
-
-    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-      showToast(`${file.name} is not a valid image or video`, 'error');
-      continue;
-    }
-
-    selectedFiles.push(file);
-  }
-
-  updateMediaPreview();
-  event.target.value = '';
-}
-
-function updateMediaPreview() {
-  const preview = document.getElementById('mediaPreview');
-  preview.innerHTML = '';
-
-  selectedFiles.forEach((file, index) => {
-    const div = document.createElement('div');
-    div.className = 'media-preview-item';
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (file.type.startsWith('image/')) {
-        div.innerHTML = `
-          <img src="${e.target.result}" alt="Preview">
-          <button type="button" onclick="removeFile(${index})">&times;</button>
-        `;
-      } else {
-        div.innerHTML = `
-          <video src="${e.target.result}"></video>
-          <button type="button" onclick="removeFile(${index})">&times;</button>
-        `;
-      }
-    };
-    reader.readAsDataURL(file);
-
-    preview.appendChild(div);
-  });
-}
-
-function removeFile(index) {
-  selectedFiles.splice(index, 1);
-  updateMediaPreview();
-}
-
-// ==============================================
 // MODAL FUNCTIONS
 // ==============================================
 function showWriteReviewForm() {
   currentEditingId = null;
   currentRating = 0;
-  selectedFiles = [];
   
   document.getElementById('modalTitle').textContent = 'Write a Review';
   document.getElementById('reviewForm').reset();
@@ -1922,19 +1889,26 @@ function closeReviewModal() {
   document.getElementById('reviewModal').classList.remove('show');
   currentEditingId = null;
   currentRating = 0;
-  selectedFiles = [];
 }
 
 function openZoom(url, type) {
+  const safeUrl = getSafeReviewMediaUrl(url);
+  if (!safeUrl || (type !== 'image' && type !== 'video')) return;
+
   const modal = document.getElementById('zoomModal');
   const content = document.getElementById('zoomContent');
-  
+  content.replaceChildren();
+
   if (type === 'image') {
-    // NOTE: Validate/sanitize 'url' before injecting into innerHTML to avoid XSS
-    content.innerHTML = `<img src="${url}" alt="Zoomed image">`;
+    const image = document.createElement('img');
+    image.src = safeUrl;
+    image.alt = 'Zoomed review image';
+    content.appendChild(image);
   } else {
-    // NOTE: Validate/sanitize 'url' before injecting into innerHTML to avoid XSS
-    content.innerHTML = `<video controls src="${url}"></video>`;
+    const video = document.createElement('video');
+    video.controls = true;
+    video.src = safeUrl;
+    content.appendChild(video);
   }
   
   modal.classList.add('show');
@@ -1942,7 +1916,7 @@ function openZoom(url, type) {
 
 function closeZoom() {
   document.getElementById('zoomModal').classList.remove('show');
-  document.getElementById('zoomContent').innerHTML = '';
+  document.getElementById('zoomContent').replaceChildren();
 }
 
 // ==============================================
@@ -1957,7 +1931,6 @@ async function editReview(reviewId) {
 
   currentEditingId = reviewId;
   currentRating = review.rating;
-  selectedFiles = [];
 
   document.getElementById('modalTitle').textContent = 'Edit Review';
   document.getElementById('productSelect').value = review.productId;
@@ -2020,15 +1993,6 @@ async function submitReview(event) {
 
   try {
     const token = getBuyerToken();
-    
-    const mediaArray = [];
-    for (const file of selectedFiles.slice(0, 5)) {
-      const base64 = await fileToBase64(file);
-      mediaArray.push({
-        type: file.type,
-        data: base64
-      });
-    }
 
     const selectedOption = document.querySelector(`#productSelect option[value="${productId}"]`);
     const orderId = selectedOption ? selectedOption.dataset.orderId : null;
@@ -2041,8 +2005,7 @@ async function submitReview(event) {
       product_id: productId,
       rating: rating,
       body: body,
-      order_id: orderId,
-      media: mediaArray.length > 0 ? mediaArray : undefined
+      order_id: orderId
     };
 
     let url = `${API_BASE_URL}/reviews`;
@@ -2054,7 +2017,6 @@ async function submitReview(event) {
       delete payload.review_type;
       delete payload.product_id;
       delete payload.order_id;
-      delete payload.media;
     }
 
     const response = await fetch(url, {
@@ -2096,15 +2058,6 @@ async function submitReview(event) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Review';
   }
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 // ==============================================
