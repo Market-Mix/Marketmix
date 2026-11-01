@@ -837,8 +837,11 @@ footer {
 
       <div class="form-group">
         <label>Photos/Videos</label>
-        <p class="muted">Photo and video uploads are currently unavailable. You can still submit a text-only review.</p>
+        <p class="muted">Attach up to 5 photos or videos (10 MB each). Supported: JPG, PNG, GIF, WebP, MP4, MOV, and WebM. Text-only reviews are also supported.</p>
+        <input id="reviewMediaInput" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm" multiple>
         <div id="mediaPreview" class="media-preview"></div>
+        <progress id="mediaUploadProgress" max="100" value="0" style="display:none;width:100%;margin-top:8px"></progress>
+        <div id="mediaUploadStatus" class="small muted" role="status" aria-live="polite"></div>
       </div>
 
       <div style="display:flex;gap:10px;margin-top:20px">
@@ -878,6 +881,20 @@ let currentRating = 0;
 let bulkModeActive = false;
 let selectedReviewIds = new Set();
 let autoSaveTimer = null;
+let selectedReviewMedia = [];
+const MAX_REVIEW_MEDIA_FILES = 5;
+const MAX_REVIEW_MEDIA_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_REVIEW_MEDIA_TOTAL_SIZE = MAX_REVIEW_MEDIA_FILES * MAX_REVIEW_MEDIA_FILE_SIZE;
+const REVIEW_MEDIA_TYPES = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.mp4': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm'
+};
 
 const demoReviewProduct = {
   id: 'demo-product',
@@ -927,6 +944,141 @@ function getBuyerToken() {
     (window.Auth && typeof window.Auth.getToken === 'function' ? window.Auth.getToken() : '') ||
     localStorage.getItem('token') ||
     '';
+}
+
+function clearSelectedReviewMedia() {
+  selectedReviewMedia.forEach(item => URL.revokeObjectURL(item.previewUrl));
+  selectedReviewMedia = [];
+  document.getElementById('mediaPreview').replaceChildren();
+  document.getElementById('reviewMediaInput').value = '';
+  document.getElementById('mediaUploadProgress').style.display = 'none';
+  document.getElementById('mediaUploadProgress').value = 0;
+  document.getElementById('mediaUploadStatus').textContent = '';
+}
+
+function renderSelectedReviewMedia() {
+  const preview = document.getElementById('mediaPreview');
+  preview.replaceChildren();
+
+  selectedReviewMedia.forEach((item, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'media-preview-item';
+    const media = document.createElement(item.file.type.startsWith('video/') ? 'video' : 'img');
+    media.src = item.previewUrl;
+    if (media.tagName === 'VIDEO') {
+      media.controls = true;
+      media.muted = true;
+    } else {
+      media.alt = `Review attachment ${index + 1} preview`;
+    }
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.textContent = '×';
+    removeButton.setAttribute('aria-label', `Remove attachment ${index + 1}`);
+    removeButton.addEventListener('click', () => {
+      URL.revokeObjectURL(item.previewUrl);
+      selectedReviewMedia = selectedReviewMedia.filter((selectedItem) => selectedItem !== item);
+      renderSelectedReviewMedia();
+      document.getElementById('mediaUploadStatus').textContent = `${selectedReviewMedia.length} attachment(s) selected.`;
+    });
+
+    wrapper.append(media, removeButton);
+    preview.append(wrapper);
+  });
+}
+
+function handleReviewMediaSelection(event) {
+  const input = event.currentTarget;
+  const status = document.getElementById('mediaUploadStatus');
+  const errors = [];
+  let totalSize = selectedReviewMedia.reduce((total, item) => total + item.file.size, 0);
+
+  if (currentEditingId) {
+    input.value = '';
+    status.textContent = 'Attachments can only be added when creating a new review.';
+    return;
+  }
+
+  Array.from(input.files || []).forEach(file => {
+    const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!REVIEW_MEDIA_TYPES[extension] || REVIEW_MEDIA_TYPES[extension] !== file.type) {
+      errors.push(`${file.name}: file type and extension do not match a supported format.`);
+      return;
+    }
+    if (file.size > MAX_REVIEW_MEDIA_FILE_SIZE) {
+      errors.push(`${file.name}: exceeds the 10 MB per-file limit.`);
+      return;
+    }
+    if (selectedReviewMedia.length >= MAX_REVIEW_MEDIA_FILES) {
+      errors.push(`Only ${MAX_REVIEW_MEDIA_FILES} attachments may be added.`);
+      return;
+    }
+    if (totalSize + file.size > MAX_REVIEW_MEDIA_TOTAL_SIZE) {
+      errors.push('The combined attachment size exceeds 50 MB.');
+      return;
+    }
+    if (selectedReviewMedia.some(item =>
+      item.file.name === file.name && item.file.size === file.size && item.file.lastModified === file.lastModified
+    )) {
+      errors.push(`${file.name}: this file is already selected.`);
+      return;
+    }
+
+    selectedReviewMedia.push({ file, previewUrl: URL.createObjectURL(file) });
+    totalSize += file.size;
+  });
+
+  input.value = '';
+  renderSelectedReviewMedia();
+  status.textContent = errors.length
+    ? errors.join(' ')
+    : `${selectedReviewMedia.length} attachment(s) selected.`;
+  status.classList.toggle('error-text', errors.length > 0);
+}
+
+function submitReviewWithMedia(url, token, payload, mediaItems) {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => formData.append(key, String(value)));
+    mediaItems.forEach(item => formData.append('media', item.file, item.file.name));
+
+    const progress = document.getElementById('mediaUploadProgress');
+    const status = document.getElementById('mediaUploadStatus');
+    progress.value = 0;
+    progress.style.display = 'block';
+    status.textContent = 'Uploading attachments…';
+
+    const request = new XMLHttpRequest();
+    request.open('POST', url);
+    request.setRequestHeader('Authorization', `Bearer ${token}`);
+    request.upload.addEventListener('progress', event => {
+      if (!event.lengthComputable) return;
+      const percent = Math.round((event.loaded / event.total) * 100);
+      progress.value = percent;
+      status.textContent = percent < 100
+        ? `Uploading attachments: ${percent}%`
+        : 'Upload complete. Saving review…';
+    });
+    request.addEventListener('load', () => {
+      let responseData;
+      try {
+        responseData = JSON.parse(request.responseText);
+      } catch {
+        reject(new Error('The review server returned an invalid response.'));
+        return;
+      }
+
+      if (request.status >= 200 && request.status < 300 && responseData.status === 'success') {
+        resolve(responseData);
+      } else {
+        reject(new Error(responseData.message || 'Failed to submit review and attachments.'));
+      }
+    });
+    request.addEventListener('error', () => reject(new Error('Network error while uploading review attachments.')));
+    request.addEventListener('abort', () => reject(new Error('Review attachment upload was cancelled.')));
+    request.send(formData);
+  });
 }
 
 async function createReviewNotification(productName) {
