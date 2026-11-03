@@ -882,6 +882,7 @@ let bulkModeActive = false;
 let selectedReviewIds = new Set();
 let autoSaveTimer = null;
 let selectedReviewMedia = [];
+let reviewSubmissionInProgress = false;
 const MAX_REVIEW_MEDIA_FILES = 5;
 const MAX_REVIEW_MEDIA_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_REVIEW_MEDIA_TOTAL_SIZE = MAX_REVIEW_MEDIA_FILES * MAX_REVIEW_MEDIA_FILE_SIZE;
@@ -1380,6 +1381,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadMyReviews();
   loadPurchasedProducts();
   initializeStarRating();
+  document.getElementById('reviewMediaInput').addEventListener('change', handleReviewMediaSelection);
 
   document.getElementById('sortBy').addEventListener('change', renderReviews);
   document.getElementById('filterStar').addEventListener('change', renderReviews);
@@ -2102,6 +2104,7 @@ async function editReview(reviewId) {
 // ==============================================
 async function submitReview(event) {
   event.preventDefault();
+  if (reviewSubmissionInProgress) return;
 
   const productId = document.getElementById('productSelect').value;
   const rating = parseInt(document.getElementById('ratingValue').value);
@@ -2140,6 +2143,7 @@ async function submitReview(event) {
   }
 
   const submitBtn = document.getElementById('submitBtn');
+  reviewSubmissionInProgress = true;
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
 
@@ -2171,18 +2175,25 @@ async function submitReview(event) {
       delete payload.order_id;
     }
 
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    let data;
+    if (!currentEditingId && selectedReviewMedia.length > 0) {
+      data = await submitReviewWithMedia(url, token, payload, selectedReviewMedia);
+    } else {
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      data = await response.json();
+      if (!response.ok || data.status !== 'success') {
+        throw new Error(data.message || 'Failed to submit review');
+      }
+    }
 
-    const data = await response.json();
-
-    if (response.ok && data.status === 'success') {
+    if (data.status === 'success') {
       showToast(currentEditingId ? 'Review updated successfully!' : 'Review submitted successfully!', 'success');
       
       // Create notification only for newly submitted reviews, not edits
@@ -2207,6 +2218,7 @@ async function submitReview(event) {
     console.error('Error submitting review:', error);
     showToast(error.message || 'Failed to submit review', 'error');
   } finally {
+    reviewSubmissionInProgress = false;
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Review';
   }
