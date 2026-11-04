@@ -289,7 +289,7 @@ async function _loadDashboardDataImpl() {
   }
 
   // All calls go through StoreManager.apiFetch which auto-adds X-Store-Id
-  const [profileRes, userRes, statsRes, earningsRes, activityRes, refundsRes] = await Promise.allSettled([
+  const [profileRes, userRes, statsRes, earningsRes, activityRes, refundsRes, reviewsRes] = await Promise.allSettled([
     StoreManager.apiFetch("/seller/profile"),
     StoreManager.apiFetch("/auth/me"),
     StoreManager.apiFetch("/seller/dashboard-stats"),
@@ -307,6 +307,7 @@ async function _loadDashboardDataImpl() {
         return { data: { count: 0, refunds: [] } };
       }
     })(),
+    StoreManager.apiFetch("/reviews/seller/my-reviews?page=1&limit=1"),
   ]);
 
   const profile    = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller      : null;
@@ -350,6 +351,18 @@ async function _loadDashboardDataImpl() {
   renderWelcome(store);
   renderProfileImage(profile);
   renderOverviewCards(stats, earnings, store, refundsCount);
+  const reviewCountElement = document.getElementById("sellerReviewCount");
+  if (reviewCountElement) {
+    const reviewCount = reviewsRes.status === "fulfilled" &&
+      reviewsRes.value?.status === "success"
+      ? Number(reviewsRes.value?.data?.pagination?.total)
+      : NaN;
+    reviewCountElement.textContent = Number.isFinite(reviewCount) ? String(reviewCount) : "—";
+    reviewCountElement.setAttribute(
+      "aria-label",
+      Number.isFinite(reviewCount) ? `${reviewCount} reviews` : "Review count unavailable"
+    );
+  }
   renderProgressTracker(profile, store, user, {
     profileOk: profileRes.status === 'fulfilled',
     userOk: userRes.status === 'fulfilled',

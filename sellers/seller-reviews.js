@@ -32,6 +32,10 @@
   const offcanvasMenu = document.getElementById('offcanvasMenu');
   const offcanvasClose = document.getElementById('offcanvasClose');
 
+  if (typeof window.updateNavbarNotificationBadge === 'function') {
+    window.updateNavbarNotificationBadge();
+  }
+
   if (navToggler && offcanvasMenu && offcanvasClose) {
     navToggler.addEventListener('click', () => {
       offcanvasMenu.classList.add('show');
