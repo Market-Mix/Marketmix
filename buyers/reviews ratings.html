@@ -470,6 +470,11 @@ footer {
   color: var(--muted);
 }
 
+.error-text {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .zoom-modal {
   display: none;
   position: fixed;
@@ -1933,8 +1938,9 @@ function renderReviews() {
             <div class="stars">${formatStars(review.rating)}</div>
             <div class="meta">${new Date(review.createdAt).toLocaleDateString()}</div>
           </div>
-          <div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span class="small muted"><i class="fas fa-thumbs-up"></i> ${review.helpfulCount || 0}</span>
+            <span class="small muted"><i class="fas fa-thumbs-down"></i> ${review.notHelpfulCount || 0}</span>
           </div>
         </div>
         <div class="review-content" style="margin-top:8px">${escapeHtml(review.body)}</div>
