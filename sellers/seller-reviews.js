@@ -91,6 +91,22 @@
     elements.status.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Loading reviews…</span>';
   }
 
+  async function markSellerReviewNotificationsRead() {
+    if (!StoreManager?.getToken()) return;
+
+    try {
+      await StoreManager.apiFetch('/reviews/seller/my-reviews/notifications/read', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (typeof window.updateNavbarNotificationBadge === 'function') {
+        await window.updateNavbarNotificationBadge();
+      }
+    } catch (error) {
+      console.warn('Could not mark seller review notifications as read:', error);
+    }
+  }
+
   async function fetchReviews() {
     if (state.loading) return;
     state.loading = true;
@@ -147,6 +163,7 @@
       renderProducts();
       renderStatistics();
       renderFilteredReviews();
+      await markSellerReviewNotificationsRead();
       elements.error.hidden = true;
       elements.status.hidden = true;
     } catch (error) {
