@@ -347,7 +347,7 @@
     evidence.innerHTML = [
       ...images.map(url => {
         const safeUrl = safeMediaUrl(url);
-        return safeUrl ? `<div class="rounded-2xl border border-slate-200 p-2"><img src="${escapeHtml(safeUrl)}" alt="Review media" class="h-32 w-full rounded-xl object-cover"></div>` : '';
+        return safeUrl ? `<div class="rounded-2xl border border-slate-200 p-2"><button type="button" class="review-evidence-image" data-evidence-image="${escapeHtml(safeUrl)}" aria-label="View review evidence image"><img src="${escapeHtml(safeUrl)}" alt="Review media" class="h-32 w-full rounded-xl object-cover"></button></div>` : '';
       }),
       ...videos.map(url => {
         const safeUrl = safeMediaUrl(url);
@@ -399,6 +399,34 @@
     const modal = document.getElementById('reviewModal');
     if (modal) modal.classList.add('hidden');
     state.selectedReview = null;
+  }
+
+  function openEvidenceImage(url) {
+    let viewer = document.getElementById('evidenceImageViewer');
+    if (!viewer) {
+      viewer = document.createElement('div');
+      viewer.id = 'evidenceImageViewer';
+      viewer.className = 'evidence-image-viewer hidden';
+      viewer.setAttribute('role', 'dialog');
+      viewer.setAttribute('aria-modal', 'true');
+      viewer.setAttribute('aria-label', 'Review evidence image');
+      viewer.innerHTML = `
+        <button type="button" class="evidence-image-viewer-close" data-close-evidence aria-label="Close image">&times;</button>
+        <img class="evidence-image-viewer-content" alt="Review evidence">
+      `;
+      viewer.addEventListener('click', event => {
+        if (event.target === viewer || event.target.closest('[data-close-evidence]')) {
+          viewer.classList.add('hidden');
+        }
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') viewer.classList.add('hidden');
+      });
+      document.body.appendChild(viewer);
+    }
+
+    viewer.querySelector('img').src = url;
+    viewer.classList.remove('hidden');
   }
 
   async function applyReviewAction(reviewId, action) {
@@ -550,6 +578,10 @@
       if (action === 'export') exportReviews('csv');
       else bulkAction(action);
     }));
+    document.getElementById('modalEvidence')?.addEventListener('click', event => {
+      const imageButton = event.target.closest('button[data-evidence-image]');
+      if (imageButton) openEvidenceImage(imageButton.dataset.evidenceImage);
+    });
     document.querySelectorAll('[data-close-modal]').forEach(element => element.addEventListener('click', closeReviewModal));
     listen('saveNotesBtn', 'click', saveNotes);
     document.querySelectorAll('.moderation-btn').forEach(button => button.addEventListener('click', () => {
