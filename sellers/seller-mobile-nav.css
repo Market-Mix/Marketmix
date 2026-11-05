@@ -80,6 +80,32 @@
   margin-top: 0;
 }
 
+.offcanvas-account-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.offcanvas-account-actions .nav-actions {
+  margin: 0;
+}
+
+.offcanvas-account-actions .icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+}
+
+.offcanvas-account-actions .profile-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .offcanvas-body .nav-links,
 .offcanvas-body .nav-list,
 .offcanvas-body ul {
@@ -168,6 +194,13 @@
   gap: 0.75rem;
   width: auto;
   margin: 0;
+}
+
+.offcanvas-menu .offcanvas-body .profile-container {
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  margin: 0 !important;
 }
 
 .offcanvas-menu .nav-list {
