@@ -55,21 +55,19 @@
 
 .offcanvas-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-bottom: 0.5rem;
 }
 
 .offcanvas-close {
-  width: 36px;
-  height: 36px;
-  padding: 0;
+  padding: 10px 18px;
   border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: #fff;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
   cursor: pointer;
   font-weight: 700;
-  font-size: 1.5rem;
+  font-size: 1rem;
   line-height: 1;
   transition: background-color 0.3s;
   user-select: none;
@@ -156,18 +154,25 @@
   object-fit: cover;
 }
 
+.offcanvas-menu .offcanvas-body .profile-icon {
+  width: 38px !important;
+  height: 38px !important;
+}
+
 .offcanvas-menu .profile-container {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: flex-start;
   gap: 0.75rem;
-  margin-top: 0.2rem;
+  width: auto;
+  margin: 0;
 }
 
 .offcanvas-menu .nav-list {
-  width: 100%;
-  margin-top: 0.1rem;
+  width: auto;
+  margin-top: 0;
 }
 
 @media (max-width: 768px) {

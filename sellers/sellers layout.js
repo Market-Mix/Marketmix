@@ -313,7 +313,7 @@ async function _loadDashboardDataImpl() {
         return { data: { count: 0, refunds: [] } };
       }
     })(),
-    StoreManager.apiFetch("/reviews/seller/my-reviews?page=1&limit=1"),
+    StoreManager.apiFetch("/reviews/seller/my-reviews/unread-count"),
   ]);
 
   const profile    = profileRes.status  === "fulfilled" ? profileRes.value?.data?.seller      : null;
@@ -361,12 +361,14 @@ async function _loadDashboardDataImpl() {
   if (reviewCountElement) {
     const reviewCount = reviewsRes.status === "fulfilled" &&
       reviewsRes.value?.status === "success"
-      ? Number(reviewsRes.value?.data?.pagination?.total)
+      ? Number(reviewsRes.value?.data?.unreadCount)
       : NaN;
-    reviewCountElement.textContent = Number.isFinite(reviewCount) ? String(reviewCount) : "—";
+    reviewCountElement.textContent = Number.isFinite(reviewCount)
+      ? reviewCount > 0 ? String(reviewCount) : ""
+      : "—";
     reviewCountElement.setAttribute(
       "aria-label",
-      Number.isFinite(reviewCount) ? `${reviewCount} reviews` : "Review count unavailable"
+      Number.isFinite(reviewCount) ? `${reviewCount} unread reviews` : "Unread review count unavailable"
     );
   }
   renderProgressTracker(profile, store, user, {
