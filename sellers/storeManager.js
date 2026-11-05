@@ -197,7 +197,13 @@ if (typeof window.updateNavbarNotificationBadge === 'undefined') {
         document.querySelectorAll('.notification-badge').forEach(b => {
           try {
             b.innerText = display > 0 ? String(display) : '';
-            b.style.display = display > 0 ? 'inline-block' : 'none';
+            b.style.display = display > 0 ? 'inline' : 'none';
+            b.style.background = 'transparent';
+            b.style.borderRadius = '0';
+            b.style.minWidth = 'auto';
+            b.style.height = 'auto';
+            b.style.padding = '0';
+            b.style.color = 'inherit';
           } catch (e) { /* ignore */ }
         });
     } catch (e) {

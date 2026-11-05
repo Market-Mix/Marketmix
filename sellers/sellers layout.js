@@ -170,8 +170,14 @@ async function updateNavbarNotificationBadge() {
     const displayCount = Math.max(unread || 0, sellerReturns || 0);
     document.querySelectorAll('.notification-badge').forEach(b => {
       try {
-        b.innerText = displayCount;
-        b.style.display = displayCount > 0 ? 'inline-block' : 'none';
+        b.innerText = displayCount > 0 ? String(displayCount) : '';
+        b.style.display = displayCount > 0 ? 'inline' : 'none';
+        b.style.background = 'transparent';
+        b.style.borderRadius = '0';
+        b.style.minWidth = 'auto';
+        b.style.height = 'auto';
+        b.style.padding = '0';
+        b.style.color = 'inherit';
       } catch (e) { /* ignore */ }
     });
   } catch (e) {
