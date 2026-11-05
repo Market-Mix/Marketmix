@@ -452,6 +452,7 @@ function renderProfileImage(profile) {
   const images = [
     document.getElementById("sellerProfileImage"),
     document.getElementById("sellerProfileImageMobile"),
+    document.getElementById("sellerProfileImageNav"),
   ].filter(Boolean);
   if (!images.length) return;
 
