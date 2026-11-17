@@ -167,20 +167,22 @@
       <section class="analytics-section setup-progress-tracker" aria-labelledby="setup-title">
         <div class="section-heading">
           <div>
-            <p class="analytics-eyebrow">DEMO STATUS</p>
+            <p class="analytics-eyebrow">SELLER DASHBOARD STATUS</p>
             <h2 id="setup-title">Store Setup &amp; Verification Progress</h2>
             <p class="section-description" id="setup-progress-label"></p>
+            <p class="section-description" id="setup-current-milestone" aria-live="polite"></p>
+            <p class="metric-description" id="setup-next-action" aria-live="polite"></p>
           </div>
           <div class="setup-status-labels">
-            <span class="progress-badge yellow">KYC Under Review</span>
-            <span class="demo-tag">NOT LIVE SELLER STATUS</span>
+            <span class="progress-badge" id="setup-kyc-status"></span>
+            <span class="demo-tag">LIVE SELLER STATUS</span>
           </div>
         </div>
-        <div class="progress-bar-container" role="progressbar" aria-label="Demo setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <div class="progress-bar-container" role="progressbar" aria-label="Seller setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="progress-bar" id="setup-progress-bar"></div>
         </div>
         <ol class="setup-steps" id="setup-steps"></ol>
-        <p class="verification-note">Verification is not assumed. This demo shows a review in progress and does not mark the store as verified.</p>
+        <p class="verification-note" id="setup-verification-note">Progress and KYC status are loaded from the same data and calculation as the Seller Homepage.</p>
       </section>
 
       <div class="activity-grid">
@@ -213,6 +215,7 @@
     </footer>
   </div>
   <script src="storeManager.js"></script>
+  <script src="seller-progress.js"></script>
   <script src="store-analytics.js"></script>
 </body>
 </html>

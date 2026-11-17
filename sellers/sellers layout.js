@@ -11,21 +11,7 @@ function getToken() {
 }
 
 function normalizeKycStatus(rawStatus, previousStatus = 'not_submitted') {
-  const status = String(rawStatus || '').trim().toLowerCase();
-  if (!status) return previousStatus || 'not_submitted';
-  if (status === 'under_review' || status === 'pending' || status.includes('review') || status.includes('submitted')) {
-    return 'pending';
-  }
-  if (status === 'approved' || status.includes('approved') || status.includes('verified')) {
-    return 'approved';
-  }
-  if (status === 'rejected' || status === 'failed' || status.includes('reject')) {
-    return 'rejected';
-  }
-  if (status === 'not_submitted' || status.includes('not') || status.includes('unsubmitted')) {
-    return 'not_submitted';
-  }
-  return previousStatus || 'not_submitted';
+  return window.SellerProgress.normalizeKycStatus(rawStatus, previousStatus);
 }
 
 async function handleLogout() {
@@ -669,15 +655,15 @@ function renderProgressTracker(profile, store, user, fetchStatus = {}) {
     return;
   }
 
-  const p            = profile?.profile || profile || {};
-  const rawKycStatus  = p?.kyc_status ?? p?.kycStatus;
-  const prevKycStatus  = window._sellerProgressSnapshot?.kycStatus || window.sellerDashboardState?.kycStatus || 'not_submitted';
-  const kycStatus      = normalizeKycStatus(rawKycStatus, prevKycStatus);
-  const hasSubmittedKYC = ['pending', 'approved', 'rejected'].includes(kycStatus);
-  const isVerifiedFlag = kycStatus === 'approved';
-  const isRejectedFlag = ['rejected', 'failed'].includes(kycStatus);
-  const isKycPendingFlag = kycStatus === 'pending';
-  const isNotSubmitted = kycStatus === 'not_submitted';
+  const p = profile?.profile || profile || {};
+  const prevKycStatus = window._sellerProgressSnapshot?.kycStatus || window.sellerDashboardState?.kycStatus || 'not_submitted';
+  const progressState = window.SellerProgress.calculate(profile, store, user, prevKycStatus);
+  const {
+    stage, progress, color, actionHtml: html, badgeText, badgeClass,
+    accountCompleted, kycStatus, isVerifiedFlag, isRejectedFlag,
+    isKycPendingFlag, isNotSubmitted, storeSetupDone, productCount,
+    totalSales, hasShoppingDetails, completedStages
+  } = progressState;
   const sellerId = p?.id || p?.sellerId || p?.userId || profile?.id || 'unknown';
   console.log('Seller KYC debug:', {
     sellerId,
@@ -687,107 +673,7 @@ function renderProgressTracker(profile, store, user, fetchStatus = {}) {
     isKycPendingFlag,
     isNotSubmitted,
   });
-  const userAddress  = user?.address || user?.business_address || p?.address || p?.business_address || null;
-  const hasShoppingDetails = !!(
-    userAddress ||
-    user?.city || user?.state || user?.postalCode || user?.country ||
-    p?.city || p?.state || p?.postalCode || p?.country
-  );
-
-  const storeLogoUrl = store?.store_logo_url || store?.storeLogo || store?.logo_url || store?.logo;
-  const storeAddress = store?.business_address || store?.address || store?.store_address;
-  const storeSetupDone = !!(store?.business_name && storeLogoUrl && storeAddress);
-  const productCount   = store?.productCount || store?.product_count || 0;
-  const totalSales     = store?.total_sales || 0;
-  const completedStages = [];
-  if (storeSetupDone) completedStages.push('store_setup');
-  if (productCount >= 1) completedStages.push('upload_product');
-  if (productCount >= 1 && hasShoppingDetails) completedStages.push('shopping_details');
-  if (totalSales >= 1) completedStages.push('first_order');
-
-  let stage = 'unknown';
-  let progress = 0;
-  let color = '#2563eb';
-  let html = '';
-  let badgeText = '';
-  let badgeClass = '';
-
-  if (!storeSetupDone) {
-    stage = 'store_setup';
-    progress = 15;
-    color = '#ef4444';
-    html = `<a href="sellers setting.html" style="color:#1e293b;text-decoration:underline">Complete your store setup</a>`;
-  } else if (productCount < 1) {
-    progress = 30;
-    if (isNotSubmitted) {
-      stage = 'kyc_not_submitted';
-      color = '#ef4444';
-      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Complete KYC</a>`;
-    } else {
-      stage = 'upload_product';
-      if (isVerifiedFlag) {
-        color = '#16a34a';
-      } else if (isRejectedFlag) {
-        color = '#dc2626';
-      } else if (isKycPendingFlag) {
-        color = '#f59e0b';
-      } else {
-        color = '#f97316';
-      }
-      html = `<a href="sellers product.html" style="color:#1e293b;text-decoration:underline">Upload your first product</a>`;
-    }
-  } else if (productCount >= 1 && !hasShoppingDetails) {
-    stage = 'shopping_details';
-    progress = 60;
-    color = '#eab308';
-    html = `<a href="sellers-account.html#address" style="color:#1e293b;text-decoration:underline">Setup your shopping details</a>`;
-  } else if (productCount >= 1 && hasShoppingDetails && totalSales < 1) {
-    stage = 'first_sales';
-    progress = 75;
-    color = '#86efac';
-    html = `Make your first sales`;
-  } else if (totalSales >= 1 && !(productCount >= 1 && hasShoppingDetails && isVerifiedFlag)) {
-    stage = 'withdraw_earning';
-    progress = 90;
-    color = '#22c55e';
-    html = `<a href="sellers earning.html" style="color:#1e293b;text-decoration:underline">Withdraw your first earning</a>`;
-  }
-
-  if (isRejectedFlag) {
-    badgeText = 'KYC Failed';
-    badgeClass = 'red';
-  } else if (isVerifiedFlag) {
-    badgeText = '<i class="fas fa-check-circle"></i> Verified';
-    badgeClass = 'green';
-  }
-
-  if (storeSetupDone && productCount >= 1 && hasShoppingDetails && totalSales >= 1) {
-    stage = 'complete';
-    progress = 100;
-    if (isVerifiedFlag) {
-      color = '#3b82f6';
-      html = `Everything complete!`;
-      badgeText = '<i class="fas fa-check-circle"></i> Fully Verified';
-      badgeClass = 'blue';
-    } else if (isKycPendingFlag) {
-      color = '#f59e0b';
-      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Your KYC is under review</a>`;
-      badgeText = 'KYC Under Review';
-      badgeClass = 'yellow';
-    } else if (isRejectedFlag) {
-      color = '#dc2626';
-      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">KYC rejected — resubmit</a>`;
-      badgeText = 'KYC Rejected';
-      badgeClass = 'red';
-    } else {
-      color = '#f97316';
-      html = `<a href="kyc-verification.html" style="color:#1e293b;text-decoration:underline">Review your KYC status</a>`;
-      badgeText = 'KYC Pending';
-      badgeClass = 'yellow';
-    }
-  }
-
-  const accountCompleted = progress === 100;
+  const hasSubmittedKYC = ['pending', 'approved', 'rejected'].includes(kycStatus);
 
   console.log({
     kyc_status: kycStatus,
@@ -845,7 +731,7 @@ function renderProgressTracker(profile, store, user, fetchStatus = {}) {
   window._sellerProgressSnapshot = { productCount, totalSales, storeSetupDone, hasShoppingDetails, kycStatus };
 
   if (accountCompleted) {
-    text.innerHTML = `<strong>Congratulations!</strong><br>Your seller account setup is complete.`;
+    text.innerHTML = progressState.trackerHtml;
     barContainer.style.display = 'none';
   } else {
     text.innerHTML = html;

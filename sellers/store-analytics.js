@@ -29,21 +29,12 @@ const storeAnalyticsDemoData = {
     { title: "Total store views", value: "8,462", icon: "fa-store", description: "Visits to the store page." },
     { title: "Total product views", value: "12,730", icon: "fa-eye", description: "Views of products in this store." }
   ],
-  setup: {
-    completedStages: 2,
-    currentStage: 2,
-    stages: [
-      { title: "Upload First Product", status: "complete", detail: "Completed in demo state" },
-      { title: "Complete KYC", status: "complete", detail: "Submitted in demo state" },
-      { title: "KYC Under Review", status: "current", detail: "Current demo stage" },
-      { title: "Fully Verified", status: "pending", detail: "Pending review outcome" }
-    ]
-  },
   reviews: { total: "86", rating: "4.6" },
   refunds: { total: "7" }
 };
 
 let salesPerformanceChart = null;
+let setupProgressRequest = 0;
 
 function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
@@ -211,20 +202,41 @@ function renderVisibilityCards() {
   `).join("");
 }
 
-function renderSetupProgress() {
-  const { completedStages, currentStage, stages } = storeAnalyticsDemoData.setup;
-  const percent = Math.round((completedStages / stages.length) * 100);
+function renderSetupProgress(progressState) {
   const progressBar = document.getElementById("setup-progress-bar");
   const progressContainer = document.querySelector(".setup-progress-tracker .progress-bar-container");
   const progressLabel = document.getElementById("setup-progress-label");
+  const currentMilestone = document.getElementById("setup-current-milestone");
+  const nextAction = document.getElementById("setup-next-action");
+  const kycStatus = document.getElementById("setup-kyc-status");
   const steps = document.getElementById("setup-steps");
+  const verificationNote = document.getElementById("setup-verification-note");
 
-  if (progressBar) progressBar.style.width = `${percent}%`;
-  if (progressContainer) progressContainer.setAttribute("aria-valuenow", String(percent));
-  if (progressLabel) progressLabel.textContent = `${completedStages} of ${stages.length} setup steps complete in this demo (${percent}%).`;
+  if (progressBar) {
+    progressBar.style.width = `${progressState.progress}%`;
+    progressBar.style.backgroundColor = progressState.color;
+  }
+  if (progressContainer) progressContainer.setAttribute("aria-valuenow", String(progressState.progress));
+  if (progressLabel) progressLabel.textContent = `Seller setup progress: ${progressState.progress}%.`;
+  if (currentMilestone) currentMilestone.textContent = `Current Homepage milestone: ${progressState.currentMilestone}.`;
+  if (nextAction) nextAction.innerHTML = `Next action: ${progressState.trackerHtml || "No next action is currently available."}`;
+
+  if (kycStatus) {
+    const statusLabels = {
+      pending: "KYC Under Review",
+      approved: "KYC Verified",
+      rejected: "KYC Rejected",
+      not_submitted: "KYC Not Submitted"
+    };
+    kycStatus.textContent = statusLabels[progressState.kycStatus] || "KYC Status Unavailable";
+    kycStatus.className = `progress-badge ${progressState.kycStatus === "approved" ? "green" : progressState.kycStatus === "rejected" ? "red" : "yellow"}`;
+  }
+  if (verificationNote) {
+    verificationNote.textContent = "The progress percentage, current milestone, next action, and KYC state use the Seller Homepage's existing rules.";
+  }
   if (!steps) return;
 
-  steps.innerHTML = stages.map((stage, index) => {
+  steps.innerHTML = progressState.milestones.map((stage, index) => {
     const statusLabel = stage.status === "complete" ? "Completed" : stage.status === "current" ? "Current Stage" : "Pending";
     const currentAttribute = stage.status === "current" ? ' aria-current="step"' : "";
     const icon = stage.status === "complete" ? '<i class="fas fa-check" aria-hidden="true"></i>' : String(index + 1);
@@ -232,10 +244,90 @@ function renderSetupProgress() {
       <li class="setup-step setup-step--${stage.status}"${currentAttribute}>
         <span class="setup-step-marker">${icon}</span>
         <h3>${stage.title}</h3>
-        <p>${statusLabel} — ${stage.detail}</p>
+        <p>${statusLabel}</p>
       </li>
     `;
   }).join("");
+}
+
+function showSetupProgressError() {
+  const progressLabel = document.getElementById("setup-progress-label");
+  const currentMilestone = document.getElementById("setup-current-milestone");
+  const nextAction = document.getElementById("setup-next-action");
+  const kycStatus = document.getElementById("setup-kyc-status");
+  const progressBar = document.getElementById("setup-progress-bar");
+  const progressContainer = document.querySelector(".setup-progress-tracker .progress-bar-container");
+  const steps = document.getElementById("setup-steps");
+
+  if (progressLabel) progressLabel.textContent = "Unable to load current Seller Homepage progress.";
+  if (currentMilestone) currentMilestone.textContent = "Current milestone is unavailable.";
+  if (nextAction) nextAction.textContent = "Refresh the page to try again.";
+  if (kycStatus) {
+    kycStatus.textContent = "Status unavailable";
+    kycStatus.className = "progress-badge";
+  }
+  if (progressBar) progressBar.style.width = "0%";
+  if (progressContainer) progressContainer.setAttribute("aria-valuenow", "0");
+  if (steps) steps.replaceChildren();
+}
+
+async function loadSellerSetupProgress() {
+  const requestId = ++setupProgressRequest;
+  const progressLabel = document.getElementById("setup-progress-label");
+  if (progressLabel) progressLabel.textContent = "Loading current Seller Homepage progress…";
+
+  try {
+    if (!window.StoreManager || !window.SellerProgress) {
+      throw new Error("Seller progress services are unavailable.");
+    }
+
+    const activeStore = await window.StoreManager.requireActiveStore();
+    if (!activeStore?.id) throw new Error("No active store is selected.");
+    let store = { ...activeStore };
+
+    const stores = await window.StoreManager.loadStores();
+    const freshStore = Array.isArray(stores) ? stores.find(item => item?.id === activeStore.id) : null;
+    if (freshStore) store = { ...freshStore };
+
+    const [profileResult, userResult, statsResult] = await Promise.allSettled([
+      window.StoreManager.apiFetch("/seller/profile"),
+      window.StoreManager.apiFetch("/auth/me"),
+      window.StoreManager.apiFetch("/seller/dashboard-stats")
+    ]);
+
+    if ([profileResult, userResult, statsResult].some(result => result.status !== "fulfilled")) {
+      throw new Error("Seller progress data could not be fetched.");
+    }
+
+    const profileResponse = profileResult.value;
+    const userResponse = userResult.value;
+    const statsResponse = statsResult.value;
+    const profile = profileResponse?.data?.seller;
+    const user = userResponse?.data?.user;
+    const stats = statsResponse?.data?.stats;
+    if (!profile || !user || !stats ||
+        profileResponse?.status !== "success" ||
+        userResponse?.status !== "success" ||
+        statsResponse?.status !== "success") {
+      throw new Error("Seller progress data was incomplete.");
+    }
+
+    const existingProductCount = Number(store.productCount || store.product_count || 0);
+    const existingTotalSales = Number(store.total_sales || store.totalSales || 0);
+    store.productCount = stats.product_count ?? stats.productCount ?? existingProductCount;
+    store.total_sales = stats.total_sales ?? stats.totalSales ?? stats.totalOrders ?? existingTotalSales;
+
+    const progressState = window.SellerProgress.calculate(
+      profile,
+      store,
+      user,
+      window.sellerDashboardState?.kycStatus || "not_submitted"
+    );
+    if (requestId === setupProgressRequest) renderSetupProgress(progressState);
+  } catch (error) {
+    console.error("Unable to load Seller Homepage progress:", error);
+    if (requestId === setupProgressRequest) showSetupProgressError();
+  }
 }
 
 function renderActivitySummaries() {
@@ -308,10 +400,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderProfileImage();
   loadProfileImage();
+  loadSellerSetupProgress();
   window.addEventListener("storeChanged", () => {
     renderProfileImage();
     loadProfileImage();
+    loadSellerSetupProgress();
   });
+  window.addEventListener("focus", loadSellerSetupProgress);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") loadSellerSetupProgress();
+  });
+  window.setInterval(loadSellerSetupProgress, 15 * 60_000);
 
   function closeMenu() {
     if (!menu || !toggler) return;
@@ -355,7 +454,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadStoreFollowerCount();
   renderSalesSummary();
   renderVisibilityCards();
-  renderSetupProgress();
   renderActivitySummaries();
 
   const dateFilter = document.getElementById("date-filter");
