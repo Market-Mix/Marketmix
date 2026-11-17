@@ -234,6 +234,34 @@ function toggleProfileDropdown() {
   dropdown.style.display = dropdown.style.display === "flex" ? "none" : "flex";
 }
 
+function renderProfileImage(profile) {
+  const images = document.querySelectorAll("#sellerProfileImage, #sellerProfileImageMobile, .navbar-toggler-icon");
+  const store = window.StoreManager?.getActiveStore?.();
+  const imageUrl = store?.store_logo_url || profile?.profile?.storeLogo || profile?.avatarUrl || "";
+  if (!imageUrl) return;
+
+  images.forEach((image) => {
+    if (image.src === imageUrl) return;
+    image.onerror = () => {
+      image.removeAttribute("src");
+      image.style.backgroundColor = "#e2e8f0";
+    };
+    image.src = imageUrl;
+  });
+}
+
+async function loadProfileImage() {
+  if (!window.StoreManager?.getToken?.()) return;
+
+  try {
+    const response = await window.StoreManager.apiFetch("/seller/profile");
+    const profile = response?.data?.seller;
+    if (profile) renderProfileImage(profile);
+  } catch (error) {
+    console.error("Unable to load seller profile image:", error);
+  }
+}
+
 window.toggleProfileDropdown = toggleProfileDropdown;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -241,6 +269,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const menu = document.getElementById("offcanvasMenu");
   const closeButton = document.getElementById("offcanvasClose");
   const profileDropdown = document.getElementById("profileDropdown");
+
+  renderProfileImage();
+  loadProfileImage();
+  window.addEventListener("storeChanged", () => {
+    renderProfileImage();
+    loadProfileImage();
+  });
 
   function closeMenu() {
     if (!menu || !toggler) return;
