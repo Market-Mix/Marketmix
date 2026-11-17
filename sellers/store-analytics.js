@@ -1,7 +1,7 @@
 const storeAnalyticsDemoData = {
   metrics: {
     audience: [
-      { title: "Total Store Followers", value: "1,284", icon: "fa-users", description: "People following this store", comparison: "Demo comparison: +8.2%" },
+      { key: "store-followers", title: "Total Store Followers", value: "Loading...", icon: "fa-users", description: "Followers of your active store", comparison: "Loading live follower count..." },
       { title: "Total Store Views", value: "8,462", icon: "fa-store", description: "Visits to the store page", comparison: "Demo comparison: +5.4%" },
       { title: "Total Product Views", value: "12,730", icon: "fa-eye", description: "Views across store products", comparison: "Demo comparison: +11.6%" }
     ],
@@ -49,18 +49,54 @@ function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  container.innerHTML = metrics.map((metric) => `
+  container.innerHTML = metrics.map((metric) => {
+    const isLive = metric.key === "store-followers";
+    return `
     <article class="metric-card">
       <div class="metric-card-top">
         <span class="metric-icon" aria-hidden="true"><i class="fas ${metric.icon}"></i></span>
-        <span class="metric-demo">DEMO</span>
+        <span class="metric-demo">${isLive ? "LIVE" : "DEMO"}</span>
       </div>
       <h3>${metric.title}</h3>
-      <p class="metric-value">${metric.value}</p>
-      <p class="metric-description">${metric.description}</p>
-      <p class="metric-comparison">${metric.comparison}</p>
+      <p class="metric-value"${isLive ? ' id="store-follower-value" aria-live="polite"' : ""}>${metric.value}</p>
+      <p class="metric-description"${isLive ? ' id="store-follower-description"' : ""}>${metric.description}</p>
+      <p class="metric-comparison"${isLive ? ' id="store-follower-status" aria-live="polite"' : ""}>${metric.comparison}</p>
     </article>
-  `).join("");
+    `;
+  }).join("");
+}
+
+async function loadStoreFollowerCount() {
+  const value = document.getElementById("store-follower-value");
+  const description = document.getElementById("store-follower-description");
+  const status = document.getElementById("store-follower-status");
+  if (!value || !description || !status) return;
+
+  try {
+    if (!window.StoreManager) throw new Error("Store services are unavailable.");
+
+    const activeStore = await window.StoreManager.requireActiveStore();
+    const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
+    if (!storeId) throw new Error("No active store is selected.");
+
+    const response = await window.StoreManager.apiFetch(
+      `/seller/stores/${encodeURIComponent(storeId)}/followers`
+    );
+    const followerCount = response?.data?.followerCount;
+
+    if (response?.status !== "success" || !Number.isSafeInteger(followerCount) || followerCount < 0) {
+      throw new Error(response?.message || "The follower count could not be loaded.");
+    }
+
+    value.textContent = followerCount.toLocaleString("en-NG");
+    description.textContent = "People following your active store";
+    status.textContent = "Live count for the active store";
+  } catch (error) {
+    console.error("Unable to load store follower count:", error);
+    value.textContent = "Unavailable";
+    description.textContent = "The live follower count could not be loaded.";
+    status.textContent = "Try refreshing the page to load this count.";
+  }
 }
 
 function formatNaira(amount) {
@@ -316,6 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderMetricCards("audience-metrics", storeAnalyticsDemoData.metrics.audience);
   renderMetricCards("sales-reputation-metrics", storeAnalyticsDemoData.metrics.salesReputation);
   renderMetricCards("exposure-metrics", storeAnalyticsDemoData.metrics.exposure);
+  loadStoreFollowerCount();
   renderSalesSummary();
   renderVisibilityCards();
   renderSetupProgress();
