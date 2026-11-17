@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Store Analytics - MarketMix</title>
+  <link rel="stylesheet" href="sellers earning.css" />
+  <link rel="stylesheet" href="seller-mobile-nav.css" />
+  <link rel="stylesheet" href="store-analytics.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="body-background">
+    <nav class="navbar">
+      <div class="nav-container">
+        <a href="#" class="brand-logo">MarketMix</a>
+        <button class="navbar-toggler" id="navbar-toggler" type="button" aria-label="Toggle navigation" aria-expanded="false">
+          <img src="images/elon.jfif" class="navbar-toggler-icon" alt="" />
+        </button>
+        <div class="nav-large">
+          <ul class="nav-list">
+            <ul class="nav-links">
+              <li><a href="sellers layout.html">Dashboard</a></li>
+              <li><a href="sellers product.html">My Products</a></li>
+              <li><a href="sellers order.html">Orders</a></li>
+              <li><a href="sellers returns.html">Returns &amp; Refunds</a></li>
+              <li><a href="sellers earning.html">Earnings</a></li>
+              <li><a href="seller-reviews.html">Reviews</a></li>
+              <li><a href="sellers setting.html">Shop Settings</a></li>
+            </ul>
+          </ul>
+          <div class="nav-actions">
+            <a href="sellers notification page.html" class="nav-icon-button" title="Notifications" style="display:inline-flex;align-items:center;justify-content:center;position:relative;width:40px;height:40px;border-radius:999px;border:1px solid rgba(30,41,59,.12);color:#1e293b;text-decoration:none;margin-right:0.75rem;background:#fff;">
+              <i class="fas fa-bell" style="font-size:1rem;line-height:1;"></i>
+              <span class="notification-badge" style="position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;font-size:10px;font-weight:700;color:#fff;background:#dc2626;border-radius:999px;display:flex;align-items:center;justify-content:center;">0</span>
+            </a>
+          </div>
+          <div class="icon-container">
+            <div class="profile-container">
+              <img id="sellerProfileImage" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23e2e8f0'/%3E%3Ccircle cx='32' cy='24' r='11' fill='%2394a3b8'/%3E%3Cpath d='M12 58c2-13 9-20 20-20s18 7 20 20' fill='%2394a3b8'/%3E%3C/svg%3E" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()" />
+              <div class="profile-dropdown" id="profileDropdown">
+                <a href="view profile.html">View Profile</a>
+                <a href="sellers setting.html">Account Settings</a>
+                <a href="sellers layout.html">View Store</a>
+                <a href="help.html">Help &amp; Support</a>
+                <a href="logout.html">Logout</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="offcanvas-menu" id="offcanvasMenu" aria-hidden="true">
+      <div class="offcanvas-header">
+        <button class="offcanvas-close" id="offcanvasClose" type="button" aria-label="Close navigation">&times;</button>
+      </div>
+      <div class="offcanvas-body">
+        <ul class="nav-links">
+          <li><a href="sellers layout.html">Dashboard</a></li>
+          <li><a href="sellers product.html">My Products</a></li>
+          <li><a href="sellers order.html">Orders</a></li>
+          <li><a href="sellers returns.html">Returns &amp; Refunds</a></li>
+          <li><a href="sellers earning.html">Earnings</a></li>
+          <li><a href="seller-reviews.html">Reviews</a></li>
+          <li><a href="sellers setting.html">Shop Settings</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a href="sellers notification page.html" class="nav-icon-button" title="Notifications" style="display:inline-flex;align-items:center;justify-content:center;position:relative;width:40px;height:40px;border-radius:999px;border:1px solid rgba(30,41,59,.12);color:#1e293b;text-decoration:none;margin-right:0.75rem;background:#fff;">
+            <i class="fas fa-bell" style="font-size:1rem;line-height:1;"></i>
+            <span class="notification-badge" style="position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;font-size:10px;font-weight:700;color:#fff;background:#dc2626;border-radius:999px;display:flex;align-items:center;justify-content:center;">0</span>
+          </a>
+        </div>
+        <div class="icon-container">
+          <div class="profile-container">
+            <img id="sellerProfileImageMobile" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23e2e8f0'/%3E%3Ccircle cx='32' cy='24' r='11' fill='%2394a3b8'/%3E%3Cpath d='M12 58c2-13 9-20 20-20s18 7 20 20' fill='%2394a3b8'/%3E%3C/svg%3E" alt="Store Logo" class="profile-icon" loading="eager" onclick="toggleProfileDropdown()" />
+            <ul class="nav-list">
+              <li><a style="text-decoration:none;color:white;" href="view profile.html">View Profile</a></li>
+              <li><a style="text-decoration:none;color:white;" href="sellers setting.html">Account Settings</a></li>
+              <li><a style="text-decoration:none;color:white;" href="help.html">Help &amp; Support</a></li>
+              <li><a style="text-decoration:none;color:white;" href="logout.html">Logout</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main class="analytics-page">
+      <section class="analytics-header" aria-labelledby="analytics-title">
+        <div>
+          <p class="analytics-eyebrow">SELLER PERFORMANCE</p>
+          <h1 id="analytics-title">Store Analytics</h1>
+          <p class="analytics-subtitle">Your complete store performance and activity overview.</p>
+        </div>
+        <label class="date-filter">
+          <span>Date range</span>
+          <select id="date-filter" aria-label="Analytics date range">
+            <option value="7days">Last 7 days</option>
+            <option value="30days" selected>Last 30 days</option>
+            <option value="90days">Last 90 days</option>
+            <option value="year">This year</option>
+          </select>
+        </label>
+      </section>
+
+      <p class="demo-notice"><i class="fas fa-circle-info" aria-hidden="true"></i> Demo data only — these illustrative values are not live store analytics.</p>
+      <p class="range-status" id="range-status" aria-live="polite">Showing demo data for Last 30 days.</p>
+
+      <section class="metric-group" aria-labelledby="audience-title">
+        <div class="section-heading">
+          <div>
+            <p class="analytics-eyebrow">REACH</p>
+            <h2 id="audience-title">Audience &amp; Visibility</h2>
+          </div>
+        </div>
+        <div class="metric-grid" id="audience-metrics"></div>
+      </section>
+
+      <section class="metric-group" aria-labelledby="sales-reputation-title">
+        <div class="section-heading">
+          <div>
+            <p class="analytics-eyebrow">STORE HEALTH</p>
+            <h2 id="sales-reputation-title">Sales &amp; Reputation</h2>
+          </div>
+        </div>
+        <div class="metric-grid" id="sales-reputation-metrics"></div>
+      </section>
+
+      <section class="metric-group" aria-labelledby="exposure-title">
+        <div class="section-heading">
+          <div>
+            <p class="analytics-eyebrow">HOMEPAGE REACH</p>
+            <h2 id="exposure-title">Homepage Exposure</h2>
+          </div>
+        </div>
+        <div class="metric-grid metric-grid--two" id="exposure-metrics"></div>
+      </section>
+
+      <section class="analytics-section" aria-labelledby="monthly-sales-title">
+        <div class="section-heading section-heading--row">
+          <div>
+            <p class="analytics-eyebrow">SALES OVER TIME</p>
+            <h2 id="monthly-sales-title">Monthly Sales Performance</h2>
+            <p class="section-description">Demo monthly revenue and order trends.</p>
+          </div>
+          <span class="demo-tag">DEMO DATA</span>
+        </div>
+        <div class="sales-summary" id="sales-summary"></div>
+        <div class="analytics-chart-wrap">
+          <canvas id="sales-performance-chart" role="img" aria-label="Demo chart of monthly sales revenue and order counts"></canvas>
+        </div>
+        <p class="chart-note">Revenue is shown in Nigerian Naira (₦). Orders are shown separately; homepage appearances are not counted as views or visits.</p>
+      </section>
+
+      <section class="analytics-section" aria-labelledby="visibility-title">
+        <div class="section-heading">
+          <div>
+            <p class="analytics-eyebrow">IMPRESSIONS &amp; VISITS</p>
+            <h2 id="visibility-title">Store Visibility</h2>
+            <p class="section-description">An appearance is an impression, not a click, store visit or product view.</p>
+          </div>
+        </div>
+        <div class="visibility-grid" id="visibility-metrics"></div>
+      </section>
+
+      <section class="analytics-section setup-progress-tracker" aria-labelledby="setup-title">
+        <div class="section-heading">
+          <div>
+            <p class="analytics-eyebrow">DEMO STATUS</p>
+            <h2 id="setup-title">Store Setup &amp; Verification Progress</h2>
+            <p class="section-description" id="setup-progress-label"></p>
+          </div>
+          <div class="setup-status-labels">
+            <span class="progress-badge yellow">KYC Under Review</span>
+            <span class="demo-tag">NOT LIVE SELLER STATUS</span>
+          </div>
+        </div>
+        <div class="progress-bar-container" role="progressbar" aria-label="Demo setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+          <div class="progress-bar" id="setup-progress-bar"></div>
+        </div>
+        <ol class="setup-steps" id="setup-steps"></ol>
+        <p class="verification-note">Verification is not assumed. This demo shows a review in progress and does not mark the store as verified.</p>
+      </section>
+
+      <div class="activity-grid">
+        <section class="analytics-section" aria-labelledby="reviews-title">
+          <div class="section-heading">
+            <div>
+              <p class="analytics-eyebrow">BUYER FEEDBACK</p>
+              <h2 id="reviews-title">Customer Reviews</h2>
+            </div>
+          </div>
+          <div id="reviews-summary"></div>
+          <p class="future-note">Future review activity information will appear here when real analytics are connected.</p>
+        </section>
+
+        <section class="analytics-section" aria-labelledby="refunds-title">
+          <div class="section-heading">
+            <div>
+              <p class="analytics-eyebrow">RETURNS &amp; REFUNDS</p>
+              <h2 id="refunds-title">Refund Reports</h2>
+            </div>
+          </div>
+          <div id="refunds-summary"></div>
+          <p class="future-note">A refund status breakdown will appear here when real analytics are connected.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2025 MarketMix. All Rights Reserved.
+    </footer>
+  </div>
+  <script src="store-analytics.js"></script>
+</body>
+</html>

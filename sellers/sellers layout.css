@@ -751,6 +751,11 @@ body {
   transform: translateY(-5px);
 }
 
+.analytics-page-link {
+  display: block;
+  text-decoration: none;
+}
+
 
 /* Ticker Style */
 .activity-log-ticker {
@@ -884,6 +889,29 @@ body {
   color: black;
 }
 
+.sales-analytics-full-link {
+  display: flex;
+  width: fit-content;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin: 16px auto 4px;
+  padding: 11px 18px;
+  border-radius: 8px;
+  background: #1e40af;
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.sales-analytics-full-link:hover,
+.sales-analytics-full-link:focus-visible {
+  background: #2c5282;
+  color: #fff;
+}
+
 .modal form label {
   display: block;
   margin: 10px 0 5px;
@@ -930,6 +958,9 @@ table {
   .modal-content {
     width: 90%;
     margin-top: 30%;
+  }
+  .sales-analytics-full-link {
+    width: 100%;
   }
 }
 
