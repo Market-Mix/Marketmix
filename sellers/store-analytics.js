@@ -7,8 +7,8 @@ const storeAnalyticsDemoData = {
     ],
     salesReputation: [
       { title: "Total Reviews", value: "86", icon: "fa-star", description: "Reviews received", comparison: "Demo comparison: +6.1%" },
-      { title: "Monthly Sales", value: "₦1,840,000", icon: "fa-naira-sign", description: "Demo revenue for the latest month", comparison: "Demo comparison: +12.5%" },
-      { title: "Monthly Orders/Sales Count", value: "116", icon: "fa-bag-shopping", description: "Orders in the latest demo month", comparison: "Demo comparison: +9.4%" },
+      { key: "monthly-sales", title: "Monthly Sales", value: "Loading...", icon: "fa-naira-sign", description: "Net sales for the current month", comparison: "Loading monthly analytics..." },
+      { key: "monthly-orders", title: "Monthly Orders", value: "Loading...", icon: "fa-bag-shopping", description: "Successfully paid orders for the current month", comparison: "Loading monthly analytics..." },
       { title: "Refund Reports Received", value: "7", icon: "fa-rotate-left", description: "Reports received in this demo", comparison: "Demo comparison: 1 fewer" }
     ],
     exposure: [
@@ -35,13 +35,19 @@ const storeAnalyticsDemoData = {
 
 let salesPerformanceChart = null;
 let setupProgressRequest = 0;
+let monthlyAnalyticsRequest = 0;
 
 function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
   container.innerHTML = metrics.map((metric) => {
-    const isLive = metric.key === "store-followers";
+    const isFollowerMetric = metric.key === "store-followers";
+    const isMonthlyMetric = metric.key === "monthly-sales" || metric.key === "monthly-orders";
+    const isLive = isFollowerMetric || isMonthlyMetric;
+    const valueId = isFollowerMetric ? "store-follower-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`;
+    const descriptionId = isFollowerMetric ? "store-follower-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`;
+    const statusId = isFollowerMetric ? "store-follower-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`;
     return `
     <article class="metric-card">
       <div class="metric-card-top">
@@ -49,9 +55,9 @@ function renderMetricCards(containerId, metrics) {
         <span class="metric-demo">${isLive ? "LIVE" : "DEMO"}</span>
       </div>
       <h3>${metric.title}</h3>
-      <p class="metric-value"${isLive ? ' id="store-follower-value" aria-live="polite"' : ""}>${metric.value}</p>
-      <p class="metric-description"${isLive ? ' id="store-follower-description"' : ""}>${metric.description}</p>
-      <p class="metric-comparison"${isLive ? ' id="store-follower-status" aria-live="polite"' : ""}>${metric.comparison}</p>
+      <p class="metric-value"${isLive ? ` id="${valueId}" aria-live="polite"` : ""}>${metric.value}</p>
+      <p class="metric-description"${isLive ? ` id="${descriptionId}"` : ""}>${metric.description}</p>
+      <p class="metric-comparison"${isLive ? ` id="${statusId}" aria-live="polite"` : ""}>${metric.comparison}</p>
     </article>
     `;
   }).join("");
@@ -92,6 +98,92 @@ async function loadStoreFollowerCount() {
 
 function formatNaira(amount) {
   return `₦${Number(amount).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+}
+
+function getCurrentUtcMonth() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMonthLabel(month) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-NG", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC"
+  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+}
+
+function setMonthlyMetricState(metric, state, monthLabel, message = "") {
+  const value = document.getElementById(`monthly-${metric}-value`);
+  const description = document.getElementById(`monthly-${metric}-description`);
+  const status = document.getElementById(`monthly-${metric}-status`);
+  if (!value || !description || !status) return;
+
+  if (state === "loading") {
+    value.textContent = "Loading...";
+    description.textContent = `${metric === "sales" ? "Net sales" : "Successfully paid orders"} for ${monthLabel}`;
+    status.textContent = "Loading live monthly analytics...";
+    return;
+  }
+
+  if (state === "error") {
+    value.textContent = "Unavailable";
+    description.textContent = `Live ${metric === "sales" ? "sales" : "order count"} unavailable for ${monthLabel}`;
+    status.textContent = message || "Try refreshing the page to load this metric.";
+  }
+}
+
+async function loadMonthlyAnalytics() {
+  const requestId = ++monthlyAnalyticsRequest;
+  const month = getCurrentUtcMonth();
+  const monthLabel = formatMonthLabel(month);
+  setMonthlyMetricState("sales", "loading", monthLabel);
+  setMonthlyMetricState("orders", "loading", monthLabel);
+
+  try {
+    if (!window.StoreManager) throw new Error("Store services are unavailable.");
+
+    const activeStore = await window.StoreManager.requireActiveStore();
+    const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
+    if (!storeId) throw new Error("No active store is selected.");
+
+    const query = new URLSearchParams({ month, storeId: String(storeId) });
+    const response = await window.StoreManager.apiFetch(
+      `/seller/stores/monthly-analytics?${query}`,
+      { headers: { "X-Store-Id": String(storeId) } }
+    );
+    if (requestId !== monthlyAnalyticsRequest) return;
+
+    const analytics = response?.data;
+    const netMonthlySales = analytics?.netMonthlySales;
+    const monthlyOrderCount = analytics?.monthlyOrderCount;
+    if (response?.status !== "success" ||
+        analytics?.storeId !== storeId ||
+        analytics?.month !== month ||
+        typeof netMonthlySales !== "number" ||
+        !Number.isFinite(netMonthlySales) ||
+        netMonthlySales < 0 ||
+        !Number.isSafeInteger(monthlyOrderCount) ||
+        monthlyOrderCount < 0) {
+      throw new Error(response?.message || "Monthly analytics data was incomplete.");
+    }
+
+    document.getElementById("monthly-sales-value").textContent = formatNaira(netMonthlySales);
+    document.getElementById("monthly-sales-description").textContent = `Net sales for ${monthLabel}`;
+    document.getElementById("monthly-sales-status").textContent = "Live data for the active store";
+    document.getElementById("monthly-orders-value").textContent = monthlyOrderCount.toLocaleString("en-NG");
+    document.getElementById("monthly-orders-description").textContent = `Successfully paid orders for ${monthLabel}`;
+    document.getElementById("monthly-orders-status").textContent = "Live data for the active store";
+  } catch (error) {
+    console.error("Unable to load monthly store analytics:", error);
+    if (requestId !== monthlyAnalyticsRequest) return;
+    const message = error.message === "Unauthorized"
+      ? "Your seller session has expired. Sign in again to view this metric."
+      : "Try refreshing the page to load these metrics.";
+    setMonthlyMetricState("sales", "error", monthLabel, message);
+    setMonthlyMetricState("orders", "error", monthLabel, message);
+  }
 }
 
 function renderSalesSummary() {
@@ -353,7 +445,7 @@ function updateDateRangeLabel() {
   const status = document.getElementById("range-status");
   if (!filter || !status) return;
   const selectedLabel = filter.options[filter.selectedIndex].text;
-  status.textContent = `Showing demo data for ${selectedLabel}. Changing this filter updates the selected UI state only.`;
+  status.textContent = `Demo UI range: ${selectedLabel}. Live Monthly Sales and Monthly Orders are for ${formatMonthLabel(getCurrentUtcMonth())}; the range selector does not change their request.`;
 }
 
 function toggleProfileDropdown() {
@@ -405,6 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderProfileImage();
     loadProfileImage();
     loadSellerSetupProgress();
+    loadMonthlyAnalytics();
   });
   window.addEventListener("focus", loadSellerSetupProgress);
   document.addEventListener("visibilitychange", () => {
@@ -452,6 +545,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderMetricCards("sales-reputation-metrics", storeAnalyticsDemoData.metrics.salesReputation);
   renderMetricCards("exposure-metrics", storeAnalyticsDemoData.metrics.exposure);
   loadStoreFollowerCount();
+  loadMonthlyAnalytics();
   renderSalesSummary();
   renderVisibilityCards();
   renderActivitySummaries();
