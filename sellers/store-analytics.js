@@ -3,7 +3,7 @@ const storeAnalyticsDemoData = {
     audience: [
       { key: "store-followers", title: "Total Store Followers", value: "Loading...", icon: "fa-users", description: "Followers of your active store", comparison: "Loading live follower count..." },
       { title: "Total Store Views", value: "8,462", icon: "fa-store", description: "Visits to the store page", comparison: "Demo comparison: +5.4%" },
-      { title: "Total Product Views", value: "12,730", icon: "fa-eye", description: "Views across store products", comparison: "Demo comparison: +11.6%" }
+      { key: "product-views", title: "Total Product Views", value: "Loading...", icon: "fa-eye", description: "Views across active products in your store", comparison: "Loading live product view analytics..." }
     ],
     salesReputation: [
       { key: "total-reviews", title: "Total Customer Reviews", value: "Loading...", icon: "fa-star", description: "Reviews for products in your active store", comparison: "Loading live review analytics..." },
@@ -29,6 +29,7 @@ let setupProgressRequest = 0;
 let monthlyAnalyticsRequest = 0;
 let reviewAnalyticsRequest = 0;
 let refundAnalyticsRequest = 0;
+let productViewAnalyticsRequest = 0;
 
 function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
@@ -39,22 +40,29 @@ function renderMetricCards(containerId, metrics) {
     const isMonthlyMetric = metric.key === "monthly-sales" || metric.key === "monthly-orders";
     const isReviewMetric = metric.key === "total-reviews";
     const isRefundMetric = metric.key === "refund-reports";
-    const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric || isRefundMetric;
+    const isProductViewMetric = metric.key === "product-views";
+    const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric || isRefundMetric || isProductViewMetric;
     const valueId = isFollowerMetric
       ? "store-follower-value"
       : (isReviewMetric
         ? "review-total-value"
-        : (isRefundMetric ? "refund-report-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`));
+        : (isRefundMetric
+          ? "refund-report-value"
+          : (isProductViewMetric ? "product-view-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`)));
     const descriptionId = isFollowerMetric
       ? "store-follower-description"
       : (isReviewMetric
         ? "review-total-description"
-        : (isRefundMetric ? "refund-report-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`));
+        : (isRefundMetric
+          ? "refund-report-description"
+          : (isProductViewMetric ? "product-view-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`)));
     const statusId = isFollowerMetric
       ? "store-follower-status"
       : (isReviewMetric
         ? "review-total-status"
-        : (isRefundMetric ? "refund-report-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`));
+        : (isRefundMetric
+          ? "refund-report-status"
+          : (isProductViewMetric ? "product-view-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`)));
     return `
     <article class="metric-card">
       <div class="metric-card-top">
@@ -456,6 +464,73 @@ async function loadStoreRefundAnalytics() {
   }
 }
 
+function setProductViewAnalyticsState(state, totalViews = null) {
+  const value = document.getElementById("product-view-value");
+  const description = document.getElementById("product-view-description");
+  const status = document.getElementById("product-view-status");
+  if (!value || !description || !status) return;
+
+  if (state === "loading") {
+    value.textContent = "Loading...";
+    description.textContent = "Views across active products in your store";
+    status.textContent = "Loading live product view analytics...";
+    return;
+  }
+
+  if (state === "error") {
+    value.textContent = "Unavailable";
+    description.textContent = "The live product view count is unavailable.";
+    status.textContent = "Try refreshing the page to load this metric.";
+    return;
+  }
+
+  value.textContent = totalViews.toLocaleString("en-NG");
+  description.textContent = totalViews === 0
+    ? "No views recorded for active products in this store"
+    : "Views across active products in your store";
+  status.textContent = "Live data for the active store";
+}
+
+async function loadStoreProductViewAnalytics() {
+  const requestId = ++productViewAnalyticsRequest;
+  setProductViewAnalyticsState("loading");
+
+  try {
+    if (!window.StoreManager) throw new Error("Store services are unavailable.");
+
+    const activeStore = await window.StoreManager.requireActiveStore();
+    if (requestId !== productViewAnalyticsRequest) return;
+    const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
+    if (!storeId) throw new Error("No active store is selected.");
+
+    const response = await window.StoreManager.apiFetch(
+      "/seller/stores/product-view-analytics",
+      { headers: { "X-Store-Id": String(storeId) } }
+    );
+    if (requestId !== productViewAnalyticsRequest) return;
+
+    const analytics = response?.data;
+    if (response?.status !== "success" ||
+        analytics?.storeId !== storeId ||
+        !Number.isSafeInteger(analytics?.totalProductViews) ||
+        analytics.totalProductViews < 0 ||
+        !Array.isArray(analytics.products) ||
+        !analytics.products.every((product) =>
+          typeof product?.productId === "string" &&
+          typeof product?.productName === "string" &&
+          Number.isSafeInteger(product?.views) &&
+          product.views >= 0
+        )) {
+      throw new Error(response?.message || "Store product view analytics data was incomplete.");
+    }
+
+    setProductViewAnalyticsState("success", analytics.totalProductViews);
+  } catch (error) {
+    console.error("Unable to load store product view analytics:", error);
+    if (requestId === productViewAnalyticsRequest) setProductViewAnalyticsState("error");
+  }
+}
+
 function renderSalesChart(monthlyHistory) {
   const canvas = document.getElementById("sales-performance-chart");
   if (!canvas) return;
@@ -754,6 +829,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadMonthlyAnalytics();
     loadStoreReviewAnalytics();
     loadStoreRefundAnalytics();
+    loadStoreProductViewAnalytics();
   });
   window.addEventListener("focus", loadSellerSetupProgress);
   document.addEventListener("visibilitychange", () => {
@@ -804,6 +880,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadMonthlyAnalytics();
   loadStoreReviewAnalytics();
   loadStoreRefundAnalytics();
+  loadStoreProductViewAnalytics();
   renderVisibilityCards();
   renderActivitySummaries();
 
