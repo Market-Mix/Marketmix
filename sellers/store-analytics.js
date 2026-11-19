@@ -16,13 +16,6 @@ const storeAnalyticsDemoData = {
       { title: "Product Hero Slider Appearances", value: "5,160", icon: "fa-images", description: "Product hero slider impressions", comparison: "Demo comparison: +10.2%" }
     ]
   },
-  monthlySales: {
-    months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    revenue: [1120000, 1280000, 1190000, 1510000, 1635000, 1840000],
-    orders: [74, 82, 79, 96, 106, 116],
-    previousMonthRevenue: 1635000,
-    previousMonthOrders: 106
-  },
   visibility: [
     { title: "Featured Stores appearances", value: "3,420", icon: "fa-star", description: "Homepage impressions only; not store visits." },
     { title: "Product hero slider appearances", value: "5,160", icon: "fa-images", description: "Homepage impressions only; not product views." },
@@ -114,6 +107,29 @@ function formatMonthLabel(month) {
   }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
 }
 
+function getLastSixMonths(month) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(Date.UTC(year, monthNumber - 6 + index, 1));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+}
+
+function isValidMonthlyHistory(history, month) {
+  const expectedMonths = getLastSixMonths(month);
+  return Array.isArray(history) &&
+    history.length === expectedMonths.length &&
+    history.every((item, index) =>
+      item?.month === expectedMonths[index] &&
+      Number.isSafeInteger(item.monthlyOrderCount) &&
+      item.monthlyOrderCount >= 0 &&
+      Number.isFinite(item.grossMonthlySales) &&
+      item.grossMonthlySales >= 0 &&
+      Number.isFinite(item.netMonthlySales) &&
+      item.netMonthlySales >= 0
+    );
+}
+
 function setMonthlyMetricState(metric, state, monthLabel, message = "") {
   const value = document.getElementById(`monthly-${metric}-value`);
   const description = document.getElementById(`monthly-${metric}-description`);
@@ -134,12 +150,81 @@ function setMonthlyMetricState(metric, state, monthLabel, message = "") {
   }
 }
 
+function monthlyComparison(current, previous) {
+  if (current === 0 && previous === 0) return "No change vs previous month";
+  if (previous === 0) return "New activity vs previous month";
+  const change = ((current - previous) / previous) * 100;
+  return `${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs previous month`;
+}
+
+function renderSalesSummary(monthlyHistory) {
+  const container = document.getElementById("sales-summary");
+  if (!container) return;
+
+  const currentMonth = monthlyHistory[monthlyHistory.length - 1];
+  const previousMonth = monthlyHistory[monthlyHistory.length - 2];
+  container.innerHTML = `
+    <div class="sales-summary-card">
+      <span>Current month net sales</span>
+      <strong>${formatNaira(currentMonth.netMonthlySales)}</strong>
+      <small>${monthlyComparison(currentMonth.netMonthlySales, previousMonth.netMonthlySales)}</small>
+    </div>
+    <div class="sales-summary-card">
+      <span>Current month orders</span>
+      <strong>${currentMonth.monthlyOrderCount.toLocaleString("en-NG")}</strong>
+      <small>${monthlyComparison(currentMonth.monthlyOrderCount, previousMonth.monthlyOrderCount)}</small>
+    </div>
+  `;
+}
+
+function setSalesPerformanceState(state) {
+  const description = document.getElementById("monthly-chart-description");
+  const badge = document.getElementById("monthly-chart-badge");
+  const summary = document.getElementById("sales-summary");
+  const chartNote = document.querySelector(".chart-note");
+  if (salesPerformanceChart) {
+    salesPerformanceChart.destroy();
+    salesPerformanceChart = null;
+  }
+
+  if (state === "loading") {
+    if (description) description.textContent = "Loading live sales and paid-order trends for the latest six months.";
+    if (badge) badge.textContent = "LOADING";
+    if (summary) {
+      summary.innerHTML = `
+        <div class="sales-summary-card"><span>Current month net sales</span><strong>Loading...</strong><small>Loading live comparison...</small></div>
+        <div class="sales-summary-card"><span>Current month orders</span><strong>Loading...</strong><small>Loading live comparison...</small></div>
+      `;
+    }
+    if (chartNote) chartNote.textContent = "Loading live monthly sales and order data.";
+    return;
+  }
+
+  if (state === "error") {
+    if (description) description.textContent = "Live monthly sales performance is unavailable.";
+    if (badge) badge.textContent = "UNAVAILABLE";
+    if (summary) {
+      summary.innerHTML = `
+        <div class="sales-summary-card"><span>Current month net sales</span><strong>Unavailable</strong><small>Live comparison unavailable</small></div>
+        <div class="sales-summary-card"><span>Current month orders</span><strong>Unavailable</strong><small>Live comparison unavailable</small></div>
+      `;
+    }
+    if (chartNote) chartNote.textContent = "Live chart data could not be loaded. Refresh the page to try again.";
+    return;
+  }
+
+  if (description) description.textContent = "Live net sales and paid-order trends for the latest six calendar months.";
+  if (badge) badge.textContent = "LIVE DATA";
+  if (chartNote) chartNote.textContent = "Sales show net product revenue after platform commission. Shipping and refunds are excluded.";
+}
+
 async function loadMonthlyAnalytics() {
   const requestId = ++monthlyAnalyticsRequest;
   const month = getCurrentUtcMonth();
   const monthLabel = formatMonthLabel(month);
   setMonthlyMetricState("sales", "loading", monthLabel);
   setMonthlyMetricState("orders", "loading", monthLabel);
+  setSalesPerformanceState("loading");
 
   try {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
@@ -165,8 +250,15 @@ async function loadMonthlyAnalytics() {
         !Number.isFinite(netMonthlySales) ||
         netMonthlySales < 0 ||
         !Number.isSafeInteger(monthlyOrderCount) ||
-        monthlyOrderCount < 0) {
+        monthlyOrderCount < 0 ||
+        !isValidMonthlyHistory(analytics?.monthlyHistory, month)) {
       throw new Error(response?.message || "Monthly analytics data was incomplete.");
+    }
+
+    const currentHistory = analytics.monthlyHistory[analytics.monthlyHistory.length - 1];
+    if (currentHistory.netMonthlySales !== netMonthlySales ||
+        currentHistory.monthlyOrderCount !== monthlyOrderCount) {
+      throw new Error("Monthly analytics summary did not match its history.");
     }
 
     document.getElementById("monthly-sales-value").textContent = formatNaira(netMonthlySales);
@@ -175,6 +267,9 @@ async function loadMonthlyAnalytics() {
     document.getElementById("monthly-orders-value").textContent = monthlyOrderCount.toLocaleString("en-NG");
     document.getElementById("monthly-orders-description").textContent = `Successfully paid orders for ${monthLabel}`;
     document.getElementById("monthly-orders-status").textContent = "Live data for the active store";
+    setSalesPerformanceState("success");
+    renderSalesSummary(analytics.monthlyHistory);
+    renderSalesChart(analytics.monthlyHistory);
   } catch (error) {
     console.error("Unable to load monthly store analytics:", error);
     if (requestId !== monthlyAnalyticsRequest) return;
@@ -183,42 +278,29 @@ async function loadMonthlyAnalytics() {
       : "Try refreshing the page to load these metrics.";
     setMonthlyMetricState("sales", "error", monthLabel, message);
     setMonthlyMetricState("orders", "error", monthLabel, message);
+    setSalesPerformanceState("error");
   }
 }
 
-function renderSalesSummary() {
-  const container = document.getElementById("sales-summary");
-  if (!container) return;
-
-  const { revenue, orders, previousMonthRevenue, previousMonthOrders } = storeAnalyticsDemoData.monthlySales;
-  const latestRevenue = revenue[revenue.length - 1];
-  const latestOrders = orders[orders.length - 1];
-  const revenueChange = ((latestRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
-  const ordersChange = ((latestOrders - previousMonthOrders) / previousMonthOrders) * 100;
-
-  container.innerHTML = `
-    <div class="sales-summary-card">
-      <span>Latest demo month revenue</span>
-      <strong>${formatNaira(latestRevenue)}</strong>
-      <small>Demo comparison: ${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}% vs previous month</small>
-    </div>
-    <div class="sales-summary-card">
-      <span>Latest demo month orders</span>
-      <strong>${latestOrders.toLocaleString("en-NG")}</strong>
-      <small>Demo comparison: ${ordersChange >= 0 ? "+" : ""}${ordersChange.toFixed(1)}% vs previous month</small>
-    </div>
-  `;
-}
-
-function renderSalesChart() {
+function renderSalesChart(monthlyHistory) {
   const canvas = document.getElementById("sales-performance-chart");
-  if (!canvas || typeof Chart === "undefined") return;
+  if (!canvas) return;
+  if (typeof Chart === "undefined") {
+    const chartNote = document.querySelector(".chart-note");
+    if (chartNote) chartNote.textContent = "Live monthly figures loaded, but the chart library is unavailable.";
+    const badge = document.getElementById("monthly-chart-badge");
+    if (badge) badge.textContent = "CHART UNAVAILABLE";
+    return;
+  }
 
   if (salesPerformanceChart) {
     salesPerformanceChart.destroy();
   }
 
-  const { months, revenue, orders } = storeAnalyticsDemoData.monthlySales;
+  const months = monthlyHistory.map((item) => item.month);
+  const revenue = monthlyHistory.map((item) => item.netMonthlySales);
+  const orders = monthlyHistory.map((item) => item.monthlyOrderCount);
+  canvas.setAttribute("aria-label", "Live chart of net sales and paid order counts for the latest six months");
   salesPerformanceChart = new Chart(canvas, {
     type: "bar",
     data: {
@@ -226,7 +308,7 @@ function renderSalesChart() {
       datasets: [
         {
           type: "bar",
-          label: "Sales revenue (₦)",
+          label: "Net sales (₦)",
           data: revenue,
           backgroundColor: "rgba(37, 99, 235, 0.78)",
           borderRadius: 6,
@@ -234,7 +316,7 @@ function renderSalesChart() {
         },
         {
           type: "line",
-          label: "Orders",
+          label: "Paid orders",
           data: orders,
           borderColor: "#f97316",
           backgroundColor: "#f97316",
@@ -546,7 +628,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderMetricCards("exposure-metrics", storeAnalyticsDemoData.metrics.exposure);
   loadStoreFollowerCount();
   loadMonthlyAnalytics();
-  renderSalesSummary();
   renderVisibilityCards();
   renderActivitySummaries();
 
@@ -554,10 +635,4 @@ document.addEventListener("DOMContentLoaded", () => {
   dateFilter?.addEventListener("change", updateDateRangeLabel);
   updateDateRangeLabel(dateFilter?.value || "30days");
 
-  if (typeof Chart === "undefined") {
-    const chartNote = document.querySelector(".chart-note");
-    if (chartNote) chartNote.textContent = "The chart library did not load. Demo revenue and order summaries are still shown above.";
-  } else {
-    renderSalesChart();
-  }
 });
