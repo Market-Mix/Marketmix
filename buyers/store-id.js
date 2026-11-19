@@ -156,9 +156,21 @@ let totalProducts = 0;
 const PAGE_LIMIT  = 20;
 let resolvedStoreId = params.get('store') || null;
 let resolvedSellerId = params.get('seller') || null;
+let storeViewTrackingStarted = false;
 
 function followKey() {
   return resolvedStoreId || storeData?.storeId || storeData?.store_id || resolvedSellerId || storeData?.sellerId || storeData?.seller_id || '';
+}
+
+function trackStoreVisit(storeId) {
+  if (storeViewTrackingStarted || !storeId) return;
+  storeViewTrackingStarted = true;
+
+  fetch(`${API}/seller/stores/public/${encodeURIComponent(storeId)}/view`, { method: 'POST' })
+    .then((response) => {
+      if (!response.ok) console.warn('Store visit was not recorded.');
+    })
+    .catch((error) => console.warn('Unable to record store visit:', error));
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -207,6 +219,7 @@ async function loadStoreProfile() {
     storeData = data.data?.store || data.data;
     resolvedStoreId = storeData?.storeId || storeData?.store_id || storeData?.id || resolvedStoreId;
     resolvedSellerId = storeData?.sellerId || storeData?.seller_id || resolvedSellerId;
+    trackStoreVisit(resolvedStoreId);
     renderStoreInfo(storeData);
   } catch (err) {
     console.error(err);
