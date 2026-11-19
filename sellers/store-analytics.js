@@ -6,7 +6,7 @@ const storeAnalyticsDemoData = {
       { title: "Total Product Views", value: "12,730", icon: "fa-eye", description: "Views across store products", comparison: "Demo comparison: +11.6%" }
     ],
     salesReputation: [
-      { title: "Total Reviews", value: "86", icon: "fa-star", description: "Reviews received", comparison: "Demo comparison: +6.1%" },
+      { key: "total-reviews", title: "Total Customer Reviews", value: "Loading...", icon: "fa-star", description: "Reviews for products in your active store", comparison: "Loading live review analytics..." },
       { key: "monthly-sales", title: "Monthly Sales", value: "Loading...", icon: "fa-naira-sign", description: "Net sales for the current month", comparison: "Loading monthly analytics..." },
       { key: "monthly-orders", title: "Monthly Orders", value: "Loading...", icon: "fa-bag-shopping", description: "Successfully paid orders for the current month", comparison: "Loading monthly analytics..." },
       { title: "Refund Reports Received", value: "7", icon: "fa-rotate-left", description: "Reports received in this demo", comparison: "Demo comparison: 1 fewer" }
@@ -22,13 +22,13 @@ const storeAnalyticsDemoData = {
     { title: "Total store views", value: "8,462", icon: "fa-store", description: "Visits to the store page." },
     { title: "Total product views", value: "12,730", icon: "fa-eye", description: "Views of products in this store." }
   ],
-  reviews: { total: "86", rating: "4.6" },
   refunds: { total: "7" }
 };
 
 let salesPerformanceChart = null;
 let setupProgressRequest = 0;
 let monthlyAnalyticsRequest = 0;
+let reviewAnalyticsRequest = 0;
 
 function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
@@ -37,10 +37,17 @@ function renderMetricCards(containerId, metrics) {
   container.innerHTML = metrics.map((metric) => {
     const isFollowerMetric = metric.key === "store-followers";
     const isMonthlyMetric = metric.key === "monthly-sales" || metric.key === "monthly-orders";
-    const isLive = isFollowerMetric || isMonthlyMetric;
-    const valueId = isFollowerMetric ? "store-follower-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`;
-    const descriptionId = isFollowerMetric ? "store-follower-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`;
-    const statusId = isFollowerMetric ? "store-follower-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`;
+    const isReviewMetric = metric.key === "total-reviews";
+    const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric;
+    const valueId = isFollowerMetric
+      ? "store-follower-value"
+      : (isReviewMetric ? "review-total-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`);
+    const descriptionId = isFollowerMetric
+      ? "store-follower-description"
+      : (isReviewMetric ? "review-total-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`);
+    const statusId = isFollowerMetric
+      ? "store-follower-status"
+      : (isReviewMetric ? "review-total-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`);
     return `
     <article class="metric-card">
       <div class="metric-card-top">
@@ -282,6 +289,91 @@ async function loadMonthlyAnalytics() {
   }
 }
 
+function setReviewAnalyticsState(state, data = null) {
+  const totalValue = document.getElementById("review-total-value");
+  const totalDescription = document.getElementById("review-total-description");
+  const totalStatus = document.getElementById("review-total-status");
+  const summary = document.getElementById("reviews-summary");
+  if (!totalValue || !totalDescription || !totalStatus || !summary) return;
+
+  if (state === "loading") {
+    totalValue.textContent = "Loading...";
+    totalDescription.textContent = "Reviews for products in your active store";
+    totalStatus.textContent = "Loading live review analytics...";
+    summary.innerHTML = `
+      <div class="activity-summary"><strong>Loading...</strong><span>customer reviews</span></div>
+      <p class="metric-description">Average review rating: <strong>Loading...</strong></p>
+      <p class="future-note" id="review-analytics-status">Loading review analytics for the active store.</p>
+    `;
+    return;
+  }
+
+  if (state === "error") {
+    totalValue.textContent = "Unavailable";
+    totalDescription.textContent = "Live customer review count is unavailable.";
+    totalStatus.textContent = "Try refreshing the page to load this metric.";
+    summary.innerHTML = `
+      <div class="activity-summary"><strong>Unavailable</strong><span>customer reviews</span></div>
+      <p class="metric-description">Average review rating: <strong>Unavailable</strong></p>
+      <p class="future-note" id="review-analytics-status">Live review analytics could not be loaded.</p>
+    `;
+    return;
+  }
+
+  const { totalReviews, averageRating } = data;
+  totalValue.textContent = totalReviews.toLocaleString("en-NG");
+  totalDescription.textContent = totalReviews === 0
+    ? "No qualifying reviews for the active store"
+    : "Approved, published reviews for the active store";
+  totalStatus.textContent = "Live data for the active store";
+
+  const stars = "★".repeat(Math.round(averageRating)) + "☆".repeat(5 - Math.round(averageRating));
+  summary.innerHTML = `
+    <div class="activity-summary"><strong>${totalReviews.toLocaleString("en-NG")}</strong><span>customer reviews</span></div>
+    <p class="metric-description">Average review rating: <strong>${averageRating.toFixed(2)} / 5</strong> <span class="rating-stars" aria-label="${averageRating.toFixed(2)} out of 5 stars">${stars}</span></p>
+    <p class="future-note" id="review-analytics-status">${totalReviews === 0
+      ? "No qualifying reviews yet for the active store."
+      : "Live review analytics for the active store."}</p>
+  `;
+}
+
+async function loadStoreReviewAnalytics() {
+  const requestId = ++reviewAnalyticsRequest;
+  setReviewAnalyticsState("loading");
+
+  try {
+    if (!window.StoreManager) throw new Error("Store services are unavailable.");
+
+    const activeStore = await window.StoreManager.requireActiveStore();
+    const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
+    if (!storeId) throw new Error("No active store is selected.");
+
+    const query = new URLSearchParams({ storeId: String(storeId) });
+    const response = await window.StoreManager.apiFetch(
+      `/seller/stores/review-analytics?${query}`,
+      { headers: { "X-Store-Id": String(storeId) } }
+    );
+    if (requestId !== reviewAnalyticsRequest) return;
+
+    const analytics = response?.data;
+    if (response?.status !== "success" ||
+        analytics?.storeId !== storeId ||
+        !Number.isSafeInteger(analytics?.totalReviews) ||
+        analytics.totalReviews < 0 ||
+        typeof analytics.averageRating !== "number" ||
+        !Number.isFinite(analytics.averageRating) ||
+        analytics.averageRating < 0 ||
+        analytics.averageRating > 5) {
+      throw new Error(response?.message || "Store review analytics data was incomplete.");
+    }
+
+    setReviewAnalyticsState("success", analytics);
+  } catch (error) {
+    console.error("Unable to load store review analytics:", error);
+    if (requestId === reviewAnalyticsRequest) setReviewAnalyticsState("error");
+  }
+}
+
 function renderSalesChart(monthlyHistory) {
   const canvas = document.getElementById("sales-performance-chart");
   if (!canvas) return;
@@ -510,8 +602,9 @@ function renderActivitySummaries() {
 
   if (reviews) {
     reviews.innerHTML = `
-      <div class="activity-summary"><strong>${storeAnalyticsDemoData.reviews.total}</strong><span>demo reviews received</span></div>
-      <p class="metric-description">Average demo rating: <strong>${storeAnalyticsDemoData.reviews.rating} / 5</strong> <span class="rating-stars" aria-label="${storeAnalyticsDemoData.reviews.rating} out of 5 stars">★★★★★</span></p>
+      <div class="activity-summary"><strong>Loading...</strong><span>customer reviews</span></div>
+      <p class="metric-description">Average review rating: <strong>Loading...</strong></p>
+      <p class="future-note" id="review-analytics-status">Loading review analytics for the active store.</p>
     `;
   }
   if (refunds) {
@@ -580,6 +673,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadProfileImage();
     loadSellerSetupProgress();
     loadMonthlyAnalytics();
+    loadStoreReviewAnalytics();
   });
   window.addEventListener("focus", loadSellerSetupProgress);
   document.addEventListener("visibilitychange", () => {
@@ -628,6 +722,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderMetricCards("exposure-metrics", storeAnalyticsDemoData.metrics.exposure);
   loadStoreFollowerCount();
   loadMonthlyAnalytics();
+  loadStoreReviewAnalytics();
   renderVisibilityCards();
   renderActivitySummaries();
 
