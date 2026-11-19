@@ -9,7 +9,7 @@ const storeAnalyticsDemoData = {
       { key: "total-reviews", title: "Total Customer Reviews", value: "Loading...", icon: "fa-star", description: "Reviews for products in your active store", comparison: "Loading live review analytics..." },
       { key: "monthly-sales", title: "Monthly Sales", value: "Loading...", icon: "fa-naira-sign", description: "Net sales for the current month", comparison: "Loading monthly analytics..." },
       { key: "monthly-orders", title: "Monthly Orders", value: "Loading...", icon: "fa-bag-shopping", description: "Successfully paid orders for the current month", comparison: "Loading monthly analytics..." },
-      { title: "Refund Reports Received", value: "7", icon: "fa-rotate-left", description: "Reports received in this demo", comparison: "Demo comparison: 1 fewer" }
+      { key: "refund-reports", title: "Refund Reports Received", value: "Loading...", icon: "fa-rotate-left", description: "Refund reports received for your active store", comparison: "Loading live refund analytics..." }
     ],
     exposure: [
       { title: "Featured Stores Appearances", value: "3,420", icon: "fa-star", description: "Featured Stores impressions", comparison: "Demo comparison: +7.8%" },
@@ -22,13 +22,13 @@ const storeAnalyticsDemoData = {
     { title: "Total store views", value: "8,462", icon: "fa-store", description: "Visits to the store page." },
     { title: "Total product views", value: "12,730", icon: "fa-eye", description: "Views of products in this store." }
   ],
-  refunds: { total: "7" }
 };
 
 let salesPerformanceChart = null;
 let setupProgressRequest = 0;
 let monthlyAnalyticsRequest = 0;
 let reviewAnalyticsRequest = 0;
+let refundAnalyticsRequest = 0;
 
 function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
@@ -38,16 +38,23 @@ function renderMetricCards(containerId, metrics) {
     const isFollowerMetric = metric.key === "store-followers";
     const isMonthlyMetric = metric.key === "monthly-sales" || metric.key === "monthly-orders";
     const isReviewMetric = metric.key === "total-reviews";
-    const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric;
+    const isRefundMetric = metric.key === "refund-reports";
+    const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric || isRefundMetric;
     const valueId = isFollowerMetric
       ? "store-follower-value"
-      : (isReviewMetric ? "review-total-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`);
+      : (isReviewMetric
+        ? "review-total-value"
+        : (isRefundMetric ? "refund-report-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`));
     const descriptionId = isFollowerMetric
       ? "store-follower-description"
-      : (isReviewMetric ? "review-total-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`);
+      : (isReviewMetric
+        ? "review-total-description"
+        : (isRefundMetric ? "refund-report-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`));
     const statusId = isFollowerMetric
       ? "store-follower-status"
-      : (isReviewMetric ? "review-total-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`);
+      : (isReviewMetric
+        ? "review-total-status"
+        : (isRefundMetric ? "refund-report-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`));
     return `
     <article class="metric-card">
       <div class="metric-card-top">
@@ -374,6 +381,81 @@ async function loadStoreReviewAnalytics() {
   }
 }
 
+function setRefundAnalyticsState(state, reportCount = null) {
+  const value = document.getElementById("refund-report-value");
+  const description = document.getElementById("refund-report-description");
+  const status = document.getElementById("refund-report-status");
+  const summary = document.getElementById("refunds-summary");
+  if (!value || !description || !status || !summary) return;
+
+  if (state === "loading") {
+    value.textContent = "Loading...";
+    description.textContent = "Refund reports received for your active store";
+    status.textContent = "Loading live refund analytics...";
+    summary.innerHTML = `
+      <div class="activity-summary"><strong>Loading...</strong><span>refund reports received</span></div>
+      <p class="future-note" id="refund-analytics-status">Loading refund analytics for the active store.</p>
+    `;
+    return;
+  }
+
+  if (state === "error") {
+    value.textContent = "Unavailable";
+    description.textContent = "The live refund report count is unavailable.";
+    status.textContent = "Try refreshing the page to load this metric.";
+    summary.innerHTML = `
+      <div class="activity-summary"><strong>Unavailable</strong><span>refund reports received</span></div>
+      <p class="future-note" id="refund-analytics-status">Live refund analytics could not be loaded.</p>
+    `;
+    return;
+  }
+
+  value.textContent = reportCount.toLocaleString("en-NG");
+  description.textContent = reportCount === 0
+    ? "No refund reports recorded for the active store"
+    : "Refund reports received for the active store";
+  status.textContent = "Live data for the active store";
+  summary.innerHTML = `
+    <div class="activity-summary"><strong>${reportCount.toLocaleString("en-NG")}</strong><span>refund reports received</span></div>
+    <p class="future-note" id="refund-analytics-status">${reportCount === 0
+      ? "No refund reports have been recorded for the active store."
+      : "Live refund report count for the active store."}</p>
+  `;
+}
+
+async function loadStoreRefundAnalytics() {
+  const requestId = ++refundAnalyticsRequest;
+  setRefundAnalyticsState("loading");
+
+  try {
+    if (!window.StoreManager) throw new Error("Store services are unavailable.");
+
+    const activeStore = await window.StoreManager.requireActiveStore();
+    if (requestId !== refundAnalyticsRequest) return;
+    const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
+    if (!storeId) throw new Error("No active store is selected.");
+
+    const response = await window.StoreManager.apiFetch(
+      "/seller/stores/refund-analytics",
+      { headers: { "X-Store-Id": String(storeId) } }
+    );
+    if (requestId !== refundAnalyticsRequest) return;
+
+    const analytics = response?.data;
+    if (response?.status !== "success" ||
+        analytics?.storeId !== storeId ||
+        !Number.isSafeInteger(analytics?.refundReportsReceived) ||
+        analytics.refundReportsReceived < 0) {
+      throw new Error(response?.message || "Store refund analytics data was incomplete.");
+    }
+
+    setRefundAnalyticsState("success", analytics.refundReportsReceived);
+  } catch (error) {
+    console.error("Unable to load store refund analytics:", error);
+    if (requestId === refundAnalyticsRequest) setRefundAnalyticsState("error");
+  }
+}
+
 function renderSalesChart(monthlyHistory) {
   const canvas = document.getElementById("sales-performance-chart");
   if (!canvas) return;
@@ -608,10 +690,7 @@ function renderActivitySummaries() {
     `;
   }
   if (refunds) {
-    refunds.innerHTML = `
-      <div class="activity-summary"><strong>${storeAnalyticsDemoData.refunds.total}</strong><span>demo refund reports received</span></div>
-      <p class="metric-description">Report counts are illustrative; no live refund records or statuses are loaded.</p>
-    `;
+    setRefundAnalyticsState("loading");
   }
 }
 
@@ -674,6 +753,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadSellerSetupProgress();
     loadMonthlyAnalytics();
     loadStoreReviewAnalytics();
+    loadStoreRefundAnalytics();
   });
   window.addEventListener("focus", loadSellerSetupProgress);
   document.addEventListener("visibilitychange", () => {
@@ -723,6 +803,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadStoreFollowerCount();
   loadMonthlyAnalytics();
   loadStoreReviewAnalytics();
+  loadStoreRefundAnalytics();
   renderVisibilityCards();
   renderActivitySummaries();
 
