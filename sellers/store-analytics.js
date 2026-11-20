@@ -20,7 +20,7 @@ const storeAnalyticsDemoData = {
     { key: "featured-store-impressions", title: "Featured Stores appearances", value: "Loading...", icon: "fa-star", description: "Homepage impressions only; not store visits." },
     { title: "Product hero slider appearances", value: "5,160", icon: "fa-images", description: "Homepage impressions only; not product views." },
     { key: "store-views", title: "Total store views", value: "Loading...", icon: "fa-store", description: "Loading live store view analytics..." },
-    { title: "Total product views", value: "12,730", icon: "fa-eye", description: "Views of products in this store." }
+    { key: "product-views", title: "Total product views", value: "Loading...", icon: "fa-eye", description: "Loading live product view analytics..." }
   ],
 };
 
@@ -490,27 +490,36 @@ function setProductViewAnalyticsState(state, totalViews = null) {
   const value = document.getElementById("product-view-value");
   const description = document.getElementById("product-view-description");
   const status = document.getElementById("product-view-status");
-  if (!value || !description || !status) return;
+  const visibilityValue = document.getElementById("product-view-visibility-value");
+  const visibilityDescription = document.getElementById("product-view-visibility-description");
 
   if (state === "loading") {
-    value.textContent = "Loading...";
-    description.textContent = "Views across active products in your store";
-    status.textContent = "Loading live product view analytics...";
+    if (value) value.textContent = "Loading...";
+    if (description) description.textContent = "Views across active products in your store";
+    if (status) status.textContent = "Loading live product view analytics...";
+    if (visibilityValue) visibilityValue.textContent = "Loading...";
+    if (visibilityDescription) visibilityDescription.textContent = "Loading live product view analytics...";
     return;
   }
 
   if (state === "error") {
-    value.textContent = "Unavailable";
-    description.textContent = "The live product view count is unavailable.";
-    status.textContent = "Try refreshing the page to load this metric.";
+    if (value) value.textContent = "Unavailable";
+    if (description) description.textContent = "The live product view count is unavailable.";
+    if (status) status.textContent = "Try refreshing the page to load this metric.";
+    if (visibilityValue) visibilityValue.textContent = "Unavailable";
+    if (visibilityDescription) visibilityDescription.textContent = "The live product view count is unavailable.";
     return;
   }
 
-  value.textContent = totalViews.toLocaleString("en-NG");
-  description.textContent = totalViews === 0
+  const formattedCount = totalViews.toLocaleString("en-NG");
+  const liveDescription = totalViews === 0
     ? "No views recorded for active products in this store"
     : "Views across active products in your store";
-  status.textContent = "Live data for the active store";
+  if (value) value.textContent = formattedCount;
+  if (description) description.textContent = liveDescription;
+  if (status) status.textContent = "Live data for the active store";
+  if (visibilityValue) visibilityValue.textContent = formattedCount;
+  if (visibilityDescription) visibilityDescription.textContent = liveDescription;
 }
 
 async function loadStoreProductViewAnalytics() {
@@ -639,13 +648,18 @@ function renderVisibilityCards() {
 
   container.innerHTML = storeAnalyticsDemoData.visibility.map((metric) => {
     const isStoreViewMetric = metric.key === "store-views";
+    const isProductViewMetric = metric.key === "product-views";
     const isFeaturedStoreImpressionMetric = metric.key === "featured-store-impressions";
     const valueId = isStoreViewMetric
       ? "store-view-visibility-value"
-      : (isFeaturedStoreImpressionMetric ? "featured-store-impression-visibility-value" : "");
+      : (isProductViewMetric
+        ? "product-view-visibility-value"
+        : (isFeaturedStoreImpressionMetric ? "featured-store-impression-visibility-value" : ""));
     const descriptionId = isStoreViewMetric
       ? "store-view-visibility-description"
-      : (isFeaturedStoreImpressionMetric ? "featured-store-impression-visibility-description" : "");
+      : (isProductViewMetric
+        ? "product-view-visibility-description"
+        : (isFeaturedStoreImpressionMetric ? "featured-store-impression-visibility-description" : ""));
     return `
       <article class="visibility-card">
         <i class="fas ${metric.icon}" aria-hidden="true"></i>
