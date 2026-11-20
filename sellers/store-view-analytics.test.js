@@ -35,7 +35,7 @@ test('store view analytics displays the live zero count and sends the active-sto
       apiCalls.push({ path, options });
       return {
         status: 'success',
-        data: { storeId: 'store-a', storeViews: 0 }
+        data: { storeId: 'store-a', range: '30days', storeViews: 0 }
       };
     }
   });
@@ -46,11 +46,11 @@ test('store view analytics displays the live zero count and sends the active-sto
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(apiCalls.length, 1);
-  assert.equal(apiCalls[0].path, '/seller/stores/store-view-analytics');
+  assert.equal(apiCalls[0].path, '/seller/stores/store-view-analytics?range=30days');
   assert.equal(apiCalls[0].options.headers['X-Store-Id'], 'store-a');
   assert.equal(elements.get('store-view-value').textContent, '0');
   assert.equal(elements.get('store-view-visibility-value').textContent, '0');
-  assert.match(elements.get('store-view-description').textContent, /No visits recorded/);
+  assert.match(elements.get('store-view-description').textContent, /No store visits recorded/);
 });
 
 test('store view analytics displays an error state when the request fails', async () => {
@@ -81,7 +81,7 @@ test('late active-store resolution cannot issue a stale request or overwrite the
       apiCalls.push(options.headers['X-Store-Id']);
       return {
         status: 'success',
-        data: { storeId: 'store-b', storeViews: 12 }
+        data: { storeId: 'store-b', range: '30days', storeViews: 12 }
       };
     }
   });

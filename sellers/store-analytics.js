@@ -32,6 +32,36 @@ let refundAnalyticsRequest = 0;
 let productViewAnalyticsRequest = 0;
 let storeViewAnalyticsRequest = 0;
 let featuredStoreImpressionAnalyticsRequest = 0;
+let followerAnalyticsRequest = 0;
+let selectedAnalyticsRange = "30days";
+let rangeAnalyticsVersion = 0;
+
+const analyticsRangeLabels = {
+  "7days": "Last 7 days",
+  "30days": "Last 30 days",
+  "90days": "Last 90 days",
+  year: "This year"
+};
+
+function isCurrentRangeRequest(requestId, latestRequestId, range, version) {
+  return requestId === latestRequestId &&
+    version === rangeAnalyticsVersion &&
+    range === selectedAnalyticsRange;
+}
+
+function isValidRangeHistory(history) {
+  return Array.isArray(history) &&
+    history.every((item) =>
+      typeof item?.day === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(item.day) &&
+      Number.isSafeInteger(item.monthlyOrderCount) &&
+      item.monthlyOrderCount >= 0 &&
+      Number.isFinite(item.grossMonthlySales) &&
+      item.grossMonthlySales >= 0 &&
+      Number.isFinite(item.netMonthlySales) &&
+      item.netMonthlySales >= 0
+    );
+}
 
 function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
@@ -45,6 +75,9 @@ function renderMetricCards(containerId, metrics) {
     const isProductViewMetric = metric.key === "product-views";
     const isStoreViewMetric = metric.key === "store-views";
     const isFeaturedStoreImpressionMetric = metric.key === "featured-store-impressions";
+    const titleId = isMonthlyMetric
+      ? `monthly-${metric.key.replace("monthly-", "")}-metric-title`
+      : "";
     const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric || isRefundMetric || isProductViewMetric || isStoreViewMetric || isFeaturedStoreImpressionMetric;
     const valueId = isFollowerMetric
       ? "store-follower-value"
@@ -91,7 +124,7 @@ function renderMetricCards(containerId, metrics) {
         <span class="metric-icon" aria-hidden="true"><i class="fas ${metric.icon}"></i></span>
         <span class="metric-demo">${isLive ? "LIVE" : "DEMO"}</span>
       </div>
-      <h3>${metric.title}</h3>
+      <h3${titleId ? ` id="${titleId}"` : ""}>${metric.title}</h3>
       <p class="metric-value"${isLive ? ` id="${valueId}" aria-live="polite"` : ""}>${metric.value}</p>
       <p class="metric-description"${isLive ? ` id="${descriptionId}"` : ""}>${metric.description}</p>
       <p class="metric-comparison"${isLive ? ` id="${statusId}" aria-live="polite"` : ""}>${metric.comparison}</p>
@@ -101,6 +134,7 @@ function renderMetricCards(containerId, metrics) {
 }
 
 async function loadStoreFollowerCount() {
+  const requestId = ++followerAnalyticsRequest;
   const value = document.getElementById("store-follower-value");
   const description = document.getElementById("store-follower-description");
   const status = document.getElementById("store-follower-status");
@@ -110,12 +144,14 @@ async function loadStoreFollowerCount() {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
 
     const activeStore = await window.StoreManager.requireActiveStore();
+    if (requestId !== followerAnalyticsRequest) return;
     const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
     if (!storeId) throw new Error("No active store is selected.");
 
     const response = await window.StoreManager.apiFetch(
       `/seller/stores/${encodeURIComponent(storeId)}/followers`
     );
+    if (requestId !== followerAnalyticsRequest) return;
     const followerCount = response?.data?.followerCount;
 
     if (response?.status !== "success" || !Number.isSafeInteger(followerCount) || followerCount < 0) {
@@ -127,6 +163,7 @@ async function loadStoreFollowerCount() {
     status.textContent = "Live count for the active store";
   } catch (error) {
     console.error("Unable to load store follower count:", error);
+    if (requestId !== followerAnalyticsRequest) return;
     value.textContent = "Unavailable";
     description.textContent = "The live follower count could not be loaded.";
     status.textContent = "Try refreshing the page to load this count.";
@@ -137,91 +174,49 @@ function formatNaira(amount) {
   return `₦${Number(amount).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 }
 
-function getCurrentUtcMonth() {
-  const now = new Date();
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function formatMonthLabel(month) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-NG", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC"
-  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
-}
-
-function getLastSixMonths(month) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  return Array.from({ length: 6 }, (_, index) => {
-    const date = new Date(Date.UTC(year, monthNumber - 6 + index, 1));
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-  });
-}
-
-function isValidMonthlyHistory(history, month) {
-  const expectedMonths = getLastSixMonths(month);
-  return Array.isArray(history) &&
-    history.length === expectedMonths.length &&
-    history.every((item, index) =>
-      item?.month === expectedMonths[index] &&
-      Number.isSafeInteger(item.monthlyOrderCount) &&
-      item.monthlyOrderCount >= 0 &&
-      Number.isFinite(item.grossMonthlySales) &&
-      item.grossMonthlySales >= 0 &&
-      Number.isFinite(item.netMonthlySales) &&
-      item.netMonthlySales >= 0
-    );
-}
-
-function setMonthlyMetricState(metric, state, monthLabel, message = "") {
+function setMonthlyMetricState(metric, state, rangeLabel, message = "") {
+  const title = document.getElementById(`monthly-${metric}-metric-title`);
   const value = document.getElementById(`monthly-${metric}-value`);
   const description = document.getElementById(`monthly-${metric}-description`);
   const status = document.getElementById(`monthly-${metric}-status`);
   if (!value || !description || !status) return;
 
   if (state === "loading") {
+    if (title) title.textContent = `${metric === "sales" ? "Sales" : "Orders"} — ${rangeLabel}`;
     value.textContent = "Loading...";
-    description.textContent = `${metric === "sales" ? "Net sales" : "Successfully paid orders"} for ${monthLabel}`;
-    status.textContent = "Loading live monthly analytics...";
+    description.textContent = `${metric === "sales" ? "Net sales" : "Successfully paid orders"} for ${rangeLabel}`;
+    status.textContent = `Loading live analytics for ${rangeLabel.toLowerCase()}...`;
     return;
   }
 
   if (state === "error") {
+    if (title) title.textContent = `${metric === "sales" ? "Sales" : "Orders"} — ${rangeLabel}`;
     value.textContent = "Unavailable";
-    description.textContent = `Live ${metric === "sales" ? "sales" : "order count"} unavailable for ${monthLabel}`;
+    description.textContent = `Live ${metric === "sales" ? "sales" : "order count"} unavailable for ${rangeLabel.toLowerCase()}`;
     status.textContent = message || "Try refreshing the page to load this metric.";
   }
 }
 
-function monthlyComparison(current, previous) {
-  if (current === 0 && previous === 0) return "No change vs previous month";
-  if (previous === 0) return "New activity vs previous month";
-  const change = ((current - previous) / previous) * 100;
-  return `${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs previous month`;
-}
-
-function renderSalesSummary(monthlyHistory) {
+function renderSalesSummary(rangeLabel, netSales, orderCount) {
   const container = document.getElementById("sales-summary");
   if (!container) return;
 
-  const currentMonth = monthlyHistory[monthlyHistory.length - 1];
-  const previousMonth = monthlyHistory[monthlyHistory.length - 2];
   container.innerHTML = `
     <div class="sales-summary-card">
-      <span>Current month net sales</span>
-      <strong>${formatNaira(currentMonth.netMonthlySales)}</strong>
-      <small>${monthlyComparison(currentMonth.netMonthlySales, previousMonth.netMonthlySales)}</small>
+      <span>${rangeLabel} net sales</span>
+      <strong>${formatNaira(netSales)}</strong>
+      <small>Net sales after platform commission</small>
     </div>
     <div class="sales-summary-card">
-      <span>Current month orders</span>
-      <strong>${currentMonth.monthlyOrderCount.toLocaleString("en-NG")}</strong>
-      <small>${monthlyComparison(currentMonth.monthlyOrderCount, previousMonth.monthlyOrderCount)}</small>
+      <span>${rangeLabel} orders</span>
+      <strong>${orderCount.toLocaleString("en-NG")}</strong>
+      <small>Successfully paid orders</small>
     </div>
   `;
 }
 
-function setSalesPerformanceState(state) {
+function setSalesPerformanceState(state, rangeLabel = analyticsRangeLabels[selectedAnalyticsRange]) {
+  const title = document.getElementById("monthly-sales-title");
   const description = document.getElementById("monthly-chart-description");
   const badge = document.getElementById("monthly-chart-badge");
   const summary = document.getElementById("sales-summary");
@@ -232,97 +227,98 @@ function setSalesPerformanceState(state) {
   }
 
   if (state === "loading") {
-    if (description) description.textContent = "Loading live sales and paid-order trends for the latest six months.";
+    if (title) title.textContent = `Sales Performance — ${rangeLabel}`;
+    if (description) description.textContent = `Loading live sales and paid-order trends for ${rangeLabel.toLowerCase()}.`;
     if (badge) badge.textContent = "LOADING";
     if (summary) {
       summary.innerHTML = `
-        <div class="sales-summary-card"><span>Current month net sales</span><strong>Loading...</strong><small>Loading live comparison...</small></div>
-        <div class="sales-summary-card"><span>Current month orders</span><strong>Loading...</strong><small>Loading live comparison...</small></div>
+        <div class="sales-summary-card"><span>${rangeLabel} net sales</span><strong>Loading...</strong><small>Loading live data...</small></div>
+        <div class="sales-summary-card"><span>${rangeLabel} orders</span><strong>Loading...</strong><small>Loading live data...</small></div>
       `;
     }
-    if (chartNote) chartNote.textContent = "Loading live monthly sales and order data.";
+    if (chartNote) chartNote.textContent = `Loading live sales and order data for ${rangeLabel.toLowerCase()}.`;
     return;
   }
 
   if (state === "error") {
-    if (description) description.textContent = "Live monthly sales performance is unavailable.";
+    if (title) title.textContent = `Sales Performance — ${rangeLabel}`;
+    if (description) description.textContent = `Live sales performance for ${rangeLabel.toLowerCase()} is unavailable.`;
     if (badge) badge.textContent = "UNAVAILABLE";
     if (summary) {
       summary.innerHTML = `
-        <div class="sales-summary-card"><span>Current month net sales</span><strong>Unavailable</strong><small>Live comparison unavailable</small></div>
-        <div class="sales-summary-card"><span>Current month orders</span><strong>Unavailable</strong><small>Live comparison unavailable</small></div>
+        <div class="sales-summary-card"><span>${rangeLabel} net sales</span><strong>Unavailable</strong><small>Live data unavailable</small></div>
+        <div class="sales-summary-card"><span>${rangeLabel} orders</span><strong>Unavailable</strong><small>Live data unavailable</small></div>
       `;
     }
-    if (chartNote) chartNote.textContent = "Live chart data could not be loaded. Refresh the page to try again.";
+    if (chartNote) chartNote.textContent = `Live chart data for ${rangeLabel.toLowerCase()} could not be loaded. Refresh the page to try again.`;
     return;
   }
 
-  if (description) description.textContent = "Live net sales and paid-order trends for the latest six calendar months.";
+  if (title) title.textContent = `Sales Performance — ${rangeLabel}`;
+  if (description) description.textContent = `Live net sales and paid-order trends for ${rangeLabel.toLowerCase()}.`;
   if (badge) badge.textContent = "LIVE DATA";
   if (chartNote) chartNote.textContent = "Sales show net product revenue after platform commission. Shipping and refunds are excluded.";
 }
 
 async function loadMonthlyAnalytics() {
   const requestId = ++monthlyAnalyticsRequest;
-  const month = getCurrentUtcMonth();
-  const monthLabel = formatMonthLabel(month);
-  setMonthlyMetricState("sales", "loading", monthLabel);
-  setMonthlyMetricState("orders", "loading", monthLabel);
-  setSalesPerformanceState("loading");
+  const range = selectedAnalyticsRange;
+  const version = rangeAnalyticsVersion;
+  const rangeLabel = analyticsRangeLabels[range];
+  setMonthlyMetricState("sales", "loading", rangeLabel);
+  setMonthlyMetricState("orders", "loading", rangeLabel);
+  setSalesPerformanceState("loading", rangeLabel);
 
   try {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
 
     const activeStore = await window.StoreManager.requireActiveStore();
+    if (!isCurrentRangeRequest(requestId, monthlyAnalyticsRequest, range, version)) return;
     const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
     if (!storeId) throw new Error("No active store is selected.");
 
-    const query = new URLSearchParams({ month, storeId: String(storeId) });
+    const query = new URLSearchParams({ range, storeId: String(storeId) });
     const response = await window.StoreManager.apiFetch(
       `/seller/stores/monthly-analytics?${query}`,
       { headers: { "X-Store-Id": String(storeId) } }
     );
-    if (requestId !== monthlyAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, monthlyAnalyticsRequest, range, version)) return;
 
     const analytics = response?.data;
     const netMonthlySales = analytics?.netMonthlySales;
     const monthlyOrderCount = analytics?.monthlyOrderCount;
     if (response?.status !== "success" ||
         analytics?.storeId !== storeId ||
-        analytics?.month !== month ||
+        analytics?.range !== range ||
         typeof netMonthlySales !== "number" ||
         !Number.isFinite(netMonthlySales) ||
         netMonthlySales < 0 ||
         !Number.isSafeInteger(monthlyOrderCount) ||
         monthlyOrderCount < 0 ||
-        !isValidMonthlyHistory(analytics?.monthlyHistory, month)) {
-      throw new Error(response?.message || "Monthly analytics data was incomplete.");
-    }
-
-    const currentHistory = analytics.monthlyHistory[analytics.monthlyHistory.length - 1];
-    if (currentHistory.netMonthlySales !== netMonthlySales ||
-        currentHistory.monthlyOrderCount !== monthlyOrderCount) {
-      throw new Error("Monthly analytics summary did not match its history.");
+        !isValidRangeHistory(analytics?.periodHistory)) {
+      throw new Error(response?.message || "Range analytics data was incomplete.");
     }
 
     document.getElementById("monthly-sales-value").textContent = formatNaira(netMonthlySales);
-    document.getElementById("monthly-sales-description").textContent = `Net sales for ${monthLabel}`;
+    document.getElementById("monthly-sales-metric-title").textContent = `Sales — ${rangeLabel}`;
+    document.getElementById("monthly-sales-description").textContent = `Net sales for ${rangeLabel.toLowerCase()}`;
     document.getElementById("monthly-sales-status").textContent = "Live data for the active store";
     document.getElementById("monthly-orders-value").textContent = monthlyOrderCount.toLocaleString("en-NG");
-    document.getElementById("monthly-orders-description").textContent = `Successfully paid orders for ${monthLabel}`;
+    document.getElementById("monthly-orders-metric-title").textContent = `Orders — ${rangeLabel}`;
+    document.getElementById("monthly-orders-description").textContent = `Successfully paid orders for ${rangeLabel.toLowerCase()}`;
     document.getElementById("monthly-orders-status").textContent = "Live data for the active store";
-    setSalesPerformanceState("success");
-    renderSalesSummary(analytics.monthlyHistory);
-    renderSalesChart(analytics.monthlyHistory);
+    setSalesPerformanceState("success", rangeLabel);
+    renderSalesSummary(rangeLabel, netMonthlySales, monthlyOrderCount);
+    renderSalesChart(analytics.periodHistory, rangeLabel);
   } catch (error) {
     console.error("Unable to load monthly store analytics:", error);
-    if (requestId !== monthlyAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, monthlyAnalyticsRequest, range, version)) return;
     const message = error.message === "Unauthorized"
       ? "Your seller session has expired. Sign in again to view this metric."
       : "Try refreshing the page to load these metrics.";
-    setMonthlyMetricState("sales", "error", monthLabel, message);
-    setMonthlyMetricState("orders", "error", monthLabel, message);
-    setSalesPerformanceState("error");
+    setMonthlyMetricState("sales", "error", rangeLabel, message);
+    setMonthlyMetricState("orders", "error", rangeLabel, message);
+    setSalesPerformanceState("error", rangeLabel);
   }
 }
 
@@ -331,16 +327,17 @@ function setReviewAnalyticsState(state, data = null) {
   const totalDescription = document.getElementById("review-total-description");
   const totalStatus = document.getElementById("review-total-status");
   const summary = document.getElementById("reviews-summary");
+  const rangeLabel = analyticsRangeLabels[data?.range || selectedAnalyticsRange];
   if (!totalValue || !totalDescription || !totalStatus || !summary) return;
 
   if (state === "loading") {
     totalValue.textContent = "Loading...";
-    totalDescription.textContent = "Reviews for products in your active store";
-    totalStatus.textContent = "Loading live review analytics...";
+    totalDescription.textContent = `Reviews for products in your active store (${rangeLabel.toLowerCase()})`;
+    totalStatus.textContent = `Loading live review analytics for ${rangeLabel.toLowerCase()}...`;
     summary.innerHTML = `
       <div class="activity-summary"><strong>Loading...</strong><span>customer reviews</span></div>
       <p class="metric-description">Average review rating: <strong>Loading...</strong></p>
-      <p class="future-note" id="review-analytics-status">Loading review analytics for the active store.</p>
+      <p class="future-note" id="review-analytics-status">Loading review analytics for ${rangeLabel.toLowerCase()}.</p>
     `;
     return;
   }
@@ -360,8 +357,8 @@ function setReviewAnalyticsState(state, data = null) {
   const { totalReviews, averageRating } = data;
   totalValue.textContent = totalReviews.toLocaleString("en-NG");
   totalDescription.textContent = totalReviews === 0
-    ? "No qualifying reviews for the active store"
-    : "Approved, published reviews for the active store";
+    ? `No qualifying reviews for ${rangeLabel.toLowerCase()}`
+    : `Approved, published reviews for ${rangeLabel.toLowerCase()}`;
   totalStatus.textContent = "Live data for the active store";
 
   const stars = "★".repeat(Math.round(averageRating)) + "☆".repeat(5 - Math.round(averageRating));
@@ -370,31 +367,35 @@ function setReviewAnalyticsState(state, data = null) {
     <p class="metric-description">Average review rating: <strong>${averageRating.toFixed(2)} / 5</strong> <span class="rating-stars" aria-label="${averageRating.toFixed(2)} out of 5 stars">${stars}</span></p>
     <p class="future-note" id="review-analytics-status">${totalReviews === 0
       ? "No qualifying reviews yet for the active store."
-      : "Live review analytics for the active store."}</p>
+      : `Live review analytics for ${rangeLabel.toLowerCase()}.`}</p>
   `;
 }
 
 async function loadStoreReviewAnalytics() {
   const requestId = ++reviewAnalyticsRequest;
+  const range = selectedAnalyticsRange;
+  const version = rangeAnalyticsVersion;
   setReviewAnalyticsState("loading");
 
   try {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
 
     const activeStore = await window.StoreManager.requireActiveStore();
+    if (!isCurrentRangeRequest(requestId, reviewAnalyticsRequest, range, version)) return;
     const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
     if (!storeId) throw new Error("No active store is selected.");
 
-    const query = new URLSearchParams({ storeId: String(storeId) });
+    const query = new URLSearchParams({ storeId: String(storeId), range });
     const response = await window.StoreManager.apiFetch(
       `/seller/stores/review-analytics?${query}`,
       { headers: { "X-Store-Id": String(storeId) } }
     );
-    if (requestId !== reviewAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, reviewAnalyticsRequest, range, version)) return;
 
     const analytics = response?.data;
     if (response?.status !== "success" ||
         analytics?.storeId !== storeId ||
+        analytics?.range !== range ||
         !Number.isSafeInteger(analytics?.totalReviews) ||
         analytics.totalReviews < 0 ||
         typeof analytics.averageRating !== "number" ||
@@ -404,14 +405,16 @@ async function loadStoreReviewAnalytics() {
       throw new Error(response?.message || "Store review analytics data was incomplete.");
     }
 
-    setReviewAnalyticsState("success", analytics);
+    setReviewAnalyticsState("success", { ...analytics, range });
   } catch (error) {
     console.error("Unable to load store review analytics:", error);
-    if (requestId === reviewAnalyticsRequest) setReviewAnalyticsState("error");
+    if (isCurrentRangeRequest(requestId, reviewAnalyticsRequest, range, version)) {
+      setReviewAnalyticsState("error");
+    }
   }
 }
 
-function setRefundAnalyticsState(state, reportCount = null) {
+function setRefundAnalyticsState(state, reportCount = null, rangeLabel = analyticsRangeLabels[selectedAnalyticsRange]) {
   const value = document.getElementById("refund-report-value");
   const description = document.getElementById("refund-report-description");
   const status = document.getElementById("refund-report-status");
@@ -420,18 +423,18 @@ function setRefundAnalyticsState(state, reportCount = null) {
 
   if (state === "loading") {
     value.textContent = "Loading...";
-    description.textContent = "Refund reports received for your active store";
-    status.textContent = "Loading live refund analytics...";
+    description.textContent = `Refund reports for ${rangeLabel.toLowerCase()}`;
+    status.textContent = `Loading live refund analytics for ${rangeLabel.toLowerCase()}...`;
     summary.innerHTML = `
       <div class="activity-summary"><strong>Loading...</strong><span>refund reports received</span></div>
-      <p class="future-note" id="refund-analytics-status">Loading refund analytics for the active store.</p>
+      <p class="future-note" id="refund-analytics-status">Loading refund analytics for ${rangeLabel.toLowerCase()}.</p>
     `;
     return;
   }
 
   if (state === "error") {
     value.textContent = "Unavailable";
-    description.textContent = "The live refund report count is unavailable.";
+    description.textContent = `The live refund report count for ${rangeLabel.toLowerCase()} is unavailable.`;
     status.textContent = "Try refreshing the page to load this metric.";
     summary.innerHTML = `
       <div class="activity-summary"><strong>Unavailable</strong><span>refund reports received</span></div>
@@ -442,51 +445,58 @@ function setRefundAnalyticsState(state, reportCount = null) {
 
   value.textContent = reportCount.toLocaleString("en-NG");
   description.textContent = reportCount === 0
-    ? "No refund reports recorded for the active store"
-    : "Refund reports received for the active store";
-  status.textContent = "Live data for the active store";
+    ? `No refund reports recorded for ${rangeLabel.toLowerCase()}`
+    : `Refund reports for ${rangeLabel.toLowerCase()}`;
+  status.textContent = `Live data for ${rangeLabel.toLowerCase()}`;
   summary.innerHTML = `
     <div class="activity-summary"><strong>${reportCount.toLocaleString("en-NG")}</strong><span>refund reports received</span></div>
     <p class="future-note" id="refund-analytics-status">${reportCount === 0
-      ? "No refund reports have been recorded for the active store."
-      : "Live refund report count for the active store."}</p>
+      ? `No refund reports have been recorded for ${rangeLabel.toLowerCase()}.`
+      : `Live refund report count for ${rangeLabel.toLowerCase()}.`}</p>
   `;
 }
 
 async function loadStoreRefundAnalytics() {
   const requestId = ++refundAnalyticsRequest;
-  setRefundAnalyticsState("loading");
+  const range = selectedAnalyticsRange;
+  const version = rangeAnalyticsVersion;
+  const rangeLabel = analyticsRangeLabels[range];
+  setRefundAnalyticsState("loading", null, rangeLabel);
 
   try {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
 
     const activeStore = await window.StoreManager.requireActiveStore();
-    if (requestId !== refundAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, refundAnalyticsRequest, range, version)) return;
     const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
     if (!storeId) throw new Error("No active store is selected.");
 
+    const query = new URLSearchParams({ range });
     const response = await window.StoreManager.apiFetch(
-      "/seller/stores/refund-analytics",
+      `/seller/stores/refund-analytics?${query}`,
       { headers: { "X-Store-Id": String(storeId) } }
     );
-    if (requestId !== refundAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, refundAnalyticsRequest, range, version)) return;
 
     const analytics = response?.data;
     if (response?.status !== "success" ||
         analytics?.storeId !== storeId ||
+        analytics?.range !== range ||
         !Number.isSafeInteger(analytics?.refundReportsReceived) ||
         analytics.refundReportsReceived < 0) {
       throw new Error(response?.message || "Store refund analytics data was incomplete.");
     }
 
-    setRefundAnalyticsState("success", analytics.refundReportsReceived);
+    setRefundAnalyticsState("success", analytics.refundReportsReceived, rangeLabel);
   } catch (error) {
     console.error("Unable to load store refund analytics:", error);
-    if (requestId === refundAnalyticsRequest) setRefundAnalyticsState("error");
+    if (isCurrentRangeRequest(requestId, refundAnalyticsRequest, range, version)) {
+      setRefundAnalyticsState("error", null, rangeLabel);
+    }
   }
 }
 
-function setProductViewAnalyticsState(state, totalViews = null) {
+function setProductViewAnalyticsState(state, totalViews = null, rangeLabel = analyticsRangeLabels[selectedAnalyticsRange]) {
   const value = document.getElementById("product-view-value");
   const description = document.getElementById("product-view-description");
   const status = document.getElementById("product-view-status");
@@ -495,10 +505,10 @@ function setProductViewAnalyticsState(state, totalViews = null) {
 
   if (state === "loading") {
     if (value) value.textContent = "Loading...";
-    if (description) description.textContent = "Views across active products in your store";
-    if (status) status.textContent = "Loading live product view analytics...";
+    if (description) description.textContent = `Product views for ${rangeLabel.toLowerCase()}`;
+    if (status) status.textContent = `Loading live product view analytics for ${rangeLabel.toLowerCase()}...`;
     if (visibilityValue) visibilityValue.textContent = "Loading...";
-    if (visibilityDescription) visibilityDescription.textContent = "Loading live product view analytics...";
+    if (visibilityDescription) visibilityDescription.textContent = `Loading product views for ${rangeLabel.toLowerCase()}...`;
     return;
   }
 
@@ -507,14 +517,14 @@ function setProductViewAnalyticsState(state, totalViews = null) {
     if (description) description.textContent = "The live product view count is unavailable.";
     if (status) status.textContent = "Try refreshing the page to load this metric.";
     if (visibilityValue) visibilityValue.textContent = "Unavailable";
-    if (visibilityDescription) visibilityDescription.textContent = "The live product view count is unavailable.";
+    if (visibilityDescription) visibilityDescription.textContent = `Product view analytics for ${rangeLabel.toLowerCase()} is unavailable.`;
     return;
   }
 
   const formattedCount = totalViews.toLocaleString("en-NG");
   const liveDescription = totalViews === 0
-    ? "No views recorded for active products in this store"
-    : "Views across active products in your store";
+    ? `No product views recorded for ${rangeLabel.toLowerCase()}`
+    : `Product views for ${rangeLabel.toLowerCase()}`;
   if (value) value.textContent = formattedCount;
   if (description) description.textContent = liveDescription;
   if (status) status.textContent = "Live data for the active store";
@@ -524,25 +534,29 @@ function setProductViewAnalyticsState(state, totalViews = null) {
 
 async function loadStoreProductViewAnalytics() {
   const requestId = ++productViewAnalyticsRequest;
-  setProductViewAnalyticsState("loading");
+  const range = selectedAnalyticsRange;
+  const version = rangeAnalyticsVersion;
+  const rangeLabel = analyticsRangeLabels[range];
+  setProductViewAnalyticsState("loading", null, rangeLabel);
 
   try {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
 
     const activeStore = await window.StoreManager.requireActiveStore();
-    if (requestId !== productViewAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, productViewAnalyticsRequest, range, version)) return;
     const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
     if (!storeId) throw new Error("No active store is selected.");
 
     const response = await window.StoreManager.apiFetch(
-      "/seller/stores/product-view-analytics",
+      `/seller/stores/product-view-analytics?${new URLSearchParams({ range })}`,
       { headers: { "X-Store-Id": String(storeId) } }
     );
-    if (requestId !== productViewAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, productViewAnalyticsRequest, range, version)) return;
 
     const analytics = response?.data;
     if (response?.status !== "success" ||
         analytics?.storeId !== storeId ||
+        analytics?.range !== range ||
         !Number.isSafeInteger(analytics?.totalProductViews) ||
         analytics.totalProductViews < 0 ||
         !Array.isArray(analytics.products) ||
@@ -555,14 +569,16 @@ async function loadStoreProductViewAnalytics() {
       throw new Error(response?.message || "Store product view analytics data was incomplete.");
     }
 
-    setProductViewAnalyticsState("success", analytics.totalProductViews);
+    setProductViewAnalyticsState("success", analytics.totalProductViews, rangeLabel);
   } catch (error) {
     console.error("Unable to load store product view analytics:", error);
-    if (requestId === productViewAnalyticsRequest) setProductViewAnalyticsState("error");
+    if (isCurrentRangeRequest(requestId, productViewAnalyticsRequest, range, version)) {
+      setProductViewAnalyticsState("error", null, rangeLabel);
+    }
   }
 }
 
-function renderSalesChart(monthlyHistory) {
+function renderSalesChart(periodHistory, rangeLabel) {
   const canvas = document.getElementById("sales-performance-chart");
   if (!canvas) return;
   if (typeof Chart === "undefined") {
@@ -577,14 +593,18 @@ function renderSalesChart(monthlyHistory) {
     salesPerformanceChart.destroy();
   }
 
-  const months = monthlyHistory.map((item) => item.month);
-  const revenue = monthlyHistory.map((item) => item.netMonthlySales);
-  const orders = monthlyHistory.map((item) => item.monthlyOrderCount);
-  canvas.setAttribute("aria-label", "Live chart of net sales and paid order counts for the latest six months");
+  const days = periodHistory.map((item) => new Intl.DateTimeFormat("en-NG", {
+    month: "short",
+    day: "numeric",
+    timeZone: "Africa/Lagos"
+  }).format(new Date(`${item.day}T12:00:00Z`)));
+  const revenue = periodHistory.map((item) => item.netMonthlySales);
+  const orders = periodHistory.map((item) => item.monthlyOrderCount);
+  canvas.setAttribute("aria-label", `Live chart of net sales and paid orders for ${rangeLabel.toLowerCase()}`);
   salesPerformanceChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels: months,
+      labels: days,
       datasets: [
         {
           type: "bar",
@@ -671,7 +691,7 @@ function renderVisibilityCards() {
   }).join("");
 }
 
-function setFeaturedStoreImpressionAnalyticsState(state, impressionCount = null) {
+function setFeaturedStoreImpressionAnalyticsState(state, impressionCount = null, rangeLabel = analyticsRangeLabels[selectedAnalyticsRange]) {
   const value = document.getElementById("featured-store-impression-value");
   const description = document.getElementById("featured-store-impression-description");
   const status = document.getElementById("featured-store-impression-status");
@@ -680,70 +700,75 @@ function setFeaturedStoreImpressionAnalyticsState(state, impressionCount = null)
 
   if (state === "loading") {
     if (value) value.textContent = "Loading...";
-    if (description) description.textContent = "Homepage impressions for your active store";
-    if (status) status.textContent = "Loading featured store impressions...";
+    if (description) description.textContent = `Homepage impressions for ${rangeLabel.toLowerCase()}`;
+    if (status) status.textContent = `Loading featured store impressions for ${rangeLabel.toLowerCase()}...`;
     if (visibilityValue) visibilityValue.textContent = "Loading...";
-    if (visibilityDescription) visibilityDescription.textContent = "Loading featured store impressions...";
+    if (visibilityDescription) visibilityDescription.textContent = `Loading Featured Store impressions for ${rangeLabel.toLowerCase()}...`;
     return;
   }
 
   if (state === "error") {
     if (value) value.textContent = "Unavailable";
-    if (description) description.textContent = "The live Featured Stores impression count is unavailable.";
+    if (description) description.textContent = `The Featured Stores impression count for ${rangeLabel.toLowerCase()} is unavailable.`;
     if (status) status.textContent = "Try refreshing the page to load this metric.";
     if (visibilityValue) visibilityValue.textContent = "Unavailable";
-    if (visibilityDescription) visibilityDescription.textContent = "Featured Store impression analytics could not be loaded.";
+    if (visibilityDescription) visibilityDescription.textContent = `Featured Store impressions for ${rangeLabel.toLowerCase()} could not be loaded.`;
     return;
   }
 
   const formattedCount = impressionCount.toLocaleString("en-NG");
   if (value) value.textContent = formattedCount;
   if (description) description.textContent = impressionCount === 0
-    ? "No homepage impressions recorded for the active store"
-    : "Homepage impressions for your active store";
-  if (status) status.textContent = "Live data for the active store";
+    ? `No homepage impressions recorded for ${rangeLabel.toLowerCase()}`
+    : `Homepage impressions for ${rangeLabel.toLowerCase()}`;
+  if (status) status.textContent = `Live data for ${rangeLabel.toLowerCase()}`;
   if (visibilityValue) visibilityValue.textContent = formattedCount;
   if (visibilityDescription) visibilityDescription.textContent = impressionCount === 0
-    ? "No Featured Store impressions recorded yet."
-    : "Homepage impressions only; not store visits.";
+    ? `No Featured Store impressions recorded for ${rangeLabel.toLowerCase()}.`
+    : `Homepage impressions for ${rangeLabel.toLowerCase()}; not store visits.`;
 }
 
 async function loadFeaturedStoreImpressionAnalytics() {
   const requestId = ++featuredStoreImpressionAnalyticsRequest;
-  setFeaturedStoreImpressionAnalyticsState("loading");
+  const range = selectedAnalyticsRange;
+  const version = rangeAnalyticsVersion;
+  const rangeLabel = analyticsRangeLabels[range];
+  setFeaturedStoreImpressionAnalyticsState("loading", null, rangeLabel);
 
   try {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
 
     const activeStore = await window.StoreManager.requireActiveStore();
-    if (requestId !== featuredStoreImpressionAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, featuredStoreImpressionAnalyticsRequest, range, version)) return;
     const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
     if (!storeId) throw new Error("No active store is selected.");
 
+    const query = new URLSearchParams({ range });
     const response = await window.StoreManager.apiFetch(
-      "/seller/stores/featured-store-impression-analytics",
+      `/seller/stores/featured-store-impression-analytics?${query}`,
       { headers: { "X-Store-Id": String(storeId) } }
     );
-    if (requestId !== featuredStoreImpressionAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, featuredStoreImpressionAnalyticsRequest, range, version)) return;
 
     const analytics = response?.data;
     if (response?.status !== "success" ||
         analytics?.storeId !== storeId ||
+        analytics?.range !== range ||
         !Number.isSafeInteger(analytics?.impressionCount) ||
         analytics.impressionCount < 0) {
       throw new Error(response?.message || "Featured Store impression analytics data was incomplete.");
     }
 
-    setFeaturedStoreImpressionAnalyticsState("success", analytics.impressionCount);
+    setFeaturedStoreImpressionAnalyticsState("success", analytics.impressionCount, rangeLabel);
   } catch (error) {
     console.error("Unable to load Featured Store impression analytics:", error);
-    if (requestId === featuredStoreImpressionAnalyticsRequest) {
-      setFeaturedStoreImpressionAnalyticsState("error");
+    if (isCurrentRangeRequest(requestId, featuredStoreImpressionAnalyticsRequest, range, version)) {
+      setFeaturedStoreImpressionAnalyticsState("error", null, rangeLabel);
     }
   }
 }
 
-function setStoreViewAnalyticsState(state, totalViews = null) {
+function setStoreViewAnalyticsState(state, totalViews = null, rangeLabel = analyticsRangeLabels[selectedAnalyticsRange]) {
   const value = document.getElementById("store-view-value");
   const description = document.getElementById("store-view-description");
   const status = document.getElementById("store-view-status");
@@ -752,10 +777,10 @@ function setStoreViewAnalyticsState(state, totalViews = null) {
 
   if (state === "loading") {
     if (value) value.textContent = "Loading...";
-    if (description) description.textContent = "Visits to your active store page";
-    if (status) status.textContent = "Loading live store view analytics...";
+    if (description) description.textContent = `Store visits for ${rangeLabel.toLowerCase()}`;
+    if (status) status.textContent = `Loading live store view analytics for ${rangeLabel.toLowerCase()}...`;
     if (visibilityValue) visibilityValue.textContent = "Loading...";
-    if (visibilityDescription) visibilityDescription.textContent = "Loading live store view analytics...";
+    if (visibilityDescription) visibilityDescription.textContent = `Loading store visits for ${rangeLabel.toLowerCase()}...`;
     return;
   }
 
@@ -764,52 +789,59 @@ function setStoreViewAnalyticsState(state, totalViews = null) {
     if (description) description.textContent = "The live store view count is unavailable.";
     if (status) status.textContent = "Try refreshing the page to load this metric.";
     if (visibilityValue) visibilityValue.textContent = "Unavailable";
-    if (visibilityDescription) visibilityDescription.textContent = "Live store view analytics could not be loaded.";
+    if (visibilityDescription) visibilityDescription.textContent = `Store view analytics for ${rangeLabel.toLowerCase()} could not be loaded.`;
     return;
   }
 
   const formattedViews = totalViews.toLocaleString("en-NG");
   if (value) value.textContent = formattedViews;
   if (description) description.textContent = totalViews === 0
-    ? "No visits recorded for the active store"
-    : "Visits to your active store page";
+    ? `No store visits recorded for ${rangeLabel.toLowerCase()}`
+    : `Store visits for ${rangeLabel.toLowerCase()}`;
   if (status) status.textContent = "Live data for the active store";
   if (visibilityValue) visibilityValue.textContent = formattedViews;
   if (visibilityDescription) visibilityDescription.textContent = totalViews === 0
-    ? "No visits recorded for the active store."
-    : "Visits to the active store page.";
+    ? `No store visits recorded for ${rangeLabel.toLowerCase()}.`
+    : `Store visits for ${rangeLabel.toLowerCase()}.`;
 }
 
 async function loadStoreViewAnalytics() {
   const requestId = ++storeViewAnalyticsRequest;
-  setStoreViewAnalyticsState("loading");
+  const range = selectedAnalyticsRange;
+  const version = rangeAnalyticsVersion;
+  const rangeLabel = analyticsRangeLabels[range];
+  setStoreViewAnalyticsState("loading", null, rangeLabel);
 
   try {
     if (!window.StoreManager) throw new Error("Store services are unavailable.");
 
     const activeStore = await window.StoreManager.requireActiveStore();
-    if (requestId !== storeViewAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, storeViewAnalyticsRequest, range, version)) return;
     const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
     if (!storeId) throw new Error("No active store is selected.");
 
+    const query = new URLSearchParams({ range });
     const response = await window.StoreManager.apiFetch(
-      "/seller/stores/store-view-analytics",
+      `/seller/stores/store-view-analytics?${query}`,
       { headers: { "X-Store-Id": String(storeId) } }
     );
-    if (requestId !== storeViewAnalyticsRequest) return;
+    if (!isCurrentRangeRequest(requestId, storeViewAnalyticsRequest, range, version)) return;
 
     const analytics = response?.data;
     if (response?.status !== "success" ||
         analytics?.storeId !== storeId ||
+        analytics?.range !== range ||
         !Number.isSafeInteger(analytics?.storeViews) ||
         analytics.storeViews < 0) {
       throw new Error(response?.message || "Store view analytics data was incomplete.");
     }
 
-    setStoreViewAnalyticsState("success", analytics.storeViews);
+    setStoreViewAnalyticsState("success", analytics.storeViews, rangeLabel);
   } catch (error) {
     console.error("Unable to load store view analytics:", error);
-    if (requestId === storeViewAnalyticsRequest) setStoreViewAnalyticsState("error");
+    if (isCurrentRangeRequest(requestId, storeViewAnalyticsRequest, range, version)) {
+      setStoreViewAnalyticsState("error", null, rangeLabel);
+    }
   }
 }
 
@@ -957,12 +989,24 @@ function renderActivitySummaries() {
   }
 }
 
-function updateDateRangeLabel() {
+function reloadRangeAnalytics() {
+  rangeAnalyticsVersion += 1;
+  return Promise.all([
+    loadMonthlyAnalytics(),
+    loadStoreReviewAnalytics(),
+    loadStoreRefundAnalytics(),
+    loadStoreProductViewAnalytics(),
+    loadStoreViewAnalytics(),
+    loadFeaturedStoreImpressionAnalytics()
+  ]);
+}
+
+function handleAnalyticsRangeChange() {
   const filter = document.getElementById("date-filter");
-  const status = document.getElementById("range-status");
-  if (!filter || !status) return;
-  const selectedLabel = filter.options[filter.selectedIndex].text;
-  status.textContent = `Demo UI range: ${selectedLabel}. Live Monthly Sales and Monthly Orders are for ${formatMonthLabel(getCurrentUtcMonth())}; the range selector does not change their request.`;
+  if (!filter || !Object.prototype.hasOwnProperty.call(analyticsRangeLabels, filter.value)) return Promise.resolve();
+  if (filter.value === selectedAnalyticsRange) return Promise.resolve();
+  selectedAnalyticsRange = filter.value;
+  return reloadRangeAnalytics();
 }
 
 function toggleProfileDropdown() {
@@ -1014,12 +1058,8 @@ document.addEventListener("DOMContentLoaded", () => {
     renderProfileImage();
     loadProfileImage();
     loadSellerSetupProgress();
-    loadMonthlyAnalytics();
-    loadStoreReviewAnalytics();
-    loadStoreRefundAnalytics();
-    loadStoreProductViewAnalytics();
-    loadStoreViewAnalytics();
-    loadFeaturedStoreImpressionAnalytics();
+    loadStoreFollowerCount();
+    reloadRangeAnalytics();
   });
   window.addEventListener("focus", loadSellerSetupProgress);
   document.addEventListener("visibilitychange", () => {
@@ -1066,18 +1106,15 @@ document.addEventListener("DOMContentLoaded", () => {
   renderMetricCards("audience-metrics", storeAnalyticsDemoData.metrics.audience);
   renderMetricCards("sales-reputation-metrics", storeAnalyticsDemoData.metrics.salesReputation);
   renderMetricCards("exposure-metrics", storeAnalyticsDemoData.metrics.exposure);
+  const dateFilter = document.getElementById("date-filter");
+  if (dateFilter && Object.prototype.hasOwnProperty.call(analyticsRangeLabels, dateFilter.value)) {
+    selectedAnalyticsRange = dateFilter.value;
+  }
   loadStoreFollowerCount();
-  loadMonthlyAnalytics();
-  loadStoreReviewAnalytics();
-  loadStoreRefundAnalytics();
-  loadStoreProductViewAnalytics();
-  loadStoreViewAnalytics();
-  loadFeaturedStoreImpressionAnalytics();
+  reloadRangeAnalytics();
   renderVisibilityCards();
   renderActivitySummaries();
 
-  const dateFilter = document.getElementById("date-filter");
-  dateFilter?.addEventListener("change", updateDateRangeLabel);
-  updateDateRangeLabel(dateFilter?.value || "30days");
+  dateFilter?.addEventListener("change", handleAnalyticsRangeChange);
 
 });

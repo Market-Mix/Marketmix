@@ -104,9 +104,6 @@
         </label>
       </section>
 
-      <p class="demo-notice"><i class="fas fa-circle-info" aria-hidden="true"></i> Demo data is illustrative except live Store Followers, Monthly Sales, and Monthly Orders.</p>
-      <p class="range-status" id="range-status" aria-live="polite">Live monthly metrics use the current UTC month; the date range applies only to demo UI.</p>
-
       <section class="metric-group" aria-labelledby="audience-title">
         <div class="section-heading">
           <div>
@@ -141,14 +138,14 @@
         <div class="section-heading section-heading--row">
           <div>
             <p class="analytics-eyebrow">SALES OVER TIME</p>
-            <h2 id="monthly-sales-title">Monthly Sales Performance</h2>
-            <p class="section-description" id="monthly-chart-description">Loading live sales and paid-order trends for the latest six months.</p>
+            <h2 id="monthly-sales-title">Sales Performance</h2>
+            <p class="section-description" id="monthly-chart-description">Loading live sales and paid-order trends for the selected range.</p>
           </div>
           <span class="demo-tag" id="monthly-chart-badge">LOADING</span>
         </div>
         <div class="sales-summary" id="sales-summary"></div>
         <div class="analytics-chart-wrap">
-          <canvas id="sales-performance-chart" role="img" aria-label="Live chart of net sales and paid order counts for the latest six months"></canvas>
+          <canvas id="sales-performance-chart" role="img" aria-label="Live chart of net sales and paid orders for the selected range"></canvas>
         </div>
         <p class="chart-note">Monthly sales show net product revenue after platform commission. Shipping and refunds are excluded.</p>
       </section>
