@@ -163,14 +163,36 @@ function followKey() {
 }
 
 function trackStoreVisit(storeId) {
-  if (storeViewTrackingStarted || !storeId) return;
+  if (storeViewTrackingStarted || !storeId) return Promise.resolve();
   storeViewTrackingStarted = true;
+  let requestId;
+  try {
+    requestId = crypto.randomUUID();
+  } catch (error) {
+    console.warn('Unable to generate store view request ID:', error);
+    return Promise.resolve();
+  }
 
-  fetch(`${API}/seller/stores/public/${encodeURIComponent(storeId)}/view`, { method: 'POST' })
-    .then((response) => {
-      if (!response.ok) console.warn('Store visit was not recorded.');
-    })
-    .catch((error) => console.warn('Unable to record store visit:', error));
+  const sendRequest = async (attempt = 0) => {
+    try {
+      const response = await fetch(
+        `${API}/seller/stores/public/${encodeURIComponent(storeId)}/view`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_id: requestId })
+        }
+      );
+      if (response.ok) return;
+      if (response.status >= 500 && attempt === 0) return sendRequest(attempt + 1);
+      console.warn('Store visit was not recorded.');
+    } catch (error) {
+      if (attempt === 0) return sendRequest(attempt + 1);
+      console.warn('Unable to record store visit:', error);
+    }
+  };
+
+  return sendRequest();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────

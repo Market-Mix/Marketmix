@@ -12,6 +12,7 @@ test('repeated store profile initialization tracks one page visit only', async (
   const sandbox = {
     URLSearchParams,
     encodeURIComponent,
+    crypto: { randomUUID: () => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
     document,
     window: { location: { search: `?store=${storeId}`, pathname: '/buyers/store-id.html' } },
     localStorage: { getItem: () => '', removeItem() {} },
@@ -42,5 +43,39 @@ test('repeated store profile initialization tracks one page visit only', async (
 
   assert.equal(trackingRequests.length, 1);
   assert.equal(trackingRequests[0].options.method, 'POST');
+  assert.equal(trackingRequests[0].options.headers['Content-Type'], 'application/json');
+  assert.deepEqual(JSON.parse(trackingRequests[0].options.body), {
+    request_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  });
   assert.match(trackingRequests[0].url, new RegExp(`/public/${storeId}/view$`));
+});
+
+test('store tracking reuses the same request ID for a retry', async () => {
+  const requests = [];
+  let uuidCalls = 0;
+  const sandbox = {
+    URLSearchParams,
+    encodeURIComponent,
+    crypto: { randomUUID: () => { uuidCalls += 1; return 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'; } },
+    document: { addEventListener() {} },
+    window: { location: { search: `?store=${storeId}`, pathname: '/buyers/store-id.html' } },
+    localStorage: { getItem: () => '', removeItem() {} },
+    fetch: async (url, options) => {
+      requests.push(options);
+      if (requests.length === 1) throw new Error('temporary network failure');
+      return { ok: true };
+    },
+    console: { error() {}, warn() {} }
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox, { filename: 'buyers/store-id.js' });
+
+  await sandbox.trackStoreVisit(storeId);
+
+  assert.equal(uuidCalls, 1);
+  assert.equal(requests.length, 2);
+  assert.deepEqual(
+    requests.map((options) => JSON.parse(options.body).request_id),
+    ['bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb']
+  );
 });

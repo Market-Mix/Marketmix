@@ -6,6 +6,7 @@
 // ============================================================
 
 const API_BASE = 'https://marketmix-backend.onrender.com/api';
+let productViewTrackingPromise = null;
 
 // ── URL helpers ───────────────────────────────────────────────
 function getUrlParams() {
@@ -163,8 +164,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Parse product (critical path)
   let product = null;
+  let isRealProduct = false;
   if (productResult.status === 'fulfilled') {
-    try { const j = await productResult.value.json(); product = j.data; } catch (_) {}
+    try {
+      const j = productResult.value.ok ? await productResult.value.json() : null;
+      if (j?.status === 'success' &&
+          j.data &&
+          String(j.data.id).toLowerCase() === String(productId).toLowerCase()) {
+        product = j.data;
+        isRealProduct = true;
+      }
+    } catch (_) {}
   }
   if (!product) product = getMockProduct(productId);
 
@@ -190,8 +200,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners(product);
   updateCartCount();
 
-  // Fire-and-forget: track view
-  trackProductView(productId, productStoreId);
+  // Fire-and-forget: track only a product loaded from the backend.
+  if (isRealProduct) {
+    const trackingStoreId = product.store_id || product.storeId || product.store?.id || '';
+    trackProductView(productId, trackingStoreId);
+  }
 
   // Enrich with reviews (already in-flight)
   enrichWithReviews(product, reviewsResult);
@@ -975,10 +988,34 @@ async function handleWishlist(product) {
 
 // ── Track view (fire-and-forget) ──────────────────────────────
 function trackProductView(productId, storeId = getStoreIdFromParams()) {
-  fetch(`${API_BASE}/products/${productId}/view`, {
-    method:  'POST',
-    headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
-  }).catch(() => {});
+  if (productViewTrackingPromise || !productId) return productViewTrackingPromise;
+
+  let requestId;
+  try {
+    requestId = crypto.randomUUID();
+  } catch (error) {
+    console.warn('Unable to generate product view request ID:', error);
+    productViewTrackingPromise = Promise.resolve();
+    return productViewTrackingPromise;
+  }
+  const sendRequest = async (attempt = 0) => {
+    try {
+      const response = await fetch(`${API_BASE}/products/${encodeURIComponent(productId)}/view`, {
+        method: 'POST',
+        headers: scopedHeaders({ 'Content-Type': 'application/json' }, storeId),
+        body: JSON.stringify({ request_id: requestId }),
+      });
+      if (response.ok) return;
+      if (response.status >= 500 && attempt === 0) return sendRequest(attempt + 1);
+      console.warn('Product view was not recorded.');
+    } catch (error) {
+      if (attempt === 0) return sendRequest(attempt + 1);
+      console.warn('Unable to record product view:', error);
+    }
+  };
+
+  productViewTrackingPromise = sendRequest();
+  return productViewTrackingPromise;
 }
 
 // ── Cart count ────────────────────────────────────────────────
