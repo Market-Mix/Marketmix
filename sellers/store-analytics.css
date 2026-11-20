@@ -486,8 +486,33 @@
   .metric-grid,
   .metric-grid--two,
   .sales-summary,
-  .visibility-grid,
-  .setup-steps,
+  .visibility-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setup-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .setup-step {
+    padding: 9px;
+  }
+
+  .setup-step-marker {
+    width: 23px;
+    height: 23px;
+    font-size: 0.7rem;
+  }
+
+  .setup-step h3 {
+    font-size: 0.74rem;
+  }
+
+  .setup-step p {
+    font-size: 0.68rem;
+  }
+
   .activity-grid {
     grid-template-columns: minmax(0, 1fr);
   }
