@@ -12,12 +12,12 @@ const storeAnalyticsDemoData = {
       { key: "refund-reports", title: "Refund Reports Received", value: "Loading...", icon: "fa-rotate-left", description: "Refund reports received for your active store", comparison: "Loading live refund analytics..." }
     ],
     exposure: [
-      { title: "Featured Stores Appearances", value: "3,420", icon: "fa-star", description: "Featured Stores impressions", comparison: "Demo comparison: +7.8%" },
+      { key: "featured-store-impressions", title: "Featured Stores Appearances", value: "Loading...", icon: "fa-star", description: "Homepage impressions for your active store", comparison: "Loading featured store impressions..." },
       { title: "Product Hero Slider Appearances", value: "5,160", icon: "fa-images", description: "Product hero slider impressions", comparison: "Demo comparison: +10.2%" }
     ]
   },
   visibility: [
-    { title: "Featured Stores appearances", value: "3,420", icon: "fa-star", description: "Homepage impressions only; not store visits." },
+    { key: "featured-store-impressions", title: "Featured Stores appearances", value: "Loading...", icon: "fa-star", description: "Homepage impressions only; not store visits." },
     { title: "Product hero slider appearances", value: "5,160", icon: "fa-images", description: "Homepage impressions only; not product views." },
     { key: "store-views", title: "Total store views", value: "Loading...", icon: "fa-store", description: "Loading live store view analytics..." },
     { title: "Total product views", value: "12,730", icon: "fa-eye", description: "Views of products in this store." }
@@ -31,6 +31,7 @@ let reviewAnalyticsRequest = 0;
 let refundAnalyticsRequest = 0;
 let productViewAnalyticsRequest = 0;
 let storeViewAnalyticsRequest = 0;
+let featuredStoreImpressionAnalyticsRequest = 0;
 
 function renderMetricCards(containerId, metrics) {
   const container = document.getElementById(containerId);
@@ -43,7 +44,8 @@ function renderMetricCards(containerId, metrics) {
     const isRefundMetric = metric.key === "refund-reports";
     const isProductViewMetric = metric.key === "product-views";
     const isStoreViewMetric = metric.key === "store-views";
-    const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric || isRefundMetric || isProductViewMetric || isStoreViewMetric;
+    const isFeaturedStoreImpressionMetric = metric.key === "featured-store-impressions";
+    const isLive = isFollowerMetric || isMonthlyMetric || isReviewMetric || isRefundMetric || isProductViewMetric || isStoreViewMetric || isFeaturedStoreImpressionMetric;
     const valueId = isFollowerMetric
       ? "store-follower-value"
       : (isReviewMetric
@@ -52,7 +54,11 @@ function renderMetricCards(containerId, metrics) {
           ? "refund-report-value"
           : (isProductViewMetric
             ? "product-view-value"
-            : (isStoreViewMetric ? "store-view-value" : `monthly-${metric.key?.replace("monthly-", "")}-value`))));
+            : (isStoreViewMetric
+              ? "store-view-value"
+              : (isFeaturedStoreImpressionMetric
+                ? "featured-store-impression-value"
+                : `monthly-${metric.key?.replace("monthly-", "")}-value`)))));
     const descriptionId = isFollowerMetric
       ? "store-follower-description"
       : (isReviewMetric
@@ -61,7 +67,11 @@ function renderMetricCards(containerId, metrics) {
           ? "refund-report-description"
           : (isProductViewMetric
             ? "product-view-description"
-            : (isStoreViewMetric ? "store-view-description" : `monthly-${metric.key?.replace("monthly-", "")}-description`))));
+            : (isStoreViewMetric
+              ? "store-view-description"
+              : (isFeaturedStoreImpressionMetric
+                ? "featured-store-impression-description"
+                : `monthly-${metric.key?.replace("monthly-", "")}-description`)))));
     const statusId = isFollowerMetric
       ? "store-follower-status"
       : (isReviewMetric
@@ -70,7 +80,11 @@ function renderMetricCards(containerId, metrics) {
           ? "refund-report-status"
           : (isProductViewMetric
             ? "product-view-status"
-            : (isStoreViewMetric ? "store-view-status" : `monthly-${metric.key?.replace("monthly-", "")}-status`))));
+            : (isStoreViewMetric
+              ? "store-view-status"
+              : (isFeaturedStoreImpressionMetric
+                ? "featured-store-impression-status"
+                : `monthly-${metric.key?.replace("monthly-", "")}-status`)))));
     return `
     <article class="metric-card">
       <div class="metric-card-top">
@@ -625,15 +639,94 @@ function renderVisibilityCards() {
 
   container.innerHTML = storeAnalyticsDemoData.visibility.map((metric) => {
     const isStoreViewMetric = metric.key === "store-views";
+    const isFeaturedStoreImpressionMetric = metric.key === "featured-store-impressions";
+    const valueId = isStoreViewMetric
+      ? "store-view-visibility-value"
+      : (isFeaturedStoreImpressionMetric ? "featured-store-impression-visibility-value" : "");
+    const descriptionId = isStoreViewMetric
+      ? "store-view-visibility-description"
+      : (isFeaturedStoreImpressionMetric ? "featured-store-impression-visibility-description" : "");
     return `
       <article class="visibility-card">
         <i class="fas ${metric.icon}" aria-hidden="true"></i>
         <h3>${metric.title}</h3>
-        <strong${isStoreViewMetric ? ' id="store-view-visibility-value"' : ""}>${metric.value}</strong>
-        <p${isStoreViewMetric ? ' id="store-view-visibility-description"' : ""}>${metric.description}</p>
+        <strong${valueId ? ` id="${valueId}"` : ""}>${metric.value}</strong>
+        <p${descriptionId ? ` id="${descriptionId}"` : ""}>${metric.description}</p>
       </article>
     `;
   }).join("");
+}
+
+function setFeaturedStoreImpressionAnalyticsState(state, impressionCount = null) {
+  const value = document.getElementById("featured-store-impression-value");
+  const description = document.getElementById("featured-store-impression-description");
+  const status = document.getElementById("featured-store-impression-status");
+  const visibilityValue = document.getElementById("featured-store-impression-visibility-value");
+  const visibilityDescription = document.getElementById("featured-store-impression-visibility-description");
+
+  if (state === "loading") {
+    if (value) value.textContent = "Loading...";
+    if (description) description.textContent = "Homepage impressions for your active store";
+    if (status) status.textContent = "Loading featured store impressions...";
+    if (visibilityValue) visibilityValue.textContent = "Loading...";
+    if (visibilityDescription) visibilityDescription.textContent = "Loading featured store impressions...";
+    return;
+  }
+
+  if (state === "error") {
+    if (value) value.textContent = "Unavailable";
+    if (description) description.textContent = "The live Featured Stores impression count is unavailable.";
+    if (status) status.textContent = "Try refreshing the page to load this metric.";
+    if (visibilityValue) visibilityValue.textContent = "Unavailable";
+    if (visibilityDescription) visibilityDescription.textContent = "Featured Store impression analytics could not be loaded.";
+    return;
+  }
+
+  const formattedCount = impressionCount.toLocaleString("en-NG");
+  if (value) value.textContent = formattedCount;
+  if (description) description.textContent = impressionCount === 0
+    ? "No homepage impressions recorded for the active store"
+    : "Homepage impressions for your active store";
+  if (status) status.textContent = "Live data for the active store";
+  if (visibilityValue) visibilityValue.textContent = formattedCount;
+  if (visibilityDescription) visibilityDescription.textContent = impressionCount === 0
+    ? "No Featured Store impressions recorded yet."
+    : "Homepage impressions only; not store visits.";
+}
+
+async function loadFeaturedStoreImpressionAnalytics() {
+  const requestId = ++featuredStoreImpressionAnalyticsRequest;
+  setFeaturedStoreImpressionAnalyticsState("loading");
+
+  try {
+    if (!window.StoreManager) throw new Error("Store services are unavailable.");
+
+    const activeStore = await window.StoreManager.requireActiveStore();
+    if (requestId !== featuredStoreImpressionAnalyticsRequest) return;
+    const storeId = activeStore?.id || window.StoreManager.getActiveStoreId();
+    if (!storeId) throw new Error("No active store is selected.");
+
+    const response = await window.StoreManager.apiFetch(
+      "/seller/stores/featured-store-impression-analytics",
+      { headers: { "X-Store-Id": String(storeId) } }
+    );
+    if (requestId !== featuredStoreImpressionAnalyticsRequest) return;
+
+    const analytics = response?.data;
+    if (response?.status !== "success" ||
+        analytics?.storeId !== storeId ||
+        !Number.isSafeInteger(analytics?.impressionCount) ||
+        analytics.impressionCount < 0) {
+      throw new Error(response?.message || "Featured Store impression analytics data was incomplete.");
+    }
+
+    setFeaturedStoreImpressionAnalyticsState("success", analytics.impressionCount);
+  } catch (error) {
+    console.error("Unable to load Featured Store impression analytics:", error);
+    if (requestId === featuredStoreImpressionAnalyticsRequest) {
+      setFeaturedStoreImpressionAnalyticsState("error");
+    }
+  }
 }
 
 function setStoreViewAnalyticsState(state, totalViews = null) {
@@ -912,6 +1005,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadStoreRefundAnalytics();
     loadStoreProductViewAnalytics();
     loadStoreViewAnalytics();
+    loadFeaturedStoreImpressionAnalytics();
   });
   window.addEventListener("focus", loadSellerSetupProgress);
   document.addEventListener("visibilitychange", () => {
@@ -964,6 +1058,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadStoreRefundAnalytics();
   loadStoreProductViewAnalytics();
   loadStoreViewAnalytics();
+  loadFeaturedStoreImpressionAnalytics();
   renderVisibilityCards();
   renderActivitySummaries();
 

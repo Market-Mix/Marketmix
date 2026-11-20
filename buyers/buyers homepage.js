@@ -5,6 +5,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   let cart = JSON.parse(localStorage.getItem('cart')) || [];
   let cachedCategories = null;
   let flashCountdownInterval = null;
+  const featuredStoreImpressionsStarted = new Set();
+  const featuredStoreImpressionRequestIds = new Map();
+  let featuredStoreObserver = null;
 
   async function cachedFetch(url, ttlMs = 5 * 60 * 1000) {
     const cached = _cache.get(url);
@@ -559,18 +562,83 @@ function makeFloatingList(btn, items) {
       const r = await fetch(`${API}/seller/public?limit=8`);
       const d = await r.json();
       if (!r.ok||!d.data?.sellers?.length) return;
-      container.innerHTML = d.data.sellers.map(s => {
+      const seenStoreIds = new Set();
+      const sellers = d.data.sellers.filter((seller) => {
+        const storeId = seller.storeId || seller.store_id;
+        const sellerId = seller.sellerId || seller.seller_id;
+        if (!storeId || !sellerId || seenStoreIds.has(String(storeId))) return false;
+        seenStoreIds.add(String(storeId));
+        return true;
+      });
+      container.innerHTML = sellers.map(s => {
+        const storeId = s.storeId || s.store_id;
+        const sellerId = s.sellerId || s.seller_id;
         const logo = s.storeLogo||`https://ui-avatars.com/api/?name=${encodeURIComponent(s.businessName)}&background=F97316&color=fff&size=100`;
         const feat = s.featuredProductImage||'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300';
-        const storeHref = s.storeId || s.store_id
-          ? `store-id.html?store=${encodeURIComponent(s.storeId || s.store_id)}`
-          : `store-id.html?seller=${encodeURIComponent(s.sellerId || s.seller_id)}`;
-        return `<a href="${storeHref}" class="brand-card">
+        const storeHref = `store-id.html?store=${encodeURIComponent(storeId)}`;
+        return `<a href="${storeHref}" class="brand-card"
+          data-store-id="${escapeHtml(String(storeId))}"
+          data-seller-id="${escapeHtml(String(sellerId))}">
           <img src="${logo}" alt="${escapeHtml(s.businessName)}" class="brand-logo" loading="lazy" decoding="async" width="100" height="100" onerror="this.src='${logo}'">
           <h3>${escapeHtml(s.businessName)}</h3><p class="muted">${escapeHtml(s.category||'Marketplace')}</p>
           <img src="${feat}" class="featured-product" alt="" loading="lazy" decoding="async" width="300" height="300" onerror="this.src='marketplace.png'"></a>`;
       }).join('');
-    } catch(e) {}
+      observeFeaturedStoreCards(container);
+    } catch(e) {
+      console.error('Unable to load Featured Stores:', e);
+    }
+  }
+
+  async function trackFeaturedStoreImpression(storeId) {
+    if (!storeId || featuredStoreImpressionsStarted.has(storeId)) return;
+    featuredStoreImpressionsStarted.add(storeId);
+
+    let requestId = featuredStoreImpressionRequestIds.get(storeId);
+    if (!requestId) {
+      try {
+        requestId = crypto.randomUUID();
+        featuredStoreImpressionRequestIds.set(storeId, requestId);
+      } catch (error) {
+        console.warn('Unable to generate Featured Store impression request ID:', error);
+        return;
+      }
+    }
+
+    const sendRequest = async (attempt = 0) => {
+      try {
+        const response = await fetch(
+          `${API}/seller/stores/public/${encodeURIComponent(storeId)}/featured-impression`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: requestId })
+          }
+        );
+        if (response.ok) return;
+        if (response.status >= 500 && attempt === 0) return sendRequest(attempt + 1);
+        console.warn('Featured Store impression was not recorded.');
+      } catch (error) {
+        if (attempt === 0) return sendRequest(attempt + 1);
+        console.warn('Unable to record Featured Store impression:', error);
+      }
+    };
+
+    return sendRequest();
+  }
+
+  function observeFeaturedStoreCards(container) {
+    if (featuredStoreObserver) featuredStoreObserver.disconnect();
+    const cards = container.querySelectorAll('.brand-card[data-store-id]');
+    if (typeof IntersectionObserver !== 'function') return;
+
+    featuredStoreObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.5) return;
+        featuredStoreObserver.unobserve(entry.target);
+        trackFeaturedStoreImpression(entry.target.dataset.storeId);
+      });
+    }, { threshold: 0.5 });
+    cards.forEach((card) => featuredStoreObserver.observe(card));
   }
 
  async function loadFollowedShops() {

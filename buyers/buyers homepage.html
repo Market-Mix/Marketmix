@@ -62,11 +62,9 @@ function getToken() {
   <main class="main-content">
 
     <!-- 🎞 Hero Slider -->
-  <section class="hero-slider">
-  <div class="slides">
-    <a href="../sellers/signup-sellers.html"><img src="../images/slideshow.png" class="slide active"></a>
-    <a href="../index.html"><img src="../images/marketmix new logo.png" class="slide"></a>
-    <a href="sellers.html"><img src="../images/follow stores.png" class="slide"></a>  
+  <section class="hero-slider" aria-label="Featured products">
+  <div class="slides" id="heroSlides" aria-live="polite">
+    <p class="hero-slide-message">Loading featured products...</p>
   </div>
 </section>
     <!-- Featured Brands (copied from landing, colors adapted via buyers CSS) -->
