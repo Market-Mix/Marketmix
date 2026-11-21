@@ -1604,6 +1604,7 @@
 </footer>
 
 <script src="notification-manager.js"></script>
+<script src="../shared/refund-chat-controls.js"></script>
 <script>
   // =====================================================
   // SUPABASE INITIALIZATION (use from notification-manager.js)
@@ -2588,6 +2589,8 @@
   let currentReports = [];
   let currentChatData = null;
   let currentCaseInfo = null; // Store latest case info from polling
+  let buyerChatPaused = false;
+  let buyerChatPauseStateKnown = false;
   let evidenceRequired = false;
   let buyerAttachedFile = null;
   let buyerMediaCache = {}; // session-only preview cache for attachments
@@ -3672,8 +3675,29 @@
   async function openChatPanel(report) {
     try {
       currentChatData = report;
+      currentCaseInfo = null;
+      buyerChatPaused = false;
+      buyerChatPauseStateKnown = false;
       const caseId = report.supabase_case_id || report.id;
       const isCompositeId = String(caseId).startsWith('order-') && String(caseId).includes('-item-');
+      buyerChatPauseStateKnown = isCompositeId;
+      const initialStatus = getRefundDisplayState(report);
+      window.RefundChatControls.applyPartyPauseState({
+        caseInfo: {},
+        party: 'buyer',
+        stateKnown: isCompositeId,
+        pendingText: 'Checking messaging availability…',
+        inputRow: document.querySelector('#chatPanel .input-row'),
+        input: document.getElementById('chatInput'),
+        sendButton: document.getElementById('sendChatBtn'),
+        fileInput: document.getElementById('chatFileInput'),
+        uploadControl: document.querySelector('#chatPanel .file-upload-label'),
+        attachmentPreview: document.getElementById('attachmentPreview'),
+        infoText: document.querySelector('#chatPanel .chat-info-text'),
+        readOnly: ['approved', 'denied', 'resolved', 'escalated', 'awaiting_refund_release'].includes(initialStatus.statusKey),
+        readOnlyText: 'Chat is disabled for finalized refund cases or when the return has been confirmed and the refund is awaiting release.',
+        normalText: 'All conversations are monitored by MarketMix'
+      });
 
       // Immediately clear unread badge for this case when buyer opens the chat
       setUnreadCount(caseId, 0);
@@ -3752,7 +3776,10 @@
       const res = await fetchRefundMessages(caseId);
       const msgs = res.messages || [];
       const caseInfo = res.caseInfo || null;
-      if (caseInfo) applyChatLockState(caseInfo);
+      if (caseInfo) {
+        currentCaseInfo = caseInfo;
+        applyChatLockState(caseInfo);
+      }
       if (msgs.length) renderLiveMessages(msgs);
     }, 5000);
   }
@@ -3781,7 +3808,10 @@
     const msgs = res.messages || [];
     const caseInfo = res.caseInfo || null;
 
-    if (caseInfo) applyChatLockState(caseInfo);
+    if (caseInfo) {
+      currentCaseInfo = caseInfo;
+      applyChatLockState(caseInfo);
+    }
 
     if (msgs.length) {
       renderLiveMessages(msgs);
@@ -3831,19 +3861,28 @@
   function applyChatLockState(caseInfo) {
     const detailStatus = getRefundDisplayState(caseInfo);
     const readOnly = ['approved', 'denied', 'resolved', 'escalated', 'awaiting_refund_release'].includes(detailStatus.statusKey);
-    const chatInput = document.getElementById('chatInput');
-    const sendBtn = document.getElementById('sendChatBtn');
-    const fileInput = document.getElementById('chatFileInput');
-    const infoText = document.querySelector('.chat-info-text');
-
-    if (chatInput) chatInput.disabled = readOnly;
-    if (sendBtn) sendBtn.disabled = readOnly;
-    if (fileInput) fileInput.disabled = readOnly;
-
-    if (infoText) {
-      infoText.textContent = readOnly
-        ? 'Chat is disabled for finalized refund cases or when the return has been confirmed and the refund is awaiting release.'
-        : 'All conversations are monitored by MarketMix';
+    const wasPaused = buyerChatPaused;
+    buyerChatPauseStateKnown = true;
+    buyerChatPaused = window.RefundChatControls.applyPartyPauseState({
+      caseInfo,
+      party: 'buyer',
+      stateKnown: buyerChatPauseStateKnown,
+      inputRow: document.querySelector('#chatPanel .input-row'),
+      input: document.getElementById('chatInput'),
+      sendButton: document.getElementById('sendChatBtn'),
+      fileInput: document.getElementById('chatFileInput'),
+      uploadControl: document.querySelector('#chatPanel .file-upload-label'),
+      attachmentPreview: document.getElementById('attachmentPreview'),
+      infoText: document.querySelector('#chatPanel .chat-info-text'),
+      readOnly,
+      readOnlyText: 'Chat is disabled for finalized refund cases or when the return has been confirmed and the refund is awaiting release.',
+      normalText: 'All conversations are monitored by MarketMix'
+    });
+    if (buyerChatPaused && !wasPaused) {
+      buyerAttachedFile = null;
+      const fileInput = document.getElementById('chatFileInput');
+      if (fileInput) fileInput.value = '';
+      hideAttachmentPreview();
     }
 
     const statusEl = document.getElementById('chatResolutionStatus');
@@ -3969,6 +4008,7 @@
     }
     currentChatData = null;
     currentCaseInfo = null;
+    buyerChatPauseStateKnown = false;
     document.getElementById('chatPanel').classList.remove('active');
     document.getElementById('chatOverlay').classList.remove('active');
     document.getElementById('chatInput').value = '';
@@ -3979,12 +4019,21 @@
   function sendMessage() {
     const input = document.getElementById('chatInput');
     const fileInput = document.getElementById('chatFileInput');
+    if (!currentChatData) return;
+    const caseId = currentChatData.supabase_case_id || currentChatData.id;
+    const isCompositeId = String(caseId).startsWith('order-') && String(caseId).includes('-item-');
+    if (!isCompositeId && !buyerChatPauseStateKnown) {
+      showNotification('Please wait while messaging availability is checked.', 'error');
+      return;
+    }
+    if (buyerChatPaused || window.RefundChatControls.isPartyPaused(currentCaseInfo, 'buyer')) {
+      showNotification(window.RefundChatControls.PAUSED_NOTICE, 'error');
+      return;
+    }
     const text = input.value.trim();
     const file = buyerAttachedFile || (fileInput.files.length ? fileInput.files[0] : null);
 
     if (!text && !file) return;
-    if (!currentChatData) return;
-
     const storageKey = `mm_buyer_return_chat_${currentChatData.id}`;
     const existingMessages = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const messages = existingMessages.length ? existingMessages : (currentChatData.messages || []);
@@ -3998,11 +4047,6 @@
     };
 
     const finalizeMessage = async () => {
-      input.value = '';
-      buyerAttachedFile = null;
-      fileInput.value = '';
-      hideAttachmentPreview();
-
       const caseId = currentChatData.supabase_case_id || currentChatData.id;
       if (!String(caseId).startsWith('order-')) {
         try {
@@ -4036,9 +4080,18 @@
             },
             body: JSON.stringify(payload)
           });
+
+          if (!msgResponse.ok) {
+            const result = await msgResponse.json().catch(() => null);
+            showNotification(result?.message || 'Your message could not be sent. Please refresh the chat and try again.', 'error');
+            return;
+          }
+          input.value = '';
+          buyerAttachedFile = null;
+          fileInput.value = '';
+          hideAttachmentPreview();
           
-          if (msgResponse.ok) {
-            console.log('📨 Buyer message sent successfully for refund:', caseId);
+          console.log('📨 Buyer message sent successfully for refund:', caseId);
             
             // Mark chat as started after first message
             try {
@@ -4059,13 +4112,16 @@
             } catch (err) {
               console.error(`⚠️ Failed to mark chat started for refund ${caseId}:`, err);
             }
-          }
           
           await loadChatMessages(currentChatData);
         } catch (err) {
           console.error('Send failed:', err);
         }
       } else {
+        input.value = '';
+        buyerAttachedFile = null;
+        fileInput.value = '';
+        hideAttachmentPreview();
         messages.push(message);
         localStorage.setItem(storageKey, JSON.stringify(messages));
         renderLocalMessages(currentChatData);

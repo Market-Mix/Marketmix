@@ -2,6 +2,11 @@
 let adminRefundCases = [];
 let refundFetchRetryTimer = null;
 let refundFetchRetryCount = 0;
+let adminRefundChatPollTimer = null;
+let adminRefundChatLoadActive = false;
+let adminRefundChatCanManage = false;
+let adminRefundChatPermissionCheckedAt = 0;
+let adminRefundChatCaseId = null;
 const ADMIN_API_BASE = window.ADMIN_API_BASE || (window.location.protocol === 'file:' ? 'http://localhost:5000/api' : 'https://marketmix-backend.onrender.com/api');
 
 window.formatCurrency = window.formatCurrency || function formatCurrency(value) {
@@ -2667,7 +2672,199 @@ async function switchMarketplacePeriod(period) {
   }
 }
 
+function escapeRefundChatHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[character]));
+}
+
+function renderAdminRefundChatMessage(message) {
+  const senderType = String(message.sender_type || '').toLowerCase();
+  const sender = senderType === 'buyer' ? 'Buyer' : senderType === 'seller' ? 'Seller' : 'MarketMix';
+  const rawText = message.message_text || message.message || '';
+  const linkedText = escapeRefundChatHtml(rawText)
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline">$1</a>')
+    .replace(/\r?\n/g, '<br>');
+  const mediaUrl = message.media_url || message.file_url || '';
+  let mediaHtml = '';
+  if (mediaUrl) {
+    try {
+      const parsed = new URL(mediaUrl, window.location.href);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        const safeUrl = escapeRefundChatHtml(parsed.href);
+        const mediaType = String(message.media_type || message.file_type || '').toLowerCase();
+        if (mediaType === 'image' || /\.(jpg|jpeg|png|webp|gif)$/i.test(parsed.pathname)) {
+          mediaHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer"><img src="${safeUrl}" alt="Message attachment" class="mt-2 max-h-72 rounded-lg"></a>`;
+        } else if (mediaType === 'video' || /\.(mp4|webm|mov)$/i.test(parsed.pathname)) {
+          mediaHtml = `<video controls class="mt-2 max-h-72 max-w-full rounded-lg"><source src="${safeUrl}"></video>`;
+        } else {
+          mediaHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-blue-600 dark:text-blue-400 underline">📎 Attachment</a>`;
+        }
+      }
+    } catch (error) {
+      console.warn('Skipping invalid refund chat attachment URL');
+    }
+  }
+  const createdAt = new Date(message.created_at);
+  const timestamp = Number.isNaN(createdAt.getTime()) ? 'Time unavailable' : createdAt.toLocaleString();
+  return `<article class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+    <div class="flex items-center justify-between gap-3 mb-2">
+      <strong class="text-gray-900 dark:text-white">${sender}</strong>
+      <time class="text-xs text-gray-500 dark:text-gray-400">${escapeRefundChatHtml(timestamp)}</time>
+    </div>
+    ${linkedText ? `<p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">${linkedText}</p>` : ''}
+    ${mediaHtml}
+  </article>`;
+}
+
+async function refreshAdminRefundChatManagePermission() {
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/admin/rbac/me/permissions`, {
+      headers: getAdminAuthHeaders()
+    });
+    const body = await response.json().catch(() => null);
+    adminRefundChatCanManage = response.ok &&
+      window.RefundChatControls.hasRefundManagePermission(body);
+  } catch (error) {
+    adminRefundChatCanManage = false;
+    console.warn('Unable to verify Refunds Manage permission:', error);
+  }
+  adminRefundChatPermissionCheckedAt = Date.now();
+  const controls = document.getElementById('adminRefundChatControls');
+  if (controls) controls.style.display = adminRefundChatCanManage ? 'grid' : 'none';
+  ['Buyer', 'Seller'].forEach(party => {
+    const button = document.getElementById(`adminRefund${party}PauseButton`);
+    if (button) button.disabled = !adminRefundChatCanManage;
+  });
+  return adminRefundChatCanManage;
+}
+
+async function loadAdminRefundConversation(caseId, checkPermission = false) {
+  if (adminRefundChatLoadActive) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if (!document.getElementById('adminRefundChatMessages') || String(caseId) !== adminRefundChatCaseId) return false;
+    return loadAdminRefundConversation(caseId, checkPermission);
+  }
+  if (String(caseId) !== adminRefundChatCaseId) return false;
+  adminRefundChatLoadActive = true;
+  const messageContainer = document.getElementById('adminRefundChatMessages');
+  const status = document.getElementById('adminRefundChatStatus');
+  try {
+    const fetches = [fetch(`${ADMIN_API_BASE}/refund-chat/${encodeURIComponent(caseId)}`, {
+      headers: getAdminAuthHeaders()
+    })];
+    const responses = await Promise.all(fetches);
+    if (String(caseId) !== adminRefundChatCaseId) return false;
+    const chatResponse = responses[0];
+    const chatBody = await chatResponse.json().catch(() => null);
+    if (checkPermission) {
+      await refreshAdminRefundChatManagePermission();
+    }
+    if (!chatResponse.ok) {
+      if (messageContainer) messageContainer.innerHTML = '';
+      if (status) status.textContent = chatBody?.message || 'Unable to load the refund conversation.';
+      return false;
+    }
+
+    const messages = chatBody?.data?.messages || [];
+    const caseInfo = chatBody?.data?.caseInfo || {};
+    if (messageContainer) {
+      messageContainer.innerHTML = messages.length
+        ? messages.map(renderAdminRefundChatMessage).join('')
+        : '<p class="text-sm text-gray-500 dark:text-gray-400">No messages in this conversation yet.</p>';
+      messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+    if (status) status.textContent = 'Conversation refreshes automatically every 5 seconds.';
+    renderAdminRefundChatPauseStates(caseInfo);
+    return true;
+  } catch (error) {
+    console.error('Failed to load admin refund conversation:', error);
+    if (status) status.textContent = 'Unable to load the refund conversation. Please try again.';
+    return false;
+  } finally {
+    adminRefundChatLoadActive = false;
+  }
+}
+
+function renderAdminRefundChatPauseStates(caseInfo) {
+  ['buyer', 'seller'].forEach(party => {
+    const paused = window.RefundChatControls.isPartyPaused(caseInfo, party);
+    const status = document.getElementById(`adminRefund${party === 'buyer' ? 'Buyer' : 'Seller'}PauseStatus`);
+    const button = document.getElementById(`adminRefund${party === 'buyer' ? 'Buyer' : 'Seller'}PauseButton`);
+    if (status) status.textContent = paused ? 'Paused — cannot send messages' : 'Active — messaging enabled';
+    if (button) {
+      button.dataset.action = paused ? 'resume' : 'pause';
+      button.textContent = paused ? 'Resume Messaging' : 'Pause Messaging';
+      button.disabled = !adminRefundChatCanManage;
+    }
+  });
+}
+
+async function setAdminRefundChatPause(caseId, party, action) {
+  if (!adminRefundChatCanManage || !['buyer', 'seller'].includes(party) || !['pause', 'resume'].includes(action)) return;
+  const button = document.getElementById(`adminRefund${party === 'buyer' ? 'Buyer' : 'Seller'}PauseButton`);
+  const status = document.getElementById('adminRefundChatStatus');
+  if (button) button.disabled = true;
+  try {
+    if (!await refreshAdminRefundChatManagePermission()) {
+      throw new Error('You do not have Refunds Manage permission.');
+    }
+    if (button) button.disabled = true;
+    const url = window.RefundChatControls.getAdminRefundChatControlUrl(ADMIN_API_BASE, caseId, party, action);
+    const response = await fetch(url, { method: 'PUT', headers: getAdminAuthHeaders() });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.message || `Unable to ${action} ${party} messaging.`);
+    if (status) status.textContent = `${party === 'buyer' ? 'Buyer' : 'Seller'} messaging ${action === 'pause' ? 'paused' : 'resumed'} successfully.`;
+    showToast(`${party === 'buyer' ? 'Buyer' : 'Seller'} messaging ${action === 'pause' ? 'paused' : 'resumed'}.`, 'success');
+    await loadAdminRefundConversation(caseId);
+  } catch (error) {
+    if (status) status.textContent = error.message || 'Unable to update messaging controls.';
+    showToast(error.message || 'Unable to update messaging controls.', 'error');
+  } finally {
+    if (button) button.disabled = !adminRefundChatCanManage;
+  }
+}
+
+async function sendAdminRefundChatMessage(caseId) {
+  const input = document.getElementById('adminRefundChatInput');
+  const status = document.getElementById('adminRefundChatSendStatus');
+  const button = document.getElementById('adminRefundChatSend');
+  const message = input?.value.trim();
+  if (!message) {
+    if (status) status.textContent = 'Enter a message before sending.';
+    return;
+  }
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch(`${ADMIN_API_BASE}/refund-chat/${encodeURIComponent(caseId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
+      body: JSON.stringify({ message_text: message })
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.message || 'Unable to send the admin message.');
+    input.value = '';
+    if (status) status.textContent = 'Message sent to the buyer and seller.';
+    await loadAdminRefundConversation(caseId);
+  } catch (error) {
+    if (status) status.textContent = error.message || 'Unable to send the admin message.';
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 async function viewReturn(id) {
+  if (adminRefundChatPollTimer) {
+    clearInterval(adminRefundChatPollTimer);
+    adminRefundChatPollTimer = null;
+  }
+  adminRefundChatCanManage = false;
+  adminRefundChatPermissionCheckedAt = 0;
+  adminRefundChatCaseId = null;
   const returnRequest = adminRefundCases.find(r => r.id === id);
   if (!returnRequest) {
     showToast('Return request not found. Please refresh the list.', 'error');
@@ -2778,6 +2975,36 @@ async function viewReturn(id) {
             </div>
           </div>
         </div>
+
+        <section class="mb-8 rounded-lg border border-gray-200 dark:border-gray-700 p-5" aria-labelledby="adminRefundChatHeading">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 id="adminRefundChatHeading" class="text-xl font-bold text-gray-900 dark:text-white">Refund Conversation</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Messages shared by the buyer, seller, and MarketMix.</p>
+            </div>
+            <button type="button" id="adminRefundChatRefresh" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg">Refresh</button>
+          </div>
+          <div id="adminRefundChatStatus" class="mb-3 text-sm text-gray-600 dark:text-gray-400" role="status">Loading conversation…</div>
+          <div id="adminRefundChatControls" class="hidden mb-4 grid grid-cols-1 md:grid-cols-2 gap-3" style="display:none">
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700 p-3 flex items-center justify-between gap-3">
+              <div><p class="font-semibold text-gray-900 dark:text-white">Buyer messaging</p><p id="adminRefundBuyerPauseStatus" class="text-sm text-gray-600 dark:text-gray-300">Status unavailable</p></div>
+              <button type="button" id="adminRefundBuyerPauseButton" data-party="buyer" class="px-3 py-2 rounded-lg bg-amber-600 text-white font-semibold">Pause Messaging</button>
+            </div>
+            <div class="rounded-lg bg-gray-50 dark:bg-gray-700 p-3 flex items-center justify-between gap-3">
+              <div><p class="font-semibold text-gray-900 dark:text-white">Seller messaging</p><p id="adminRefundSellerPauseStatus" class="text-sm text-gray-600 dark:text-gray-300">Status unavailable</p></div>
+              <button type="button" id="adminRefundSellerPauseButton" data-party="seller" class="px-3 py-2 rounded-lg bg-amber-600 text-white font-semibold">Pause Messaging</button>
+            </div>
+          </div>
+          <div id="adminRefundChatMessages" class="max-h-[28rem] overflow-y-auto space-y-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 p-4" aria-live="polite"></div>
+          <div id="adminRefundChatComposer" class="mt-4">
+            <label for="adminRefundChatInput" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Send a message to both parties</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <textarea id="adminRefundChatInput" rows="2" maxlength="5000" class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-3" placeholder="Write a message visible to the buyer and seller"></textarea>
+              <button type="button" id="adminRefundChatSend" class="self-end px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">Send Message</button>
+            </div>
+            <p id="adminRefundChatSendStatus" class="mt-2 text-sm" role="status"></p>
+          </div>
+        </section>
         
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
           <div class="flex gap-3 flex-wrap">
@@ -2798,6 +3025,21 @@ async function viewReturn(id) {
     </div>
   `;
   document.getElementById('content').innerHTML = html;
+  const caseId = returnRequest.id;
+  adminRefundChatCaseId = String(caseId);
+  document.getElementById('adminRefundChatRefresh')?.addEventListener('click', () => loadAdminRefundConversation(caseId));
+  document.getElementById('adminRefundChatSend')?.addEventListener('click', () => sendAdminRefundChatMessage(caseId));
+  document.getElementById('adminRefundBuyerPauseButton')?.addEventListener('click', event => setAdminRefundChatPause(caseId, 'buyer', event.currentTarget.dataset.action));
+  document.getElementById('adminRefundSellerPauseButton')?.addEventListener('click', event => setAdminRefundChatPause(caseId, 'seller', event.currentTarget.dataset.action));
+  loadAdminRefundConversation(caseId, true);
+  adminRefundChatPollTimer = setInterval(() => {
+    if (!document.getElementById('adminRefundChatMessages')) {
+      clearInterval(adminRefundChatPollTimer);
+      adminRefundChatPollTimer = null;
+      return;
+    }
+    loadAdminRefundConversation(caseId, Date.now() - adminRefundChatPermissionCheckedAt >= 30000);
+  }, 5000);
 
   try {
     const detailContainer = document.getElementById('adjustmentDetailPanel');

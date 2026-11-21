@@ -1,5 +1,7 @@
 let returnsData = [];
 let currentCaseInfo = null; // Store latest case info from polling
+let sellerChatPaused = false;
+let sellerChatPauseStateKnown = false;
 let caseInfoCache = {}; // cache for latest case info per refund ID (in-memory only)
 let pollingIntervals = {}; // track polling intervals per case (in-memory only)
 let unreadCounts = {}; // track unread refund_chat notifications per refund ID
@@ -1458,6 +1460,10 @@ function openChat(returnId) {
 
   currentChatId = returnId;
   currentChatData = returnItem;
+  currentCaseInfo = null;
+  sellerChatPaused = false;
+  sellerChatPauseStateKnown = false;
+  applyChatLockState({}, false);
 
   document.getElementById('chatBuyerName').textContent = `Chat with ${returnItem.buyerName}`;
   document.getElementById('chatOrderId').textContent = `Order ID: ${returnItem.orderId}`;
@@ -1522,19 +1528,42 @@ async function loadAndRenderChat(caseId) {
     const data = await res.json();
     const messages = data.data?.messages || [];
     const caseInfo = data.data?.caseInfo || null;
-    if (caseInfo) applyChatLockState(caseInfo);
+    if (caseInfo) {
+      currentCaseInfo = caseInfo;
+      applyChatLockState(caseInfo);
+    }
     renderChatMessages(messages);
   } catch (err) {
     console.error('Load chat failed:', err);
   }
 }
 
-function applyChatLockState(caseInfo) {
+function applyChatLockState(caseInfo, stateKnown = true) {
   const status = String(caseInfo.resolution_status || '').toLowerCase();
   const readOnly = ['resolved', 'escalated', 'refund_processing', 'awaiting_refund_release'].includes(status);
-  if (chatInput) chatInput.disabled = readOnly;
-  if (sendChatBtn) sendChatBtn.disabled = readOnly;
-  if (chatFileInput) chatFileInput.disabled = readOnly;
+  const wasPaused = sellerChatPaused;
+  sellerChatPauseStateKnown = stateKnown;
+  sellerChatPaused = window.RefundChatControls.applyPartyPauseState({
+    caseInfo,
+    party: 'seller',
+    stateKnown,
+    pendingText: 'Checking messaging availability…',
+    inputRow: document.querySelector('#chatPanel .input-row'),
+    input: chatInput,
+    sendButton: sendChatBtn,
+    fileInput: chatFileInput,
+    uploadControl: document.querySelector('#chatPanel .file-upload-label'),
+    attachmentPreview,
+    infoText: document.querySelector('#chatPanel .chat-info-text'),
+    readOnly,
+    readOnlyText: 'Chat is read-only once the return is confirmed and awaiting refund release.',
+    normalText: 'All conversations are monitored by MarketMix'
+  });
+  if (sellerChatPaused && !wasPaused) {
+    attachedFile = null;
+    if (chatFileInput) chatFileInput.value = '';
+    removeAttachment();
+  }
 
   const statusEl = document.getElementById('chatResolutionStatus');
   if (statusEl) {
@@ -1544,13 +1573,15 @@ function applyChatLockState(caseInfo) {
       : 'Pending Resolution';
   }
 
-  const infoEl = document.querySelector('.chat-info-text');
-  if (infoEl) infoEl.textContent = readOnly ? 'Chat is read-only once the return is confirmed and awaiting refund release.' : 'All conversations are monitored by MarketMix';
 }
 
 function renderChatMessages(messages) {
   chatMessages.innerHTML = messages.length ? messages.map(msg => {
-    const isSeller = msg.sender_type === 'seller';
+    const senderType = String(msg.sender_type || '').toLowerCase();
+    const isSeller = senderType === 'seller';
+    const isBuyer = senderType === 'buyer';
+    const side = isSeller ? 'seller' : isBuyer ? 'buyer' : 'system';
+    const senderLabel = isSeller ? 'You' : isBuyer ? 'Buyer' : 'MarketMix';
     const time = new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     const messageText = msg.message || msg.message_text || '';
     const mediaUrl = msg.media_url || msg.file_url || '';
@@ -1570,9 +1601,9 @@ function renderChatMessages(messages) {
     }
 
     return `
-      <div class="chat-message ${isSeller ? 'seller' : 'buyer'}">
+      <div class="chat-message ${side}">
         <div class="message-content">
-          <span class="message-sender">${isSeller ? 'You' : 'Buyer'}</span>
+          <span class="message-sender">${senderLabel}</span>
           ${messageText ? `<p class="message-text">${escapeHtml(messageText)}</p>` : ''}
           ${mediaHtml}
           <span class="message-time">${time}</span>
@@ -1642,6 +1673,14 @@ function markMessagesAsRead(returnId) {
 
 // Send Chat Message
 async function sendChatMessage() {
+  if (!sellerChatPauseStateKnown) {
+    showNotification('Please wait while messaging availability is checked.', 'error');
+    return;
+  }
+  if (sellerChatPaused || window.RefundChatControls.isPartyPaused(currentCaseInfo, 'seller')) {
+    showNotification(window.RefundChatControls.PAUSED_NOTICE, 'error');
+    return;
+  }
   const text = chatInput.value.trim();
   const file = chatFileInput.files?.[0] || null;
   if (!text && !file) return;
@@ -1674,8 +1713,13 @@ async function sendChatMessage() {
       body: JSON.stringify(payload)
     });
     
-    if (msgResponse.ok) {
-      console.log('<i class="fas fa-envelope"></i> Seller message sent successfully for refund:', currentChatId);
+    if (!msgResponse.ok) {
+      const result = await msgResponse.json().catch(() => null);
+      showNotification(result?.message || 'Your message could not be sent. Please refresh the chat and try again.', 'error');
+      return;
+    }
+
+    console.log('<i class="fas fa-envelope"></i> Seller message sent successfully for refund:', currentChatId);
       
       // Mark chat as started after first message
       try {
@@ -1696,7 +1740,6 @@ async function sendChatMessage() {
       } catch (err) {
         console.error(`<i class="fas fa-exclamation-triangle"></i> Failed to mark chat started for refund ${currentChatId}:`, err);
       }
-    }
     
     chatInput.value = '';
     removeAttachment();
@@ -1890,4 +1933,3 @@ function showNotification(message, type = 'success') {
     setTimeout(() => notification.remove(), 400);
   }, 3200);
 }
-
