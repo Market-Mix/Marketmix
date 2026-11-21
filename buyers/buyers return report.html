@@ -1730,7 +1730,8 @@
       const response = await fetch(`${API_BASE_URL}/refunds/create`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
         },
         body: JSON.stringify(refundCasePayload)
       });
@@ -2272,6 +2273,7 @@
       const normalizedOrders = (orders || []).map(order => {
         if (!order) return order;
 
+        const orderId = order.order_id || order.id;
         const groups = order.seller_groups || [];
 
         // Build an inferred seller/store name from common spots
@@ -2281,12 +2283,14 @@
         const items = (Array.isArray(order.items) && order.items.length)
           ? order.items.map(it => ({
               ...it,
+              ...(it.product_id || it.productId ? { product_id: it.product_id || it.productId } : {}),
               seller_id: it.seller_id || it.sellerId || order.seller_id || (groups[0] && (groups[0].sellerId || groups[0].seller_id)) || null,
               seller_name: it.seller_name || it.sellerName || inferredSellerName || null,
               shop_name: it.shop_name || it.shopName || inferredSellerName || null
             }))
           : groups.flatMap(g => Array.isArray(g.items) ? g.items.map(it => ({
               ...it,
+              ...(it.product_id || it.productId ? { product_id: it.product_id || it.productId } : {}),
               seller_id: it.seller_id || it.sellerId || g.sellerId || g.seller_id || null,
               seller_name: it.seller_name || it.sellerName || g.seller_name || g.sellerName || g.name || null,
               shop_name: it.shop_name || it.shopName || g.shop_name || g.shopName || null
@@ -2295,7 +2299,13 @@
         // Ensure order-level store/seller name fields exist for resolveStoreName()
         const orderStoreName = order.store_name || order.seller_name || order.shop_name || inferredSellerName;
 
-        return { ...order, items, store_name: orderStoreName, seller_name: order.seller_name || orderStoreName };
+        return {
+          ...order,
+          ...(orderId ? { id: orderId, order_id: orderId } : {}),
+          items,
+          store_name: orderStoreName,
+          seller_name: order.seller_name || orderStoreName
+        };
       });
 
       console.log('Fetched order data:', normalizedOrders);
@@ -2341,7 +2351,7 @@
         id: `order-${order.id}-item-${item.id}`,
         order_id: order.id,
         order_item_id: item.id,
-        product_id: item.product_id || item.id,
+        product_id: item.product_id || item.productId || null,
         product_name: resolveProductName(item),
         total_amount: (item.price || 0) * (item.quantity || 1),
         status: 'purchased',
@@ -2389,7 +2399,7 @@
             id: `order-${order.id}-item-${item.id}`,
             order_id: order.id,
             order_item_id: item.id,
-            product_id: item.product_id || item.id,
+            product_id: item.product_id || item.productId || null,
             product_name: resolveProductName(item),
             total_amount: (item.price || 0) * (item.quantity || 1),
             status: order.status || 'purchased',
@@ -3544,11 +3554,26 @@
         return;
       }
 
+      const parentOrderId = currentChatData.order_id;
+      const orderItemId = currentChatData.order_item_id || currentChatData.order_item || currentChatData.item_id || null;
+      const productId = currentChatData.product_id || currentChatData.productId || null;
+      const missingIds = [
+        !parentOrderId && 'parent order ID',
+        !orderItemId && 'order item ID',
+        !productId && 'product ID'
+      ].filter(Boolean);
+      if (missingIds.length) {
+        showNotification(`Cannot submit evidence: missing ${missingIds.join(', ')}. Please refresh your orders and try again.`, 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        return;
+      }
+
       // Upload evidence file if present
       let evidenceData = { url: null, fileName: null };
       const fileInput = document.getElementById('evidenceFile');
       if (fileInput && fileInput.files.length > 0) {
-        evidenceData = await uploadEvidenceFile(fileInput.files[0], currentChatData.order_id);
+        evidenceData = await uploadEvidenceFile(fileInput.files[0], parentOrderId);
         if (!evidenceData) {
           showNotification('Evidence upload failed. Please try again.', 'error');
           submitBtn.disabled = false;
@@ -3559,14 +3584,13 @@
 
       // Create refund case via backend order data
       const sellerId = resolveRefundSellerId(currentChatData);
-      const orderItemId = currentChatData.order_item_id || currentChatData.order_item || currentChatData.item_id || currentChatData.id || null;
-      const productId = currentChatData.product_id || currentChatData.productId || currentChatData.item_id || null;
       const productName = resolveProductName(currentChatData);
       const buyerName = currentChatData.buyer_name || currentChatData.buyerName || getCurrentBuyerName();
       const totalAmount = Number(currentChatData.total_amount ?? currentChatData.amount ?? currentChatData.total ?? 0);
 
       console.log('Fetched order data:', currentChatData);
       console.log('Resolved seller_id:', sellerId);
+      console.log('Resolved order_id:', parentOrderId);
       console.log('Resolved order_item_id:', orderItemId);
       console.log('Resolved product_id:', productId);
       console.log('Resolved product_name:', productName);
@@ -3598,7 +3622,7 @@
       }
 
       const refundCase = await createRefundCase({
-        order_id: currentChatData.order_id,
+        order_id: parentOrderId,
         order_item_id: orderItemId,
         product_id: productId,
         product_name: productName,
