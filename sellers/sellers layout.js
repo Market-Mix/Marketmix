@@ -157,13 +157,7 @@ async function updateNavbarNotificationBadge() {
     document.querySelectorAll('.notification-badge').forEach(b => {
       try {
         b.innerText = displayCount > 0 ? String(displayCount) : '';
-        b.style.display = displayCount > 0 ? 'inline' : 'none';
-        b.style.background = 'transparent';
-        b.style.borderRadius = '0';
-        b.style.minWidth = 'auto';
-        b.style.height = 'auto';
-        b.style.padding = '0';
-        b.style.color = 'inherit';
+        b.style.display = displayCount > 0 ? 'inline-flex' : 'none';
       } catch (e) { /* ignore */ }
     });
   } catch (e) {

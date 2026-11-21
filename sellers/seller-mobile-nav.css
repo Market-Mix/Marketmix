@@ -169,22 +169,41 @@
   text-decoration: none;
 }
 
-.offcanvas-menu .notification-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: auto;
-  height: auto;
-  padding: 0;
-  background: transparent !important;
-  border-radius: 0 !important;
+.nav-icon-button .notification-badge,
+.offcanvas-menu .notification-badge,
+.offcanvas-account-actions .notification-badge,
+.mobile-nav-actions .notification-badge {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 16px !important;
+  width: auto !important;
+  height: 16px !important;
+  padding: 0 4px !important;
+  box-sizing: border-box !important;
+  background: #dc2626 !important;
+  border: 1px solid #fff !important;
+  border-radius: 999px !important;
   color: #fff !important;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 16px !important;
+  text-align: center !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25) !important;
+  pointer-events: none !important;
+}
+
+.mobile-nav-actions .notification-badge {
+  top: 2px !important;
+  right: 2px !important;
+  min-width: 14px !important;
+  height: 14px !important;
+  padding: 0 3px !important;
+  font-size: 9px !important;
+  line-height: 14px !important;
 }
 
 .offcanvas-menu .profile-icon {
