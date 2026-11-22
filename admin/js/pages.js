@@ -2773,10 +2773,13 @@ async function loadAdminRefundConversation(caseId, checkPermission = false) {
     const messages = chatBody?.data?.messages || [];
     const caseInfo = chatBody?.data?.caseInfo || {};
     if (messageContainer) {
+      const wasAtBottom = !messageContainer.hasChildNodes() ||
+        messageContainer.scrollHeight - messageContainer.clientHeight - messageContainer.scrollTop <= 48;
+      const previousScrollTop = messageContainer.scrollTop;
       messageContainer.innerHTML = messages.length
         ? messages.map(renderAdminRefundChatMessage).join('')
         : '<p class="text-sm text-gray-500 dark:text-gray-400">No messages in this conversation yet.</p>';
-      messageContainer.scrollTop = messageContainer.scrollHeight;
+      messageContainer.scrollTop = wasAtBottom ? messageContainer.scrollHeight : previousScrollTop;
     }
     if (status) status.textContent = 'Conversation refreshes automatically every 5 seconds.';
     renderAdminRefundChatPauseStates(caseInfo);
