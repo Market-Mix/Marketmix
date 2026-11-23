@@ -144,6 +144,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSubcategoryFields(fields, 'addDynamicFields2');
   });
 
+  document.getElementById('editSubcategory')?.addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const fields = opt.dataset.fields ? JSON.parse(opt.dataset.fields) : [];
+    renderSubcategoryFields(fields, 'editDynamicFields2');
+  });
+
   // Video preview
   document.getElementById('newProductVideo')?.addEventListener('change', function() {
     const file = this.files[0];
@@ -269,6 +275,7 @@ function populateCategorySelects() {
     renderDynamicFields(addCat.value, 'addDynamicFields');
   });
   if (editCat) editCat.addEventListener('change', async () => {
+    document.getElementById('editDynamicFields2').innerHTML = '';
     await loadSubcategories(editCat.value, 'editSubcategory');
     renderDynamicFields(editCat.value, 'editDynamicFields');
   });
@@ -449,6 +456,8 @@ function openAddModal() {
 function closeAddModal() {
   document.getElementById('addProductModal').style.display = 'none';
   document.getElementById('addProductForm').reset();
+  document.getElementById('aiNotes').value = '';
+  document.getElementById('aiStatus').textContent = '';
   addImageFiles = [];
   const preview = document.getElementById('addImagesPreview');
   if (preview) preview.innerHTML = '';
@@ -617,11 +626,19 @@ async function openEditModal(id) {
 
   // Set weight
   document.getElementById('editWeight').value = product.weight_kg || '';
+  document.getElementById('editDynamicFields2').innerHTML = '';
 
   // Restore dynamic fields when editing
   if (product.category_id) {
     await loadSubcategories(product.category_id, 'editSubcategory');
+    const subcategorySelect = document.getElementById('editSubcategory');
+    subcategorySelect.value = product.subcategory_id || '';
     renderDynamicFields(product.category_id, 'editDynamicFields');
+    const selectedSubcategory = subcategorySelect.options[subcategorySelect.selectedIndex];
+    if (selectedSubcategory?.dataset.fields) {
+      const fields = JSON.parse(selectedSubcategory.dataset.fields);
+      renderSubcategoryFields(fields, 'editDynamicFields2', product.dynamic_fields || {});
+    }
     // Restore saved meta values if they exist
     if (product.category_meta) {
       const meta = typeof product.category_meta === 'string' 
@@ -659,6 +676,8 @@ async function openEditModal(id) {
 function closeModal() {
   document.getElementById('editModal').style.display = 'none';
   editingProductId = null;
+  document.getElementById('editAiNotes').value = '';
+  document.getElementById('editAiStatus').textContent = '';
   const editPreview = document.getElementById('editImagesPreview');
   if (editPreview) editPreview.innerHTML = '';
 }
@@ -689,12 +708,16 @@ async function handleEditSubmit(e) {
     formData.append('stock_quantity', stock || '0');
     formData.append('description', description);
     if (categoryId) formData.append('category_id', categoryId);
+    const subcategoryId = document.getElementById('editSubcategory')?.value;
+    if (subcategoryId) formData.append('subcategory_id', subcategoryId);
 
     const weightInput = document.getElementById('editWeight');
     if (weightInput && weightInput.value) formData.append('weight_kg', weightInput.value);
 
     const editDynamic = collectDynamicFields('#editForm');
     if (editDynamic) formData.append('category_meta', JSON.stringify(editDynamic));
+    const editDynamicFields = collectDynamicFields2('#editForm');
+    if (Object.keys(editDynamicFields).length) formData.append('dynamic_fields', JSON.stringify(editDynamicFields));
 
     const editDiscount = document.getElementById('editDiscountPrice')?.value;
     if (editDiscount) formData.append('discount_price', parsePriceInput(editDiscount));
@@ -960,9 +983,8 @@ function renderDynamicFields(categoryId, containerId, existingValues = {}) {
   const staticFields = (categoryName && CATEGORY_FIELDS[categoryName]) ? CATEGORY_FIELDS[categoryName] : '';
   container.innerHTML = staticFields;
 
-  const subcategorySelectId = containerId === 'addDynamicFields' ? 'newProductSubcategory' : 'editSubcategory';
-  const subSelect = document.getElementById(subcategorySelectId);
-  if (subSelect && subSelect.dataset.fields) {
+  const subSelect = document.getElementById('newProductSubcategory');
+  if (containerId === 'addDynamicFields' && subSelect?.dataset.fields) {
     try {
       const fields = JSON.parse(subSelect.dataset.fields);
       renderSubcategoryFields(fields, containerId, existingValues);
@@ -1145,3 +1167,75 @@ function renderVariantRow(containerId, variant, index) {
 
   list.appendChild(row);
 }
+
+// ─── AI listing assistant ──────────────────────────────────────────────────
+async function generateAIListing(mode = 'add') {
+  const isEdit = mode === 'edit';
+  const ids = isEdit
+    ? {
+        name: 'editName',
+        notes: 'editAiNotes',
+        category: 'editCategory',
+        subcategory: 'editSubcategory',
+        description: 'editDescription',
+        dynamicFields: 'editDynamicFields2',
+        button: 'editAiListingBtn',
+        status: 'editAiStatus'
+      }
+    : {
+        name: 'newProductName',
+        notes: 'aiNotes',
+        category: 'newProductCategory',
+        subcategory: 'newProductSubcategory',
+        description: 'newProductDescription',
+        dynamicFields: 'addDynamicFields2',
+        button: 'aiListingBtn',
+        status: 'aiStatus'
+      };
+  const name = document.getElementById(ids.name).value.trim();
+  if (name.length < 3) return showToast('Enter a product name first.', 'error');
+
+  const btn = document.getElementById(ids.button);
+  const status = document.getElementById(ids.status);
+  const subSelect = document.getElementById(ids.subcategory);
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  try {
+    const data = await StoreManager.apiFetch('/seller/ai/listing', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        notes: document.getElementById(ids.notes).value.trim(),
+        category_id: document.getElementById(ids.category).value || null,
+        subcategory_id: subSelect.value || null
+      })
+    });
+    if (data.status !== 'success') throw new Error(data.message || 'AI failed');
+
+    const { draft, quota } = data.data;
+    const descEl = document.getElementById(ids.description);
+    if (!descEl.value.trim() || confirm('Replace your current description with the AI draft?')) {
+      descEl.value = draft.description;
+    }
+    if (draft.title && confirm(`Use AI title?\n\n"${draft.title}"`)) {
+      document.getElementById(ids.name).value = draft.title;
+    }
+
+    const opt = subSelect.options[subSelect.selectedIndex];
+    const dynamicFields = draft.dynamic_fields || {};
+    if (opt?.dataset.fields && Object.keys(dynamicFields).length) {
+      renderSubcategoryFields(JSON.parse(opt.dataset.fields), ids.dynamicFields, dynamicFields);
+    }
+
+    status.textContent = `Draft ready. Review before saving. (${quota.used}/${quota.limit} AI uses today)` +
+      (draft.keywords.length ? ` Keywords: ${draft.keywords.join(', ')}` : '');
+  } catch (e) {
+    showToast(e.message || 'AI unavailable, try again.', 'error');
+    status.textContent = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Generate with AI';
+  }
+}
+window.generateAIListing = generateAIListing;

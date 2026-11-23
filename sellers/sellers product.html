@@ -124,6 +124,15 @@
         <label for="newProductName">Product Name <span class="req">*</span></label>
         <input type="text" id="newProductName" placeholder="e.g. Classic Leather Bag" required>
 
+        <div style="margin:6px 0 10px;padding:10px;border:1px dashed #FF7A00;border-radius:8px;background:#fff7ed">
+          <input type="text" id="aiNotes" maxlength="500" placeholder="Optional notes: condition, size, battery, colour…" style="margin-bottom:8px">
+          <button type="button" id="aiListingBtn" onclick="generateAIListing()"
+            style="width:100%;padding:9px;border:none;border-radius:8px;background:#FF7A00;color:#fff;font-weight:600;cursor:pointer">
+            ✨ Generate with AI
+          </button>
+          <small id="aiStatus" style="display:block;margin-top:6px;color:#64748b"></small>
+        </div>
+
         <label for="newProductCategory">Category <small style="color:#94a3b8;font-weight:400;">(set by store)</small></label>
         <select id="newProductCategory">
           <option value="">— Select a category —</option>
@@ -219,12 +228,27 @@
         <label>Product Name <span class="req">*</span></label>
         <input type="text" id="editName" required>
 
+        <div style="margin:6px 0 10px;padding:10px;border:1px dashed #FF7A00;border-radius:8px;background:#fff7ed">
+          <input type="text" id="editAiNotes" maxlength="500" placeholder="Optional notes: condition, size, battery, colour…" style="margin-bottom:8px">
+          <button type="button" id="editAiListingBtn" onclick="generateAIListing('edit')"
+            style="width:100%;padding:9px;border:none;border-radius:8px;background:#FF7A00;color:#fff;font-weight:600;cursor:pointer">
+            ✨ Generate with AI
+          </button>
+          <small id="editAiStatus" style="display:block;margin-top:6px;color:#64748b"></small>
+        </div>
+
         <label for="editCategory">Category</label>
         <select id="editCategory">
           <option value="">— Select a category —</option>
         </select>
 
+        <label for="editSubcategory">Subcategory</label>
+        <select id="editSubcategory">
+          <option value="">— Select Subcategory —</option>
+        </select>
+
         <div id="editDynamicFields"></div>
+        <div id="editDynamicFields2" style="margin-top:4px"></div>
 
         <label>Price (₦) <span class="req">*</span></label>
         <input type="text" id="editPrice" inputmode="numeric" required>
